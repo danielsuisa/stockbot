@@ -217,7 +217,9 @@ class Tenk(unittest.TestCase):
         with mock.patch.object(common, "fetch", side_effect=lambda url: docs[url.rsplit("/", 1)[1]]):
             r = tenk.analyze(1, rows)
         self.assertEqual((r["n_cur"], r["n_pri"], r["same"], r["edited"], r["new"], r["removed"]), (40, 40, 36, 2, 2, 2))
-        self.assertEqual([h[0] for h in r["hits"]], [["going concern"], ["tariff"]])
+        self.assertEqual([(c["kind"], c["labels"]) for c in r["top"]],
+                         [("new", ["going concern"]), ("new", ["tariff"])])
+        self.assertEqual(r["boiler"], 2)  # could -> may (hedge to hedge), margins -> profit margins
         self.assertEqual(common.rtl_bad_lines("\n".join(tenk.format_he(r))), [])
 
     def test_keywords(self):
