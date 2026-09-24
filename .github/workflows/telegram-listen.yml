@@ -1,25 +1,41 @@
 name: Telegram listener
 
+# One long-poll consumer serves ~5h20m, then starts its successor through the API (GitHub throttles */10 crons).
+# The cron is only a backup: it exits at once while a poller is live. A push or a manual run takes over (the
+# older poller gets Telegram's 409 and exits without a successor). Off switch: disable the workflow, then cancel
+# the live run (a cancelled run starts no successor; the disabled cron starts none either).
 on:
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
-  push:  # a code deploy runs the listener once right away: smoke-tests TG_TOKEN and (re)starts the schedule
+    inputs:
+      parent:
+        description: "Run id of the listener that started this one (set by the chain; leave empty)"
+        required: false
+        default: ""
+      parent_failed:
+        description: "The previous listener failed: skip the failure message (set by the chain)"
+        required: false
+        default: "false"
+      offset:
+        description: "Telegram update offset handed on by the previous listener (set by the chain)"
+        required: false
+        default: ""
+  push:  # a code deploy takes over right away with the new code
     branches: [main]
     paths: ["bot/**", ".github/workflows/telegram-listen.yml"]
 
 permissions:
   contents: read
-  actions: write  # /scan dispatches the daily-scan workflow (the only writer of data/state.json)
+  actions: write  # /scan dispatches daily-scan.yml; the chain dispatches this workflow; the guard reads its runs
 
-concurrency:
-  group: telegram-listen
-  cancel-in-progress: false  # never kill a run that already ACKed its messages
+# No concurrency group on purpose: queued runs would wait out (or cancel each other behind) the 5-hour poller.
+# One consumer at a time is enforced by the runs-API guard (cron) and Telegram's 409 (everything else).
 
 jobs:
   listen:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,8 +43,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Answer Telegram messages
-        run: python -m bot.listen
+      - name: Answer Telegram messages (long poll)
+        id: serve
+        timeout-minutes: 330  # a hang fails this step, not the job, so the successor is still started
+        run: python -m bot.listen --serve
         env:
           SEC_UA: ${{ secrets.SEC_UA }}
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
@@ -39,4 +57,36 @@ jobs:
           MIN_SINGLE_USD: ${{ vars.MIN_SINGLE_USD }}
           WINDOW_DAYS: ${{ vars.WINDOW_DAYS }}
           MAX_CATCHUP: ${{ vars.MAX_CATCHUP }}
-          GITHUB_TOKEN: ${{ github.token }}  # for /scan's workflow dispatch; scoped by the permissions above
+          GITHUB_TOKEN: ${{ github.token }}  # /scan's dispatch and the already-running guard
+          PARENT_RUN_ID: ${{ inputs.parent }}
+          TG_OFFSET: ${{ inputs.offset }}
+          STOP_FILE: ${{ runner.temp }}/listen.stop  # touch it from a debug step/shell to end the poll cleanly
+      - name: Tell the owner the listener failed
+        if: failure() && inputs.parent_failed != 'true'  # once per failure streak; plain curl works when Python cannot
+        run: |
+          text="$(printf '❌ מאזין הטלגרם נכשל, אפעיל אותו מחדש בעוד 5 דקות: %s\n\n%s' "$RUN_URL" "$DISCLAIMER")"
+          curl -fsS --retry 3 -o /dev/null "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" --data-urlencode "text=${text}"
+        env:
+          DISCLAIMER: "⚠️ מידע לצורכי מחקר בלבד ואינו ייעוץ השקעות. מקור הנתונים: SEC EDGAR."
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Start the next listener
+        # success or failure, not cancelled (a manual cancel is the off switch); not after "stop" / 409 / guard exit
+        if: (success() || failure()) && steps.serve.outputs.chain != 'false'
+        run: |
+          if [ "$FAILED" = true ]; then sleep 300; fi  # a crash loop restarts at most every ~5 minutes
+          body="$(printf '{"ref":"%s","inputs":{"parent":"%s","parent_failed":"%s","offset":"%s"}}' \
+            "$REF" "$RUN_ID" "$FAILED" "$OFFSET")"
+          curl -fsS --retry 5 --retry-all-errors -o /dev/null -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/actions/workflows/telegram-listen.yml/dispatches" -d "$body"
+          echo "dispatched the next listener (parent_failed=$FAILED, offset=$OFFSET)"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REF: ${{ github.ref_name }}
+          RUN_ID: ${{ github.run_id }}
+          FAILED: ${{ job.status != 'success' }}
+          OFFSET: ${{ steps.serve.outputs.offset }}

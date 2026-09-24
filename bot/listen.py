@@ -1,10 +1,18 @@
-"""Telegram polling (Actions, every 10 min): /help /check /scan /status /stats /journal /verify /health and
-free-text tickers -> Hebrew replies."""
+"""Telegram listener: /help /check /scan /status /stats /journal /verify /health and free-text tickers -> Hebrew
+replies. `--serve` (Actions): one long-poll consumer for ~5h20m, then the workflow starts the next one; without it,
+one pass over the waiting messages."""
+import datetime as dt
+import http.client
+import json
 import re
+import subprocess
 import sys
+import time
 import traceback
+import urllib.error
+from pathlib import Path
 
-from bot import check, common, health, journal, scan
+from bot import check, common, fundamentals, health, journal, market, scan
 from bot.common import code
 
 MAX = 3  # reports per message
@@ -34,7 +42,7 @@ HELP = "\n".join((
     "📊 הדוח כולל ציון פיוטרוסקי, אלטמן Z, בנייש M, רכישות בעלי עניין ושינויים בגורמי הסיכון בדוח השנתי.",
     f"🔔 כל בוקר אחרי יום מסחר אסרוק את דיווחי {code('Form 4')} ואתריע כשכמה בעלי עניין קונים מניות"
     " בשוק הפתוח, או כשיש רכישה גדולה במיוחד.",
-    "⏱️ ההודעות נבדקות בערך כל 10 דקות, כך שהתשובה עשויה להתעכב מעט."))
+    "⏱️ התשובה מגיעה בדרך כלל תוך שניות; דוח מלא לוקח כדקה."))
 
 
 def extract(text, loose=False):
@@ -130,14 +138,34 @@ def handle(text):
     return 0
 
 
-def main():
-    if not (common.env("TG_TOKEN") and common.env("TG_CHAT_ID")):
-        sys.exit("TG_TOKEN / TG_CHAT_ID secret is missing or misnamed")
-    ups = common.tg("getUpdates", timeout=0, allowed_updates=["message"])
-    if not ups:
-        return print("no new messages")
-    # ACK before processing: a crash mid-report must never make the next run re-process (and re-crash on) it
-    common.tg("getUpdates", offset=max(u["update_id"] for u in ups) + 1, timeout=0)
+SERVE_SECONDS = 5 * 3600 + 20 * 60  # the job allows 340 min: the last long poll and reply fit well inside it
+POLL = 50  # getUpdates long-poll seconds (common.fetch's socket timeout is 60)
+LIVE_AFTER = 120  # an in-progress listener run older than this is past its start-up: it is the live poller
+
+
+class Conflict(Exception):
+    """Telegram 409: another getUpdates consumer (or a webhook) owns this bot's updates."""
+
+
+def updates(**params):
+    """getUpdates -> list; a 409 becomes Conflict, never retried: the other consumer keeps the updates."""
+    try:
+        return common.tg("getUpdates", **params)
+    except urllib.error.HTTPError as e:
+        if e.code != 409:
+            raise
+        try:
+            why = json.loads(e.read()).get("description", "")
+        except Exception:
+            why = ""
+        raise Conflict(why or "409 Conflict") from e
+
+
+def answer(ups):
+    """ACK a batch, then answer the owner's messages in it -> how many failed. The ACK comes first: a crash
+    mid-report must never make the next poll (in this job or the next one) re-process, and re-crash on, it.
+    A 409 on the ACK raises Conflict before anything is handled: those updates belong to the other consumer."""
+    updates(offset=max(u["update_id"] for u in ups) + 1, timeout=0)
     failed = 0
     for u in ups:
         m = u.get("message") or {}
@@ -146,12 +174,136 @@ def main():
             continue
         print(f"update {u['update_id']}: handling")
         try:
-            failed += handle(m.get("text") or m.get("caption") or "")  # failed reports also turn the run red
-        except (Exception, SystemExit) as e:  # e.g. SEC down: tell the owner, keep going, mark the run red
+            failed += handle(m.get("text") or m.get("caption") or "")
+        except (Exception, SystemExit) as e:  # e.g. SEC down: tell the owner, keep going
             failed += 1
             traceback.print_exc()
             common.send(f"⚠️ לא הצלחתי לטפל בהודעה ({code(type(e).__name__)}): {common.failure(e)}")
-    if failed:
+    return failed
+
+
+def refresh():
+    """Before each batch of a long-lived process, what a fresh 10-minute run used to get for free: the scan commits
+    data/ while we serve, and per-process caches (SEC submissions, quarter listings, prices, freshness stamps) age."""
+    for mod in (common, scan, check, fundamentals, market, journal, health):
+        for f in list(vars(mod).values()):
+            if callable(getattr(f, "cache_clear", None)):
+                f.cache_clear()
+    common.STAMPS.clear()
+    fundamentals.QUOTED.clear()
+    market.CACHE.clear()
+    market._loaded[0] = False
+    scan._pay_budget[0] = scan.MAX_PAY
+    if common.env("GITHUB_ACTIONS"):  # public repo: no credentials needed; only data/ is taken, the code stays
+        for cmd in (["git", "fetch", "-q", "--depth=1", "origin", common.env("GITHUB_REF_NAME", "main")],
+                    ["git", "checkout", "-q", "FETCH_HEAD", "--", "data"]):
+            try:
+                r = subprocess.run(cmd, cwd=common.ROOT, capture_output=True, text=True, timeout=60)
+            except (OSError, subprocess.TimeoutExpired) as e:
+                r = subprocess.CompletedProcess(cmd, 1, "", type(e).__name__)
+            if r.returncode:
+                print(f"data refresh skipped: {' '.join(cmd[:2])} -> {r.stderr.strip()[:200]}")
+                break
+
+
+def live_poller():
+    """Another listener run that is already serving -> its id, else None. Skips this run and the run that
+    dispatched it (it is in its last step, starting us); a run younger than LIVE_AFTER is still starting, and if
+    both start, Telegram's 409 leaves exactly one. Runs API down -> None (409 is the backstop there too)."""
+    repo, token = common.env("GITHUB_REPOSITORY"), common.env("GITHUB_TOKEN")
+    if not repo:
+        return None
+    skip = {common.env("GITHUB_RUN_ID"), common.env("PARENT_RUN_ID")} - {""}
+    try:
+        body = common.fetch(f"https://api.github.com/repos/{repo}/actions/workflows/telegram-listen.yml/runs"
+                            "?status=in_progress&per_page=20",
+                            headers={"Accept": "application/vnd.github+json",
+                                     **({"Authorization": f"Bearer {token}"} if token else {})}, tries=2, timeout=20)
+        runs = json.loads(body or b"{}").get("workflow_runs") or []
+    except (OSError, ValueError, http.client.HTTPException) as e:
+        print(f"runs API unavailable ({type(e).__name__}): starting anyway")
+        return None
+    now = dt.datetime.now(dt.timezone.utc)
+    for r in runs:
+        started = dt.datetime.fromisoformat((r.get("run_started_at") or r["created_at"]).replace("Z", "+00:00"))
+        if str(r["id"]) not in skip and r.get("status") == "in_progress" and (now - started).total_seconds() > LIVE_AFTER:
+            return r["id"]
+    return None
+
+
+def output(**kv):
+    """Step outputs for the workflow (no-op outside Actions)."""
+    if common.env("GITHUB_OUTPUT"):
+        with open(common.env("GITHUB_OUTPUT"), "a", encoding="utf-8") as fh:
+            fh.writelines(f"{k}={v}\n" for k, v in kv.items())
+
+
+def serve(seconds=None, stop_file=None, offset=None):
+    """Long-poll until `seconds` pass or `stop_file` exists -> (reason, next offset). Reasons: "deadline", "stop",
+    "conflict" (another consumer owns the updates: exit, never retry). Network/5xx blips are waited out; anything
+    else (401, bugs) raises. Offsets: Telegram confirms every update below the offset of a getUpdates call, so the
+    ACK in answer() already outlives this process; the next job is also handed our offset, belt and braces."""
+    end = time.monotonic() + (SERVE_SECONDS if seconds is None else seconds)
+    stop = Path(stop_file) if stop_file else None
+    handled = failed = errors = 0
+    reason = "deadline"
+    while True:
+        left = end - time.monotonic()
+        if stop and stop.exists():
+            reason = "stop"
+            break
+        if left <= 0:
+            break
+        try:
+            ups = updates(timeout=max(0, min(POLL, int(left))), allowed_updates=["message"],
+                          **({} if offset is None else {"offset": offset}))
+            if ups:
+                refresh()
+                failed += answer(ups)
+                handled += len(ups)
+                offset = max(u["update_id"] for u in ups) + 1
+            errors = 0
+            continue
+        except Conflict as e:
+            print(f"getUpdates conflict: {e} - another listener is serving; exiting")
+            reason = "conflict"
+            break
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            print(f"getUpdates failed (HTTP {e.code}); retrying")
+        except (OSError, http.client.HTTPException, ValueError) as e:  # network blip / bad body: wait it out
+            print(f"getUpdates failed ({type(e).__name__}); retrying")
+        errors += 1
+        time.sleep(min(60, 5 * 2 ** min(errors, 4)))
+    common.log("serve_end", reason=reason, updates=handled, failed=failed, offset=offset)
+    common.summary(f"Listener: `{reason}` after {handled} update(s), {failed} failed; next offset `{offset}`")
+    return reason, offset
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if not (common.env("TG_TOKEN") and common.env("TG_CHAT_ID")):
+        sys.exit("TG_TOKEN / TG_CHAT_ID secret is missing or misnamed")
+    if "--serve" in argv:
+        # the */10 cron is only a backup: it steps aside while a poller is live (explicit starts take over via 409)
+        if common.env("GITHUB_EVENT_NAME") == "schedule" and (rid := live_poller()):
+            print(f"listener run {rid} is already serving; exiting")
+            return output(chain="false")
+        reason, offset = None, int(common.env("TG_OFFSET")) if common.env("TG_OFFSET").isdigit() else None
+        try:
+            reason, offset = serve(stop_file=common.env("STOP_FILE") or None, offset=offset)
+        finally:  # a crash still hands its offset on; only a planned end says "do not restart"
+            output(offset="" if offset is None else offset, chain="false" if reason in ("stop", "conflict") else "true")
+        return None
+    try:
+        ups = updates(timeout=0, allowed_updates=["message"])
+        failed = answer(ups) if ups else 0
+    except Conflict as e:
+        return print(f"getUpdates conflict: {e} - another listener is serving")
+    if not ups:
+        return print("no new messages")
+    if failed:  # failed reports turn the one-shot run red
         sys.exit(f"{failed} message(s) failed")
 
 

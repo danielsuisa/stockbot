@@ -27,3 +27,13 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Offline unit tests (stdlib unittest; no secrets, every network call mocked)
         run: python -m unittest discover -s tests
+
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Lint the workflows (actionlint + shellcheck, official image)
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
