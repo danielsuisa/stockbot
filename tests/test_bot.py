@@ -237,8 +237,8 @@ TICKERS = {"AAPL": (1, "Apple"), "MSFT": (2, "Microsoft"), "ALL": (3, "Allstate"
 
 class Listen(unittest.TestCase):
     def test_extract(self):  # unknown text = ticker(s); Hebrew/long sentences only yield $ or ALL-CAPS symbols
-        cases = {"AAPL": ["AAPL"], "aapl": ["AAPL"], "$tsla?": ["TSLA"], "aapl msft": ["AAPL", "MSFT"],
-                 "all good": ["ALL", "GOOD"], "IT": ["IT"], "I think IT is ON": [],
+        cases = {"AAPL": ["AAPL"], "aapl": [], "$tsla?": ["TSLA"], "aapl msft": [], "AAPL MSFT": ["AAPL", "MSFT"],
+                 "all good": [], "ok thanks": [], "hi": [], "IT": [], "$it": ["IT"], "I think IT is ON": [],
                  "תבדוק לי את AAPL ו-MSFT": ["AAPL", "MSFT"], "מה דעתך על BRK.B": ["BRK-B"],
                  "מה ה-beta של TSLA?": ["TSLA"], "": []}
         with mock.patch.object(common, "tickers", return_value=TICKERS):
@@ -267,8 +267,11 @@ class Listen(unittest.TestCase):
         self.assertEqual(self.run_handle("/check@Danielsuibot\ntsla")[1], ["דוח TSLA"])
         res, sent, _ = self.run_handle("/check")
         self.assertTrue(res == 0 and "/check AAPL" in sent[0])  # usage
-        self.assertEqual(self.run_handle("msft")[1], ["דוח MSFT"])  # plain text = ticker
-        res, sent, _ = self.run_handle("zzzzq")
+        self.assertEqual(self.run_handle("MSFT")[1], ["דוח MSFT"])  # plain text: ALL-CAPS ticker
+        for text in ("all good", "ok thanks", "hi", "msft"):  # lowercase words are never tickers (4.7)
+            res, sent, _ = self.run_handle(text)
+            self.assertTrue(res == 0 and len(sent) == 1 and "לא זיהיתי טיקר" in sent[0], text)
+        res, sent, _ = self.run_handle("$zzzzq")
         self.assertIn("<code>ZZZZQ</code>", sent[0])  # not a listed ticker -> says so
         with mock.patch.object(scan, "status", return_value="📋 מצב"):
             self.assertEqual(self.run_handle("/status")[1], ["📋 מצב"])
@@ -357,23 +360,23 @@ class Scan(unittest.TestCase):
                                                   buy("a4", 1, "u", 20000),  # (3 distinct insiders since v2)
                                                   buy("b1", 2, "z", 600000, od=False),  # big single buy (10% owner)
                                                   buy("c1", 3, "w", 50000)]}  # neither
-        with mock.patch.object(scan, "foreign", return_value=False):
+        with mock.patch.object(scan, "foreign", return_value=False), mock.patch.object(scan, "links", return_value={}):
             msgs = scan.alerts(st, self.today)
-            self.assertEqual([sorted(m) for _, m in msgs], [["1", "2"]])
+            self.assertEqual([sorted(m) for _, m, _ in msgs], [["1", "2"]])
             self.assertEqual(common.rtl_bad_lines(msgs[0][0]), [])
-            for _, marks in msgs:
+            for _, marks, _ in msgs:
                 st["alerted"].update(marks)
             self.assertEqual(scan.alerts(st, self.today), [])  # nothing new -> no repeat
             st["buys"].append(buy("a3", 1, "v", 1000))
-            (text, marks), = scan.alerts(st, self.today)
+            (text, marks, _), = scan.alerts(st, self.today)
             self.assertEqual((list(marks), text.count("🆕")), (["1"], 1))
 
     def test_joint_report_is_not_a_cluster(self):
         sig = [["2026-09-21", 1000000.0, 15.0]]
         st = {"days": {}, "alerted": {}, "buys": [dict(buy("e1", 9, "fund", 15e6), sig=sig, indirect=True),
                                                   dict(buy("e2", 9, "partner", 15e6), sig=sig, indirect=True)]}
-        with mock.patch.object(scan, "foreign", return_value=False):
-            (text, marks), = scan.alerts(st, self.today)
+        with mock.patch.object(scan, "foreign", return_value=False), mock.patch.object(scan, "links", return_value={}):
+            (text, marks, _), = scan.alerts(st, self.today)
         self.assertEqual(sorted(marks["9"]), ["e1", "e2"])  # both filings are marked as alerted
         self.assertIn("רכישה גדולה", text)
         self.assertNotIn("אשכול", text)  # one purchase, so no 2-insider cluster
@@ -391,7 +394,7 @@ class Scan(unittest.TestCase):
     def test_failed_day_does_not_block_later_days(self):
         seen = []
 
-        def fake(day, state, today):
+        def fake(day, state, today, stats=None, rescan=False):
             seen.append(day)
             if day == "20260907":
                 raise RuntimeError("SEC 503")
@@ -446,19 +449,20 @@ class ScanCommands(unittest.TestCase):
                      "(האחרון <code>2026-09-23</code>)", "בזיכרון: <code>1</code>", "התראה: <code>1</code>"):
             self.assertIn(want, text)
 
-    def test_notify_summary_only_when_nothing_new(self):
+    def test_heartbeat_every_run(self):  # 4.1: silence is a failure - every run says what it did
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"STATE_FILE": os.path.join(tmp, "s.json")}), \
                 mock.patch.object(scan, "scan_day", return_value="ok"), mock.patch.object(common, "send") as snd, \
                 mock.patch.object(market, "regime", return_value={"tag": "normal"}):
             with mock.patch.object(scan, "alerts", return_value=[]):
                 scan.main(["--days", "20260923", "--notify"])
-                scan.main(["--days", "20260923"])  # the scheduled run stays quiet
-            self.assertEqual(snd.call_count, 1)
+                scan.main(["--days", "20260923"])  # the scheduled run reports too
+            self.assertEqual(snd.call_count, 2)
             self.assertIn("אין התראות חדשות", snd.call_args.args[0])
             self.assertEqual(common.rtl_bad_lines(snd.call_args.args[0]), [])
-            with mock.patch.object(scan, "alerts", return_value=[["🔔 התראה", {"1": ["a"]}]]):
-                scan.main(["--days", "20260923", "--notify"])
-            self.assertEqual(snd.call_args.args[0], "🔔 התראה")  # alerts sent -> no extra summary
+            with mock.patch.object(scan, "alerts", return_value=[["🔔 התראה", {"1": ["a"]}, {}]]):
+                scan.main(["--days", "20260923"])
+            self.assertEqual(snd.call_args_list[-2].args[0], "🔔 התראה")  # the alert, then the heartbeat
+            self.assertIn("<code>1</code> התראות חדשות", snd.call_args.args[0])
 
     def test_failure_reason(self):
         self.assertIn("SEC_UA", common.failure(SystemExit("SEC_UA is not set")))

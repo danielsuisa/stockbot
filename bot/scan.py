@@ -25,7 +25,13 @@ MAX_CATCHUP = common.env("MAX_CATCHUP", 5)
 MAX_LINES = 6
 MAX_PAY = 25  # DEF 14A downloads per run (best-effort pay ratio; the holdings ratio is always there)
 SCHEMA = 2
-DEFAULTS = {"days": {}, "buys": [], "alerted": {}, "info": [], "regime": None, "prices": {}}
+DEFAULTS = {"days": {}, "buys": [], "alerted": {}, "info": [], "regime": None, "prices": {},
+            "seen": {},  # day -> accessions already processed (rescans only fetch what is new)
+            "sent": {},  # cik -> snapshot of the last alert (id, totals, accessions) for corrections
+            "removed": {},  # original accession -> the 4/A that withdrew its purchases
+            "heartbeat": None}
+RESCAN = 3  # previous trading days re-read every run for late filings and 4/A amendments
+INDICES = ("SPY", "IWM", "%5EVIX")
 
 
 def migrate_row(r):
@@ -64,6 +70,12 @@ def prune(state, today):
     alerted = {c: [a for a in v if a in accs] for c, v in state["alerted"].items()}
     state["alerted"] = {c: v for c, v in alerted.items() if v}
     state["info"] = [i for i in state["info"] if i["last"] >= since.isoformat() and i["cik"] in ciks]  # context only
+    state["sent"] = {c: s for c, s in state["sent"].items() if s["date"] >= since.isoformat()}
+    state["removed"] = {a: r for a, r in state["removed"].items() if r["date"] >= since.isoformat()}
+    keep = sorted(state["days"])[-(RESCAN + 2):]
+    state["seen"] = {d: v for d, v in state["seen"].items() if d in keep}
+    tickers = {b["ticker"] for b in state["buys"]} | set(INDICES)
+    state["prices"] = {t: v for t, v in state["prices"].items() if t in tickers}
     return state
 
 
@@ -135,10 +147,11 @@ def make_row(acc, doc, own, ticker, filed):
             "post": s["post"], "pct": round(s["pct"], 4) if s["pct"] is not None else None}
 
 
-def amend(buys, acc, doc, row):
+def amend(buys, acc, doc, row, removed=None):
     """Apply a Form 4/A: replace the original filing's row (same issuer and insider, filed on the amendment's
     'date of original submission', else the same trades) under the ORIGINAL accession, so alert marks and the
-    journal keep pointing at it; an amendment without in-window purchases removes that row. -> original acc or None."""
+    journal keep pointing at it; an amendment without in-window purchases removes that row (noted in `removed`
+    for corrections). -> original acc or None."""
     who = form4.insider(doc)
     same = [b for b in buys.values() if b["cik"] == doc["issuer_cik"] and b["insider_cik"] == who["cik"]
             and b["acc"] != acc]
@@ -150,35 +163,80 @@ def amend(buys, acc, doc, row):
         buys[orig["acc"]] = {**row, "acc": orig["acc"], "filed": orig["filed"], "amended_by": acc}
     else:
         del buys[orig["acc"]]
+        if removed is not None:
+            removed[orig["acc"]] = {"by": acc, "cik": orig["cik"], "date": orig["last"]}
     return orig["acc"]
 
 
-def scan_day(day, state, today):
-    """Merge one day's listed-issuer purchase filings (and Form 4/A amendments) into state['buys'], keep other
-    acquisitions as informational rows -> 'ok' | 'holiday' | None (retry later)."""
-    t0, d = time.time(), dt.datetime.strptime(day, "%Y%m%d").date()
+def efts_urls(day):
+    """Fallback when the daily index is unavailable: SEC full-text search for the day's Form 4 and 4/A
+    -> {accession: full-submission .txt URL} (100 hits per page)."""
+    out, iso = {}, _iso(day)
+    for form in ("4", "4/A"):
+        start = 0
+        while True:
+            d = common.get_json(f"https://efts.sec.gov/LATEST/search-index?forms={form}&dateRange=custom"
+                                f"&startdt={iso}&enddt={iso}&from={start}") or {}
+            hits = d.get("hits", {}).get("hits", [])
+            for h in hits:
+                acc, cik = h["_id"].split(":")[0], int((h["_source"].get("ciks") or ["0"])[0])
+                out[acc] = common.doc_url(cik, acc, acc + ".txt")
+            start += len(hits)
+            if not hits or start >= d["hits"]["total"]["value"] or start >= 5000:
+                break
+    return out
+
+
+def index_urls(day):
+    """One day's Form 4 / 4/A filings -> ({accession: .txt URL} or None for holiday/not-yet-published, source).
+    The quarter listing decides whether the index exists; if it exists but cannot be read after retries, the
+    full-text search API is the fallback."""
+    d = dt.datetime.strptime(day, "%Y%m%d").date()
     names = published(d.year, (d.month + 2) // 3)
-    url = f"https://www.sec.gov/Archives/edgar/daily-index/{d.year}/QTR{(d.month + 2) // 3}/form.{day}.idx"
-    idx = common.fetch(url) if names is None or f"form.{day}.idx" in names else None
-    if idx is None:  # holiday, or not published yet
+    if names is not None and f"form.{day}.idx" not in names:
+        return None, "index"
+    try:
+        idx = common.fetch(f"https://www.sec.gov/Archives/edgar/daily-index/{d.year}/QTR{(d.month + 2) // 3}/form.{day}.idx")
+    except Exception as e:
+        common.log("index_unavailable", day=day, error=f"{type(e).__name__}: {e}", fallback="efts")
+        urls = efts_urls(day)
+        if not urls:
+            raise
+        return urls, "efts"
+    if idx is None:
+        return None, "index"
+    rows = [r.split() for r in idx.decode("latin-1").splitlines()]
+    rows = [r for r in rows if r[:1] in (["4"], ["4/A"])]
+    return {r[-1].rsplit("/", 1)[1][:-4]: "https://www.sec.gov/Archives/" + r[-1] for r in rows}, "index"  # once per filer
+
+
+def scan_day(day, state, today, stats=None, rescan=False):
+    """Merge one day's listed-issuer purchase filings (and Form 4/A amendments) into state['buys'], keep other
+    acquisitions as informational rows -> 'ok' | 'holiday' | None (retry later). A rescan only fetches filings
+    that were not in the day's index before (late filings / amendments)."""
+    t0, d = time.time(), dt.datetime.strptime(day, "%Y%m%d").date()
+    stats = stats if stats is not None else {}
+    urls, source = index_urls(day)
+    if urls is None:  # holiday, or not published yet
         old = (today - d).days >= 3
         print(f"{day}: no daily index -> {'holiday' if old else 'not published yet, will retry'}")
         return "holiday" if old else None
-    rows = [r.split() for r in idx.decode("latin-1").splitlines()]
-    rows = [r for r in rows if r[:1] in (["4"], ["4/A"])]
-    urls = {r[-1].rsplit("/", 1)[1][:-4]: "https://www.sec.gov/Archives/" + r[-1] for r in rows}  # listed once per filer
+    state.setdefault("seen", {})
+    if rescan:
+        urls = {a: u for a, u in urls.items() if a not in set(state["seen"].get(day, []))}
     with ThreadPoolExecutor(6) as pool:
         docs = list(pool.map(_get, urls.values()))
     since, until = (today - dt.timedelta(WINDOW_DAYS)).isoformat(), today.isoformat()
     buys, listed, found, kept, amended = {b["acc"]: b for b in state["buys"]}, common.cik_tickers(), 0, 0, 0
     info = {i["acc"]: i for i in state.get("info", [])}
+    removed = state.setdefault("removed", {})
     for acc, doc in zip(urls, docs):
         t = doc and listed.get(doc["issuer_cik"])
         if not t:
             continue
         own = [b for b in doc["buys"] if since <= b["date"] <= until]
         row = make_row(acc, doc, own, t, d.isoformat()) if own else None
-        if doc["form"] == "4/A" and amend(buys, acc, doc, row):
+        if doc["form"] == "4/A" and amend(buys, acc, doc, row, removed):
             amended += 1
             continue
         other = [a for a in doc["acq"] if since <= a["date"] <= until]
@@ -192,8 +250,15 @@ def scan_day(day, state, today):
             kept += 1
             buys[acc] = row
     state["buys"], state["info"], errors = list(buys.values()), list(info.values()), sum(x is False for x in docs)
-    print(f"{day}: {len(rows)} Form-4 lines, {len(urls)} filings, {sum(bool(x) for x in docs)} parsed, {errors} errors, "
-          f"{kept} listed-issuer purchase filings, {amended} amendments applied, {time.time() - t0:.0f}s")
+    ok = [a for a, x in zip(urls, docs) if x is not False]
+    state["seen"][day] = sorted(set(state["seen"].get(day, [])) | set(ok))
+    parsed = sum(bool(x) for x in docs)
+    rec = {"day": day, "rescan": rescan, "filings": len(urls), "parsed": parsed, "errors": errors, "purchases": kept,
+           "amendments": amended, "source": source, "seconds": round(time.time() - t0)}
+    stats.setdefault("days", []).append(rec)
+    common.log("day", **rec)
+    print(f"{day}: {len(urls)} {'new ' if rescan else ''}filings, {parsed} parsed, {errors} errors, "
+          f"{kept} listed-issuer purchase filings, {amended} amendments applied, source {source}, {rec['seconds']}s")
     return None if errors else "ok"  # failed filings -> the day is retried next run
 
 
@@ -283,8 +348,15 @@ def evaluate(bs, regime):
             "big": big >= MIN_SINGLE_USD and big, "score": score, "parts": parts}
 
 
-def row_line(b, seen):
-    """One purchase line of an alert."""
+def links(cik):
+    """{accession: URL of the human-readable Form 4} from the issuer's submissions (one tap to verify)."""
+    rows = common.filings(common.submissions(int(cik)) or {"filings": {"recent": {}}})
+    return {f["accessionNumber"]: common.doc_url(cik, f["accessionNumber"], f["primaryDocument"])
+            for f in rows if f["form"] in ("4", "4/A") and f.get("primaryDocument")}
+
+
+def row_line(b, seen, urls=None):
+    """One purchase line of an alert, with direct EDGAR links (the Form 4 itself and its filing index)."""
     extra, pct, r = [], b.get("pct"), pay_ratio(b)
     if pct is not None:
         extra.append(f"{code(f'{pct * 100:.1f}%')} מהאחזקה")
@@ -292,12 +364,15 @@ def row_line(b, seen):
         extra.append(f"{code(f'{r * 100:.0f}%')} מהשכר השנתי")
     if form4.symbolic(b):
         extra.append("סמלית")
-    return (f"• רכש {esc(b['insider'])} ({esc(b['role'])}) · {code(b['last'])} · {code(money(b['value']))}"
-            f" @ {code(price(b['price']))}" + (f" · {' · '.join(extra)}" if extra else "")
+    doc = (urls or {}).get(b["acc"])
+    name = f'<a href="{esc(doc)}">{esc(b["insider"])}</a>' if doc else esc(b["insider"])
+    index = f' · <a href="{esc(common.doc_url(b["cik"], b["acc"]))}">אינדקס</a>'
+    return (f"• רכש {name} ({esc(b['role'])}) · {code(b['last'])} · {code(money(b['value']))}"
+            f" @ {code(price(b['price']))}" + (f" · {' · '.join(extra)}" if extra else "") + index
             + (" 🆕" if b["acc"] not in seen else ""))
 
 
-def block(ev, seen, regime, info=()):
+def block(ev, seen, regime, info=(), urls=None):
     """One issuer's Hebrew alert lines."""
     bs, cluster, big = ev["open"], ev["cluster"], ev["big"]
     b0, total = bs[0], sum(b["value"] or 0 for b in bs)
@@ -311,7 +386,7 @@ def block(ev, seen, regime, info=()):
              f"סה״כ בשוק הפתוח ב־{code(WINDOW_DAYS)} יום: {code(len(bs))} דיווחי רכישה · "
              f"{code(len({b['insider_cik'] or b['insider'] for b in bs}))} רוכשים · {code(money(total))}"]
     for b in sorted(bs, key=lambda b: (b["acc"] not in seen, b["value"] or 0), reverse=True)[:MAX_LINES]:
-        lines.append(row_line(b, seen))
+        lines.append(row_line(b, seen, urls))
     if len(bs) > MAX_LINES:
         lines.append(f"ועוד {code(len(bs) - MAX_LINES)} דיווחים.")
     if ev["plan"]:
@@ -331,14 +406,28 @@ def block(ev, seen, regime, info=()):
     return "\n".join(lines)
 
 
-def alerts(state, today):
-    """Qualifying issuers with not-yet-alerted filings -> [(Hebrew message, {cik: accessions it covers})]."""
-    by, info = defaultdict(list), defaultdict(list)
+def _by_cik(state):
+    by = defaultdict(list)
     for b in state["buys"]:
         by[str(b["cik"])].append(migrate_row(b))
+    return by
+
+
+def snapshot(ev, today):
+    """What an alert said, kept to detect later corrections."""
+    b0 = ev["open"][0]
+    return {"id": f"{today.isoformat()}-{b0['ticker']}", "date": today.isoformat(), "ticker": b0["ticker"],
+            "total": round(sum(b["value"] or 0 for b in ev["open"]), 2), "cluster": bool(ev["cluster"]),
+            "big": bool(ev["big"]), "accs": sorted({a for b in ev["uniq"] for a in [b["acc"], *b.get("joint_accs", [])]}),
+            "acks": []}
+
+
+def alerts(state, today):
+    """Qualifying issuers with not-yet-alerted filings -> [[Hebrew message, {cik: accessions}, {cik: snapshot}]]."""
+    by, info = _by_cik(state), defaultdict(list)
     for i in state.get("info", []):
         info[str(i["cik"])].append(i)
-    blocks, hits, fpi, qualifying = [], {}, [], 0  # blocks: (text, {cik: accs})
+    blocks, hits, fpi, qualifying = [], {}, [], 0  # blocks: (text, {cik: accs}, {cik: snapshot})
     for cik, bs in sorted(by.items(), key=lambda kv: -sum(b["value"] or 0 for b in kv[1])):
         ev = evaluate(bs, state.get("regime"))
         seen = set(state["alerted"].get(cik, []))
@@ -349,64 +438,207 @@ def alerts(state, today):
         if foreign(int(cik)):  # "$" and USD thresholds may be wrong (e.g. Bradesco reports BRL prices): name only
             fpi.append((code(bs[0]["ticker"]), cik))
         else:
-            blocks.append((block(ev, seen, state.get("regime"), info[cik]), {cik: hits[cik]}))
+            blocks.append((block(ev, seen, state.get("regime"), info[cik], links(cik)), {cik: hits[cik]},
+                           {cik: snapshot(ev, today)}))
     if fpi:
         blocks.append((f"ℹ️ רכישות חדשות גם אצל מנפיקים זרים: {', '.join(t for t, _ in fpi)} — לא הוצגו, כי המחיר"
                        " בדיווח שלהם עשוי להיות במטבע מקומי ולא בדולר (אפשר לשלוח לי את הטיקר לדוח מלא).",
-                       {c: hits[c] for _, c in fpi}))
+                       {c: hits[c] for _, c in fpi}, {}))
+    common.log("alerts", qualifying=qualifying, new=len(hits), foreign=len(fpi))
     print(f"alerts: {qualifying} qualifying issuer(s), {len(hits)} with new filings ({len(fpi)} foreign, names only)")
     msgs = []
-    for blk, marks in [(f"🔔 <b>רכישות בעלי עניין בשוק הפתוח</b> · {code(today.isoformat())}", {})] + blocks:
+    for blk, marks, snaps in [(f"🔔 <b>רכישות בעלי עניין בשוק הפתוח</b> · {code(today.isoformat())}", {}, {})] + blocks:
         if msgs and len(msgs[-1][0]) + len(blk) < 3500:  # never split one issuer across two messages
             msgs[-1][0] += "\n\n" + blk
             msgs[-1][1].update(marks)
+            msgs[-1][2].update(snaps)
         else:
-            msgs.append([blk, dict(marks)])
+            msgs.append([blk, dict(marks), dict(snaps)])
     return msgs if blocks else []
+
+
+def corrections(state, today):
+    """A Form 4/A that changed or withdrew purchases behind an alert already sent -> a correction message when the
+    alert's total moves by more than 10% or it no longer meets the rules. -> [Hebrew messages]; snapshots updated."""
+    by, out = _by_cik(state), []
+    for cik, snap in state.get("sent", {}).items():
+        bs = by.get(cik, [])
+        news = sorted({b["amended_by"] for b in bs if b["acc"] in snap["accs"] and b.get("amended_by")}
+                      | {r["by"] for a, r in state.get("removed", {}).items() if a in snap["accs"]})
+        news = [a for a in news if a not in snap["acks"]]
+        if not news:
+            continue
+        ev = evaluate(bs, state.get("regime")) if bs else {"open": [], "cluster": False, "big": False}
+        total = round(sum(b["value"] or 0 for b in ev["open"]), 2)
+        still = bool(ev["cluster"] or ev["big"])
+        snap["acks"] += news
+        if abs(total - snap["total"]) <= 0.10 * max(snap["total"], 1) and still == (snap["cluster"] or snap["big"]):
+            continue
+        out.append(f"✏️ <b>תיקון להתראה</b> {code(snap['id'])} על {code(snap['ticker'])} (נשלחה {code(snap['date'])})\n"
+                   f"דיווח מתוקן ({code('Form 4/A')}) שינה את סך הרכישות בשוק הפתוח מ־{code(money(snap['total']))}"
+                   f" ל־{code(money(total))}" + ("" if still else " · ההתראה כבר לא עומדת בכללי ההתראה")
+                   + "\nהדיווחים המתוקנים: "
+                   + " · ".join(f'<a href="{esc(common.doc_url(cik, a))}">{code(a)}</a>' for a in news))
+        snap.update(total=total, cluster=bool(ev["cluster"]), big=bool(ev["big"]))
+    return out
+
+
+_reported = [False]  # a heartbeat (or failure alarm) already went out in this process
+
+
+def _mark_reported():
+    _reported[0] = True
+    if common.env("HEARTBEAT_FILE"):  # lets the workflow's failure step know the scan already reported
+        Path(common.env("HEARTBEAT_FILE")).write_text("sent", "utf-8")
+
+
+def alarm(reason, state=None, path=None):
+    """'❌ הסריקה נכשלה: <reason>' - silence is a failure too, so every failed run says so (best effort)."""
+    try:
+        common.send(f"❌ הסריקה נכשלה: {reason}")
+        _mark_reported()
+    finally:
+        if state is not None and path is not None:
+            state["heartbeat"] = {"at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), "ok": False,
+                                  "reason": re.sub(r"<[^>]+>", "", reason)[:200]}
+            save(path, state)
+
+
+def alarm_step(reason):
+    """The workflow's `if: failure()` step: alarm unless the scan itself already reported (the commit/push step
+    failing after a sent heartbeat still alarms)."""
+    marker = common.env("HEARTBEAT_FILE")
+    if marker and Path(marker).exists() and common.env("COMMIT_OUTCOME") != "failure":
+        return print("failure already reported by the scan")
+    link = common.env("RUN_URL")
+    alarm(esc(reason) + (f' (<a href="{esc(link)}">הריצה ב־GitHub</a>)' if link else ""))
+
+
+def previous_trading_day(today):
+    """The latest weekday before today whose daily index SEC lists (holidays are skipped); None if unknown."""
+    for i in range(1, 8):
+        d = today - dt.timedelta(i)
+        if d.weekday() < 5:
+            names = published(d.year, (d.month + 2) // 3)
+            if names is None or f"form.{d:%Y%m%d}.idx" in names:
+                return d.strftime("%Y%m%d")
+    return None
+
+
+def watchdog(today=None):
+    """Missed-day watchdog (its own daily schedule): if the last scanned trading day is older than the previous
+    trading day, say so and retry the scan (dispatch the daily-scan workflow on Actions, run it here locally)."""
+    today = today or dt.datetime.now(dt.timezone.utc).date()
+    st = load(Path(common.env("STATE_FILE", str(common.DATA / "state.json"))))
+    prev = previous_trading_day(today)
+    last = max((d for d, v in st["days"].items() if v == "ok"), default="")
+    missed = [d for d in weekdays(today) if last < d <= (prev or "") and d not in st["days"]]
+    common.log("watchdog", previous_trading_day=prev, last_scanned=last, missed=missed)
+    common.summary(f"### Watchdog {today}\n- previous trading day: {prev}\n- last scanned: {last or '-'}\n"
+                   f"- missed: {', '.join(missed) or 'none'}")
+    if not missed:
+        return print(f"watchdog: ok (last scanned {last}, previous trading day {prev})")
+    common.send(f"⚠️ לא סרקתי את {', '.join(code(_iso(d)) for d in missed)} — מריץ את הסריקה שוב.")
+    if common.env("GITHUB_ACTIONS"):
+        err = common.dispatch("daily-scan.yml", {"notify": "true"})
+        if err:
+            common.send(f"⚠️ לא הצלחתי להפעיל את הסריקה מחדש ({code(err)}). בדקו את ההרשאה {code('actions: write')}"
+                        f" בקובץ {code('watchdog.yml')}.")
+            sys.exit(f"watchdog could not dispatch the scan: {err}")
+    else:
+        main([])
+
+
+def run(a):
+    """One scan: new days + a rescan of the last RESCAN scanned days, corrections, alerts, heartbeat."""
+    t0, today = time.time(), dt.datetime.now(dt.timezone.utc).date()
+    path = Path(common.env("STATE_FILE", str(common.DATA / "state.json")))
+    state = prune(load(path), today)
+    market.CACHE.update(state["prices"])
+    days = a.days.split(",") if a.days else pick(state, today)
+    rescans = [] if a.days else [d for d in sorted(d for d, v in state["days"].items() if v == "ok")[-RESCAN:]
+                                 if d not in days]
+    print(f"scan {today}: {len(days)} day(s) {' '.join(days)}; rescan {' '.join(rescans) or '-'}; state {path}")
+    stats, failed = {"days": []}, []
+    for day in days + rescans:
+        try:
+            res = scan_day(day, state, today, stats, rescan=day in rescans)
+        except Exception as e:  # e.g. SEC outage: this day is retried next run and must not block the later days
+            traceback.print_exc()
+            common.log("day_failed", day=day, error=f"{type(e).__name__}: {e}")
+            failed.append(day)
+            continue
+        if res and day not in rescans:
+            state["days"][day] = res
+        if not a.dry:
+            save(path, prune(state, today))  # after every day: crash-safe
+    state["regime"] = market.regime()
+    fixes = corrections(state, today)
+    for text in fixes:
+        common.send(text, signal=True)
+    n = 0
+    for text, marks, snaps in alerts(state, today):
+        common.send(text, signal=True)
+        state["alerted"].update(marks)  # per delivered message: a later failure never re-sends this one
+        state["sent"].update(snaps)
+        n += len(marks)
+        if not a.dry:
+            save(path, state)
+    state["prices"] = {t: v for t, v in market.CACHE.items()}
+    filings = sum(r["parsed"] for r in stats["days"])
+    errors = sum(r["errors"] for r in stats["days"]) + len(failed)
+    sources = sorted({r["source"] for r in stats["days"]})
+    state["heartbeat"] = {"at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), "ok": not failed,
+                          "filings": filings, "errors": errors, "alerts": n, "corrections": len(fixes),
+                          "days": days, "rescans": rescans, "failed": failed, "sources": sources,
+                          "seconds": round(time.time() - t0)}
+    if not a.dry:
+        save(path, prune(state, today))
+    common.summary("\n".join([f"### Insider scan {today}", "", "| day | filings | parsed | errors | purchases | "
+                              "amendments | source | s |", "|---|---|---|---|---|---|---|---|"]
+                             + [f"| {r['day']}{' (rescan)' if r['rescan'] else ''} | {r['filings']} | {r['parsed']} | "
+                                f"{r['errors']} | {r['purchases']} | {r['amendments']} | {r['source']} | {r['seconds']} |"
+                                for r in stats["days"]]
+                             + ["", f"alerts: {n} · corrections: {len(fixes)} · failed days: {', '.join(failed) or 'none'}"
+                                f" · regime: {state['regime']['tag']} · sources: {', '.join(sources) or '-'}"
+                                f" · {state['heartbeat']['seconds']}s"]))
+    common.log("done", alerts=n, corrections=len(fixes), filings=filings, errors=errors, failed=failed,
+               seconds=state["heartbeat"]["seconds"])
+    print(f"done: {n} issuer alert(s), {len(state['buys'])} purchase filings in state, {time.time() - t0:.0f}s")
+    if failed:  # keep the run red so a persistent problem is visible - and say so
+        alarm(f"לא הצלחתי לסרוק את {', '.join(code(_iso(d)) for d in failed)} ({code(errors)} שגיאות) — אנסה שוב"
+              " בריצה הבאה.")
+        sys.exit(f"days that failed and will be retried: {' '.join(failed)}")
+    via = " · מקור: חיפוש טקסט מלא (האינדקס היומי לא היה זמין)" if "efts" in sources else ""
+    common.send(f"✅ סריקה {code(today.isoformat())}: {code(filings)} הגשות, {code(errors)} שגיאות, "
+                + (f"{code(n)} התראות חדשות" if n else "אין התראות חדשות")
+                + (f" · {code(len(fixes))} תיקונים" if fixes else "") + via)
+    _mark_reported()
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Daily EDGAR Form 4 insider-cluster scan")
     ap.add_argument("--days", help="force specific days: YYYYMMDD[,YYYYMMDD...]")
     ap.add_argument("--dry", action="store_true", help="do not write the state file")
-    ap.add_argument("--notify", action="store_true", help="send a Telegram summary even when nothing is new "
-                                                               "(also env SCAN_NOTIFY=true; used by /scan)")
+    ap.add_argument("--notify", action="store_true", help="kept for compatibility: every run now sends a heartbeat")
+    ap.add_argument("--watchdog", action="store_true", help="missed-day check (retries the scan if a day was missed)")
+    ap.add_argument("--alarm", metavar="REASON", help="workflow failure step: report unless already reported")
     a = ap.parse_args(argv)
-    t0, today = time.time(), dt.datetime.now(dt.timezone.utc).date()
-    path = Path(common.env("STATE_FILE", str(common.DATA / "state.json")))
-    state = prune(load(path), today)
-    days = a.days.split(",") if a.days else pick(state, today)
-    print(f"scan {today}: {len(days)} day(s) {' '.join(days)}; state {path}")
-    failed = []
-    for day in days:
+    if a.alarm is not None:
+        return alarm_step(a.alarm)
+    if a.watchdog:
+        return watchdog()
+    try:
+        run(a)
+    except BaseException as e:  # heartbeat: a failed run is never silent
+        if isinstance(e, KeyboardInterrupt) or (isinstance(e, SystemExit) and (not e.code or _reported[0])):
+            raise
+        reason = common.failure(e) if isinstance(e, SystemExit) else f"{code(type(e).__name__)}: {esc(str(e)[:150])}"
         try:
-            res = scan_day(day, state, today)
-        except Exception:  # e.g. SEC outage: this day is retried next run and must not block the later days
+            alarm(reason)
+        except BaseException:
             traceback.print_exc()
-            failed.append(day)
-            continue
-        if res:
-            state["days"][day] = res
-        if not a.dry:
-            save(path, prune(state, today))  # after every day: crash-safe
-    state["regime"] = market.regime()
-    n = 0
-    for text, marks in alerts(state, today):
-        common.send(text)
-        state["alerted"].update(marks)  # per delivered message: a later failure never re-sends this one
-        n += len(marks)
-        if not a.dry:
-            save(path, state)
-    if not a.dry:
-        save(path, state)
-    print(f"done: {n} issuer alert(s), {len(state['buys'])} purchase filings in state, {time.time() - t0:.0f}s")
-    if not n and (a.notify or common.env("SCAN_NOTIFY") == "true"):  # /scan: the owner hears back either way
-        ok = sorted(d for d, v in state["days"].items() if v == "ok")
-        common.send(f"✅ הסריקה היומית הסתיימה ואין התראות חדשות. ימים שנבדקו עכשיו: {code(len(days))}"
-                    + (f" · יום המסחר האחרון שנסרק: {code(_iso(ok[-1]))}" if ok else "")
-                    + (f" · ⚠️ נכשלו ויסרקו שוב: {code(len(failed))}" if failed else ""))
-    if failed:  # keep the run red so a persistent problem is visible
-        sys.exit(f"days that failed and will be retried: {' '.join(failed)}")
+        raise
 
 
 if __name__ == "__main__":

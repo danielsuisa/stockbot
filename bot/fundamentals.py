@@ -1,10 +1,8 @@
 """Forensic scores from SEC XBRL companyfacts: Piotroski F, Altman Z, Beneish M -> Hebrew lines.
 Annual 10-K figures; Piotroski and Altman are refreshed to trailing-12-months (TTM) when a newer 10-Q exists."""
 import datetime as dt
-import json
-import time
 
-from bot import common
+from bot import common, market
 from bot.common import code, money
 
 FORMS = {"10-K", "10-K/A", "10-KT", "10-KT/A"}
@@ -171,24 +169,15 @@ def _basis(kind, end, keys, meta):
     return {"kind": kind, "end": end, "form": form, "filed": filed}
 
 
+QUOTED = {}  # ticker -> market.quote() result of this process (source "cache" -> the report says so)
+
+
 def quote(ticker, since):
-    """(last price, split factor after date `since`) from Yahoo's public chart endpoint (unofficial -> may fail;
-    the caller degrades to Z''). shares_on_since x factor = shares on today's basis (1:30 reverse split -> 1/30)."""
-    p1 = int(dt.datetime.combine(_d(since) + dt.timedelta(1), dt.time(), dt.timezone.utc).timestamp())
-    now = int(time.time())
-    for host in ("query1", "query2"):
-        try:
-            body = common.fetch(f"https://{host}.finance.yahoo.com/v8/finance/chart/{ticker}?period1="
-                                f"{min(p1, now - 5 * 86400)}&period2={now}&interval=1d&events=split", tries=2, timeout=20)
-            r = json.loads(body)["chart"]["result"][0]
-            m, f = r["meta"], 1.0
-            for s in r.get("events", {}).get("splits", {}).values():
-                f *= s["numerator"] / s["denominator"] if s["date"] >= p1 else 1
-            if m.get("currency") in (None, "USD") and m["regularMarketPrice"] > 0:
-                return float(m["regularMarketPrice"]), f
-        except Exception as e:
-            print(f"yahoo {host} {ticker}: {type(e).__name__} {e}")
-    return None, 1.0
+    """(last price, split factor after date `since`) via market.quote: live Yahoo, else the last cached price (the
+    report then shows its date), else (None, 1.0) and the caller degrades to Z''. shares_on_since x factor = shares
+    on today's basis (1:30 reverse split -> 1/30)."""
+    q = QUOTED[ticker] = market.quote(ticker, since)
+    return q["price"], q["split"]
 
 
 def _div(a, b):
@@ -323,6 +312,8 @@ def analyze(cik, ticker, sic):
         alt["why"] = "noncommon"
     else:
         alt["price"], alt["split"] = quote(alt["px"], last["end"])
+        if QUOTED.get(alt["px"], {}).get("source") == "cache":  # Yahoo down: last known price, and the report says so
+            alt["price_asof"] = QUOTED[alt["px"]]["asof"]
         alt["shares"] *= alt["split"]  # a split after the cover-page date (BYND 1:30) must not scale MVE 30x
         alt["why"] = None if alt["price"] else "noprice"
     alt["kind"] = "Z" if alt["price"] else "Z''"
@@ -465,6 +456,7 @@ def format_he(res):
         if a["kind"] == "Z":
             px = common.price(a["price"]) + (f" ({a['px']})" if a["px"] != res["ticker"] else "")
             split = f" (מותאם לפיצול מניות: {code('×%.4g' % a['split'])})" if a["split"] != 1 else ""
+            split += f" (⚠ מחיר מ־{code(a['price_asof'])})" if a.get("price_asof") else ""
             out.append(f"שווי שוק {_c(a['mve'])} = מחיר {code(px)} × "
                        f"{_c(a['shares'], FMT['qty'])} מניות ({code(a['shares_date'])}){split} · {ebit}")
         else:

@@ -1,9 +1,7 @@
 """Telegram polling (Actions, every 10 min): /help /check /scan /status and free-text tickers -> Hebrew replies."""
-import json
 import re
 import sys
 import traceback
-import urllib.error
 
 from bot import check, common, scan
 from bot.common import code
@@ -16,8 +14,8 @@ STOP = set("A AI AM AN AND ARE AT BE BUY BY CAN CEO DO FOR GO HAS HI I IF IN IPO
            "OUT SEC SO THE TO UP US VS WE YES YOU".split())
 COMMANDS = (("check", "דוח פורנזי לטיקר, למשל /check AAPL"), ("scan", "הרצת הסריקה היומית עכשיו"),
             ("status", "מתי נסרק יום המסחר האחרון"), ("help", "רשימת הפקודות"))
-HINT = (f"שלחו טיקר, למשל {code('AAPL')} או {code('/check msft')} (עד {code(MAX)} בהודעה), או {code('/help')}"
-        " לרשימת הפקודות.")
+HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, עם דולר, {code('$msft')}, או {code('/check msft')}"
+        f" (עד {code(MAX)} בהודעה), או {code('/help')} לרשימת הפקודות.")
 HELP = "\n".join((
     "👋 <b>שלום! אני בוט מחקר מניות שעובד רק עם נתוני SEC EDGAR</b>",
     "הפקודות:",
@@ -25,7 +23,7 @@ HELP = "\n".join((
     f"• הרצת הסריקה היומית עכשיו ושליחת ההתראות: {code('/scan')}",
     f"• מתי נסרק יום המסחר האחרון ומה בזיכרון: {code('/status')}",
     f"• רשימת הפקודות: {code('/help')}",
-    f"כל טקסט אחר נחשב לטיקר: {code('AAPL')}, {code('msft')} או {code('$tsla')}.",
+    f"אפשר גם לכתוב טיקר באותיות גדולות, {code('AAPL')}, או עם דולר, {code('$tsla')}.",
     "📊 הדוח כולל ציון פיוטרוסקי, אלטמן Z, בנייש M, רכישות בעלי עניין ושינויים בגורמי הסיכון בדוח השנתי.",
     f"🔔 כל בוקר אחרי יום מסחר אסרוק את דיווחי {code('Form 4')} ואתריע כשכמה בעלי עניין קונים מניות"
     " בשוק הפתוח, או כשיש רכישה גדולה במיוחד.",
@@ -33,15 +31,14 @@ HELP = "\n".join((
 
 
 def extract(text, loose=False):
-    """Text -> (known tickers, unknown candidates worth a reply), deduped, in order. Every word counts, in any case,
-    in /check's arguments (loose) and in a short Latin-only message ('aapl msft'); inside longer or Hebrew text
-    only '$xyz' and ALL-CAPS words that are not everyday words do."""
+    """Text -> (known tickers, unknown candidates worth a reply), deduped, in order. In plain text only '$xyz' and
+    ALL-CAPS 1-5 letter words that are not everyday words count ('all good', 'ok thanks', 'hi' are not tickers);
+    in /check's arguments (loose) every word counts, in any case."""
     m = common.tickers()
     toks = [(d, s, s.upper().replace(".", "-")) for d, s in TOKEN.findall(text)]  # SEC map spells classes BRK-B
-    plain = loose or (len(toks) <= MAX and not re.search(r"[^\W\d_]", TOKEN.sub("", text)))  # nothing but symbols
     known, unknown = [], []
     for dollar, sym, t in toks:
-        if dollar or plain:
+        if dollar or loose:
             (known if t in m else unknown).append(t)
         elif sym.isupper() and t not in STOP and t in m:
             known.append(t)
@@ -72,20 +69,11 @@ def reports(text, loose=False):
 def run_scan():
     """/scan. On Actions the daily-scan workflow is dispatched: it is the only writer of data/state.json, so an
     alert still goes out once. Locally the scan runs in this process. Either way the owner hears back."""
-    repo, token = common.env("GITHUB_REPOSITORY"), common.env("GITHUB_TOKEN")
-    if repo and token:
-        try:
-            body = common.fetch(f"https://api.github.com/repos/{repo}/actions/workflows/daily-scan.yml/dispatches",
-                                json.dumps({"ref": common.env("GITHUB_REF_NAME", "main"),
-                                            "inputs": {"notify": "true"}}).encode(),
-                                {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
-                                 "Content-Type": "application/json"}, tries=3)
-            err = "404" if body is None else ""
-        except urllib.error.HTTPError as e:
-            err = str(e.code)
+    if common.env("GITHUB_REPOSITORY") and common.env("GITHUB_TOKEN"):
+        err = common.dispatch("daily-scan.yml", {"notify": "true"})
         if err:  # a GitHub permission problem must not be reported as "SEC is down"
-            print(f"workflow dispatch failed: HTTP {err}")
-            common.send(f"⚠️ לא הצלחתי להפעיל את הסריקה ב־GitHub ({code('HTTP ' + err)}). בדקו שבקובץ"
+            print(f"workflow dispatch failed: {err}")
+            common.send(f"⚠️ לא הצלחתי להפעיל את הסריקה ב־GitHub ({code(err)}). בדקו שבקובץ"
                         f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.")
             return 1
         common.send("⏳ הפעלתי את הסריקה היומית. ההתראות, או הודעה שאין חדש, יגיעו בעוד כמה דקות.")
@@ -99,7 +87,7 @@ def handle(text):
     """One message from the owner's chat -> Hebrew replies; returns how many reports failed."""
     word, rest = (text.split(maxsplit=1) + ["", ""])[:2]  # any whitespace: "/check\nAAPL" works too
     if not word.startswith("/"):
-        return reports(text)  # unknown text = ticker(s)
+        return reports(text)  # plain text: $XYZ / ALL-CAPS tickers only
     cmd = word[1:].split("@")[0].lower()  # "/check@MyBot" in groups
     if cmd == "check":
         if rest:

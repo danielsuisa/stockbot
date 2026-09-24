@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       notify:
-        description: "Send a Telegram summary even when nothing is new (the bot's /scan sets it)"
+        description: "Kept for compatibility (every run now sends a heartbeat); the bot's /scan and the watchdog set it"
         type: boolean
         default: false
 
@@ -29,6 +29,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Scan EDGAR Form 4 filings
+        id: scan
         run: python -m bot.scan
         env:
           SEC_UA: ${{ secrets.SEC_UA }}
@@ -39,8 +40,9 @@ jobs:
           MIN_SINGLE_USD: ${{ vars.MIN_SINGLE_USD }}
           WINDOW_DAYS: ${{ vars.WINDOW_DAYS }}
           MAX_CATCHUP: ${{ vars.MAX_CATCHUP }}
-          SCAN_NOTIFY: ${{ inputs.notify }}
+          HEARTBEAT_FILE: ${{ runner.temp }}/heartbeat  # written once the scan has reported (heartbeat or alarm)
       - name: Commit state
+        id: commit
         if: always()  # keep the days already processed even if the scan failed later
         run: |
           git config user.name "github-actions[bot]"
@@ -54,3 +56,12 @@ jobs:
             git pull --rebase || git rebase --abort || true
           done
           exit 1
+      - name: Report a failure the scan could not report itself
+        if: failure()  # silence is a failure: a crash before the heartbeat, or a failed commit, still reaches Telegram
+        run: python -m bot.scan --alarm "שלב בתהליך ב־GitHub Actions נכשל"
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          COMMIT_OUTCOME: ${{ steps.commit.outcome }}
+          HEARTBEAT_FILE: ${{ runner.temp }}/heartbeat
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -1,0 +1,34 @@
+name: Missed-day watchdog
+
+on:
+  schedule:
+    - cron: "0 14 * * 2-6"  # Tue-Sat 14:00 UTC, hours after the 05:30 scan: was the previous trading day scanned?
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write  # retries by dispatching daily-scan.yml (the only writer of data/state.json)
+
+concurrency:
+  group: watchdog
+  cancel-in-progress: false
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check the last scanned trading day
+        run: python -m bot.scan --watchdog
+        env:
+          SEC_UA: ${{ secrets.SEC_UA }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          WINDOW_DAYS: ${{ vars.WINDOW_DAYS }}
+          GITHUB_TOKEN: ${{ github.token }}  # for the retry dispatch; scoped by the permissions above

@@ -89,6 +89,7 @@ def get_json(url):
 
 
 # ---------- EDGAR ----------
+@functools.lru_cache(256)
 def submissions(cik):
     return get_json(f"https://data.sec.gov/submissions/CIK{int(cik):010d}.json")
 
@@ -169,15 +170,23 @@ def chunks(text, limit):
 
 
 _sent = [0.0]
+CHECK_PROMPT = "🤔 לפני פעולה: מה חייב להיות נכון בעולם כדי שהם יצדקו?"
 
 
-def send(text, chat_id=None):
-    """Send HTML text to Telegram (split on lines, disclaimer appended to every message); prints if no token."""
+def freshness():
+    """The data-freshness line every message ends with (before the disclaimer)."""
+    return f"🕒 נתונים נכון ל: SEC {code(STAMPS.get('sec', '—'))}, מחיר {code(STAMPS.get('price', '—'))}"
+
+
+def send(text, chat_id=None, signal=False):
+    """Send HTML text to Telegram, split on lines; every message ends with [the manual-check prompt when it carries
+    a signal], the data-freshness line and the disclaimer. Prints instead when TG_TOKEN is unset (dry run)."""
     chat = chat_id or env("TG_CHAT_ID")
     if not (env("TG_TOKEN") and chat) and env("GITHUB_ACTIONS"):  # a misnamed secret must fail the run loudly
         sys.exit("TG_TOKEN / TG_CHAT_ID secret is missing or misnamed - nothing was sent")
-    for part in chunks(text.strip(), 4000 - visible(DISCLAIMER)):
-        part = f"{part}\n\n{DISCLAIMER}"
+    tail = "\n".join(([CHECK_PROMPT] if signal else []) + [freshness(), "", DISCLAIMER])
+    for part in chunks(text.strip(), 4000 - visible(tail)):
+        part = f"{part}\n\n{tail}"
         if not (env("TG_TOKEN") and chat):
             print(part, end="\n\n")
             continue
@@ -189,6 +198,49 @@ def send(text, chat_id=None):
                 raise
             tg("sendMessage", chat_id=chat, text=html.unescape(re.sub(r"<[^>]+>", "", part)))  # bad HTML -> plain
         _sent[0] = time.monotonic()
+
+
+def log(event, **fields):
+    """One structured (JSON) log line for the Actions log."""
+    print(json.dumps({"event": event, "at": dt.datetime.now(dt.timezone.utc).strftime("%H:%M:%S"), **fields},
+                     ensure_ascii=False, default=str), flush=True)
+
+
+def summary(markdown):
+    """Append to the GitHub Actions job summary (no-op outside Actions)."""
+    if env("GITHUB_STEP_SUMMARY"):
+        with open(env("GITHUB_STEP_SUMMARY"), "a", encoding="utf-8") as fh:
+            fh.write(markdown.rstrip() + "\n")
+
+
+def dispatch(workflow, inputs):
+    """Start one of this repo's workflows with the run's GITHUB_TOKEN (needs actions: write) -> "" or the error."""
+    repo, token = env("GITHUB_REPOSITORY"), env("GITHUB_TOKEN")
+    if not (repo and token):
+        return "no GITHUB_TOKEN"
+    try:
+        body = fetch(f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/dispatches",
+                     json.dumps({"ref": env("GITHUB_REF_NAME", "main"), "inputs": inputs}).encode(),
+                     {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
+                      "Content-Type": "application/json"}, tries=3)
+        return "HTTP 404" if body is None else ""
+    except urllib.error.HTTPError as e:
+        return f"HTTP {e.code}"
+
+
+def runs(workflow):
+    """The latest run of one of this repo's workflows -> {created_at, conclusion, event} or None (GitHub API)."""
+    repo, token = env("GITHUB_REPOSITORY"), env("GITHUB_TOKEN")
+    if not repo:
+        return None
+    try:
+        body = fetch(f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs?per_page=1",
+                     headers={"Accept": "application/vnd.github+json", **({"Authorization": f"Bearer {token}"} if token else {})},
+                     tries=2)
+        r = (json.loads(body or b"{}").get("workflow_runs") or [None])[0]
+        return r and {k: r[k] for k in ("created_at", "conclusion", "event", "status")}
+    except (OSError, ValueError, http.client.HTTPException):
+        return None
 
 
 def failure(e):

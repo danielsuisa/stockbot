@@ -59,6 +59,8 @@ def quote(ticker, since=None):
             f *= s["numerator"] / s["denominator"] if s["date"] >= p1 else 1
         remember(ticker, float(m["regularMarketPrice"]))
         return {"price": float(m["regularMarketPrice"]), "split": f, "asof": CACHE[ticker]["asof"], "source": "live"}
+    if r is not None:  # Yahoo answered, just not in USD: that is not an outage, so no cached fallback
+        return {"price": None, "split": 1.0, "asof": None, "source": None}
     _load_cache()
     c = CACHE.get(ticker)
     if c:

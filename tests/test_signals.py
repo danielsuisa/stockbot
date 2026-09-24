@@ -109,10 +109,11 @@ class Clusters(unittest.TestCase):
         fund = doc(lines, owner="Orbimed Advisors Llc", ocik="1")
         gordon = doc(lines, owner="GORDON CARL L", ocik="2")
         with mock.patch.object(common, "tickers", return_value={"ETRA": (1, "Electra")}), \
-                mock.patch.object(scan, "foreign", return_value=False), mock.patch.object(scan, "pay", return_value={}):
+                mock.patch.object(scan, "foreign", return_value=False), mock.patch.object(scan, "pay", return_value={}), \
+                mock.patch.object(scan, "links", return_value={}):
             rows = [scan.make_row(acc, d, d["buys"], "ETRA", "2026-09-23") for acc, d in (("880", fund), ("881", gordon))]
             st = {"buys": rows, "alerted": {}, "regime": {"tag": "normal"}}
-            (text, marks), = scan.alerts(st, self.today)
+            (text, marks, snaps), = scan.alerts(st, self.today)
         self.assertIn("<code>20.0M$</code>", text)
         self.assertNotIn("40.0M$", text)
         self.assertNotIn("אשכול", text)  # one purchase, one buyer
