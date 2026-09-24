@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
+  push:  # a code deploy runs the listener once right away: smoke-tests TG_TOKEN and (re)starts the schedule
+    branches: [main]
+    paths: ["bot/**", ".github/workflows/telegram-listen.yml"]
 
 permissions:
   contents: read
