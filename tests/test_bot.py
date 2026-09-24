@@ -1,7 +1,9 @@
 """Offline smoke tests (stdlib unittest, no network): python -m unittest discover -s tests -v"""
 import datetime as dt
+import json
 import io
 import os
+import tempfile
 import unittest
 import urllib.error
 from email.message import Message
@@ -231,14 +233,60 @@ TICKERS = {"AAPL": (1, "Apple"), "MSFT": (2, "Microsoft"), "ALL": (3, "Allstate"
 
 
 class Listen(unittest.TestCase):
-    def test_extract(self):
-        cases = {"AAPL": ["AAPL"], "aapl": ["AAPL"], "$tsla?": ["TSLA"], "all good": [], "IT": ["IT"],
-                 "I think IT is ON": [], "תבדוק לי את AAPL ו-MSFT": ["AAPL", "MSFT"], "מה דעתך על BRK.B": ["BRK-B"],
+    def test_extract(self):  # unknown text = ticker(s); Hebrew/long sentences only yield $ or ALL-CAPS symbols
+        cases = {"AAPL": ["AAPL"], "aapl": ["AAPL"], "$tsla?": ["TSLA"], "aapl msft": ["AAPL", "MSFT"],
+                 "all good": ["ALL", "GOOD"], "IT": ["IT"], "I think IT is ON": [],
+                 "תבדוק לי את AAPL ו-MSFT": ["AAPL", "MSFT"], "מה דעתך על BRK.B": ["BRK-B"],
                  "מה ה-beta של TSLA?": ["TSLA"], "": []}
         with mock.patch.object(common, "tickers", return_value=TICKERS):
             for text, want in cases.items():
                 self.assertEqual(listen.extract(text)[0], want, text)
             self.assertEqual(listen.extract("$zzz"), ([], ["ZZZ"]))
+            self.assertEqual(listen.extract("aapl msft tsla it", loose=True)[0], ["AAPL", "MSFT", "TSLA", "IT"])
+
+    def run_handle(self, text, env=None):
+        """handle(text) with Telegram/report/scan stubbed -> (return value, [sent texts], [tg calls])."""
+        sent, calls = [], []
+        with mock.patch.dict(os.environ, env or {}), mock.patch.object(common, "tickers", return_value=TICKERS), \
+                mock.patch.object(common, "send", side_effect=sent.append), \
+                mock.patch.object(common, "tg", side_effect=lambda m, **p: calls.append(m)), \
+                mock.patch.object(check, "report", side_effect=lambda t: f"דוח {t}"):
+            res = listen.handle(text)
+        for s in sent:
+            self.assertEqual(common.rtl_bad_lines(s), [], s)
+        return res, sent, calls
+
+    def test_commands(self):
+        for cmd in ("/help", "/start", "/HELP@Danielsuibot", "/foo", "/scanner"):  # unknown commands get help too
+            res, sent, calls = self.run_handle(cmd)
+            self.assertEqual((res, sent, calls), (0, [listen.HELP], ["setMyCommands"]), cmd)
+        self.assertEqual(self.run_handle("/check aapl msft")[1], ["דוח AAPL", "דוח MSFT"])
+        self.assertEqual(self.run_handle("/check@Danielsuibot\ntsla")[1], ["דוח TSLA"])
+        res, sent, _ = self.run_handle("/check")
+        self.assertTrue(res == 0 and "/check AAPL" in sent[0])  # usage
+        self.assertEqual(self.run_handle("msft")[1], ["דוח MSFT"])  # plain text = ticker
+        res, sent, _ = self.run_handle("zzzzq")
+        self.assertIn("<code>ZZZZQ</code>", sent[0])  # not a listed ticker -> says so
+        with mock.patch.object(scan, "status", return_value="📋 מצב"):
+            self.assertEqual(self.run_handle("/status")[1], ["📋 מצב"])
+
+    def test_scan_local_runs_in_process(self):
+        with mock.patch.object(scan, "main") as m:
+            res, sent, _ = self.run_handle("/scan", {"GITHUB_REPOSITORY": "", "GITHUB_TOKEN": ""})
+        m.assert_called_once_with(["--notify"])
+        self.assertEqual((res, len(sent)), (0, 1))
+
+    def test_scan_on_actions_dispatches_workflow(self):
+        env = {"GITHUB_REPOSITORY": "o/r", "GITHUB_TOKEN": "t", "GITHUB_REF_NAME": "main"}
+        with mock.patch.object(common, "fetch", return_value=b"") as f, mock.patch.object(scan, "main") as m:
+            res, sent, _ = self.run_handle("/scan", env)
+        url, data, headers = f.call_args.args[:3]
+        self.assertEqual(url, "https://api.github.com/repos/o/r/actions/workflows/daily-scan.yml/dispatches")
+        self.assertEqual(json.loads(data), {"ref": "main", "inputs": {"notify": "true"}})
+        self.assertEqual((headers["Authorization"], res, len(sent), m.called), ("Bearer t", 0, 1, False))
+        with mock.patch.object(common, "fetch", side_effect=http_error(403)):
+            res, sent, _ = self.run_handle("/scan", env)
+        self.assertTrue(res == 1 and "HTTP 403" in sent[0] and "actions: write" in sent[0])  # not "SEC is down"
 
     def test_main_acks_first_and_filters_chat(self):
         ups = [{"update_id": 5, "message": {"chat": {"id": 42}, "text": "AAPL"}},
@@ -368,6 +416,41 @@ class Scan(unittest.TestCase):
             self.assertEqual(scan.scan_day("20260922", st, self.today), "ok")
         self.assertEqual(sorted(c.args[0].rsplit("/", 1)[1] for c in f.call_args_list), ["0000-26-1.txt", "0000-26-3.txt"])
         self.assertEqual([(b["acc"], b["ticker"], b["value"]) for b in st["buys"]], [("0000-26-1", "ACME", 16000.0)])
+
+
+class ScanCommands(unittest.TestCase):
+    today = dt.date(2026, 9, 24)
+
+    def test_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "state.json")
+            with mock.patch.dict(os.environ, {"STATE_FILE": path}):
+                self.assertIn("עוד לא רצה", scan.status(self.today))
+                with open(path, "w", encoding="utf-8") as fh:
+                    json.dump({"days": {"20260921": "ok", "20260922": "ok", "20260907": "holiday"},
+                               "buys": [buy("a1", 1, "x", 1000)], "alerted": {"1": ["a1"]}}, fh)
+                text = scan.status(self.today)
+        self.assertEqual(common.rtl_bad_lines(text), [])
+        for want in ("<code>2026-09-22</code>", "<code>2</code> ימי מסחר", "<code>1</code> חגים",
+                     "(האחרון <code>2026-09-23</code>)", "בזיכרון: <code>1</code>", "התראה: <code>1</code>"):
+            self.assertIn(want, text)
+
+    def test_notify_summary_only_when_nothing_new(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"STATE_FILE": os.path.join(tmp, "s.json")}), \
+                mock.patch.object(scan, "scan_day", return_value="ok"), mock.patch.object(common, "send") as snd:
+            with mock.patch.object(scan, "alerts", return_value=[]):
+                scan.main(["--days", "20260923", "--notify"])
+                scan.main(["--days", "20260923"])  # the scheduled run stays quiet
+            self.assertEqual(snd.call_count, 1)
+            self.assertIn("אין התראות חדשות", snd.call_args.args[0])
+            self.assertEqual(common.rtl_bad_lines(snd.call_args.args[0]), [])
+            with mock.patch.object(scan, "alerts", return_value=[["🔔 התראה", {"1": ["a"]}]]):
+                scan.main(["--days", "20260923", "--notify"])
+            self.assertEqual(snd.call_args.args[0], "🔔 התראה")  # alerts sent -> no extra summary
+
+    def test_failure_reason(self):
+        self.assertIn("SEC_UA", common.failure(SystemExit("SEC_UA is not set")))
+        self.assertIn("SEC לא זמין", common.failure(SystemExit("days that failed and will be retried: 20260907")))
 
 
 class Check(unittest.TestCase):

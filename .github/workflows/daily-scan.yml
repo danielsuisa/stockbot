@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "30 5 * * 2-6"  # Tue-Sat 05:30 UTC = the morning after each US trading day
   workflow_dispatch:
+    inputs:
+      notify:
+        description: "Send a Telegram summary even when nothing is new (the bot's /scan sets it)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write  # commit data/state.json back
@@ -34,6 +39,7 @@ jobs:
           MIN_SINGLE_USD: ${{ vars.MIN_SINGLE_USD }}
           WINDOW_DAYS: ${{ vars.WINDOW_DAYS }}
           MAX_CATCHUP: ${{ vars.MAX_CATCHUP }}
+          SCAN_NOTIFY: ${{ inputs.notify }}
       - name: Commit state
         if: always()  # keep the days already processed even if the scan failed later
         run: |

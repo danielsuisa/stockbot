@@ -45,11 +45,39 @@ def prune(state, today):
     return state
 
 
+def weekdays(today):
+    """The window's weekdays, oldest first (today is excluded: its index is only published tonight)."""
+    return [d.strftime("%Y%m%d") for d in (today - dt.timedelta(i) for i in range(WINDOW_DAYS, 0, -1)) if d.weekday() < 5]
+
+
 def pick(state, today):
     """Days to scan: every window weekday on the first run, else the most recent MAX_CATCHUP unprocessed ones."""
-    days = [d.strftime("%Y%m%d") for d in (today - dt.timedelta(i) for i in range(WINDOW_DAYS, 0, -1)) if d.weekday() < 5]
-    todo = [d for d in days if d not in state["days"]]
+    todo = [d for d in weekdays(today) if d not in state["days"]]
     return todo[-MAX_CATCHUP:] if state["days"] else todo
+
+
+def _iso(day):
+    return f"{day[:4]}-{day[4:6]}-{day[6:]}"
+
+
+def status(today=None):
+    """Hebrew /status: the last scanned trading day and what the rolling state holds."""
+    today = today or dt.datetime.now(dt.timezone.utc).date()
+    path = Path(common.env("STATE_FILE", str(common.DATA / "state.json")))
+    if not path.exists():
+        return f"📋 הסריקה היומית עוד לא רצה (אין קובץ {code('data/state.json')})."
+    st = prune(load(path), today)
+    ok = sorted(d for d, v in st["days"].items() if v == "ok")
+    wait = [d for d in weekdays(today) if d not in st["days"]]
+    return "\n".join((
+        "📋 <b>מצב הסריקה היומית</b>",
+        f"יום המסחר האחרון שנסרק: {code(_iso(ok[-1])) if ok else 'עדיין אין'}",
+        f"ב־{code(WINDOW_DAYS)} הימים האחרונים: {code(len(ok))} ימי מסחר נסרקו · {code(len(st['days']) - len(ok))} חגים"
+        + (f" · {code(len(wait))} ממתינים לסריקה (האחרון {code(_iso(wait[-1]))})" if wait else ""),
+        f"דיווחי רכישה בזיכרון: {code(len(st['buys']))} · חברות שכבר קיבלו התראה: {code(len(st['alerted']))}",
+        f"כללי התראה: לפחות {code(MIN_INSIDERS)} נושאי משרה שרכשו יחד {code(money(MIN_CLUSTER_USD))},"
+        f" או רכישה בודדת של {code(money(MIN_SINGLE_USD))}",
+        f"סריקה אוטומטית בימים ג׳–ש׳ ב־{code('05:30 UTC')}; הפקודה {code('/scan')} מריצה אותה עכשיו."))
 
 
 def _get(url):
@@ -173,11 +201,13 @@ def alerts(state, today):
     return msgs if blocks else []
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(description="Daily EDGAR Form 4 insider-cluster scan")
     ap.add_argument("--days", help="force specific days: YYYYMMDD[,YYYYMMDD...]")
     ap.add_argument("--dry", action="store_true", help="do not write the state file")
-    a = ap.parse_args()
+    ap.add_argument("--notify", action="store_true", help="send a Telegram summary even when nothing is new "
+                                                               "(also env SCAN_NOTIFY=true; used by /scan)")
+    a = ap.parse_args(argv)
     t0, today = time.time(), dt.datetime.now(dt.timezone.utc).date()
     path = Path(common.env("STATE_FILE", str(common.DATA / "state.json")))
     state = prune(load(path), today)
@@ -186,13 +216,13 @@ def main():
     failed = []
     for day in days:
         try:
-            status = scan_day(day, state, today)
+            res = scan_day(day, state, today)
         except Exception:  # e.g. SEC outage: this day is retried next run and must not block the later days
             traceback.print_exc()
             failed.append(day)
             continue
-        if status:
-            state["days"][day] = status
+        if res:
+            state["days"][day] = res
         if not a.dry:
             save(path, prune(state, today))  # after every day: crash-safe
     n = 0
@@ -203,6 +233,11 @@ def main():
         if not a.dry:
             save(path, state)
     print(f"done: {n} issuer alert(s), {len(state['buys'])} purchase filings in state, {time.time() - t0:.0f}s")
+    if not n and (a.notify or common.env("SCAN_NOTIFY") == "true"):  # /scan: the owner hears back either way
+        ok = sorted(d for d, v in state["days"].items() if v == "ok")
+        common.send(f"✅ הסריקה היומית הסתיימה ואין התראות חדשות. ימים שנבדקו עכשיו: {code(len(days))}"
+                    + (f" · יום המסחר האחרון שנסרק: {code(_iso(ok[-1]))}" if ok else "")
+                    + (f" · ⚠️ נכשלו ויסרקו שוב: {code(len(failed))}" if failed else ""))
     if failed:  # keep the run red so a persistent problem is visible
         sys.exit(f"days that failed and will be retried: {' '.join(failed)}")
 

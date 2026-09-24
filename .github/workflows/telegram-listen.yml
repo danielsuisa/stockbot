@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: write  # /scan dispatches the daily-scan workflow (the only writer of data/state.json)
 
 concurrency:
   group: telegram-listen
@@ -33,3 +34,9 @@ jobs:
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           INSIDER_DAYS: ${{ vars.INSIDER_DAYS }}
+          MIN_INSIDERS: ${{ vars.MIN_INSIDERS }}  # same tuning as daily-scan.yml, so /status shows the real rules
+          MIN_CLUSTER_USD: ${{ vars.MIN_CLUSTER_USD }}
+          MIN_SINGLE_USD: ${{ vars.MIN_SINGLE_USD }}
+          WINDOW_DAYS: ${{ vars.WINDOW_DAYS }}
+          MAX_CATCHUP: ${{ vars.MAX_CATCHUP }}
+          GITHUB_TOKEN: ${{ github.token }}  # for /scan's workflow dispatch; scoped by the permissions above

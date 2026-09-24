@@ -182,8 +182,8 @@ def send(text, chat_id=None):
 
 
 def failure(e):
-    """Hebrew reason for a failed report: the only SystemExit on that path is fetch()'s missing SEC_UA."""
-    if isinstance(e, SystemExit):
+    """Hebrew reason for a failed report or scan (fetch() exits with a message naming SEC_UA when it is missing)."""
+    if isinstance(e, SystemExit) and "SEC_UA" in str(e.code):
         return f"הסוד {code('SEC_UA')} לא הוגדר ב־GitHub (ראו שלב 3 ב־README)."
     return "ייתכן ש־SEC לא זמין כרגע. נסו שוב מאוחר יותר."
 
