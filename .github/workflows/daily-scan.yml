@@ -3,12 +3,18 @@ name: Daily insider scan
 on:
   schedule:
     - cron: "30 5 * * 2-6"  # Tue-Sat 05:30 UTC = the morning after each US trading day
+    - cron: "0 7 * * 0"     # Sunday 07:00 UTC: weekly journal follow-up (returns vs SPY + summary)
   workflow_dispatch:
     inputs:
       notify:
         description: "Kept for compatibility (every run now sends a heartbeat); the bot's /scan and the watchdog set it"
         type: boolean
         default: false
+      mode:
+        description: "scan = the daily scan; followup = the weekly journal follow-up"
+        type: choice
+        options: [scan, followup]
+        default: scan
 
 permissions:
   contents: write  # commit data/state.json back
@@ -28,10 +34,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Scan EDGAR Form 4 filings
+      - name: Scan EDGAR Form 4 filings (or the weekly journal follow-up)
         id: scan
         run: python -m bot.scan
         env:
+          SCAN_MODE: ${{ (github.event.schedule == '0 7 * * 0' || inputs.mode == 'followup') && 'followup' || 'scan' }}
           SEC_UA: ${{ secrets.SEC_UA }}
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}

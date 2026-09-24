@@ -58,7 +58,7 @@ def reports(text, loose=False):
     failed = 0
     for t in known[:MAX]:
         try:
-            common.send(check.report(t))
+            common.send(check.report(t), signal=True)
         except Exception as e:  # one failed ticker must not block the others
             failed += 1
             traceback.print_exc()

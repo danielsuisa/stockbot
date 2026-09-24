@@ -4,7 +4,7 @@ import sys
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 
-from bot import common, form4, fundamentals, tenk
+from bot import common, form4, fundamentals, market, tenk
 from bot.common import code, esc, money, price
 
 INSIDER_DAYS = common.env("INSIDER_DAYS", 180)
@@ -45,6 +45,17 @@ def insiders(cik, rows):
     return out
 
 
+def sizing(t):
+    """5.4 + 5.6: 30-day dollar liquidity (flagged under $2M/day) and a fixed, general rule of thumb - informational
+    only, the same for everyone; nothing here places or suggests a trade."""
+    liq = market.liquidity(t)
+    low = liq is not None and liq < market.LOW_LIQUIDITY
+    return [f"💧 נזילות: " + (f"{code(money(liq))} ליום (ממוצע 30 יום)" + (" · ⚠ נזילות נמוכה" if low else "")
+                              if liq is not None else "חסר (נתוני Yahoo לא זמינים)"),
+            "📏 כלל אצבע (מידע כללי, לא המלצה): 2–3% מהתיק, יציאה לפי זמן 12 חודשים"
+            + (" · ⚠ נזילות נמוכה" if low else "")]
+
+
 def report(ticker):
     """Full report as Telegram HTML (common.send appends the disclaimer)."""
     t = ticker.strip().upper().lstrip("$").replace(".", "-")
@@ -56,7 +67,7 @@ def report(ticker):
     rows = common.filings(sub) if sub else []
     sic = int(sub.get("sic") or 0) or None
     lines = [f"📊 <b>דוח פורנזי</b> · {code(t)} · {esc(name)}",
-             f"ענף: {code(f'SIC {sic}') if sic else 'חסר'} {esc(sub.get('sicDescription') or '')}"]
+             f"ענף: {code(f'SIC {sic}') if sic else 'חסר'} {esc(sub.get('sicDescription') or '')}"] + sizing(t)
     parts = (("דוחות כספיים", lambda: fundamentals.format_he(fundamentals.analyze(cik, t, sic))),
              ("בעלי עניין", lambda: insiders(cik, rows)),
              ("גורמי סיכון", lambda: tenk.format_he(tenk.analyze(cik, rows))))
@@ -79,7 +90,7 @@ def main():
     except (Exception, SystemExit) as e:  # SEC down / SEC_UA missing: say so in Telegram, keep the run red
         common.send(f"⚠️ הדוח עבור {code(t.strip().upper())} נכשל ({code(type(e).__name__)}): {common.failure(e)}")
         raise
-    common.send(msg)
+    common.send(msg, signal=True)
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from bot import common, form4, market
+from bot import common, form4, fundamentals, journal, market
 from bot.common import code, esc, money, price
 
 MIN_INSIDERS = common.env("MIN_INSIDERS", 3)
@@ -372,7 +372,24 @@ def row_line(b, seen, urls=None):
             + (" 🆕" if b["acc"] not in seen else ""))
 
 
-def block(ev, seen, regime, info=(), urls=None):
+def enrich(cik, ticker, j, today):
+    """Alert context (block 5): SIC, price at alert (live, else cached and marked), 30-day dollar liquidity, forensic
+    scores and sector concentration -> (Hebrew lines, journal fields). A failing source leaves its field "חסר"."""
+    sub = common.submissions(int(cik)) or {}
+    sic = int(sub.get("sic") or 0) or None
+    q = market.quote(ticker)
+    try:
+        scores = journal.scores_of(fundamentals.analyze(int(cik), ticker, sic))
+    except Exception as e:  # a forensic-score failure must not block the alert
+        print(f"scores {ticker}: {type(e).__name__} {e}")
+        scores = journal.scores_of(None)
+    f = {"sic": sic, "quote": q, "liquidity": market.liquidity(ticker), "scores": scores, "company": sub.get("name")}
+    e = {"price": {k: q.get(k) for k in ("price", "asof", "source")}, "liquidity": f["liquidity"], "scores": scores,
+         "sic": sic}
+    return journal.context_lines(e, journal.concentration(j, sic, today)), f
+
+
+def block(ev, seen, regime, info=(), urls=None, context=()):
     """One issuer's Hebrew alert lines."""
     bs, cluster, big = ev["open"], ev["cluster"], ev["big"]
     b0, total = bs[0], sum(b["value"] or 0 for b in bs)
@@ -400,6 +417,7 @@ def block(ev, seen, regime, info=(), urls=None):
         names = {"exercise": "מימוש אופציות", "grant": "הענקות", "other": "אחר"}
         lines.append("ℹ️ פעולות נוספות ב־Form 4 (לא נספרו): "
                      + " · ".join(f"{names[k]} {code(f'×{v}')}" for k, v in sorted(kinds.items())))
+    lines += list(context)
     lines.append(market.regime_line(regime or {"tag": "unknown"}))
     url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={b0['cik']}&type=4&owner=include"
     lines.append(f'🔗 <a href="{esc(url)}">כל דיווחי Form 4 של החברה ב־EDGAR</a>')
@@ -422,12 +440,15 @@ def snapshot(ev, today):
             "acks": []}
 
 
-def alerts(state, today):
-    """Qualifying issuers with not-yet-alerted filings -> [[Hebrew message, {cik: accessions}, {cik: snapshot}]]."""
+def alerts(state, today, j=None):
+    """Qualifying issuers with not-yet-alerted filings -> [[Hebrew message, {cik: accessions}, {cik: snapshot},
+    {cik: journal entry}]] (entries are recorded only once their message is delivered)."""
+    j = j if j is not None else {"alerts": []}
     by, info = _by_cik(state), defaultdict(list)
     for i in state.get("info", []):
         info[str(i["cik"])].append(i)
-    blocks, hits, fpi, qualifying = [], {}, [], 0  # blocks: (text, {cik: accs}, {cik: snapshot})
+    blocks, hits, fpi, qualifying = [], {}, [], 0  # blocks: (text, {cik: accs}, {cik: snapshot}, {cik: entry})
+    pending = []  # this run's entries: sector concentration also counts alerts earlier in the same message batch
     for cik, bs in sorted(by.items(), key=lambda kv: -sum(b["value"] or 0 for b in kv[1])):
         ev = evaluate(bs, state.get("regime"))
         seen = set(state["alerted"].get(cik, []))
@@ -438,22 +459,28 @@ def alerts(state, today):
         if foreign(int(cik)):  # "$" and USD thresholds may be wrong (e.g. Bradesco reports BRL prices): name only
             fpi.append((code(bs[0]["ticker"]), cik))
         else:
-            blocks.append((block(ev, seen, state.get("regime"), info[cik], links(cik)), {cik: hits[cik]},
-                           {cik: snapshot(ev, today)}))
+            snap = snapshot(ev, today)
+            context, f = enrich(cik, snap["ticker"], {"alerts": j["alerts"] + pending}, today)
+            entry = journal.entry_for(ev, snap, state.get("regime"), f["quote"], f["liquidity"], f["scores"], f["sic"],
+                                      f["company"] or bs[0]["company"])
+            pending.append(entry)
+            blocks.append((block(ev, seen, state.get("regime"), info[cik], links(cik), context), {cik: hits[cik]},
+                           {cik: snap}, {cik: entry}))
     if fpi:
         blocks.append((f"ℹ️ רכישות חדשות גם אצל מנפיקים זרים: {', '.join(t for t, _ in fpi)} — לא הוצגו, כי המחיר"
                        " בדיווח שלהם עשוי להיות במטבע מקומי ולא בדולר (אפשר לשלוח לי את הטיקר לדוח מלא).",
-                       {c: hits[c] for _, c in fpi}, {}))
+                       {c: hits[c] for _, c in fpi}, {}, {}))
     common.log("alerts", qualifying=qualifying, new=len(hits), foreign=len(fpi))
     print(f"alerts: {qualifying} qualifying issuer(s), {len(hits)} with new filings ({len(fpi)} foreign, names only)")
     msgs = []
-    for blk, marks, snaps in [(f"🔔 <b>רכישות בעלי עניין בשוק הפתוח</b> · {code(today.isoformat())}", {}, {})] + blocks:
+    head = (f"🔔 <b>רכישות בעלי עניין בשוק הפתוח</b> · {code(today.isoformat())}", {}, {}, {})
+    for blk, *extra in [head] + blocks:
         if msgs and len(msgs[-1][0]) + len(blk) < 3500:  # never split one issuer across two messages
             msgs[-1][0] += "\n\n" + blk
-            msgs[-1][1].update(marks)
-            msgs[-1][2].update(snaps)
+            for mine, new in zip(msgs[-1][1:], extra):
+                mine.update(new)
         else:
-            msgs.append([blk, dict(marks), dict(snaps)])
+            msgs.append([blk, *(dict(d) for d in extra)])
     return msgs if blocks else []
 
 
@@ -573,17 +600,21 @@ def run(a):
         if not a.dry:
             save(path, prune(state, today))  # after every day: crash-safe
     state["regime"] = market.regime()
+    j = journal.load()
     fixes = corrections(state, today)
     for text in fixes:
         common.send(text, signal=True)
     n = 0
-    for text, marks, snaps in alerts(state, today):
+    for text, marks, snaps, entries in alerts(state, today, j):
         common.send(text, signal=True)
         state["alerted"].update(marks)  # per delivered message: a later failure never re-sends this one
         state["sent"].update(snaps)
+        for cik, e in entries.items():  # 5.1: the journal gets every delivered alert (unique id)
+            state["sent"][cik]["id"] = journal.record(j, e)["id"]
         n += len(marks)
         if not a.dry:
             save(path, state)
+            journal.save(j)
     state["prices"] = {t: v for t, v in market.CACHE.items()}
     filings = sum(r["parsed"] for r in stats["days"])
     errors = sum(r["errors"] for r in stats["days"]) + len(failed)
@@ -616,6 +647,21 @@ def run(a):
     _mark_reported()
 
 
+def followup(today=None, dry=False):
+    """Weekly (5.2): the 30/90/180-day return of every alert against SPY into the journal, then the summary
+    (hit rate and excess return by horizon, market regime and quality bucket) to Telegram."""
+    today = today or dt.datetime.now(dt.timezone.utc).date()
+    j = journal.load()
+    n = journal.followup(j, today)
+    if not dry:
+        journal.save(j)
+    common.log("followup", measured=n, alerts=len(j["alerts"]))
+    common.summary(f"### Journal follow-up {today}\n- alerts: {len(j['alerts'])}\n- new return measurements: {n}")
+    common.send(journal.stats_text(j, "📊 <b>סיכום שבועי של יומן ההתראות</b>")
+                + f"\nמדידות תשואה חדשות השבוע: {code(n)}")
+    _mark_reported()
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Daily EDGAR Form 4 insider-cluster scan")
     ap.add_argument("--days", help="force specific days: YYYYMMDD[,YYYYMMDD...]")
@@ -623,13 +669,15 @@ def main(argv=None):
     ap.add_argument("--notify", action="store_true", help="kept for compatibility: every run now sends a heartbeat")
     ap.add_argument("--watchdog", action="store_true", help="missed-day check (retries the scan if a day was missed)")
     ap.add_argument("--alarm", metavar="REASON", help="workflow failure step: report unless already reported")
+    ap.add_argument("--followup", action="store_true", help="weekly: journal returns vs SPY + summary (also "
+                                                               "env SCAN_MODE=followup)")
     a = ap.parse_args(argv)
     if a.alarm is not None:
         return alarm_step(a.alarm)
     if a.watchdog:
         return watchdog()
     try:
-        run(a)
+        followup(dry=a.dry) if a.followup or common.env("SCAN_MODE") == "followup" else run(a)
     except BaseException as e:  # heartbeat: a failed run is never silent
         if isinstance(e, KeyboardInterrupt) or (isinstance(e, SystemExit) and (not e.code or _reported[0])):
             raise

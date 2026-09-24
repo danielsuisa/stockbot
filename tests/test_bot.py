@@ -11,6 +11,12 @@ from unittest import mock
 
 from bot import check, common, form4, fundamentals, listen, market, scan, tenk
 
+# alerts() enriches each alert from EDGAR/Yahoo (block 5); unit tests replace that with an all-missing context
+EMPTY_CONTEXT = ([], {"sic": None, "quote": {"price": None, "split": 1.0, "asof": None, "source": None},
+                      "liquidity": None, "scores": {"piotroski": None, "altman": None, "beneish": None},
+                      "company": None})
+NO_ENRICH = mock.patch.object(scan, "enrich", return_value=EMPTY_CONTEXT)
+
 TX = ("<nonDerivativeTransaction><transactionDate><value>{d}</value></transactionDate><transactionCoding>"
       "<transactionCode>{c}</transactionCode></transactionCoding><transactionAmounts><transactionShares><value>{s}"
       "</value></transactionShares><transactionPricePerShare><value>{p}</value></transactionPricePerShare>"
@@ -251,7 +257,7 @@ class Listen(unittest.TestCase):
         """handle(text) with Telegram/report/scan stubbed -> (return value, [sent texts], [tg calls])."""
         sent, calls = [], []
         with mock.patch.dict(os.environ, env or {}), mock.patch.object(common, "tickers", return_value=TICKERS), \
-                mock.patch.object(common, "send", side_effect=sent.append), \
+                mock.patch.object(common, "send", side_effect=lambda t, **k: sent.append(t)), \
                 mock.patch.object(common, "tg", side_effect=lambda m, **p: calls.append(m)), \
                 mock.patch.object(check, "report", side_effect=lambda t: f"דוח {t}"):
             res = listen.handle(text)
@@ -316,7 +322,7 @@ class Listen(unittest.TestCase):
                 mock.patch.object(common, "tg", side_effect=lambda m, **p: ups if "offset" not in p else True), \
                 mock.patch.object(common, "tickers", return_value=TICKERS), mock.patch("traceback.print_exc"), \
                 mock.patch.object(check, "report", side_effect=lambda t: t if t == "MSFT" else 1 / 0), \
-                mock.patch.object(common, "send", side_effect=sent.append), self.assertRaises(SystemExit):
+                mock.patch.object(common, "send", side_effect=lambda t, **k: sent.append(t)), self.assertRaises(SystemExit):
             listen.main()
         self.assertEqual(len(sent), 2)  # AAPL: Hebrew failure note; MSFT: its report still goes out
         self.assertIn("<code>AAPL</code>", sent[0])
@@ -360,23 +366,23 @@ class Scan(unittest.TestCase):
                                                   buy("a4", 1, "u", 20000),  # (3 distinct insiders since v2)
                                                   buy("b1", 2, "z", 600000, od=False),  # big single buy (10% owner)
                                                   buy("c1", 3, "w", 50000)]}  # neither
-        with mock.patch.object(scan, "foreign", return_value=False), mock.patch.object(scan, "links", return_value={}):
+        with mock.patch.object(scan, "foreign", return_value=False), mock.patch.object(scan, "links", return_value={}), NO_ENRICH:
             msgs = scan.alerts(st, self.today)
-            self.assertEqual([sorted(m) for _, m, _ in msgs], [["1", "2"]])
+            self.assertEqual([sorted(m) for _, m, *_ in msgs], [["1", "2"]])
             self.assertEqual(common.rtl_bad_lines(msgs[0][0]), [])
-            for _, marks, _ in msgs:
+            for _, marks, *_ in msgs:
                 st["alerted"].update(marks)
             self.assertEqual(scan.alerts(st, self.today), [])  # nothing new -> no repeat
             st["buys"].append(buy("a3", 1, "v", 1000))
-            (text, marks, _), = scan.alerts(st, self.today)
+            (text, marks, *_), = scan.alerts(st, self.today)
             self.assertEqual((list(marks), text.count("🆕")), (["1"], 1))
 
     def test_joint_report_is_not_a_cluster(self):
         sig = [["2026-09-21", 1000000.0, 15.0]]
         st = {"days": {}, "alerted": {}, "buys": [dict(buy("e1", 9, "fund", 15e6), sig=sig, indirect=True),
                                                   dict(buy("e2", 9, "partner", 15e6), sig=sig, indirect=True)]}
-        with mock.patch.object(scan, "foreign", return_value=False), mock.patch.object(scan, "links", return_value={}):
-            (text, marks, _), = scan.alerts(st, self.today)
+        with mock.patch.object(scan, "foreign", return_value=False), mock.patch.object(scan, "links", return_value={}), NO_ENRICH:
+            (text, marks, *_), = scan.alerts(st, self.today)
         self.assertEqual(sorted(marks["9"]), ["e1", "e2"])  # both filings are marked as alerted
         self.assertIn("רכישה גדולה", text)
         self.assertNotIn("אשכול", text)  # one purchase, so no 2-insider cluster
@@ -459,7 +465,7 @@ class ScanCommands(unittest.TestCase):
             self.assertEqual(snd.call_count, 2)
             self.assertIn("אין התראות חדשות", snd.call_args.args[0])
             self.assertEqual(common.rtl_bad_lines(snd.call_args.args[0]), [])
-            with mock.patch.object(scan, "alerts", return_value=[["🔔 התראה", {"1": ["a"]}, {}]]):
+            with mock.patch.object(scan, "alerts", return_value=[["🔔 התראה", {"1": ["a"]}, {}, {}]]):
                 scan.main(["--days", "20260923"])
             self.assertEqual(snd.call_args_list[-2].args[0], "🔔 התראה")  # the alert, then the heartbeat
             self.assertIn("<code>1</code> התראות חדשות", snd.call_args.args[0])
