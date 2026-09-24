@@ -245,6 +245,19 @@ class Listen(unittest.TestCase):
             listen.main()
         self.assertEqual(log, [("getUpdates", None), ("ack", 7), ("report", "AAPL")])
 
+    def test_failed_report_is_reported_and_turns_run_red(self):
+        ups = [{"update_id": 1, "message": {"chat": {"id": 42}, "text": "AAPL MSFT"}}]
+        sent = []
+        with mock.patch.dict(os.environ, {"TG_TOKEN": "1:x", "TG_CHAT_ID": "42"}), \
+                mock.patch.object(common, "tg", side_effect=lambda m, **p: ups if "offset" not in p else True), \
+                mock.patch.object(common, "tickers", return_value=TICKERS), mock.patch("traceback.print_exc"), \
+                mock.patch.object(check, "report", side_effect=lambda t: t if t == "MSFT" else 1 / 0), \
+                mock.patch.object(common, "send", side_effect=sent.append), self.assertRaises(SystemExit):
+            listen.main()
+        self.assertEqual(len(sent), 2)  # AAPL: Hebrew failure note; MSFT: its report still goes out
+        self.assertIn("<code>AAPL</code>", sent[0])
+        self.assertEqual(sent[1], "MSFT")
+
 
 def buy(acc, cik, who, value, od=True, last="2026-09-20"):
     return {"acc": acc, "cik": cik, "ticker": f"T{cik}", "company": "Co", "insider": who, "role": "דירקטור",

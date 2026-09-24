@@ -40,9 +40,10 @@ def extract(text):
 
 
 def handle(text):
-    """One message from the owner's chat -> Hebrew replies."""
+    """One message from the owner's chat -> Hebrew replies; returns how many reports failed."""
     if (text.split() or [""])[0].split("@")[0].lower() in ("/start", "/help"):
-        return common.send(HELP)
+        common.send(HELP)
+        return 0
     known, unknown = extract(text)
     notes = [f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}."] if unknown else []
     if not known:
@@ -51,12 +52,15 @@ def handle(text):
         notes.append(f"אכין דוח רק ל־{code(MAX)} הראשונים: {', '.join(map(code, known[:MAX]))}.")
     if notes:
         common.send("\n".join(notes))
+    failed = 0
     for t in known[:MAX]:
         try:
             common.send(check.report(t))
         except Exception as e:  # one failed ticker must not block the others
+            failed += 1
             traceback.print_exc()
-            common.send(f"⚠️ הדוח עבור {code(t)} נכשל ({code(type(e).__name__)}). נסו שוב מאוחר יותר.")
+            common.send(f"⚠️ הדוח עבור {code(t)} נכשל ({code(type(e).__name__)}): {common.failure(e)}")
+    return failed
 
 
 def main():
@@ -75,7 +79,7 @@ def main():
             continue
         print(f"update {u['update_id']}: handling")
         try:
-            handle(m.get("text") or m.get("caption") or "")
+            failed += handle(m.get("text") or m.get("caption") or "")  # failed reports also turn the run red
         except (Exception, SystemExit) as e:  # e.g. SEC down: tell the owner, keep going, mark the run red
             failed += 1
             traceback.print_exc()
