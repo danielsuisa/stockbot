@@ -1,0 +1,32 @@
+name: Telegram listener
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: telegram-listen
+  cancel-in-progress: false  # never kill a run that already ACKed its messages
+
+jobs:
+  listen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Answer Telegram messages
+        run: python -m bot.listen
+        env:
+          SEC_UA: ${{ secrets.SEC_UA }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          INSIDER_DAYS: ${{ vars.INSIDER_DAYS }}

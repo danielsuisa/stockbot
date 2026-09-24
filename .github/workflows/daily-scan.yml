@@ -1,0 +1,50 @@
+name: Daily insider scan
+
+on:
+  schedule:
+    - cron: "30 5 * * 2-6"  # Tue-Sat 05:30 UTC = the morning after each US trading day
+  workflow_dispatch:
+
+permissions:
+  contents: write  # commit data/state.json back
+
+concurrency:
+  group: daily-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}  # branch tip, not the trigger SHA: a queued run must see the state just pushed
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Scan EDGAR Form 4 filings
+        run: python -m bot.scan
+        env:
+          SEC_UA: ${{ secrets.SEC_UA }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          MIN_INSIDERS: ${{ vars.MIN_INSIDERS }}
+          MIN_CLUSTER_USD: ${{ vars.MIN_CLUSTER_USD }}
+          MIN_SINGLE_USD: ${{ vars.MIN_SINGLE_USD }}
+          WINDOW_DAYS: ${{ vars.WINDOW_DAYS }}
+          MAX_CATCHUP: ${{ vars.MAX_CATCHUP }}
+      - name: Commit state
+        if: always()  # keep the days already processed even if the scan failed later
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "state unchanged"; exit 0; fi
+          git commit -m "Update insider scan state"
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            sleep $((i * 5))
+            git pull --rebase || git rebase --abort || true
+          done
+          exit 1
