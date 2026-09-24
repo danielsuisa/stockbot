@@ -125,6 +125,8 @@ def tg(method, **params):
             body = fetch(url, json.dumps(params).encode(), {"Content-Type": "application/json"}, tries=2)
             break
         except urllib.error.HTTPError as e:
+            if e.code == 401:
+                raise RuntimeError("Telegram rejected TG_TOKEN (401 Unauthorized) - check the secret") from e
             if e.code != 429 or i == 3:
                 raise
             try:
@@ -177,6 +179,13 @@ def send(text, chat_id=None):
                 raise
             tg("sendMessage", chat_id=chat, text=html.unescape(re.sub(r"<[^>]+>", "", part)))  # bad HTML -> plain
         _sent[0] = time.monotonic()
+
+
+def failure(e):
+    """Hebrew reason for a failed report: the only SystemExit on that path is fetch()'s missing SEC_UA."""
+    if isinstance(e, SystemExit):
+        return f"הסוד {code('SEC_UA')} לא הוגדר ב־GitHub (ראו שלב 3 ב־README)."
+    return "ייתכן ש־SEC לא זמין כרגע. נסו שוב מאוחר יותר."
 
 
 # ---------- Hebrew / RTL formatting ----------

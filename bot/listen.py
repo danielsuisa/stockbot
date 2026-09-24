@@ -79,8 +79,7 @@ def main():
         except (Exception, SystemExit) as e:  # e.g. SEC down: tell the owner, keep going, mark the run red
             failed += 1
             traceback.print_exc()
-            common.send(f"⚠️ לא הצלחתי לטפל בהודעה ({code(type(e).__name__)}); ייתכן ש־SEC לא זמין כרגע."
-                        " נסו שוב מאוחר יותר.")
+            common.send(f"⚠️ לא הצלחתי לטפל בהודעה ({code(type(e).__name__)}): {common.failure(e)}")
     if failed:
         sys.exit(f"{failed} message(s) failed")
 

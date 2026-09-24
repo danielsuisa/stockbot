@@ -74,8 +74,7 @@ def main():
     try:
         msg = report(t)
     except (Exception, SystemExit) as e:  # SEC down / SEC_UA missing: say so in Telegram, keep the run red
-        common.send(f"⚠️ הדוח עבור {code(t.strip().upper())} נכשל ({code(type(e).__name__)}): ייתכן ש־SEC"
-                    " לא זמין כרגע. נסו שוב מאוחר יותר.")
+        common.send(f"⚠️ הדוח עבור {code(t.strip().upper())} נכשל ({code(type(e).__name__)}): {common.failure(e)}")
         raise
     common.send(msg)
 

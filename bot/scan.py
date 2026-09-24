@@ -1,9 +1,12 @@
 """Daily insider-cluster scan: EDGAR daily index -> Form 4 open-market purchases -> Hebrew Telegram alerts."""
 import argparse
 import datetime as dt
+import functools
 import json
 import os
+import sys
 import time
+import traceback
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -58,11 +61,24 @@ def _get(url):
         return False
 
 
+@functools.lru_cache(None)
+def published(year, q):
+    """File names SEC lists for a daily-index quarter, or None if the listing is unavailable. The listing is
+    trusted, not error codes: a missing index has come back as 404, S3 403 XML and an HTML 503 page."""
+    try:
+        base = f"https://www.sec.gov/Archives/edgar/daily-index/{year}/QTR{q}"
+        return {i["name"] for i in common.get_json(f"{base}/index.json")["directory"]["item"]}
+    except Exception as e:
+        print(f"daily-index listing {year} QTR{q} unavailable ({type(e).__name__}) - fetching files directly")
+        return None
+
+
 def scan_day(day, state, today):
     """Merge one day's listed-issuer purchase filings into state['buys'] -> 'ok' | 'holiday' | None (retry later)."""
     t0, d = time.time(), dt.datetime.strptime(day, "%Y%m%d").date()
+    names = published(d.year, (d.month + 2) // 3)
     url = f"https://www.sec.gov/Archives/edgar/daily-index/{d.year}/QTR{(d.month + 2) // 3}/form.{day}.idx"
-    idx = common.fetch(url)
+    idx = common.fetch(url) if names is None or f"form.{day}.idx" in names else None
     if idx is None:  # holiday, or not published yet
         old = (today - d).days >= 3
         print(f"{day}: no daily index -> {'holiday' if old else 'not published yet, will retry'}")
@@ -165,8 +181,14 @@ def main():
     state = prune(load(path), today)
     days = a.days.split(",") if a.days else pick(state, today)
     print(f"scan {today}: {len(days)} day(s) {' '.join(days)}; state {path}")
+    failed = []
     for day in days:
-        status = scan_day(day, state, today)
+        try:
+            status = scan_day(day, state, today)
+        except Exception:  # e.g. SEC outage: this day is retried next run and must not block the later days
+            traceback.print_exc()
+            failed.append(day)
+            continue
         if status:
             state["days"][day] = status
         if not a.dry:
@@ -179,6 +201,8 @@ def main():
         if not a.dry:
             save(path, state)
     print(f"done: {n} issuer alert(s), {len(state['buys'])} purchase filings in state, {time.time() - t0:.0f}s")
+    if failed:  # keep the run red so a persistent problem is visible
+        sys.exit(f"days that failed and will be retried: {' '.join(failed)}")
 
 
 if __name__ == "__main__":
