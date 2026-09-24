@@ -50,7 +50,8 @@ def parse(text):
         sh = _num(_txt(tx, "transactionAmounts/transactionShares/value"))
         px = _num(_txt(tx, "transactionAmounts/transactionPricePerShare/value"))
         buys.append({"date": _txt(tx, "transactionDate/value")[:10], "shares": sh, "price": px,
-                     "value": sh * px if sh and px else None})
+                     "value": sh * px if sh and px else None,
+                     "indirect": _txt(tx, "ownershipNature/directOrIndirectOwnership/value") == "I"})
     cik = _txt(root, "issuer/issuerCik")
     return {"form": _txt(root, "documentType"), "issuer_cik": int(cik) if cik.isdigit() else 0,
             "issuer": _txt(root, "issuer/issuerName"), "symbol": _txt(root, "issuer/issuerTradingSymbol"),
@@ -64,14 +65,33 @@ def fetch(url):
 
 
 def summarize(doc):
-    """Aggregate a filing's purchase lines -> {shares, value, price (weighted), first, last} dates."""
+    """Aggregate a filing's purchase lines -> {shares, value, price (weighted), first, last, sig, indirect}."""
     b = doc["buys"]
     priced = [x for x in b if x["value"]]
     value = sum(x["value"] for x in priced)
     psh = sum(x["shares"] for x in priced)
     dates = sorted(x["date"] for x in b if x["date"])
     return {"shares": sum(x["shares"] or 0 for x in b), "value": value, "price": value / psh if psh else None,
-            "first": dates[0] if dates else "", "last": dates[-1] if dates else ""}
+            "first": dates[0] if dates else "", "last": dates[-1] if dates else "",
+            "sig": sorted(([x["date"], x["shares"], x["price"]] for x in b), key=repr),  # exact trades, for joint()
+            "indirect": any(x.get("indirect") for x in b)}
+
+
+def joint(entries, name="name"):
+    """One issuer's purchase filings with joint reports collapsed: a fund and the director who sits on the board
+    for it each file a Form 4 with the identical trades (held indirectly), which is one purchase, not two buyers
+    and double the dollars. Merged entries join the reporters' names; direct twins stay separate."""
+    out, by = [], {}
+    for e in entries:
+        k = repr(e.get("sig") or "")
+        m = by.get(k)
+        if m is not None and (m.get("indirect") or e.get("indirect")):
+            m[name] = f"{m[name]} / {e[name]}"
+            continue
+        out.append(dict(e))
+        if e.get("sig"):
+            by[k] = out[-1]
+    return out
 
 
 def insider(doc):

@@ -13,6 +13,7 @@ TX = ("<nonDerivativeTransaction><transactionDate><value>{d}</value></transactio
       "<transactionCode>{c}</transactionCode></transactionCoding><transactionAmounts><transactionShares><value>{s}"
       "</value></transactionShares><transactionPricePerShare><value>{p}</value></transactionPricePerShare>"
       "<transactionAcquiredDisposedCode><value>{a}</value></transactionAcquiredDisposedCode></transactionAmounts>"
+      "<ownershipNature><directOrIndirectOwnership><value>{o}</value></directOrIndirectOwnership></ownershipNature>"
       "</nonDerivativeTransaction>")
 F4 = ("<SEC-DOCUMENT><XML>\n<?xml version='1.0'?>\n<ownershipDocument><documentType>4</documentType><issuer>"
       "<issuerCik>0000012345</issuerCik><issuerName>Acme &amp; Co</issuerName><issuerTradingSymbol>ACME"
@@ -22,9 +23,9 @@ F4 = ("<SEC-DOCUMENT><XML>\n<?xml version='1.0'?>\n<ownershipDocument><documentT
       "</reportingOwner><reportingOwner><reportingOwnerId><rptOwnerCik>888</rptOwnerCik><rptOwnerName>Doe Trust"
       "</rptOwnerName></reportingOwnerId><reportingOwnerRelationship><isTenPercentOwner>1</isTenPercentOwner>"
       "</reportingOwnerRelationship></reportingOwner><nonDerivativeTable>"
-      + TX.format(d="2026-09-10", c="P", s="1000", p="10.00", a="A")
-      + TX.format(d="2026-09-11-05:00", c="P", s="500", p="12", a="A")
-      + TX.format(d="2026-09-12", c="S", s="700", p="13", a="D")
+      + TX.format(d="2026-09-10", c="P", s="1000", p="10.00", a="A", o="D")
+      + TX.format(d="2026-09-11-05:00", c="P", s="500", p="12", a="A", o="I")
+      + TX.format(d="2026-09-12", c="S", s="700", p="13", a="D", o="D")
       + "</nonDerivativeTable></ownershipDocument></XML></SEC-DOCUMENT>")
 
 
@@ -113,12 +114,21 @@ class Form4(unittest.TestCase):
         self.assertEqual((d["issuer_cik"], d["issuer"], d["symbol"]), (12345, "Acme & Co", "ACME"))
         self.assertEqual(d["owners"][0], {"cik": "777", "name": "Doe Jane", "role": "דירקטור, CEO", "od": True})
         self.assertEqual((d["owners"][1]["role"], d["owners"][1]["od"]), ("בעל 10%", False))
-        self.assertEqual([b["date"] for b in d["buys"]], ["2026-09-10", "2026-09-11"])  # the sale is excluded
+        self.assertEqual([(b["date"], b["indirect"]) for b in d["buys"]], [("2026-09-10", False), ("2026-09-11", True)])  # sale excluded
         s = form4.summarize(d)
         self.assertEqual((s["shares"], s["value"], s["first"], s["last"]), (1500, 16000, "2026-09-10", "2026-09-11"))
         self.assertAlmostEqual(s["price"], 16000 / 1500)
         self.assertEqual(form4.insider(d)["name"], "Doe Jane")
         self.assertIsNone(form4.parse("<html>no xml</html>"))
+        self.assertEqual((s["sig"], s["indirect"]), ([["2026-09-10", 1000.0, 10.0], ["2026-09-11", 500.0, 12.0]], True))
+
+    def test_joint_reports_count_once(self):  # ETRA 2026-09-21: OrbiMed and its director filed the same trades
+        fund = {"name": "OrbiMed", "sig": [["2026-09-21", 1e6, 15.0]], "indirect": True, "value": 15e6}
+        out = form4.joint([fund, dict(fund, name="Gordon")])
+        self.assertEqual([(x["name"], x["value"]) for x in out], [("OrbiMed / Gordon", 15e6)])
+        direct = dict(fund, indirect=False)
+        self.assertEqual(len(form4.joint([direct, dict(direct, name="Twin")])), 2)  # two direct buyers stay two
+        self.assertEqual(len(form4.joint([{"name": "a"}, {"name": "b"}])), 2)  # old state rows (no sig) never merge
 
 
 def facts(vals, flow, unit="USD", form="10-K"):
@@ -305,6 +315,18 @@ class Scan(unittest.TestCase):
             st["buys"].append(buy("a3", 1, "v", 1000))
             (text, marks), = scan.alerts(st, self.today)
             self.assertEqual((list(marks), text.count("🆕")), (["1"], 1))
+
+    def test_joint_report_is_not_a_cluster(self):
+        sig = [["2026-09-21", 1000000.0, 15.0]]
+        st = {"days": {}, "alerted": {}, "buys": [dict(buy("e1", 9, "fund", 15e6), sig=sig, indirect=True),
+                                                  dict(buy("e2", 9, "partner", 15e6), sig=sig, indirect=True)]}
+        with mock.patch.object(scan, "foreign", return_value=False):
+            (text, marks), = scan.alerts(st, self.today)
+        self.assertEqual(sorted(marks["9"]), ["e1", "e2"])  # both filings are marked as alerted
+        self.assertIn("רכישה גדולה", text)
+        self.assertNotIn("אשכול", text)  # one purchase, so no 2-insider cluster
+        self.assertIn("<code>15.0M$</code>", text)
+        self.assertNotIn("30.0M$", text)  # dollars counted once
 
     def test_listing_decides_holiday(self):  # SEC answers a missing index with 404, S3 403 or an HTML 503
         listing = {"directory": {"item": [{"name": "form.20260908.idx"}]}}

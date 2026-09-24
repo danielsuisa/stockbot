@@ -215,7 +215,8 @@ LABEL = {"roa": "תשואה על הנכסים חיובית", "cfo": "תזרים 
 FMT = {"pct": lambda a: f"{a * 100:.1f}%", "usd": money, "x": lambda a: f"{a:.2f}",
        "qty": lambda a: f"{a / 1e9:.3f}B" if a >= 1e9 else f"{a / 1e6:.2f}M"}
 ERR = {"nofacts": "אין נתוני XBRL של SEC לחברה זו (companyfacts לא פורסם).",
-       "nogaap": f"אין נתוני {code('us-gaap')} (ייתכן שהחברה מדווחת לפי IFRS בטופס {code('20-F')}/{code('40-F')}).",
+       "nogaap": f"אין עדיין נתוני {code('us-gaap')} מדוח שנתי (חברה חדשה בבורסה, או חברה זרה המדווחת לפי IFRS"
+                 f" בטופס {code('20-F')}/{code('40-F')}).",
        "no10k": f"לא נמצאו נתונים שנתיים מדוחות {code('10-K')} (ייתכן חברה זרה המגישה {code('20-F')})."}
 
 

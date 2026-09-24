@@ -102,7 +102,8 @@ def scan_day(day, state, today):
                      "insider": who["name"], "role": who["role"], "insider_cik": who["cik"], "od": who["od"],
                      "first": s["first"], "last": s["last"], "shares": s["shares"],
                      "value": round(s["value"], 2) if s["price"] else None,
-                     "price": round(s["price"], 4) if s["price"] else None, "filed": d.isoformat()}
+                     "price": round(s["price"], 4) if s["price"] else None, "filed": d.isoformat(),
+                     "sig": s["sig"], "indirect": s["indirect"]}
     state["buys"], errors = list(buys.values()), sum(x is False for x in docs)
     print(f"{day}: {len(rows)} Form-4 lines, {len(urls)} filings, {sum(bool(x) for x in docs)} parsed, {errors} errors, "
           f"{found} with purchases, {kept} of them listed issuers, {time.time() - t0:.0f}s")
@@ -142,10 +143,11 @@ def alerts(state, today):
         by[str(b["cik"])].append(b)
     blocks, hits, fpi, qualifying = [], {}, [], 0  # blocks: (text, {cik: accs})
     for cik, bs in sorted(by.items(), key=lambda kv: -sum(b["value"] or 0 for b in kv[1])):
-        od = [b for b in bs if b["od"]]
+        uniq = form4.joint(bs, "insider")  # a fund + its board member reporting one purchase count once
+        od = [b for b in uniq if b["od"]]
         people, od_total = {b["insider_cik"] or b["insider"] for b in od}, sum(b["value"] or 0 for b in od)
         cluster = len(people) >= MIN_INSIDERS and od_total >= MIN_CLUSTER_USD and (len(people), od_total)
-        big = max(b["value"] or 0 for b in bs)
+        big = max(b["value"] or 0 for b in uniq)
         big = big >= MIN_SINGLE_USD and big
         seen = set(state["alerted"].get(cik, []))
         qualifying += bool(cluster or big)
@@ -155,7 +157,7 @@ def alerts(state, today):
         if foreign(int(cik)):  # "$" and USD thresholds may be wrong (e.g. Bradesco reports BRL prices): name only
             fpi.append((code(bs[0]["ticker"]), cik))
         else:
-            blocks.append((block(bs, seen, cluster, big), {cik: hits[cik]}))
+            blocks.append((block(uniq, seen, cluster, big), {cik: hits[cik]}))
     if fpi:
         blocks.append((f"ℹ️ רכישות חדשות גם אצל מנפיקים זרים: {', '.join(t for t, _ in fpi)} — לא הוצגו, כי המחיר"
                        " בדיווח שלהם עשוי להיות במטבע מקומי ולא בדולר (אפשר לשלוח לי את הטיקר לדוח מלא).",

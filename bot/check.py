@@ -31,7 +31,7 @@ def insiders(cik, rows):
         out.append(f"נבדקו {code(MAX_FORM4)} מתוך {code(len(f4))} דיווחי Form 4 (האחרונים).")
     if not buys:
         return out + [f"לא נמצאו רכישות (קוד {code('P')}) ב־{code(len(urls))} דיווחי Form 4."]
-    buys.sort(key=lambda b: b["last"], reverse=True)
+    buys = sorted(form4.joint(buys), key=lambda b: b["last"], reverse=True)  # joint fund/director reports = 1
     out.append(f"סה״כ {code(len(buys))} דיווחי רכישה · {code(len({b['cik'] for b in buys}))} רוכשים"
                f" · {code(money(sum(b['value'] for b in buys)))}")
     for b in buys[:MAX_LINES]:
