@@ -7,7 +7,7 @@ import unittest
 from unittest import mock
 
 from bot import check, common, journal, market, scan
-from tests.test_reliability import row
+from test_reliability import row
 
 TODAY = dt.date(2026, 9, 24)
 SCORES = {"piotroski": "6/9", "altman": "Z 2.10", "beneish": -2.4}

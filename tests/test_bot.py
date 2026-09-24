@@ -444,7 +444,7 @@ class ScanCommands(unittest.TestCase):
     def test_status(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "state.json")
-            with mock.patch.dict(os.environ, {"STATE_FILE": path}):
+            with mock.patch.dict(os.environ, {"STATE_FILE": path}), mock.patch.object(scan, "published", return_value=None),                     mock.patch.object(common, "runs", return_value=None):
                 self.assertIn("עוד לא רצה", scan.status(self.today))
                 with open(path, "w", encoding="utf-8") as fh:
                     json.dump({"days": {"20260921": "ok", "20260922": "ok", "20260907": "holiday"},

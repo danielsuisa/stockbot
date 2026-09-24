@@ -1,9 +1,10 @@
-"""Telegram polling (Actions, every 10 min): /help /check /scan /status and free-text tickers -> Hebrew replies."""
+"""Telegram polling (Actions, every 10 min): /help /check /scan /status /stats /journal /verify /health and
+free-text tickers -> Hebrew replies."""
 import re
 import sys
 import traceback
 
-from bot import check, common, scan
+from bot import check, common, health, journal, scan
 from bot.common import code
 
 MAX = 3  # reports per message
@@ -13,7 +14,9 @@ TOKEN = re.compile(r"(?<![A-Za-z0-9$])(\$?)([A-Za-z]{1,5}(?:[.\-][A-Za-z])?)(?![
 STOP = set("A AI AM AN AND ARE AT BE BUY BY CAN CEO DO FOR GO HAS HI I IF IN IPO IS IT ME MY NEW NO NOW OF OK ON OR "
            "OUT SEC SO THE TO UP US VS WE YES YOU".split())
 COMMANDS = (("check", "דוח פורנזי לטיקר, למשל /check AAPL"), ("scan", "הרצת הסריקה היומית עכשיו"),
-            ("status", "מתי נסרק יום המסחר האחרון"), ("help", "רשימת הפקודות"))
+            ("status", "מצב הסריקה, דופק ושומר ימים חסרים"), ("stats", "תשואות ההתראות מול SPY"),
+            ("journal", "ההתראות האחרונות ביומן, למשל /journal 5"), ("verify", "אימות מחדש מול EDGAR, למשל /verify AAPL"),
+            ("health", "בדיקה חיה של המקורות והריצות"), ("help", "רשימת הפקודות"))
 HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, עם דולר, {code('$msft')}, או {code('/check msft')}"
         f" (עד {code(MAX)} בהודעה), או {code('/help')} לרשימת הפקודות.")
 HELP = "\n".join((
@@ -21,7 +24,11 @@ HELP = "\n".join((
     "הפקודות:",
     f"• דוח פורנזי לטיקר: {code('/check AAPL')} (עד {code(MAX)} טיקרים)",
     f"• הרצת הסריקה היומית עכשיו ושליחת ההתראות: {code('/scan')}",
-    f"• מתי נסרק יום המסחר האחרון ומה בזיכרון: {code('/status')}",
+    f"• מצב הסריקה, הדופק האחרון ושומר הימים החסרים: {code('/status')}",
+    f"• תשואות ההתראות מול {code('SPY')} (30/90/180 יום): {code('/stats')}",
+    f"• ההתראות האחרונות ביומן: {code('/journal 5')} (עד {code(20)})",
+    f"• אימות התראה מחדש מול EDGAR: {code('/verify AAPL')}",
+    f"• בדיקה חיה של SEC, Yahoo, טלגרם והריצות המתוזמנות: {code('/health')}",
     f"• רשימת הפקודות: {code('/help')}",
     f"אפשר גם לכתוב טיקר באותיות גדולות, {code('AAPL')}, או עם דולר, {code('$tsla')}.",
     "📊 הדוח כולל ציון פיוטרוסקי, אלטמן Z, בנייש M, רכישות בעלי עניין ושינויים בגורמי הסיכון בדוח השנתי.",
@@ -98,6 +105,24 @@ def handle(text):
         return run_scan()
     if cmd == "status":
         common.send(scan.status())
+        return 0
+    if cmd == "stats":
+        common.send(journal.stats_text(journal.load()))
+        return 0
+    if cmd == "journal":
+        n = int(rest.split()[0]) if rest.split() and rest.split()[0].isdigit() else 5
+        common.send(journal.journal_text(journal.load(), n))
+        return 0
+    if cmd == "verify":
+        known, unknown = extract(rest, loose=True)
+        if not known:
+            common.send(f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}." if unknown else
+                        f"כתבו טיקר אחרי הפקודה, למשל {code('/verify AAPL')}.")
+            return 0
+        common.send(scan.verify(known[0]), signal=True)
+        return 0
+    if cmd == "health":
+        common.send(health.report())
         return 0
     common.send(HELP)  # /help, /start and any unknown command
     common.tg("setMyCommands", commands=[{"command": c, "description": d} for c, d in COMMANDS])  # Telegram's "/" menu

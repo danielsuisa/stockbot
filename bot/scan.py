@@ -31,6 +31,7 @@ DEFAULTS = {"days": {}, "buys": [], "alerted": {}, "info": [], "regime": None, "
             "removed": {},  # original accession -> the 4/A that withdrew its purchases
             "heartbeat": None}
 RESCAN = 3  # previous trading days re-read every run for late filings and 4/A amendments
+LEGACY = 5  # days per run re-read to upgrade rows saved before schema 2 (no trade signature -> joint filings unmerged)
 INDICES = ("SPY", "IWM", "%5EVIX")
 
 
@@ -111,7 +112,39 @@ def status(today=None):
         f"דיווחי רכישה בזיכרון: {code(len(st['buys']))} · חברות שכבר קיבלו התראה: {code(len(st['alerted']))}",
         f"כללי התראה: לפחות {code(MIN_INSIDERS)} נושאי משרה שונים שרכשו בשוק הפתוח יחד {code(money(MIN_CLUSTER_USD))},"
         f" או רכישה בודדת של {code(money(MIN_SINGLE_USD))} (בלי תוכניות {code('10b5-1')})",
+        heartbeat_line(st.get("heartbeat")), watchdog_line(st, today),
         f"סריקה אוטומטית בימים ג׳–ש׳ ב־{code('05:30 UTC')}; הפקודה {code('/scan')} מריצה אותה עכשיו."))
+
+
+def heartbeat_line(hb):
+    """/status and /health: what the last scan run reported (state["heartbeat"])."""
+    if not hb:
+        return "💓 דופק: עוד אין נתונים מריצה של הגרסה הנוכחית."
+    failed = f" · ימים שנכשלו: {', '.join(code(_iso(d)) for d in hb['failed'])}" if hb.get("failed") else ""
+    return (f"💓 ריצה אחרונה: {code(hb.get('at', '—'))} · {'תקינה ✅' if hb.get('ok') else 'נכשלה ❌'} · "
+            f"{code(hb.get('filings', 0))} הגשות · {code(hb.get('errors', 0))} שגיאות · "
+            f"{code(hb.get('alerts', 0))} התראות{failed}")
+
+
+def missed(st, today):
+    """The watchdog's test -> (previous trading day, last scanned day, trading days after it never scanned)."""
+    prev = previous_trading_day(today)
+    last = max((d for d, v in st["days"].items() if v == "ok"), default="")
+    return prev, last, [d for d in weekdays(today) if last < d <= (prev or "") and d not in st["days"]]
+
+
+def watchdog_line(st, today):
+    """/status and /health: the missed-day watchdog's view now, plus its last scheduled run when GitHub answers."""
+    prev, _, gap = missed(st, today)
+    if gap:
+        head = (f"🐕 שומר ימים חסרים: ⚠ עוד לא נסרקו {', '.join(code(_iso(d)) for d in gap)}"
+                f" (הסריקה ב־{code('05:30 UTC')} והשומר ב־{code('14:00 UTC')} משלימים ימים חסרים)")
+    else:
+        head = f"🐕 שומר ימים חסרים: תקין, יום המסחר הקודם {code(_iso(prev)) if prev else 'לא ידוע'} נסרק"
+    r = common.runs("watchdog.yml")
+    if r:
+        head += f" · ריצה אחרונה {code(r['created_at'][:16].replace('T', ' '))} {code(r['conclusion'] or r['status'])}"
+    return head
 
 
 def _get(url):
@@ -248,7 +281,8 @@ def scan_day(day, state, today, stats=None, rescan=False):
         if row:
             found += 1
             kept += 1
-            buys[acc] = row
+            if not buys.get(acc, {}).get("amended_by"):  # re-reading an original never undoes its 4/A
+                buys[acc] = row
     state["buys"], state["info"], errors = list(buys.values()), list(info.values()), sum(x is False for x in docs)
     ok = [a for a, x in zip(urls, docs) if x is not False]
     state["seen"][day] = sorted(set(state["seen"].get(day, [])) | set(ok))
@@ -541,6 +575,71 @@ def alarm_step(reason):
     alarm(esc(reason) + (f' (<a href="{esc(link)}">הריצה ב־GitHub</a>)' if link else ""))
 
 
+MAX_VERIFY = 80  # Form 4s re-downloaded by /verify (newest first)
+
+
+def verify(ticker, today=None):
+    """/verify TICKER: re-download the issuer's Form 4 / 4/A filings of the window straight from EDGAR, rebuild the
+    purchase rows independently of the scan, score them, and compare with what the scan's state holds."""
+    today = today or dt.datetime.now(dt.timezone.utc).date()
+    t = ticker.strip().upper().lstrip("$").replace(".", "-")
+    hit = common.tickers().get(t)
+    if not hit:
+        return f"לא מצאתי את הטיקר {code(t)} ברשימת החברות של SEC."
+    cik, name = hit
+    since, until = (today - dt.timedelta(WINDOW_DAYS)).isoformat(), today.isoformat()
+    f4 = [f for f in common.filings(common.submissions(cik) or {"filings": {"recent": {}}})
+          if f["form"] in ("4", "4/A") and f["filingDate"] >= since][:MAX_VERIFY]
+    urls = [common.doc_url(cik, f["accessionNumber"], f["primaryDocument"].rsplit("/", 1)[-1]) for f in f4]
+    with ThreadPoolExecutor(4) as pool:
+        docs = list(pool.map(_get, urls))
+    buys = {}
+    for f, doc in sorted(zip(f4, docs), key=lambda x: (x[0]["filingDate"], x[0]["accessionNumber"])):
+        if not doc or doc["issuer_cik"] != cik:  # the issuer's CIK can also appear as a reporting owner
+            continue
+        own = [b for b in doc["buys"] if since <= b["date"] <= until]
+        row = make_row(f["accessionNumber"], doc, own, t, f["filingDate"]) if own else None
+        if doc["form"] == "4/A" and amend(buys, f["accessionNumber"], doc, row):
+            continue
+        if row:
+            buys[row["acc"]] = row
+    st = load(Path(common.env("STATE_FILE", str(common.DATA / "state.json"))))
+    errors = sum(d is False for d in docs)
+    out = [f"🔎 <b>אימות מחדש מול EDGAR</b> · {code(t)} · {esc(name)}",
+           f"הורדו עכשיו {code(len(f4))} דיווחי {code('Form 4')} מ־{code(WINDOW_DAYS)} הימים האחרונים"
+           + (f" ({code(errors)} נכשלו)" if errors else "") + "."]
+    if not buys:
+        return "\n".join(out + ["לא נמצאו רכישות של בעלי עניין בחלון הזה."])
+    ev = evaluate(list(buys.values()), st.get("regime"))
+    kind = " + ".join(x for x, on in (("אשכול רכישות", ev["cluster"]), ("רכישה גדולה", ev["big"])) if on)
+    op = ev["open"]
+    out += [f"תוצאה: {'<b>' + kind + '</b>' if kind else 'לא עומד בכללי ההתראה'} · איכות {code(str(ev['score']) + '/100')}",
+            f"בשוק הפתוח: {code(len(op))} דיווחי רכישה · {code(len({b['insider_cik'] or b['insider'] for b in op}))}"
+            f" רוכשים · {code(money(sum(b['value'] or 0 for b in op)))}"
+            + (f" · {code(len(ev['plan']))} בתוכנית {code('10b5-1')} (לא נספרו)" if ev["plan"] else "")]
+    seen, urls_ = set(st["alerted"].get(str(cik), [])), links(cik)
+    for b in sorted(op + ev["plan"], key=lambda b: b["value"] or 0, reverse=True)[:MAX_LINES]:
+        out.append(row_line(b, seen, urls_))
+    # both sides deduplicated the same way (joint filings = one purchase), then compared by accession and total
+    mine = [b for b in st["buys"] if str(b["cik"]) == str(cik)]
+    old = evaluate(mine, st.get("regime"))["open"] if mine else []
+    accs = lambda rows: {a for b in rows for a in [b["acc"], *b.get("joint_accs", [])]}
+    total = lambda rows: sum(b["value"] or 0 for b in rows)
+    only_new, only_old = accs(op) - accs(old), accs(old) - accs(op)
+    if not old:
+        out.append("השוואה לסריקה: אין לה רכישות בשוק הפתוח של החברה בזיכרון"
+                   + (" (הדיווחים חדשים מדי, או שהסריקה עוד לא הגיעה ליום שלהם)." if op else "."))
+    elif not (only_new or only_old) and abs(total(op) - total(old)) <= 1:
+        out.append(f"השוואה לסריקה: ✅ תואם ({code(len(old))} דיווחים, {code(money(total(old)))})")
+    else:
+        out.append("השוואה לסריקה: ⚠ יש הבדלים"
+                   + (f" · חדשים שהסריקה עוד לא ראתה: {code(len(only_new))}" if only_new else "")
+                   + (f" · רק בזיכרון הסריקה: {code(len(only_old))}" if only_old else "")
+                   + f" · סכום עכשיו {code(money(total(op)))} מול {code(money(total(old)))} בסריקה")
+    out.append(f"התראה נשלחה על החברה: {'כן' if seen else 'לא'}")
+    return "\n".join(out)
+
+
 def previous_trading_day(today):
     """The latest weekday before today whose daily index SEC lists (holidays are skipped); None if unknown."""
     for i in range(1, 8):
@@ -557,15 +656,13 @@ def watchdog(today=None):
     trading day, say so and retry the scan (dispatch the daily-scan workflow on Actions, run it here locally)."""
     today = today or dt.datetime.now(dt.timezone.utc).date()
     st = load(Path(common.env("STATE_FILE", str(common.DATA / "state.json"))))
-    prev = previous_trading_day(today)
-    last = max((d for d, v in st["days"].items() if v == "ok"), default="")
-    missed = [d for d in weekdays(today) if last < d <= (prev or "") and d not in st["days"]]
-    common.log("watchdog", previous_trading_day=prev, last_scanned=last, missed=missed)
+    prev, last, gap = missed(st, today)
+    common.log("watchdog", previous_trading_day=prev, last_scanned=last, missed=gap)
     common.summary(f"### Watchdog {today}\n- previous trading day: {prev}\n- last scanned: {last or '-'}\n"
-                   f"- missed: {', '.join(missed) or 'none'}")
-    if not missed:
+                   f"- missed: {', '.join(gap) or 'none'}")
+    if not gap:
         return print(f"watchdog: ok (last scanned {last}, previous trading day {prev})")
-    common.send(f"⚠️ לא סרקתי את {', '.join(code(_iso(d)) for d in missed)} — מריץ את הסריקה שוב.")
+    common.send(f"⚠️ לא סרקתי את {', '.join(code(_iso(d)) for d in gap)} — מריץ את הסריקה שוב.")
     if common.env("GITHUB_ACTIONS"):
         err = common.dispatch("daily-scan.yml", {"notify": "true"})
         if err:
@@ -583,8 +680,10 @@ def run(a):
     state = prune(load(path), today)
     market.CACHE.update(state["prices"])
     days = a.days.split(",") if a.days else pick(state, today)
-    rescans = [] if a.days else [d for d in sorted(d for d, v in state["days"].items() if v == "ok")[-RESCAN:]
-                                 if d not in days]
+    ok = sorted(d for d, v in state["days"].items() if v == "ok")
+    rescans = [] if a.days else [d for d in ok[-RESCAN:] if d not in days]
+    legacy = sorted({b["filed"].replace("-", "") for b in state["buys"] if "sig" not in b} & set(ok) - set(days + rescans))
+    rescans += [] if a.days else legacy[-LEGACY:]  # one-time upgrade, newest first, a few days per run
     print(f"scan {today}: {len(days)} day(s) {' '.join(days)}; rescan {' '.join(rescans) or '-'}; state {path}")
     stats, failed = {"days": []}, []
     for day in days + rescans:
@@ -597,6 +696,10 @@ def run(a):
             continue
         if res and day not in rescans:
             state["days"][day] = res
+        if res == "ok" and day in legacy:  # re-read: rows it did not rebuild are marked, never re-read forever
+            for b in state["buys"]:
+                if "sig" not in b and b["filed"].replace("-", "") == day:
+                    b["sig"], b["indirect"] = None, False
         if not a.dry:
             save(path, prune(state, today))  # after every day: crash-safe
     state["regime"] = market.regime()
