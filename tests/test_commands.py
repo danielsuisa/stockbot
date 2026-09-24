@@ -126,7 +126,7 @@ class Health(unittest.TestCase):
                 mock.patch.object(market, "chart", return_value={"meta": {"regularMarketPrice": 612.5}}), \
                 mock.patch.object(common, "tg", return_value={"username": "Danielsuibot"}), \
                 mock.patch.object(scan, "published", return_value=None), \
-                mock.patch.object(common, "runs", side_effect=lambda wf: runs.get(wf)):
+                mock.patch.object(common, "runs", side_effect=lambda wf, **k: runs.get(wf)):
             text = health.report(TODAY)
             os.environ["STATE_FILE"] = os.path.join(tmp, "missing.json")
             with mock.patch.object(market, "chart", return_value=None):

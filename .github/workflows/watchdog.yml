@@ -32,3 +32,17 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           WINDOW_DAYS: ${{ vars.WINDOW_DAYS }}
           GITHUB_TOKEN: ${{ github.token }}  # for the retry dispatch; scoped by the permissions above
+          HEARTBEAT_FILE: ${{ runner.temp }}/watchdog-reported  # written when the watchdog already told the owner
+      - name: Report a watchdog failure it could not report itself
+        if: failure() || cancelled()  # plain curl: works even when the bot's own code cannot start
+        run: |
+          [ -f "$HEARTBEAT_FILE" ] && exit 0
+          text="$(printf '❌ שומר הימים החסרים נכשל: %s\n\n%s' "$RUN_URL" "$DISCLAIMER")"
+          curl -fsS --retry 3 -o /dev/null "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" --data-urlencode "text=${text}"
+        env:
+          DISCLAIMER: "⚠️ מידע לצורכי מחקר בלבד ואינו ייעוץ השקעות. מקור הנתונים: SEC EDGAR."
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          HEARTBEAT_FILE: ${{ runner.temp }}/watchdog-reported
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -267,10 +267,11 @@ class Watchdog(unittest.TestCase):
         sent, d, m, _ = self.run_wd({"20260922": "ok"}, ["form.20260922.idx", "form.20260923.idx"], {"GITHUB_ACTIONS": "true"})
         d.assert_called_once_with("daily-scan.yml", {"notify": "true"})
         m.assert_not_called()
+        self.assertEqual(sent, ["⚠️ לא סרקתי את <code>2026-09-23</code> — הפעלתי את הסריקה שוב; הדופק שלה יגיע בסיומה."])
         sent, d, m, code = self.run_wd({"20260922": "ok"}, ["form.20260922.idx", "form.20260923.idx"],
                                        {"GITHUB_ACTIONS": "true"}, dispatch="HTTP 403")
         self.assertTrue(code and "HTTP 403" in sent[-1] and "actions: write" in sent[-1])
-        self.assertEqual([common.rtl_bad_lines(s) for s in sent], [[], []])
+        self.assertEqual([common.rtl_bad_lines(s) for s in sent], [[]])  # dispatch first, then one honest message
 
 
 class Links(unittest.TestCase):
@@ -318,7 +319,9 @@ class Prices(unittest.TestCase):
                 mock.patch.object(common, "cik_tickers", return_value={1: "ACME"}), \
                 mock.patch.object(market, "quote", return_value=cached):
             text = "\n".join(fundamentals.format_he(fundamentals.analyze(1, "ACME", 3571)))
-        self.assertIn("(⚠ מחיר מ־<code>2026-09-23 20:00</code>)", text)
+        # a saved price never feeds market value (splits since then are unknown): book-equity Z'' and the reason
+        self.assertIn("המחיר השמור מ־<code>2026-09-23 20:00</code> לא משמש לשווי שוק", text)
+        self.assertIn("<b>אלטמן <code>Z''</code>", text)
         self.assertEqual(common.rtl_bad_lines(text), [])
         with mock.patch.object(market, "chart", return_value={"meta": {"currency": "CAD", "regularMarketPrice": 9.0}}):
             market.CACHE["ACME"] = {"price": 7.0, "asof": "x"}

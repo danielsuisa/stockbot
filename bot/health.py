@@ -33,9 +33,18 @@ def _json(url):
 
 def _index():
     d = dt.datetime.now(dt.timezone.utc).date()
-    names = _json(f"https://www.sec.gov/Archives/edgar/daily-index/{d.year}/QTR{(d.month + 2) // 3}/index.json")
-    days = sorted(i["name"][5:13] for i in names["directory"]["item"] if i["name"].startswith("form."))
-    return f"האינדקס האחרון {code(scan._iso(days[-1]))}" if days else "אין עדיין אינדקס ברבעון"
+    last = d.replace(day=1) - dt.timedelta(days=1 + 31 * ((d.month - 1) % 3))  # a day in the previous quarter
+    err = RuntimeError("no daily index this quarter or last")
+    for y, q in ((d.year, (d.month + 2) // 3), (last.year, (last.month + 2) // 3)):  # new quarter: not listed yet
+        try:  # (SEC answers a missing listing with 404 or even an HTML 503)
+            names = _json(f"https://www.sec.gov/Archives/edgar/daily-index/{y}/QTR{q}/index.json")
+        except Exception as e:
+            err = e
+            continue
+        days = sorted(i["name"][5:13] for i in names["directory"]["item"] if i["name"].startswith("form."))
+        if days:
+            return f"האינדקס האחרון {code(scan._iso(days[-1]))}"
+    raise err
 
 
 def _data():
@@ -44,7 +53,7 @@ def _data():
 
 
 def _efts():
-    d = scan.previous_trading_day(dt.datetime.now(dt.timezone.utc).date()) or ""
+    d = scan.previous_trading_day(dt.datetime.now(dt.timezone.utc).date(), quick=True) or ""
     day = scan._iso(d) if d else dt.date.today().isoformat()
     j = _json(f"https://efts.sec.gov/LATEST/search-index?forms=4&dateRange=custom&startdt={day}&enddt={day}")
     return f"{code((j['hits']['total'] or {}).get('value', 0))} דיווחי {code('Form 4')} ב־{code(day)}"
@@ -62,7 +71,7 @@ def _telegram():
 
 
 def _run_line(wf, label):
-    r = common.runs(wf)
+    r = common.runs(wf, completed=True)  # the listener's own run is always in progress: show the last finished one
     if not r:
         return f"• {label}: אין מידע (אין גישה ל־{code('GitHub API')})"
     mark = {"success": "✅", "failure": "❌", "cancelled": "⚪", None: "⏳"}.get(r["conclusion"], "⚠")

@@ -312,10 +312,14 @@ def analyze(cik, ticker, sic):
         alt["why"] = "noncommon"
     else:
         alt["price"], alt["split"] = quote(alt["px"], last["end"])
-        if QUOTED.get(alt["px"], {}).get("source") == "cache":  # Yahoo down: last known price, and the report says so
-            alt["price_asof"] = QUOTED[alt["px"]]["asof"]
-        alt["shares"] *= alt["split"]  # a split after the cover-page date (BYND 1:30) must not scale MVE 30x
-        alt["why"] = None if alt["price"] else "noprice"
+        src = QUOTED.get(alt["px"], {})
+        if src.get("source") == "cache":  # Yahoo down: a saved price, but splits since the cover date are unknown
+            alt.update(price=None, split=1, why="cached", price_asof=src["asof"])
+        else:
+            if src.get("source") == "stale":  # Yahoo's last trade is old (halted / not trading): shown with its date
+                alt["price_asof"] = src["asof"]
+            alt["shares"] *= alt["split"]  # a split after the cover-page date (BYND 1:30) must not scale MVE 30x
+            alt["why"] = None if alt["price"] else "noprice"
     alt["kind"] = "Z" if alt["price"] else "Z''"
     keys = _alt_keys(alt["price"])
     zq = q and _altman(_getter(q["v"]), q["need"], alt["price"], alt.get("shares"))
@@ -463,6 +467,8 @@ def format_he(res):
             why = {"stale": f"מספר המניות בעמוד השער ישן ({code(a.get('shares_date'))})",
                    "noncommon": f"לחברה אין מניה רגילה ברשימת SEC ({code(a['px'])})",
                    "noprice": "מחיר המניה מ־Yahoo לא זמין",
+                   "cached": f"מחיר חי מ־Yahoo לא זמין (המחיר השמור מ־{code(a.get('price_asof'))} לא משמש לשווי שוק,"
+                             " כי לא ניתן לבדוק אם היה פיצול מניות מאז)",
                    "noshares": f"מספר המניות בעמוד השער חסר ({code('dei:' + SHARES)})"}[a["why"]]
             out.append(f"⚠️ {why} – לכן חושב {code(a['kind'])} על בסיס הון עצמי בספרים במקום שווי שוק · {ebit}")
     if "m" in b:

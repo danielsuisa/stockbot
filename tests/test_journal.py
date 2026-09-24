@@ -132,13 +132,16 @@ class Market(unittest.TestCase):
         with mock.patch.object(market, "chart", return_value=chart(closes)):
             bars = market.history("ACME")
             self.assertEqual(len(bars), 89)  # the null bar is dropped
-            self.assertAlmostEqual(market.liquidity("ACME"), 20.0 * 100_000)  # the last 30 days only
+            # the last 30 days only; the session without a trade counts as $0 (29 of 30 sessions traded)
+            self.assertAlmostEqual(market.liquidity("ACME"), 20.0 * 100_000 * 29 / 30)
             self.assertEqual(market.close_on("ACME", dt.date(2026, 6, 1)), (dt.date(2026, 6, 1), 10.0))
         with mock.patch.object(market, "chart", return_value=None):
             self.assertEqual((market.history("ACME"), market.liquidity("ACME"), market.close_on("ACME", TODAY)),
                              ([], None, None))
         with mock.patch.object(market, "chart", return_value=chart([5.0], volume=0)):
-            self.assertIsNone(market.liquidity("ACME"))  # no traded volume -> unknown, not $0
+            self.assertEqual(market.liquidity("ACME"), 0.0)  # priced but never traded: $0/day (flagged low)
+        with mock.patch.object(market, "chart", return_value=chart([None, None])):
+            self.assertIsNone(market.liquidity("ACME"))  # no prices at all: unknown, not $0
         with mock.patch.object(market, "chart", return_value=chart([None, 7.0])):
             self.assertEqual(market.close_on("ACME", dt.date(2026, 6, 1))[1], 7.0)  # first session with a close
 
@@ -280,6 +283,30 @@ class SchemaCompat(unittest.TestCase):
             self.assertEqual(j["v"], journal.SCHEMA)
             journal.stats_text(j)
             journal.journal_text(j)
+
+    def test_committed_state_still_works(self):
+        """The data/state.json in the repo (written by the version in production) loads, scores and reports under
+        this code - read-only: the file is never rewritten by the test."""
+        p = common.DATA / "state.json"
+        if not p.exists():
+            self.skipTest("no committed state")
+        before = p.read_bytes()
+        st = scan.prune(scan.load(p), TODAY)
+        self.assertTrue(all(k in st for k in scan.DEFAULTS))
+        self.assertTrue(all({"kind", "weight", "plan_value"} <= set(b) for b in st["buys"]))
+        with mock.patch.object(scan, "pay", return_value={}), mock.patch.object(scan, "foreign", return_value=False), \
+                mock.patch.object(scan, "links", return_value={}), mock.patch.object(scan, "published", return_value=None), \
+                mock.patch.object(common, "runs", return_value=None), \
+                mock.patch.object(scan, "enrich", return_value=([], {"sic": None, "quote": {}, "liquidity": None,
+                                                                    "scores": journal.scores_of(None), "company": None})), \
+                mock.patch.dict(os.environ, {"STATE_FILE": str(p)}):
+            for cik, bs in scan._by_cik(st).items():
+                ev = scan.evaluate(bs, st.get("regime"))
+                self.assertTrue(0 <= ev["score"] <= 100, cik)
+            for text, *_ in scan.alerts(st, TODAY, {"alerts": []}):
+                self.assertEqual(common.rtl_bad_lines(text), [])
+            self.assertEqual(common.rtl_bad_lines(scan.status(TODAY)), [])
+        self.assertEqual(p.read_bytes(), before)
 
 
 if __name__ == "__main__":

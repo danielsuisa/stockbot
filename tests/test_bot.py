@@ -407,7 +407,7 @@ class Scan(unittest.TestCase):
             return "ok"
         with mock.patch.dict(os.environ, {"STATE_FILE": os.path.join(os.devnull, "none.json")}), \
                 mock.patch.object(scan, "scan_day", side_effect=fake), mock.patch.object(scan, "alerts", return_value=[]), \
-                mock.patch.object(market, "regime", return_value={"tag": "normal"}), \
+                mock.patch.object(market, "regime", return_value={"tag": "normal"}), mock.patch.object(common, "send"), \
                 mock.patch("sys.argv", ["scan", "--days", "20260907,20260908", "--dry"]), \
                 mock.patch("traceback.print_exc"), self.assertRaises(SystemExit) as e:
             scan.main()

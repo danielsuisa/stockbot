@@ -138,7 +138,7 @@ class Clusters(unittest.TestCase):
             self.assertIsNone(scan.amend({}, "a", gone, None))  # original not in the window -> treated as new
 
     def test_block_shows_quality_plan_info_and_regime(self):
-        rs = [row("a", "x", 60000, weight=1.5), row("b", "y", 50000), row("c", "z", 40000, weight=0.7),
+        rs = [row("a", "x", 60000, weight=1.5, role="Chief Executive Officer"), row("b", "y", 50000), row("c", "z", 40000, weight=0.7),
               row("d", "w", 9000, kind="plan")]
         ev = scan.evaluate(rs, {"tag": "normal", "spy20": 0.01, "iwm20": 0.02, "vix": 16.0, "vol_source": "VIX"})
         info = [{"acc": "i", "cik": 1, "last": "2026-09-20", "kinds": {"exercise": 2, "grant": 1}}]
@@ -205,7 +205,8 @@ class Pay(unittest.TestCase):
             self.assertEqual(scan.pay(1), {"peo": 12e6, "neo": 3e6, "end": "2025-12-31"})  # latest, company-wide only
             ceo = row("a", "x", 1.2e6, weight=1.5, role="דירקטור, Chief Executive Officer")
             self.assertAlmostEqual(scan.pay_ratio(ceo), 0.1)
-            self.assertAlmostEqual(scan.pay_ratio(row("b", "y", 3e5, weight=1.0, role="SVP")), 0.1)
+            self.assertIsNone(scan.pay_ratio(row("b", "y", 3e5, weight=1.0, role="SVP")))  # the NEO average is not their pay
+            self.assertIsNone(scan.pay_ratio(row("d", "c", 3e5, weight=1.5, role="דירקטור, Chairman")))  # director fees
             self.assertIsNone(scan.pay_ratio(row("c", "z", 3e5, weight=0.7)))  # directors: holdings ratio only
 
     def test_budget_and_missing_proxy(self):

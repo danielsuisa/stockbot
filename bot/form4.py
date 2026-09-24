@@ -9,6 +9,7 @@ _DOC = re.compile(r"<ownershipDocument[\s>].*?</ownershipDocument>", re.S)
 KINDS = {"M": "exercise", "X": "exercise", "C": "exercise", "A": "grant"}  # other acquisition codes -> "other"
 TOP = re.compile(r"(?i)\b(?:ceo|cfo|chief\s+(?:executive|financial)|principal\s+(?:executive|financial)|chair(?:man|woman|person)?)\b")
 PLAN = re.compile(r"(?i)10b5-?1")
+NOT_PLAN = re.compile(r"(?i)\bnot\b[^.;]{0,80}10b5-?1")  # "not made pursuant to a Rule 10b5-1 plan" denies it
 SYMBOLIC_PCT, SYMBOLIC_USD = 0.05, 100_000
 
 
@@ -40,6 +41,7 @@ def _line(tx):
     return {"date": _txt(tx, "transactionDate/value")[:10], "shares": sh, "price": px,
             "value": sh * px if sh and px else None,
             "indirect": _txt(tx, "ownershipNature/directOrIndirectOwnership/value") == "I",
+            "nature": _txt(tx, "ownershipNature/natureOfOwnership/value"),
             "post": _num(_txt(tx, "postTransactionAmounts/sharesOwnedFollowingTransaction/value"))}
 
 
@@ -60,7 +62,8 @@ def parse(text):
         name = _txt(ro, "reportingOwnerId/rptOwnerName")
         owners.append({"cik": _txt(ro, "reportingOwnerId/rptOwnerCik").lstrip("0"),
                        "name": name.title() if name.isupper() else name, "role": role, "od": od, "weight": weight})
-    plan_notes = {f.get("id") for f in root.iter("footnote") if PLAN.search("".join(f.itertext()))}
+    notes = {f.get("id"): "".join(f.itertext()) for f in root.iter("footnote")}
+    plan_notes = {k for k, v in notes.items() if PLAN.search(v) and not NOT_PLAN.search(v)}
     box = _txt(root, "aff10b5One").lower() in ("1", "true")
     buys, acq = [], []
     for table, derivative in (("nonDerivativeTransaction", False), ("derivativeTransaction", True)):
@@ -77,6 +80,7 @@ def parse(text):
     return {"form": _txt(root, "documentType"), "issuer_cik": int(cik) if cik.isdigit() else 0,
             "issuer": _txt(root, "issuer/issuerName"), "symbol": _txt(root, "issuer/issuerTradingSymbol"),
             "owners": owners, "buys": buys, "acq": acq, "plan_box": box,
+            "nd_dates": sorted({_txt(t, "transactionDate/value")[:10] for t in root.iter("nonDerivativeTransaction")}),
             "original": _txt(root, "dateOfOriginalSubmission")[:10]}
 
 
@@ -98,7 +102,10 @@ def summarize(doc):
     psh = sum(x["shares"] for x in priced)
     shares = sum(x["shares"] or 0 for x in use)
     dates = sorted(x["date"] for x in use if x["date"])
-    post = next((x["post"] for x in reversed(use) if x.get("post")), None)
+    last = {}  # holdings after the filing = the last line's balance in each ownership form it touches, summed
+    for x in use:
+        last[(x.get("indirect"), x.get("nature") or "")] = x.get("post")
+    post = sum(last.values()) if last and all(last.values()) else None
     return {"shares": shares, "value": value, "price": value / psh if psh else None,
             "first": dates[0] if dates else "", "last": dates[-1] if dates else "",
             "sig": sorted(([x["date"], x["shares"], x["price"]] for x in b), key=repr),
@@ -115,14 +122,21 @@ def symbolic(r):
 def joint(entries, name="name"):
     """One issuer's purchase filings with joint reports collapsed: a fund and the director who sits on the board
     for it each file a Form 4 with the identical trades (held indirectly), which is one purchase, not two buyers
-    and double the dollars. Merged entries join the reporters' names; direct twins stay separate."""
+    and double the dollars. Merged entries join the reporters' names and take the most senior reporter's identity
+    (order-independent); if either twin flags the trades as 10b5-1, the merged purchase is a plan purchase. Direct
+    twins stay separate."""
     out, by = [], {}
+    ident = ("od", "weight", "role", "insider_cik") + (("cik",) if name == "name" else ())  # scan rows: cik = issuer
     for e in entries:
         k = repr(e.get("sig") or "")
         m = by.get(k)
         if m is not None and (m.get("indirect") or e.get("indirect")):
             m[name] = f"{m[name]} / {e[name]}"
             m.setdefault("joint_accs", []).append(e.get("acc"))
+            if (bool(e.get("od")), e.get("weight") or 0) > (bool(m.get("od")), m.get("weight") or 0):
+                m.update({x: e[x] for x in ident if x in e})
+            if "plan" in (m.get("kind"), e.get("kind")):
+                m["kind"] = "plan"
             continue
         out.append(dict(e))
         if e.get("sig"):

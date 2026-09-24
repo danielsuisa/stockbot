@@ -214,6 +214,7 @@ Accept: application/vnd.github+json
 | <code dir="ltr">.github/workflows/check.yml</code> | דוח לטיקר אחד, מקיצור הדרך (`Check ticker`) |
 | <code dir="ltr">.github/workflows/telegram-listen.yml</code> | בדיקת הודעות בטלגרם כל 10 דקות (`Telegram listener`) |
 | <code dir="ltr">.github/workflows/watchdog.yml</code> | שומר ימים חסרים (`Missed-day watchdog`) |
+| <code dir="ltr">.github/workflows/tests.yml</code> | הבדיקות האופליין על Python 3.11 ו־3.12 בכל עדכון קוד (`Tests`) |
 | `bot/common.py` | תשתית: פניות ל־SEC, טלגרם, רשימת הטיקרים ועיצוב עברית |
 | `bot/form4.py` | פענוח דיווחי בעלי עניין (טופס 4) וסיווג הרכישות |
 | `bot/scan.py` | הסריקה היומית, זיהוי אשכולות, ציון איכות, תיקונים, <code dir="ltr">/status</code> ו־<code dir="ltr">/verify</code> |

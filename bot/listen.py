@@ -110,7 +110,8 @@ def handle(text):
         common.send(journal.stats_text(journal.load()))
         return 0
     if cmd == "journal":
-        n = int(rest.split()[0]) if rest.split() and rest.split()[0].isdigit() else 5
+        arg = rest.split()[0] if rest.split() else ""
+        n = int(arg) if re.fullmatch(r"[0-9]{1,3}", arg) else 5  # ASCII only: "²".isdigit() is True, int() fails
         common.send(journal.journal_text(journal.load(), n))
         return 0
     if cmd == "verify":

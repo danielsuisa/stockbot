@@ -36,6 +36,7 @@ jobs:
           python-version: "3.12"
       - name: Scan EDGAR Form 4 filings (or the weekly journal follow-up)
         id: scan
+        timeout-minutes: 100  # a step timeout FAILS the step (the alarm runs); a job timeout would only cancel it
         run: python -m bot.scan
         env:
           SCAN_MODE: ${{ (github.event.schedule == '0 7 * * 0' || inputs.mode == 'followup') && 'followup' || 'scan' }}
@@ -64,9 +65,16 @@ jobs:
           done
           exit 1
       - name: Report a failure the scan could not report itself
-        if: failure()  # silence is a failure: a crash before the heartbeat, or a failed commit, still reaches Telegram
-        run: python -m bot.scan --alarm "שלב בתהליך ב־GitHub Actions נכשל"
+        if: failure() || cancelled()  # silence is a failure: a crash, timeout or failed commit still reaches Telegram
+        run: |
+          python -m bot.scan --alarm "שלב בתהליך ב־GitHub Actions נכשל" && exit 0
+          # the bot itself cannot run (e.g. a broken import): a last-resort plain message, disclaimer included
+          text="$(printf '❌ הסריקה נכשלה, והבוט לא הצליח לדווח בעצמו: %s\n\n%s' "$RUN_URL" "$DISCLAIMER")"
+          curl -fsS --retry 3 -o /dev/null "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" --data-urlencode "text=${text}"
+          exit 1
         env:
+          DISCLAIMER: "⚠️ מידע לצורכי מחקר בלבד ואינו ייעוץ השקעות. מקור הנתונים: SEC EDGAR."
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           COMMIT_OUTCOME: ${{ steps.commit.outcome }}

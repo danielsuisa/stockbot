@@ -12,6 +12,8 @@ from bot import common
 CACHE = {}  # ticker -> {"price", "asof"}: last known prices; the scan persists it in data/state.json["prices"]
 _loaded = [False]
 LOW_LIQUIDITY = 2_000_000  # $/day
+STALE_DAYS = 5  # a "last price" older than this (halted / not trading) is marked, not presented as current
+RV_OFFSET = 4.0  # VIX runs ~4 points above SPY's realized vol: the fallback is compared on the VIX scale
 TAGS = {"panic": "פאניקה", "normal": "רגיל", "euphoria": "אופוריה", "unknown": "לא ידוע"}
 
 
@@ -41,13 +43,16 @@ def chart(ticker, **params):
     return None
 
 
-def remember(ticker, price):
-    CACHE[ticker] = {"price": price, "asof": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M")}
+def remember(ticker, price, when=None):
+    when = when or dt.datetime.now(dt.timezone.utc)
+    CACHE[ticker] = {"price": price, "asof": when.strftime("%Y-%m-%d %H:%M")}
 
 
 def quote(ticker, since=None):
-    """{price, split, asof, source}: live price and the split factor after date `since` (shares on `since` x split =
-    shares today); if Yahoo fails, the last cached price (split unknown -> 1, source "cache"); else price None."""
+    """{price, split, asof, source}: Yahoo's last price with its own market time, and the split factor after date
+    `since` (shares on `since` x split = shares today). source "live"; "stale" when that market time is over
+    STALE_DAYS old (halted / not trading); if Yahoo fails, the last cached price ("cache", split unknown -> 1,
+    so it is never used for market value); else price None."""
     now = int(time.time())
     p1 = int(dt.datetime.combine(dt.date.fromisoformat(since) + dt.timedelta(1), dt.time(), dt.timezone.utc).timestamp()) \
         if since else now - 5 * 86400
@@ -57,8 +62,11 @@ def quote(ticker, since=None):
         f = 1.0
         for s in (r.get("events") or {}).get("splits", {}).values():
             f *= s["numerator"] / s["denominator"] if s["date"] >= p1 else 1
-        remember(ticker, float(m["regularMarketPrice"]))
-        return {"price": float(m["regularMarketPrice"]), "split": f, "asof": CACHE[ticker]["asof"], "source": "live"}
+        t, now_ = m.get("regularMarketTime"), dt.datetime.now(dt.timezone.utc)
+        when = dt.datetime.fromtimestamp(t, dt.timezone.utc) if isinstance(t, (int, float)) and t > 0 else now_
+        remember(ticker, float(m["regularMarketPrice"]), when)
+        return {"price": float(m["regularMarketPrice"]), "split": f, "asof": CACHE[ticker]["asof"],
+                "source": "stale" if (now_ - when).days > STALE_DAYS else "live"}
     if r is not None:  # Yahoo answered, just not in USD: that is not an outage, so no cached fallback
         return {"price": None, "split": 1.0, "asof": None, "source": None}
     _load_cache()
@@ -95,8 +103,9 @@ def regime():
         out["vix"], out["vol_source"] = statistics.stdev(rets) * math.sqrt(252) * 100, "SPY realized"
     if out["spy20"] is None or out["vix"] is None:
         return {**out, "tag": "unknown"}
-    panic = out["vix"] >= 28 or out["spy20"] <= -0.07 or (out["iwm20"] is not None and out["iwm20"] <= -0.10)
-    euphoria = out["vix"] <= 15 and ((out["spy60"] or 0) >= 0.08 or (out["iwm60"] or 0) >= 0.12)
+    level = out["vix"] + (RV_OFFSET if out["vol_source"] == "SPY realized" else 0.0)
+    panic = level >= 28 or out["spy20"] <= -0.07 or (out["iwm20"] is not None and out["iwm20"] <= -0.10)
+    euphoria = level <= 15 and ((out["spy60"] or 0) >= 0.08 or (out["iwm60"] or 0) >= 0.12)
     return {**out, "tag": "panic" if panic else "euphoria" if euphoria else "normal"}
 
 
@@ -116,13 +125,20 @@ def regime_line(r):
 
 
 def liquidity(ticker):
-    """Average daily dollar volume over the last 30 calendar days, or None."""
-    bars = history(ticker, "3mo")
-    if not bars:
-        return None
-    since = bars[-1][0] - dt.timedelta(30)
-    dv = [c * v for d, c, v in bars if d > since and v]
-    return sum(dv) / len(dv) if dv else None
+    """Average daily dollar volume over the sessions of the last 30 calendar days, or None. Sessions without a trade
+    count as $0 (skipping them made thin stocks look liquid); today's bar is left out while it may be partial."""
+    r = chart(ticker, range="3mo", interval="1d")
+    ts = (r or {}).get("timestamp") or []
+    q = ((r or {}).get("indicators", {}).get("quote") or [{}])[0]
+    today = dt.datetime.now(dt.timezone.utc).date()
+    rows = [(dt.datetime.fromtimestamp(t, dt.timezone.utc).date(), c, v)
+            for t, c, v in zip(ts, q.get("close") or [None] * len(ts), q.get("volume") or [None] * len(ts))]
+    rows = [x for x in rows if x[0] < today]
+    if not any(c for _, c, _ in rows):
+        return None  # no prices at all: unknown, not $0
+    since = rows[-1][0] - dt.timedelta(30)
+    dv = [(c or 0) * (v or 0) for d, c, v in rows if d > since]
+    return sum(dv) / len(dv)
 
 
 def close_on(ticker, day):

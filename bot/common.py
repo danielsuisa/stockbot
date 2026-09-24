@@ -226,17 +226,21 @@ def dispatch(workflow, inputs):
         return "HTTP 404" if body is None else ""
     except urllib.error.HTTPError as e:
         return f"HTTP {e.code}"
+    except (OSError, http.client.HTTPException) as e:  # timeout / connection reset: not an "SEC is down" story
+        return f"network: {type(e).__name__}"
 
 
-def runs(workflow):
-    """The latest run of one of this repo's workflows -> {created_at, conclusion, event} or None (GitHub API)."""
+def runs(workflow, completed=False):
+    """The latest (completed) run of one of this repo's workflows -> {created_at, conclusion, event, status} or None.
+    Display only (/status, /health): one short attempt."""
     repo, token = env("GITHUB_REPOSITORY"), env("GITHUB_TOKEN")
     if not repo:
         return None
     try:
-        body = fetch(f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs?per_page=1",
+        body = fetch(f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs?per_page=1"
+                     + ("&status=completed" if completed else ""),
                      headers={"Accept": "application/vnd.github+json", **({"Authorization": f"Bearer {token}"} if token else {})},
-                     tries=2)
+                     tries=1, timeout=15)
         r = (json.loads(body or b"{}").get("workflow_runs") or [None])[0]
         return r and {k: r[k] for k in ("created_at", "conclusion", "event", "status")}
     except (OSError, ValueError, http.client.HTTPException):

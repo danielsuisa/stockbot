@@ -72,20 +72,24 @@ def followup(j, today):
             if str(h) in e["returns"] or _age(e, today) < h:
                 continue
             a0, a1 = market.close_on(e["ticker"], start), market.close_on(e["ticker"], start + dt.timedelta(h))
-            if start not in spy:
-                spy[start] = market.close_on("SPY", start)
-            s1 = market.close_on("SPY", start + dt.timedelta(h))
-            if not (a0 and a1 and spy[start] and s1):
+            if not (a0 and a1):
                 continue
-            ret, sret = a1[1] / a0[1] - 1, s1[1] / spy[start][1] - 1
-            e["returns"][str(h)] = {"end": a1[0].isoformat(), "ret": round(ret, 4), "spy": round(sret, 4),
+            for d in (a0[0], a1[0]):  # SPY over the stock's own sessions, so both returns cover the same dates
+                if d not in spy:
+                    spy[d] = market.close_on("SPY", d)
+            s0, s1 = spy[a0[0]], spy[a1[0]]
+            if not (s0 and s1):
+                continue
+            ret, sret = a1[1] / a0[1] - 1, s1[1] / s0[1] - 1
+            e["returns"][str(h)] = {"start": a0[0].isoformat(), "end": a1[0].isoformat(), "ret": round(ret, 4),
+                                    "spy": round(sret, 4),
                                     "excess": round(ret - sret, 4)}
             updated += 1
     return updated
 
 
 def _bucket(q):
-    return next(label for lo, hi, label in BUCKETS if lo <= (q or 0) < hi)
+    return None if q is None else next(label for lo, hi, label in BUCKETS if lo <= q < hi)
 
 
 def stats(j):
@@ -104,7 +108,9 @@ def stats(j):
     for key, fn in (("regime", lambda e: e.get("regime") or "unknown"), ("quality", lambda e: _bucket(e.get("quality")))):
         groups = {}
         for e, _, x in latest:
-            groups.setdefault(fn(e), []).append(x)
+            k = fn(e)
+            if k is not None:  # an alert without a quality score is left out, not counted as low quality
+                groups.setdefault(k, []).append(x)
         out[key] = {k: {"n": len(v), "hit": sum(x > 0 for x in v) / len(v), "mean": statistics.mean(v)}
                     for k, v in groups.items()}
     ranked = sorted(latest, key=lambda t: t[2])
@@ -127,7 +133,7 @@ def stats_text(j, title="📒 <b>יומן ההתראות</b>"):
             lines.append(f"אחרי {code(h)} יום: {code(v['n'])} התראות · הצלחה {code(format(v['hit'], '.0%'))}"
                          f" · עודף תשואה על SPY: חציון {_pct(v['median'])}, ממוצע {_pct(v['mean'])}")
     names = {"panic": "פאניקה", "normal": "רגיל", "euphoria": "אופוריה", "unknown": "לא ידוע"}
-    lines += [f"לפי מצב שוק: " + " · ".join(f"{names.get(k, k)} {code(v['n'])} ({_pct(v['mean'])})" for k, v in s["regime"].items()),
+    lines += [f"לפי מצב שוק (באופק הארוך ביותר שכל התראה הגיעה אליו): " + " · ".join(f"{names.get(k, k)} {code(v['n'])} ({_pct(v['mean'])})" for k, v in s["regime"].items()),
               f"לפי ציון איכות: " + " · ".join(f"{code(k)} {code(v['n'])} ({_pct(v['mean'])})"
                                                 for k, v in sorted(s["quality"].items()))]
     for label, rows in (("הטובות", s["best"]), ("החלשות", s["worst"])):
@@ -177,11 +183,11 @@ def context_lines(e, conc):
     """Alert lines for block 5: price at alert, liquidity guard, forensic scores, sector concentration."""
     px, lq, s = e["price"], e["liquidity"], e["scores"]
     price_txt = code(common.price(px["price"])) if px.get("price") else "חסר"
-    if px.get("source") == "cache":
+    if px.get("source") in ("cache", "stale"):  # Yahoo down (last saved price) / not trading lately
         price_txt += f" (⚠ מחיר מ־{code(px['asof'])})"
     lines = [f"💵 מחיר בהתראה: {price_txt} · נזילות: "
              + (f"{code(money(lq))} ליום (ממוצע 30 יום)" + (" · ⚠ נזילות נמוכה" if lq < market.LOW_LIQUIDITY else "")
-                if lq else "חסר")]
+                if lq is not None else "חסר")]
     lines.append(f"🧮 ציונים: פיוטרוסקי {code(s['piotroski']) if s['piotroski'] else 'חסר'} · אלטמן "
                  f"{code(s['altman']) if s['altman'] else 'חסר'} · בנייש {code(s['beneish']) if s['beneish'] is not None else 'חסר'}")
     if conc >= 3:

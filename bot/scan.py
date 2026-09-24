@@ -73,7 +73,7 @@ def prune(state, today):
     state["info"] = [i for i in state["info"] if i["last"] >= since.isoformat() and i["cik"] in ciks]  # context only
     state["sent"] = {c: s for c, s in state["sent"].items() if s["date"] >= since.isoformat()}
     state["removed"] = {a: r for a, r in state["removed"].items() if r["date"] >= since.isoformat()}
-    keep = sorted(state["days"])[-(RESCAN + 2):]
+    keep = sorted(state["days"])[-(RESCAN + MAX_CATCHUP + 1):]  # a catch-up run still knows what its rescans saw
     state["seen"] = {d: v for d, v in state["seen"].items() if d in keep}
     tickers = {b["ticker"] for b in state["buys"]} | set(INDICES)
     state["prices"] = {t: v for t, v in state["prices"].items() if t in tickers}
@@ -126,22 +126,22 @@ def heartbeat_line(hb):
             f"{code(hb.get('alerts', 0))} התראות{failed}")
 
 
-def missed(st, today):
+def missed(st, today, quick=False):
     """The watchdog's test -> (previous trading day, last scanned day, trading days after it never scanned)."""
-    prev = previous_trading_day(today)
+    prev = previous_trading_day(today, quick)
     last = max((d for d, v in st["days"].items() if v == "ok"), default="")
     return prev, last, [d for d in weekdays(today) if last < d <= (prev or "") and d not in st["days"]]
 
 
 def watchdog_line(st, today):
     """/status and /health: the missed-day watchdog's view now, plus its last scheduled run when GitHub answers."""
-    prev, _, gap = missed(st, today)
+    prev, _, gap = missed(st, today, quick=True)
     if gap:
         head = (f"🐕 שומר ימים חסרים: ⚠ עוד לא נסרקו {', '.join(code(_iso(d)) for d in gap)}"
                 f" (הסריקה ב־{code('05:30 UTC')} והשומר ב־{code('14:00 UTC')} משלימים ימים חסרים)")
     else:
         head = f"🐕 שומר ימים חסרים: תקין, יום המסחר הקודם {code(_iso(prev)) if prev else 'לא ידוע'} נסרק"
-    r = common.runs("watchdog.yml")
+    r = common.runs("watchdog.yml", completed=True)
     if r:
         head += f" · ריצה אחרונה {code(r['created_at'][:16].replace('T', ' '))} {code(r['conclusion'] or r['status'])}"
     return head
@@ -157,12 +157,17 @@ def _get(url):
 
 
 @functools.lru_cache(None)
-def published(year, q):
+def published(year, q, quick=False):
     """File names SEC lists for a daily-index quarter, or None if the listing is unavailable. The listing is
     trusted, not error codes: a missing index has come back as 404, S3 403 XML and an HTML 503 page."""
     try:
-        base = f"https://www.sec.gov/Archives/edgar/daily-index/{year}/QTR{q}"
-        return {i["name"] for i in common.get_json(f"{base}/index.json")["directory"]["item"]}
+        url = f"https://www.sec.gov/Archives/edgar/daily-index/{year}/QTR{q}/index.json"
+        if quick:
+            body = common.fetch(url, tries=1, timeout=15)
+            listing = json.loads(body) if body else None
+        else:
+            listing = common.get_json(url)
+        return {i["name"] for i in listing["directory"]["item"]}
     except Exception as e:
         print(f"daily-index listing {year} QTR{q} unavailable ({type(e).__name__}) - fetching files directly")
         return None
@@ -177,19 +182,33 @@ def make_row(acc, doc, own, ticker, filed):
             "value": round(s["value"], 2) if s["price"] else None,
             "price": round(s["price"], 4) if s["price"] else None, "filed": filed, "form": doc["form"] or "4",
             "sig": s["sig"], "indirect": s["indirect"], "kind": s["kind"], "plan_value": round(s["plan_value"], 2),
-            "post": s["post"], "pct": round(s["pct"], 4) if s["pct"] is not None else None}
+            "post": s["post"], "pct": round(s["pct"], 4) if s["pct"] is not None else None,
+            "original": doc.get("original") or None}
+
+
+def _trade_dates(b):
+    return {t[0] for t in b["sig"]} if b.get("sig") else {b["first"], b["last"]}
 
 
 def amend(buys, acc, doc, row, removed=None):
-    """Apply a Form 4/A: replace the original filing's row (same issuer and insider, filed on the amendment's
-    'date of original submission', else the same trades) under the ORIGINAL accession, so alert marks and the
-    journal keep pointing at it; an amendment without in-window purchases removes that row (noted in `removed`
-    for corrections). -> original acc or None."""
+    """Apply a Form 4/A: replace the original filing's row under the ORIGINAL accession, so alert marks and the
+    journal keep pointing at it. The original = same issuer and insider, filed on the amendment's 'date of original
+    submission'; if that insider filed several that day, the one with the same trades (or overlapping trade dates).
+    An amendment without in-window purchases withdraws the original only when it restates non-derivative lines on
+    the original's trade dates (a derivative-only or unrelated amendment withdraws nothing); the withdrawal is noted
+    in `removed` for corrections and so a later re-read never brings the row back. -> original acc or None."""
     who = form4.insider(doc)
     same = [b for b in buys.values() if b["cik"] == doc["issuer_cik"] and b["insider_cik"] == who["cik"]
             and b["acc"] != acc]
-    orig = next((b for b in same if doc.get("original") and b["filed"] == doc["original"]), None) \
-        or next((b for b in same if row and b.get("sig") == row["sig"]), None)
+    dated = [b for b in same if doc.get("original") and b["filed"] == doc["original"]]
+    if row:
+        orig = next((b for b in dated if b.get("sig") == row["sig"]), None) \
+            or next((b for b in dated if _trade_dates(b) & _trade_dates(row)), None) \
+            or (dated[0] if len(dated) == 1 else None) \
+            or next((b for b in same if b.get("sig") == row["sig"]), None)
+    else:
+        hit = [b for b in dated if _trade_dates(b) & set(doc.get("nd_dates") or ())]
+        orig = hit[0] if len(hit) == 1 else None
     if not orig:
         return None
     if row:
@@ -199,6 +218,13 @@ def amend(buys, acc, doc, row, removed=None):
         if removed is not None:
             removed[orig["acc"]] = {"by": acc, "cik": orig["cik"], "date": orig["last"]}
     return orig["acc"]
+
+
+def _superseded(buys, doc, row):
+    """An original Form 4 whose 4/A is already stored under the amendment's own accession (the 4/A's day was read
+    first - catch-up order or a retried day): adding the original too would count the purchase twice."""
+    return any(b.get("form") == "4/A" and not b.get("amended_by") and b["cik"] == row["cik"]
+               and b["insider_cik"] == row["insider_cik"] and b.get("original") == row["filed"] for b in buys.values())
 
 
 def efts_urls(day):
@@ -278,6 +304,8 @@ def scan_day(day, state, today, stats=None, rescan=False):
             for a in other:
                 kinds[a["kind"]] += 1
             info[acc] = {"acc": acc, "cik": doc["issuer_cik"], "last": max(a["date"] for a in other), "kinds": dict(kinds)}
+        if row and doc["form"] != "4/A" and (acc in removed or _superseded(buys, doc, row)):
+            continue  # withdrawn by a 4/A, or its 4/A was read first (kept under its own accession): never re-added
         if row:
             found += 1
             kept += 1
@@ -311,12 +339,16 @@ def pay(cik):
     other named officers, "end": year end}; {} when there is no tagged proxy (or the per-run download budget is spent)."""
     if _pay_budget[0] <= 0:
         return {}
-    rows = common.filings(common.submissions(cik) or {"filings": {"recent": {}}})
-    f = next((r for r in rows if r["form"] == "DEF 14A" and r["primaryDocument"]), None)
-    if not f:
+    try:
+        rows = common.filings(common.submissions(cik) or {"filings": {"recent": {}}})
+        f = next((r for r in rows if r["form"] == "DEF 14A" and r["primaryDocument"]), None)
+        if not f:
+            return {}
+        _pay_budget[0] -= 1
+        x = (common.fetch(common.doc_url(cik, f["accessionNumber"], f["primaryDocument"])) or b"").decode("utf-8", "replace")
+    except Exception as e:  # best effort: a failed proxy download only drops the pay ratio
+        print(f"pay {cik}: {type(e).__name__} {e}")
         return {}
-    _pay_budget[0] -= 1
-    x = (common.fetch(common.doc_url(cik, f["accessionNumber"], f["primaryDocument"])) or b"").decode("utf-8", "replace")
     ends = {}
     for m in re.finditer(r'<(?:\w+:)?context\b[^>]*\bid="([^"]+)"[^>]*>(.*?)</(?:\w+:)?context>', x, re.S):
         e = re.search(r"<(?:\w+:)?endDate>([\d-]+)<", m.group(2))
@@ -337,11 +369,12 @@ def pay(cik):
 
 
 def pay_ratio(b):
-    """Purchase $ / annual pay for a CEO (PEO) or another officer (named-officer average), else None."""
-    if not b["value"] or b["weight"] < 1.0:
+    """Purchase $ / the CEO's (PEO's) total annual pay from the proxy, for a CEO's purchase only; None otherwise.
+    Other officers are not shown: the proxy's named-officer AVERAGE is not their own pay, and a non-executive Chair
+    is paid director fees."""
+    if not b["value"] or not re.search(r"(?i)\b(?:ceo|chief\s+executive|principal\s+executive)\b", b["role"]):
         return None
-    p = pay(int(b["cik"]))
-    comp = p.get("peo") if re.search(r"(?i)\b(?:ceo|chief\s+executive|principal\s+executive)\b", b["role"]) else p.get("neo")
+    comp = pay(int(b["cik"])).get("peo")
     return b["value"] / comp if comp else None
 
 
@@ -403,7 +436,12 @@ def row_line(b, seen, urls=None):
     index = f' · <a href="{esc(common.doc_url(b["cik"], b["acc"]))}">אינדקס</a>'
     return (f"• רכש {name} ({esc(b['role'])}) · {code(b['last'])} · {code(money(b['value']))}"
             f" @ {code(price(b['price']))}" + (f" · {' · '.join(extra)}" if extra else "") + index
-            + (" 🆕" if b["acc"] not in seen else ""))
+            + (" 🆕" if _new(b, seen) else ""))
+
+
+def _new(b, seen):
+    """Not in an alert already sent (a merged joint purchase is old if any of its twin filings was alerted)."""
+    return not ({b["acc"], *b.get("joint_accs", [])} & seen)
 
 
 def enrich(cik, ticker, j, today):
@@ -436,7 +474,7 @@ def block(ev, seen, regime, info=(), urls=None, context=()):
              f"איכות: {code(score)} ({parts})",
              f"סה״כ בשוק הפתוח ב־{code(WINDOW_DAYS)} יום: {code(len(bs))} דיווחי רכישה · "
              f"{code(len({b['insider_cik'] or b['insider'] for b in bs}))} רוכשים · {code(money(total))}"]
-    for b in sorted(bs, key=lambda b: (b["acc"] not in seen, b["value"] or 0), reverse=True)[:MAX_LINES]:
+    for b in sorted(bs, key=lambda b: (_new(b, seen), b["value"] or 0), reverse=True)[:MAX_LINES]:
         lines.append(row_line(b, seen, urls))
     if len(bs) > MAX_LINES:
         lines.append(f"ועוד {code(len(bs) - MAX_LINES)} דיווחים.")
@@ -471,6 +509,8 @@ def snapshot(ev, today):
     return {"id": f"{today.isoformat()}-{b0['ticker']}", "date": today.isoformat(), "ticker": b0["ticker"],
             "total": round(sum(b["value"] or 0 for b in ev["open"]), 2), "cluster": bool(ev["cluster"]),
             "big": bool(ev["big"]), "accs": sorted({a for b in ev["uniq"] for a in [b["acc"], *b.get("joint_accs", [])]}),
+            "rows": {b["acc"]: [round(b["value"] or 0, 2), b["insider_cik"] or b["insider"], bool(b["od"])]
+                     for b in ev["open"]},  # per counted filing: $, buyer, officer/director - for exact corrections
             "acks": []}
 
 
@@ -487,18 +527,34 @@ def alerts(state, today, j=None):
         ev = evaluate(bs, state.get("regime"))
         seen = set(state["alerted"].get(cik, []))
         qualifying += bool(ev["cluster"] or ev["big"])
-        if not (ev["cluster"] or ev["big"]) or all(b["acc"] in seen for b in bs):
+        # new = a counted purchase not alerted yet: a later 10b5-1 filing or a fund's twin of an alerted joint buy
+        # changes nothing and must not re-send the alert (its accessions are marked with the next real alert)
+        if not (ev["cluster"] or ev["big"]) or not any(_new(b, seen) for b in ev["open"]):
+            continue
+        try:
+            fp = foreign(int(cik))
+        except Exception as e:  # one issuer's lookup failure must not block the others; it is retried next run
+            common.log("issuer_skipped", cik=cik, error=f"{type(e).__name__}: {e}")
             continue
         hits[cik] = [b["acc"] for b in bs]
-        if foreign(int(cik)):  # "$" and USD thresholds may be wrong (e.g. Bradesco reports BRL prices): name only
+        if fp:  # "$" and USD thresholds may be wrong (e.g. Bradesco reports BRL prices): name only
             fpi.append((code(bs[0]["ticker"]), cik))
         else:
             snap = snapshot(ev, today)
-            context, f = enrich(cik, snap["ticker"], {"alerts": j["alerts"] + pending}, today)
+            try:
+                context, f = enrich(cik, snap["ticker"], {"alerts": j["alerts"] + pending}, today)
+            except Exception as e:  # the alert goes out without its context rather than not at all
+                common.log("enrich_failed", cik=cik, error=f"{type(e).__name__}: {e}")
+                context, f = [], {"sic": None, "quote": {}, "liquidity": None, "scores": journal.scores_of(None),
+                                  "company": None}
             entry = journal.entry_for(ev, snap, state.get("regime"), f["quote"], f["liquidity"], f["scores"], f["sic"],
                                       f["company"] or bs[0]["company"])
             pending.append(entry)
-            blocks.append((block(ev, seen, state.get("regime"), info[cik], links(cik), context), {cik: hits[cik]},
+            try:
+                urls = links(cik)
+            except Exception:  # the per-filing links are a convenience; the index links need no lookup
+                urls = {}
+            blocks.append((block(ev, seen, state.get("regime"), info[cik], urls, context), {cik: hits[cik]},
                            {cik: snap}, {cik: entry}))
     if fpi:
         blocks.append((f"ℹ️ רכישות חדשות גם אצל מנפיקים זרים: {', '.join(t for t, _ in fpi)} — לא הוצגו, כי המחיר"
@@ -529,9 +585,8 @@ def corrections(state, today):
         news = [a for a in news if a not in snap["acks"]]
         if not news:
             continue
-        ev = evaluate(bs, state.get("regime")) if bs else {"open": [], "cluster": False, "big": False}
-        total = round(sum(b["value"] or 0 for b in ev["open"]), 2)
-        still = bool(ev["cluster"] or ev["big"])
+        total, cluster, big = _corrected(snap, bs, state)
+        still = bool(cluster or big)
         snap["acks"] += news
         if abs(total - snap["total"]) <= 0.10 * max(snap["total"], 1) and still == (snap["cluster"] or snap["big"]):
             continue
@@ -540,8 +595,31 @@ def corrections(state, today):
                    f" ל־{code(money(total))}" + ("" if still else " · ההתראה כבר לא עומדת בכללי ההתראה")
                    + "\nהדיווחים המתוקנים: "
                    + " · ".join(f'<a href="{esc(common.doc_url(cik, a))}">{code(a)}</a>' for a in news))
-        snap.update(total=total, cluster=bool(ev["cluster"]), big=bool(ev["big"]))
+        snap.update(total=total, cluster=cluster, big=big)
     return out
+
+
+def _corrected(snap, bs, state):
+    """The alert's own filings with this run's amendments applied -> (total $, still a cluster, still big). Only
+    what the 4/As changed moves the numbers: later purchases and filings aging out of the window do not."""
+    rows = snap.get("rows")
+    if rows is None:  # a snapshot from before per-filing values: re-evaluate the alert's filings still in state
+        mine = [b for b in bs if b["acc"] in snap["accs"]]
+        ev = evaluate(mine, state.get("regime")) if mine else {"open": [], "cluster": False, "big": False}
+        return round(sum(b["value"] or 0 for b in ev["open"]), 2), bool(ev["cluster"]), bool(ev["big"])
+    cur, gone, now = {b["acc"]: b for b in bs}, state.get("removed", {}), {}
+    for a, (v, who, od) in rows.items():
+        b = cur.get(a)
+        if a in gone or (b is not None and b.get("amended_by") and b.get("kind") == "plan"):
+            continue  # withdrawn, or restated as a 10b5-1 plan purchase
+        if b is not None and b.get("amended_by"):
+            v, od = b["value"] or 0, bool(b["od"])
+        now[a] = [round(v, 2), who, od]
+    snap["rows"] = now
+    ods = [(v, who) for v, who, od in now.values() if od]
+    cluster = len({who for _, who in ods}) >= MIN_INSIDERS and sum(v for v, _ in ods) >= MIN_CLUSTER_USD
+    big = max((v for v, _, _ in now.values()), default=0) >= MIN_SINGLE_USD
+    return round(sum(v for v, _, _ in now.values()), 2), cluster, bool(big)
 
 
 _reported = [False]  # a heartbeat (or failure alarm) already went out in this process
@@ -640,12 +718,13 @@ def verify(ticker, today=None):
     return "\n".join(out)
 
 
-def previous_trading_day(today):
-    """The latest weekday before today whose daily index SEC lists (holidays are skipped); None if unknown."""
+def previous_trading_day(today, quick=False):
+    """The latest weekday before today whose daily index SEC lists (holidays are skipped); None if unknown.
+    quick: one short attempt per listing (listener commands must answer, not sit through minutes of retries)."""
     for i in range(1, 8):
         d = today - dt.timedelta(i)
         if d.weekday() < 5:
-            names = published(d.year, (d.month + 2) // 3)
+            names = published(d.year, (d.month + 2) // 3, quick)
             if names is None or f"form.{d:%Y%m%d}.idx" in names:
                 return d.strftime("%Y%m%d")
     return None
@@ -662,15 +741,18 @@ def watchdog(today=None):
                    f"- missed: {', '.join(gap) or 'none'}")
     if not gap:
         return print(f"watchdog: ok (last scanned {last}, previous trading day {prev})")
-    common.send(f"⚠️ לא סרקתי את {', '.join(code(_iso(d)) for d in gap)} — מריץ את הסריקה שוב.")
-    if common.env("GITHUB_ACTIONS"):
-        err = common.dispatch("daily-scan.yml", {"notify": "true"})
-        if err:
-            common.send(f"⚠️ לא הצלחתי להפעיל את הסריקה מחדש ({code(err)}). בדקו את ההרשאה {code('actions: write')}"
-                        f" בקובץ {code('watchdog.yml')}.")
-            sys.exit(f"watchdog could not dispatch the scan: {err}")
-    else:
-        main([])
+    days = ", ".join(code(_iso(d)) for d in gap)
+    if not common.env("GITHUB_ACTIONS"):
+        common.send(f"⚠️ לא סרקתי את {days} — מריץ את הסריקה שוב.")
+        return main([])
+    err = common.dispatch("daily-scan.yml", {"notify": "true"})  # first act, then report what actually happened
+    if err:
+        common.send(f"⚠️ לא סרקתי את {days}, ולא הצלחתי להפעיל את הסריקה מחדש ({code(err)}). בדקו את ההרשאה"
+                    f" {code('actions: write')} בקובץ {code('watchdog.yml')}.")
+        _mark_reported()  # the workflow's failure step must not send a second message
+        sys.exit(f"watchdog could not dispatch the scan: {err}")
+    common.send(f"⚠️ לא סרקתי את {days} — הפעלתי את הסריקה שוב; הדופק שלה יגיע בסיומה.")
+    _mark_reported()
 
 
 def run(a):
@@ -707,6 +789,8 @@ def run(a):
     fixes = corrections(state, today)
     for text in fixes:
         common.send(text, signal=True)
+    if fixes and not a.dry:  # acknowledged: a later failure in this run must not send them again
+        save(path, state)
     n = 0
     for text, marks, snaps, entries in alerts(state, today, j):
         common.send(text, signal=True)
