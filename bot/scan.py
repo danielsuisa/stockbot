@@ -3,7 +3,10 @@ import argparse
 import datetime as dt
 import functools
 import json
+import math
 import os
+import re
+import statistics
 import sys
 import time
 import traceback
@@ -11,19 +14,35 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from bot import common, form4
+from bot import common, form4, market
 from bot.common import code, esc, money, price
 
-MIN_INSIDERS = common.env("MIN_INSIDERS", 2)
+MIN_INSIDERS = common.env("MIN_INSIDERS", 3)
 MIN_CLUSTER_USD = common.env("MIN_CLUSTER_USD", 100000.0)
 MIN_SINGLE_USD = common.env("MIN_SINGLE_USD", 500000.0)
 WINDOW_DAYS = common.env("WINDOW_DAYS", 30)
 MAX_CATCHUP = common.env("MAX_CATCHUP", 5)
 MAX_LINES = 6
+MAX_PAY = 25  # DEF 14A downloads per run (best-effort pay ratio; the holdings ratio is always there)
+SCHEMA = 2
+DEFAULTS = {"days": {}, "buys": [], "alerted": {}, "info": [], "regime": None, "prices": {}}
+
+
+def migrate_row(r):
+    """A purchase row from schema 1 (before kinds/weights existed) -> schema 2, in place."""
+    if "kind" not in r:
+        role = r.get("role", "")
+        r.update(kind="open", plan_value=0.0, pct=None, post=None,
+                 weight=0.0 if not r.get("od") else 1.5 if form4.TOP.search(role) else 0.7 if role == "דירקטור" else 1.0)
+    return r
 
 
 def load(path):
-    return {"days": {}, "buys": [], "alerted": {}, **(json.loads(path.read_text("utf-8")) if path.exists() else {})}
+    """State file -> dict with every schema-2 key (older files are migrated in memory; saved on the next write)."""
+    st = {**json.loads(json.dumps(DEFAULTS)), **(json.loads(path.read_text("utf-8")) if path.exists() else {})}
+    st["buys"] = [migrate_row(r) for r in st["buys"]]
+    st["v"] = SCHEMA
+    return st
 
 
 def save(path, state):
@@ -35,13 +54,16 @@ def save(path, state):
 
 
 def prune(state, today):
-    """Drop days, purchases (by last transaction date) and alert marks older than the window."""
+    """Drop days, purchases (by last transaction date), alert marks and informational rows older than the window."""
+    for k, v in DEFAULTS.items():  # tolerate partial/older state dicts
+        state.setdefault(k, json.loads(json.dumps(v)))
     since = today - dt.timedelta(WINDOW_DAYS)
     state["days"] = {k: v for k, v in sorted(state["days"].items()) if k >= since.strftime("%Y%m%d")}
     state["buys"] = sorted((b for b in state["buys"] if b["last"] >= since.isoformat()), key=lambda b: (b["last"], b["acc"]))
-    accs = {b["acc"] for b in state["buys"]}
+    accs, ciks = {b["acc"] for b in state["buys"]}, {b["cik"] for b in state["buys"]}
     alerted = {c: [a for a in v if a in accs] for c, v in state["alerted"].items()}
     state["alerted"] = {c: v for c, v in alerted.items() if v}
+    state["info"] = [i for i in state["info"] if i["last"] >= since.isoformat() and i["cik"] in ciks]  # context only
     return state
 
 
@@ -75,8 +97,8 @@ def status(today=None):
         f"ב־{code(WINDOW_DAYS)} הימים האחרונים: {code(len(ok))} ימי מסחר נסרקו · {code(len(st['days']) - len(ok))} חגים"
         + (f" · {code(len(wait))} ממתינים לסריקה (האחרון {code(_iso(wait[-1]))})" if wait else ""),
         f"דיווחי רכישה בזיכרון: {code(len(st['buys']))} · חברות שכבר קיבלו התראה: {code(len(st['alerted']))}",
-        f"כללי התראה: לפחות {code(MIN_INSIDERS)} נושאי משרה שרכשו יחד {code(money(MIN_CLUSTER_USD))},"
-        f" או רכישה בודדת של {code(money(MIN_SINGLE_USD))}",
+        f"כללי התראה: לפחות {code(MIN_INSIDERS)} נושאי משרה שונים שרכשו בשוק הפתוח יחד {code(money(MIN_CLUSTER_USD))},"
+        f" או רכישה בודדת של {code(money(MIN_SINGLE_USD))} (בלי תוכניות {code('10b5-1')})",
         f"סריקה אוטומטית בימים ג׳–ש׳ ב־{code('05:30 UTC')}; הפקודה {code('/scan')} מריצה אותה עכשיו."))
 
 
@@ -101,8 +123,39 @@ def published(year, q):
         return None
 
 
+def make_row(acc, doc, own, ticker, filed):
+    """One filing's in-window purchase lines -> a state row (open-market part, or kind "plan" if all 10b5-1)."""
+    s, who = form4.summarize({"buys": own}), form4.insider(doc)
+    return {"acc": acc, "cik": doc["issuer_cik"], "ticker": ticker, "company": common.tickers()[ticker][1],
+            "insider": who["name"], "role": who["role"], "insider_cik": who["cik"], "od": who["od"],
+            "weight": who.get("weight", 0.0), "first": s["first"], "last": s["last"], "shares": s["shares"],
+            "value": round(s["value"], 2) if s["price"] else None,
+            "price": round(s["price"], 4) if s["price"] else None, "filed": filed, "form": doc["form"] or "4",
+            "sig": s["sig"], "indirect": s["indirect"], "kind": s["kind"], "plan_value": round(s["plan_value"], 2),
+            "post": s["post"], "pct": round(s["pct"], 4) if s["pct"] is not None else None}
+
+
+def amend(buys, acc, doc, row):
+    """Apply a Form 4/A: replace the original filing's row (same issuer and insider, filed on the amendment's
+    'date of original submission', else the same trades) under the ORIGINAL accession, so alert marks and the
+    journal keep pointing at it; an amendment without in-window purchases removes that row. -> original acc or None."""
+    who = form4.insider(doc)
+    same = [b for b in buys.values() if b["cik"] == doc["issuer_cik"] and b["insider_cik"] == who["cik"]
+            and b["acc"] != acc]
+    orig = next((b for b in same if doc.get("original") and b["filed"] == doc["original"]), None) \
+        or next((b for b in same if row and b.get("sig") == row["sig"]), None)
+    if not orig:
+        return None
+    if row:
+        buys[orig["acc"]] = {**row, "acc": orig["acc"], "filed": orig["filed"], "amended_by": acc}
+    else:
+        del buys[orig["acc"]]
+    return orig["acc"]
+
+
 def scan_day(day, state, today):
-    """Merge one day's listed-issuer purchase filings into state['buys'] -> 'ok' | 'holiday' | None (retry later)."""
+    """Merge one day's listed-issuer purchase filings (and Form 4/A amendments) into state['buys'], keep other
+    acquisitions as informational rows -> 'ok' | 'holiday' | None (retry later)."""
     t0, d = time.time(), dt.datetime.strptime(day, "%Y%m%d").date()
     names = published(d.year, (d.month + 2) // 3)
     url = f"https://www.sec.gov/Archives/edgar/daily-index/{d.year}/QTR{(d.month + 2) // 3}/form.{day}.idx"
@@ -112,29 +165,35 @@ def scan_day(day, state, today):
         print(f"{day}: no daily index -> {'holiday' if old else 'not published yet, will retry'}")
         return "holiday" if old else None
     rows = [r.split() for r in idx.decode("latin-1").splitlines()]
-    rows = [r for r in rows if r[:1] == ["4"]]  # exactly "4": no 4/A
+    rows = [r for r in rows if r[:1] in (["4"], ["4/A"])]
     urls = {r[-1].rsplit("/", 1)[1][:-4]: "https://www.sec.gov/Archives/" + r[-1] for r in rows}  # listed once per filer
     with ThreadPoolExecutor(6) as pool:
         docs = list(pool.map(_get, urls.values()))
     since, until = (today - dt.timedelta(WINDOW_DAYS)).isoformat(), today.isoformat()
-    buys, listed, found, kept = {b["acc"]: b for b in state["buys"]}, common.cik_tickers(), 0, 0
+    buys, listed, found, kept, amended = {b["acc"]: b for b in state["buys"]}, common.cik_tickers(), 0, 0, 0
+    info = {i["acc"]: i for i in state.get("info", [])}
     for acc, doc in zip(urls, docs):
-        own = [b for b in doc["buys"] if since <= b["date"] <= until] if doc else []
-        found += bool(own)
-        t = own and listed.get(doc["issuer_cik"])
+        t = doc and listed.get(doc["issuer_cik"])
         if not t:
             continue
-        kept += 1
-        s, who = form4.summarize({"buys": own}), form4.insider(doc)
-        buys[acc] = {"acc": acc, "cik": doc["issuer_cik"], "ticker": t, "company": common.tickers()[t][1],
-                     "insider": who["name"], "role": who["role"], "insider_cik": who["cik"], "od": who["od"],
-                     "first": s["first"], "last": s["last"], "shares": s["shares"],
-                     "value": round(s["value"], 2) if s["price"] else None,
-                     "price": round(s["price"], 4) if s["price"] else None, "filed": d.isoformat(),
-                     "sig": s["sig"], "indirect": s["indirect"]}
-    state["buys"], errors = list(buys.values()), sum(x is False for x in docs)
+        own = [b for b in doc["buys"] if since <= b["date"] <= until]
+        row = make_row(acc, doc, own, t, d.isoformat()) if own else None
+        if doc["form"] == "4/A" and amend(buys, acc, doc, row):
+            amended += 1
+            continue
+        other = [a for a in doc["acq"] if since <= a["date"] <= until]
+        if other:  # exercises, grants, ...: never signals, kept (as line counts) as context for issuers with purchases
+            kinds = defaultdict(int)
+            for a in other:
+                kinds[a["kind"]] += 1
+            info[acc] = {"acc": acc, "cik": doc["issuer_cik"], "last": max(a["date"] for a in other), "kinds": dict(kinds)}
+        if row:
+            found += 1
+            kept += 1
+            buys[acc] = row
+    state["buys"], state["info"], errors = list(buys.values()), list(info.values()), sum(x is False for x in docs)
     print(f"{day}: {len(rows)} Form-4 lines, {len(urls)} filings, {sum(bool(x) for x in docs)} parsed, {errors} errors, "
-          f"{found} with purchases, {kept} of them listed issuers, {time.time() - t0:.0f}s")
+          f"{kept} listed-issuer purchase filings, {amended} amendments applied, {time.time() - t0:.0f}s")
     return None if errors else "ok"  # failed filings -> the day is retried next run
 
 
@@ -144,21 +203,129 @@ def foreign(cik):
     return next((f["form"] for f in rows if f["form"] in ("10-K", "20-F", "40-F")), "") in ("20-F", "40-F")
 
 
-def block(bs, seen, cluster, big):
+_pay_budget = [MAX_PAY]
+
+
+@functools.lru_cache(None)
+def pay(cik):
+    """Best effort: the latest DEF 14A's pay-versus-performance XBRL -> {"peo": CEO total pay, "neo": average of the
+    other named officers, "end": year end}; {} when there is no tagged proxy (or the per-run download budget is spent)."""
+    if _pay_budget[0] <= 0:
+        return {}
+    rows = common.filings(common.submissions(cik) or {"filings": {"recent": {}}})
+    f = next((r for r in rows if r["form"] == "DEF 14A" and r["primaryDocument"]), None)
+    if not f:
+        return {}
+    _pay_budget[0] -= 1
+    x = (common.fetch(common.doc_url(cik, f["accessionNumber"], f["primaryDocument"])) or b"").decode("utf-8", "replace")
+    ends = {}
+    for m in re.finditer(r'<(?:\w+:)?context\b[^>]*\bid="([^"]+)"[^>]*>(.*?)</(?:\w+:)?context>', x, re.S):
+        e = re.search(r"<(?:\w+:)?endDate>([\d-]+)<", m.group(2))
+        if e and "segment" not in m.group(2):  # company-wide figures only (no per-person/axis breakdown)
+            ends[m.group(1)] = e.group(1)
+    out = {}
+    for key, tag in (("peo", "PeoTotalCompAmt"), ("neo", "NonPeoNeoAvgTotalCompAmt")):
+        best = None
+        for m in re.finditer(r'<ix:nonFraction\b([^>]*\bname="ecd:' + tag + r'"[^>]*)>([\d,.]+)</ix:nonFraction>', x):
+            ctx = re.search(r'contextRef="([^"]+)"', m.group(1))
+            scale = re.search(r'scale="(-?\d+)"', m.group(1))
+            end = ends.get(ctx.group(1)) if ctx else None
+            if end and (best is None or end > best[0]):
+                best = (end, float(m.group(2).replace(",", "")) * 10 ** int(scale.group(1) if scale else 0))
+        if best:
+            out[key], out["end"] = best[1], max(out.get("end", ""), best[0])
+    return out
+
+
+def pay_ratio(b):
+    """Purchase $ / annual pay for a CEO (PEO) or another officer (named-officer average), else None."""
+    if not b["value"] or b["weight"] < 1.0:
+        return None
+    p = pay(int(b["cik"]))
+    comp = p.get("peo") if re.search(r"(?i)\b(?:ceo|chief\s+executive|principal\s+executive)\b", b["role"]) else p.get("neo")
+    return b["value"] / comp if comp else None
+
+
+def quality(rows, regime):
+    """0-100 cluster quality from open-market rows -> (score, parts). Breadth: distinct officer/director buyers
+    (0-30); seniority: role weights CEO/CFO/Chair 1.5, officers 1.0, directors 0.7, token buys x0.5 (0-25); size:
+    log of total $ (0-20); conviction: median % of holdings bought (0-15); market: panic +10, euphoria -10."""
+    od = [r for r in rows if r["od"]]
+    people = {}
+    for r in od:  # one weight per person (their largest role weight), halved when all their buys are token buys
+        k = r["insider_cik"] or r["insider"]
+        w = r["weight"] * (0.5 if form4.symbolic(r) else 1.0)
+        people[k] = max(people.get(k, 0.0), w)
+    total = sum(r["value"] or 0 for r in rows)
+    pcts = [r["pct"] for r in od if r.get("pct") is not None and not form4.symbolic(r)]
+    parts = {"breadth": min(30, 10 * max(0, len(people) - 1)),
+             "seniority": min(25, round(25 * sum(people.values()) / 4.5)),
+             "size": round(20 * min(1.0, max(0.0, math.log10(total / 1e5) / 2))) if total > 0 else 0,
+             "conviction": round(15 * min(1.0, statistics.median(pcts) / 0.25)) if pcts else 0,
+             "market": {"panic": 10, "euphoria": -10}.get((regime or {}).get("tag"), 0)}
+    return max(0, min(100, sum(parts.values()))), parts
+
+
+PARTS = {"breadth": "רוחב", "seniority": "בכירות", "size": "סכום", "conviction": "שכנוע", "market": "שוק"}
+
+
+def evaluate(bs, regime):
+    """One issuer's rows -> dict: unique open rows, plan rows, cluster (n, $) or False, big single $ or False,
+    quality score and parts. Only open-market purchases outside 10b5-1 plans count."""
+    uniq = form4.joint(bs, "insider")  # a fund + its board member reporting one purchase count once
+    op = [b for b in uniq if b.get("kind", "open") == "open"]
+    od = [b for b in op if b["od"]]
+    people, od_total = {b["insider_cik"] or b["insider"] for b in od}, sum(b["value"] or 0 for b in od)
+    cluster = len(people) >= MIN_INSIDERS and od_total >= MIN_CLUSTER_USD and (len(people), od_total)
+    big = max((b["value"] or 0 for b in op), default=0)
+    score, parts = quality(op, regime)
+    return {"uniq": uniq, "open": op, "plan": [b for b in uniq if b.get("kind") == "plan"], "cluster": cluster,
+            "big": big >= MIN_SINGLE_USD and big, "score": score, "parts": parts}
+
+
+def row_line(b, seen):
+    """One purchase line of an alert."""
+    extra, pct, r = [], b.get("pct"), pay_ratio(b)
+    if pct is not None:
+        extra.append(f"{code(f'{pct * 100:.1f}%')} מהאחזקה")
+    if r is not None:
+        extra.append(f"{code(f'{r * 100:.0f}%')} מהשכר השנתי")
+    if form4.symbolic(b):
+        extra.append("סמלית")
+    return (f"• רכש {esc(b['insider'])} ({esc(b['role'])}) · {code(b['last'])} · {code(money(b['value']))}"
+            f" @ {code(price(b['price']))}" + (f" · {' · '.join(extra)}" if extra else "")
+            + (" 🆕" if b["acc"] not in seen else ""))
+
+
+def block(ev, seen, regime, info=()):
     """One issuer's Hebrew alert lines."""
+    bs, cluster, big = ev["open"], ev["cluster"], ev["big"]
     b0, total = bs[0], sum(b["value"] or 0 for b in bs)
     kind = " + ".join(x for x, on in (("אשכול רכישות", cluster), ("רכישה גדולה", big)) if on)
     why = ([f"{code(cluster[0])} נושאי משרה/דירקטורים שונים רכשו יחד {code(money(cluster[1]))}"] if cluster else []) + \
           ([f"רכישה בודדת בהיקף {code(money(big))}"] if big else [])
+    parts = " · ".join(f"{PARTS[k]} {code(f'{v:+d}' if k == 'market' else v)}" for k, v in ev["parts"].items())
+    score = f"{ev['score']}/100"
     lines = [f"🟢 <b>{kind}</b> · {code(b0['ticker'])} · {esc(b0['company'])}", "סיבה: " + " · ".join(why),
-             f"סה״כ ב־{code(WINDOW_DAYS)} יום: {code(len(bs))} דיווחי רכישה · "
+             f"איכות: {code(score)} ({parts})",
+             f"סה״כ בשוק הפתוח ב־{code(WINDOW_DAYS)} יום: {code(len(bs))} דיווחי רכישה · "
              f"{code(len({b['insider_cik'] or b['insider'] for b in bs}))} רוכשים · {code(money(total))}"]
-    bs = sorted(bs, key=lambda b: (b["acc"] not in seen, b["value"] or 0), reverse=True)  # new first, then largest
-    for b in bs[:MAX_LINES]:
-        lines.append(f"• רכש {esc(b['insider'])} ({esc(b['role'])}) · {code(b['last'])} · {code(money(b['value']))}"
-                     f" @ {code(price(b['price']))}{' 🆕' if b['acc'] not in seen else ''}")
+    for b in sorted(bs, key=lambda b: (b["acc"] not in seen, b["value"] or 0), reverse=True)[:MAX_LINES]:
+        lines.append(row_line(b, seen))
     if len(bs) > MAX_LINES:
         lines.append(f"ועוד {code(len(bs) - MAX_LINES)} דיווחים.")
+    if ev["plan"]:
+        lines.append(f"ℹ️ לא נספרו: {code(len(ev['plan']))} רכישות בתוכנית {code('10b5-1')} בסך"
+                     f" {code(money(sum(b['plan_value'] or b['value'] or 0 for b in ev['plan'])))}")
+    kinds = defaultdict(int)
+    for i in info:
+        for k, v in i["kinds"].items():
+            kinds[k] += v
+    if kinds:
+        names = {"exercise": "מימוש אופציות", "grant": "הענקות", "other": "אחר"}
+        lines.append("ℹ️ פעולות נוספות ב־Form 4 (לא נספרו): "
+                     + " · ".join(f"{names[k]} {code(f'×{v}')}" for k, v in sorted(kinds.items())))
+    lines.append(market.regime_line(regime or {"tag": "unknown"}))
     url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={b0['cik']}&type=4&owner=include"
     lines.append(f'🔗 <a href="{esc(url)}">כל דיווחי Form 4 של החברה ב־EDGAR</a>')
     return "\n".join(lines)
@@ -166,26 +333,23 @@ def block(bs, seen, cluster, big):
 
 def alerts(state, today):
     """Qualifying issuers with not-yet-alerted filings -> [(Hebrew message, {cik: accessions it covers})]."""
-    by = defaultdict(list)
+    by, info = defaultdict(list), defaultdict(list)
     for b in state["buys"]:
-        by[str(b["cik"])].append(b)
+        by[str(b["cik"])].append(migrate_row(b))
+    for i in state.get("info", []):
+        info[str(i["cik"])].append(i)
     blocks, hits, fpi, qualifying = [], {}, [], 0  # blocks: (text, {cik: accs})
     for cik, bs in sorted(by.items(), key=lambda kv: -sum(b["value"] or 0 for b in kv[1])):
-        uniq = form4.joint(bs, "insider")  # a fund + its board member reporting one purchase count once
-        od = [b for b in uniq if b["od"]]
-        people, od_total = {b["insider_cik"] or b["insider"] for b in od}, sum(b["value"] or 0 for b in od)
-        cluster = len(people) >= MIN_INSIDERS and od_total >= MIN_CLUSTER_USD and (len(people), od_total)
-        big = max(b["value"] or 0 for b in uniq)
-        big = big >= MIN_SINGLE_USD and big
+        ev = evaluate(bs, state.get("regime"))
         seen = set(state["alerted"].get(cik, []))
-        qualifying += bool(cluster or big)
-        if not (cluster or big) or all(b["acc"] in seen for b in bs):
+        qualifying += bool(ev["cluster"] or ev["big"])
+        if not (ev["cluster"] or ev["big"]) or all(b["acc"] in seen for b in bs):
             continue
         hits[cik] = [b["acc"] for b in bs]
         if foreign(int(cik)):  # "$" and USD thresholds may be wrong (e.g. Bradesco reports BRL prices): name only
             fpi.append((code(bs[0]["ticker"]), cik))
         else:
-            blocks.append((block(uniq, seen, cluster, big), {cik: hits[cik]}))
+            blocks.append((block(ev, seen, state.get("regime"), info[cik]), {cik: hits[cik]}))
     if fpi:
         blocks.append((f"ℹ️ רכישות חדשות גם אצל מנפיקים זרים: {', '.join(t for t, _ in fpi)} — לא הוצגו, כי המחיר"
                        " בדיווח שלהם עשוי להיות במטבע מקומי ולא בדולר (אפשר לשלוח לי את הטיקר לדוח מלא).",
@@ -225,6 +389,7 @@ def main(argv=None):
             state["days"][day] = res
         if not a.dry:
             save(path, prune(state, today))  # after every day: crash-safe
+    state["regime"] = market.regime()
     n = 0
     for text, marks in alerts(state, today):
         common.send(text)
@@ -232,6 +397,8 @@ def main(argv=None):
         n += len(marks)
         if not a.dry:
             save(path, state)
+    if not a.dry:
+        save(path, state)
     print(f"done: {n} issuer alert(s), {len(state['buys'])} purchase filings in state, {time.time() - t0:.0f}s")
     if not n and (a.notify or common.env("SCAN_NOTIFY") == "true"):  # /scan: the owner hears back either way
         ok = sorted(d for d, v in state["days"].items() if v == "ok")

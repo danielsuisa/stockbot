@@ -32,11 +32,14 @@ def insiders(cik, rows):
     if not buys:
         return out + [f"לא נמצאו רכישות (קוד {code('P')}) ב־{code(len(urls))} דיווחי Form 4."]
     buys = sorted(form4.joint(buys), key=lambda b: b["last"], reverse=True)  # joint fund/director reports = 1
-    out.append(f"סה״כ {code(len(buys))} דיווחי רכישה · {code(len({b['cik'] for b in buys}))} רוכשים"
-               f" · {code(money(sum(b['value'] for b in buys)))}")
+    op = [b for b in buys if b["kind"] == "open"]
+    out.append(f"סה״כ בשוק הפתוח: {code(len(op))} דיווחי רכישה · {code(len({b['cik'] for b in op}))} רוכשים"
+               f" · {code(money(sum(b['value'] for b in op)))}")
     for b in buys[:MAX_LINES]:
+        tag = f" · תוכנית {code('10b5-1')}, לא נספרה" if b["kind"] == "plan" else " · סמלית" if form4.symbolic(b) else ""
+        pct = f" · {code(format(b['pct'], '.1%'))} מהאחזקה" if b.get("pct") is not None else ""
         out.append(f"• רכש {esc(b['name'])} ({esc(b['role'])}) · {code(b['last'])} · {code(money(b['value']))}"
-                   f" @ {code(price(b['price']))}")
+                   f" @ {code(price(b['price']))}{pct}{tag}")
     if len(buys) > MAX_LINES:
         out.append(f"ועוד {code(len(buys) - MAX_LINES)} דיווחים.")
     return out

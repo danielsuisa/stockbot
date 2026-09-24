@@ -1,4 +1,5 @@
 """Shared plumbing: SEC-compliant HTTP, Telegram, ticker map, Hebrew/RTL formatting."""
+import datetime as dt
 import functools
 import gzip
 import hashlib
@@ -70,7 +71,16 @@ def fetch(url, data=None, headers=None, tries=5, timeout=60):
     if cache:
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_bytes(body or b"")
+    if sec and body is not None:
+        stamp("sec")
     return body
+
+
+STAMPS = {}  # "sec" / "price" -> when this process last got live data (or the cached price's date)
+
+
+def stamp(kind, value=None):
+    STAMPS[kind] = value or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
 
 def get_json(url):

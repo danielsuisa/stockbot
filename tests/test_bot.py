@@ -9,7 +9,7 @@ import urllib.error
 from email.message import Message
 from unittest import mock
 
-from bot import check, common, form4, fundamentals, listen, scan, tenk
+from bot import check, common, form4, fundamentals, listen, market, scan, tenk
 
 TX = ("<nonDerivativeTransaction><transactionDate><value>{d}</value></transactionDate><transactionCoding>"
       "<transactionCode>{c}</transactionCode></transactionCoding><transactionAmounts><transactionShares><value>{s}"
@@ -114,7 +114,8 @@ class Form4(unittest.TestCase):
     def test_parse(self):
         d = form4.parse(F4)
         self.assertEqual((d["issuer_cik"], d["issuer"], d["symbol"]), (12345, "Acme & Co", "ACME"))
-        self.assertEqual(d["owners"][0], {"cik": "777", "name": "Doe Jane", "role": "דירקטור, CEO", "od": True})
+        self.assertEqual(d["owners"][0], {"cik": "777", "name": "Doe Jane", "role": "דירקטור, CEO", "od": True,
+                                          "weight": 1.5})  # CEO: top role weight
         self.assertEqual((d["owners"][1]["role"], d["owners"][1]["od"]), ("בעל 10%", False))
         self.assertEqual([(b["date"], b["indirect"]) for b in d["buys"]], [("2026-09-10", False), ("2026-09-11", True)])  # sale excluded
         s = form4.summarize(d)
@@ -347,10 +348,11 @@ class Scan(unittest.TestCase):
         self.assertEqual(scan.pick({"days": done}, self.today), days[-5:])  # catch-up: at most 5, most recent
         st = scan.prune({"days": {"20260801": "ok"}, "buys": [buy("old", 1, "a", 1, last="2026-08-01")],
                          "alerted": {"1": ["old"]}}, self.today)
-        self.assertEqual(st, {"days": {}, "buys": [], "alerted": {}})
+        self.assertEqual((st["days"], st["buys"], st["alerted"], st["info"]), ({}, [], {}, []))
 
     def test_rules_and_alert_once(self):
         st = {"days": {}, "alerted": {}, "buys": [buy("a1", 1, "x", 60000), buy("a2", 1, "y", 50000),  # cluster
+                                                  buy("a4", 1, "u", 20000),  # (3 distinct insiders since v2)
                                                   buy("b1", 2, "z", 600000, od=False),  # big single buy (10% owner)
                                                   buy("c1", 3, "w", 50000)]}  # neither
         with mock.patch.object(scan, "foreign", return_value=False):
@@ -394,6 +396,7 @@ class Scan(unittest.TestCase):
             return "ok"
         with mock.patch.dict(os.environ, {"STATE_FILE": os.path.join(os.devnull, "none.json")}), \
                 mock.patch.object(scan, "scan_day", side_effect=fake), mock.patch.object(scan, "alerts", return_value=[]), \
+                mock.patch.object(market, "regime", return_value={"tag": "normal"}), \
                 mock.patch("sys.argv", ["scan", "--days", "20260907,20260908", "--dry"]), \
                 mock.patch("traceback.print_exc"), self.assertRaises(SystemExit) as e:
             scan.main()
@@ -404,18 +407,24 @@ class Scan(unittest.TestCase):
         idx = ("Form Type   Company Name   CIK   Date Filed  File Name\n" + "-" * 20 + "\n"
                "4      Acme Co            12345   20260922  edgar/data/12345/0000-26-1.txt\n"
                "4      Doe Jane           777     20260922  edgar/data/777/0000-26-1.txt\n"  # same filing, owner line
-               "4/A    Acme Co            12345   20260922  edgar/data/12345/0000-26-2.txt\n"  # amendment: skipped
+               "4/A    Acme Co            12345   20260922  edgar/data/12345/0000-26-2.txt\n"  # amends 0000-26-1
                "4      Unlisted Inc       55      20260922  edgar/data/55/0000-26-3.txt\n").encode()
         other = form4.parse(F4.replace("0000012345", "55"))
+        fix = form4.parse(F4.replace("<documentType>4</documentType>", "<documentType>4/A</documentType>"
+                                     "<dateOfOriginalSubmission>2026-09-22</dateOfOriginalSubmission>")
+                          .replace("<value>10.00</value>", "<value>11.00</value>"))  # corrected price
         listing = {"directory": {"item": [{"name": "form.20260922.idx"}]}}
         with mock.patch.object(common, "fetch", return_value=idx), mock.patch.object(common, "get_json", return_value=listing), \
-                mock.patch.object(scan.form4, "fetch", side_effect=lambda u: other if "/55/" in u else form4.parse(F4)) as f, \
+                mock.patch.object(scan.form4, "fetch", side_effect=lambda u: other if "/55/" in u else fix if u.endswith("-2.txt") else form4.parse(F4)) as f, \
                 mock.patch.object(common, "cik_tickers", return_value={12345: "ACME"}), \
                 mock.patch.object(common, "tickers", return_value={"ACME": (12345, "Acme & Co")}):
             st = {"days": {}, "buys": [], "alerted": {}}
             self.assertEqual(scan.scan_day("20260922", st, self.today), "ok")
-        self.assertEqual(sorted(c.args[0].rsplit("/", 1)[1] for c in f.call_args_list), ["0000-26-1.txt", "0000-26-3.txt"])
-        self.assertEqual([(b["acc"], b["ticker"], b["value"]) for b in st["buys"]], [("0000-26-1", "ACME", 16000.0)])
+        self.assertEqual(sorted(c.args[0].rsplit("/", 1)[1] for c in f.call_args_list),
+                         ["0000-26-1.txt", "0000-26-2.txt", "0000-26-3.txt"])
+        # the 4/A replaces the original row under the ORIGINAL accession: corrected $, never a second row
+        self.assertEqual([(b["acc"], b["ticker"], b["value"], b.get("amended_by")) for b in st["buys"]],
+                         [("0000-26-1", "ACME", 17000.0, "0000-26-2")])
 
 
 class ScanCommands(unittest.TestCase):
@@ -437,7 +446,8 @@ class ScanCommands(unittest.TestCase):
 
     def test_notify_summary_only_when_nothing_new(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"STATE_FILE": os.path.join(tmp, "s.json")}), \
-                mock.patch.object(scan, "scan_day", return_value="ok"), mock.patch.object(common, "send") as snd:
+                mock.patch.object(scan, "scan_day", return_value="ok"), mock.patch.object(common, "send") as snd, \
+                mock.patch.object(market, "regime", return_value={"tag": "normal"}):
             with mock.patch.object(scan, "alerts", return_value=[]):
                 scan.main(["--days", "20260923", "--notify"])
                 scan.main(["--days", "20260923"])  # the scheduled run stays quiet
