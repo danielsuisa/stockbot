@@ -35,6 +35,281 @@
     "0001794034-26-000007"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-09-25-GSHD",
+   "date": "2026-09-25",
+   "ticker": "GSHD",
+   "cik": 1726978,
+   "company": "Goosehead Insurance, Inc.",
+   "sic": 6411,
+   "kind": "big",
+   "quality": 19,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 19,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 43.65,
+    "asof": "2026-09-24 20:00",
+    "source": "live"
+   },
+   "total": 7098000.0,
+   "insiders": 1,
+   "liquidity": 21161563.12199547,
+   "scores": {
+    "piotroski": "4/8",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001193125-26-401141"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-25-DKS",
+   "date": "2026-09-25",
+   "ticker": "DKS",
+   "cik": 1089063,
+   "company": "DICK'S SPORTING GOODS, INC.",
+   "sic": 5940,
+   "kind": "cluster+big",
+   "quality": 78,
+   "parts": {
+    "breadth": 30,
+    "seniority": 25,
+    "size": 17,
+    "conviction": 6,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 133.25,
+    "asof": "2026-09-24 20:00",
+    "source": "live"
+   },
+   "total": 5088794.52,
+   "insiders": 6,
+   "liquidity": 510947507.6520284,
+   "scores": {
+    "piotroski": "5/9",
+    "altman": "Z'' 3.06",
+    "beneish": -1.48
+   },
+   "accs": [
+    "0001198906-26-000006",
+    "0001198906-26-000008",
+    "0001246485-26-000005",
+    "0001290936-26-000010",
+    "0001510712-26-000010",
+    "0001772409-26-000009",
+    "0001817293-26-000006"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-25-HHH",
+   "date": "2026-09-25",
+   "ticker": "HHH",
+   "cik": 1981792,
+   "company": "Howard Hughes Holdings Inc.",
+   "sic": 6798,
+   "kind": "big",
+   "quality": 48,
+   "parts": {
+    "breadth": 10,
+    "seniority": 11,
+    "size": 12,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 64.58,
+    "asof": "2026-09-24 20:00",
+    "source": "live"
+   },
+   "total": 1667427.5,
+   "insiders": 2,
+   "liquidity": 39870336.53422765,
+   "scores": {
+    "piotroski": "4/7",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001104659-26-110504",
+    "0001104659-26-110505"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-25-GPUS",
+   "date": "2026-09-25",
+   "ticker": "GPUS",
+   "cik": 896493,
+   "company": "Hyperscale Data, Inc.",
+   "sic": 3533,
+   "kind": "cluster",
+   "quality": 79,
+   "parts": {
+    "breadth": 30,
+    "seniority": 25,
+    "size": 9,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 0.1765,
+    "asof": "2026-09-24 20:00",
+    "source": "live"
+   },
+   "total": 773550.8,
+   "insiders": 4,
+   "liquidity": 7710291.472216092,
+   "scores": {
+    "piotroski": "5/9",
+    "altman": "Z -3.83",
+    "beneish": -2.97
+   },
+   "accs": [
+    "0001214659-26-011255",
+    "0001214659-26-011359",
+    "0001214659-26-011360",
+    "0001214659-26-011476",
+    "0001214659-26-011477",
+    "0001214659-26-011478",
+    "0001214659-26-011479",
+    "0001214659-26-011521",
+    "0001214659-26-011648",
+    "0001214659-26-011723",
+    "0001214659-26-011758",
+    "0001214659-26-011803",
+    "0001214659-26-011836",
+    "0001214659-26-011871",
+    "0001214659-26-011956"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-25-MXF",
+   "date": "2026-09-25",
+   "ticker": "MXF",
+   "cik": 65433,
+   "company": "MEXICO FUND INC",
+   "sic": null,
+   "kind": "big",
+   "quality": 9,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 9,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 20.69,
+    "asof": "2026-09-24 20:00",
+    "source": "live"
+   },
+   "total": 785069.7,
+   "insiders": 1,
+   "liquidity": 618764.6629061018,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000305",
+    "0001510281-26-000309",
+    "0001510281-26-000310"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-25-GAM",
+   "date": "2026-09-25",
+   "ticker": "GAM",
+   "cik": 40417,
+   "company": "GENERAL AMERICAN INVESTORS CO INC",
+   "sic": null,
+   "kind": "cluster",
+   "quality": 78,
+   "parts": {
+    "breadth": 30,
+    "seniority": 25,
+    "size": 8,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 64.48,
+    "asof": "2026-09-24 20:00",
+    "source": "live"
+   },
+   "total": 672290.0,
+   "insiders": 5,
+   "liquidity": 1045769.3372817266,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0000040417-26-000047",
+    "0000040417-26-000048",
+    "0000040417-26-000049",
+    "0000040417-26-000050",
+    "0000040417-26-000051",
+    "0000040417-26-000052"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-25-DY",
+   "date": "2026-09-25",
+   "ticker": "DY",
+   "cik": 67215,
+   "company": "DYCOM INDUSTRIES INC",
+   "sic": 1623,
+   "kind": "cluster",
+   "quality": 42,
+   "parts": {
+    "breadth": 20,
+    "seniority": 14,
+    "size": 7,
+    "conviction": 1,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 272.1,
+    "asof": "2026-09-24 20:00",
+    "source": "live"
+   },
+   "total": 551307.0,
+   "insiders": 3,
+   "liquidity": 223526058.34219795,
+   "scores": {
+    "piotroski": "5/8",
+    "altman": "Z 3.04",
+    "beneish": null
+   },
+   "accs": [
+    "0001349628-26-000004",
+    "0001837347-26-000003",
+    "0001919348-26-000002"
+   ],
+   "returns": {}
   }
  ]
 }
