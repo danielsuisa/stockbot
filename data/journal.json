@@ -310,6 +310,125 @@
     "0001919348-26-000002"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-09-26-LEN",
+   "date": "2026-09-26",
+   "ticker": "LEN",
+   "cik": 920760,
+   "company": "LENNAR CORP /NEW/",
+   "sic": 1520,
+   "kind": "big",
+   "quality": 20,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 20,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 82.15,
+    "asof": "2026-09-25 20:00",
+    "source": "live"
+   },
+   "total": 348777940.87,
+   "insiders": 1,
+   "liquidity": 362597463.00139654,
+   "scores": {
+    "piotroski": "3/7",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001193125-26-397059",
+    "0001193125-26-403089"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-26-KBDC",
+   "date": "2026-09-26",
+   "ticker": "KBDC",
+   "cik": 1747172,
+   "company": "Kayne Anderson BDC, Inc.",
+   "sic": null,
+   "kind": "big",
+   "quality": 36,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 19,
+    "conviction": 13,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 13.04,
+    "asof": "2026-09-25 20:00",
+    "source": "live"
+   },
+   "total": 8088512.01,
+   "insiders": 1,
+   "liquidity": 4637171.923124222,
+   "scores": {
+    "piotroski": "3/6",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001183254-26-000005",
+    "0001183254-26-000006",
+    "0001183254-26-000007"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-26-RGCO",
+   "date": "2026-09-26",
+   "ticker": "RGCO",
+   "cik": 1069533,
+   "company": "RGC RESOURCES INC",
+   "sic": 4923,
+   "kind": "cluster",
+   "quality": 46,
+   "parts": {
+    "breadth": 30,
+    "seniority": 14,
+    "size": 2,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 21.28,
+    "asof": "2026-09-25 20:00",
+    "source": "live"
+   },
+   "total": 175030.83,
+   "insiders": 5,
+   "liquidity": 289196.4290982201,
+   "scores": {
+    "piotroski": "6/8",
+    "altman": "Z 1.19",
+    "beneish": null
+   },
+   "accs": [
+    "0001437749-26-029479",
+    "0001437749-26-029481",
+    "0001437749-26-029483",
+    "0001437749-26-030121",
+    "0001437749-26-030157",
+    "0001437749-26-030160",
+    "0001437749-26-030464",
+    "0001437749-26-030468",
+    "0001437749-26-030524",
+    "0001437749-26-031183",
+    "0001437749-26-031185",
+    "0001437749-26-031188"
+   ],
+   "returns": {}
   }
  ]
 }
