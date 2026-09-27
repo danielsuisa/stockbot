@@ -12,7 +12,7 @@ import traceback
 import urllib.error
 from pathlib import Path
 
-from bot import check, common, fundamentals, health, journal, market, scan
+from bot import check, common, fundamentals, health, journal, market, scan, squeeze_live
 from bot.common import code
 
 MAX = 3  # reports per message
@@ -24,7 +24,8 @@ STOP = set("A AI AM AN AND ARE AT BE BUY BY CAN CEO DO FOR GO HAS HI I IF IN IPO
 COMMANDS = (("check", "דוח פורנזי לטיקר, למשל /check AAPL"), ("scan", "הרצת הסריקה היומית עכשיו"),
             ("status", "מצב הסריקה, דופק ושומר ימים חסרים"), ("stats", "תשואות ההתראות מול SPY"),
             ("journal", "ההתראות האחרונות ביומן, למשל /journal 5"), ("verify", "אימות מחדש מול EDGAR, למשל /verify AAPL"),
-            ("health", "בדיקה חיה של המקורות והריצות"), ("help", "רשימת הפקודות"))
+            ("health", "בדיקה חיה של המקורות והריצות"),
+            ("squeeze", "רשימת סקוויז: /squeeze, /squeeze GME, /squeeze stats"), ("help", "רשימת הפקודות"))
 HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, עם דולר, {code('$msft')}, או {code('/check msft')}"
         f" (עד {code(MAX)} בהודעה), או {code('/help')} לרשימת הפקודות.")
 HELP = "\n".join((
@@ -37,6 +38,8 @@ HELP = "\n".join((
     f"• ההתראות האחרונות ביומן: {code('/journal 5')} (עד {code(20)})",
     f"• אימות התראה מחדש מול EDGAR: {code('/verify AAPL')}",
     f"• בדיקה חיה של SEC, Yahoo, טלגרם והריצות המתוזמנות: {code('/health')}",
+    f"• רשימת סקוויז יומית (שורט גבוה ומחזור חריג), בדיקת מניה ויומן: {code('/squeeze')},"
+    f" {code('/squeeze GME')}, {code('/squeeze stats')}",
     f"• רשימת הפקודות: {code('/help')}",
     f"אפשר גם לכתוב טיקר באותיות גדולות, {code('AAPL')}, או עם דולר, {code('$tsla')}.",
     "📊 הדוח כולל ציון פיוטרוסקי, אלטמן Z, בנייש M, רכישות בעלי עניין ושינויים בגורמי הסיכון בדוח השנתי.",
@@ -133,6 +136,8 @@ def handle(text):
     if cmd == "health":
         common.send(health.report())
         return 0
+    if cmd == "squeeze":
+        return squeeze_cmd(rest)
     common.send(HELP)  # /help, /start and any unknown command
     common.tg("setMyCommands", commands=[{"command": c, "description": d} for c, d in COMMANDS])  # Telegram's "/" menu
     return 0
@@ -141,6 +146,30 @@ def handle(text):
 SERVE_SECONDS = 5 * 3600 + 20 * 60  # the job allows 340 min: the last long poll and reply fit well inside it
 POLL = 50  # getUpdates long-poll seconds (common.fetch's socket timeout is 60)
 LIVE_AFTER = 120  # an in-progress listener run older than this is past its start-up: it is the live poller
+
+
+def squeeze_cmd(rest):
+    """/squeeze: the last daily list; /squeeze stats: the journal; /squeeze TICKER: one stock against the gates."""
+    arg = rest.split()[0].lower() if rest.split() else ""
+    if not arg:
+        last = squeeze_live.load(squeeze_live.LAST, None)
+        common.send(last["text"] if last else "עוד אין רשימת סקוויז. היא נשלחת בכל יום מסחר לפני הפתיחה בניו יורק.")
+        return 0
+    if arg == "stats":
+        common.send(squeeze_live.stats_text(squeeze_live.load(squeeze_live.JOURNAL, {"entries": []})))
+        return 0
+    known, unknown = extract(rest, loose=True)
+    if not known:
+        common.send(f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}." if unknown else
+                    f"כתבו טיקר אחרי הפקודה, למשל {code('/squeeze GME')}.")
+        return 0
+    try:
+        common.send(squeeze_live.ticker_report(known[0]), signal=True)
+    except Exception as e:  # a failed lookup must be answered, not swallowed
+        traceback.print_exc()
+        common.send(f"⚠️ בדיקת הסקוויז עבור {code(known[0])} נכשלה ({code(type(e).__name__)}). נסו שוב מאוחר יותר.")
+        return 1
+    return 0
 
 
 class Conflict(Exception):

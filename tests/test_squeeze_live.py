@@ -216,5 +216,28 @@ class Main(unittest.TestCase):
         self.assertEqual(files, [])
 
 
+class Command(unittest.TestCase):
+    def test_squeeze_last_list_stats_and_ticker(self):
+        from bot import listen
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"SQUEEZE_DIR": d}), \
+                mock.patch.object(listen.common, "send") as send, \
+                mock.patch.object(listen.common, "tickers", return_value={"GME": (1, "GameStop")}), \
+                mock.patch.object(listen.squeeze_live, "ticker_report", return_value="REPORT") as rep:
+            listen.handle("/squeeze")
+            self.assertIn("עוד אין רשימת סקוויז", send.call_args[0][0])
+            squeeze_live.save(squeeze_live.LAST, {"date": TODAY, "text": "LIST", "rows": []})
+            listen.handle("/squeeze")
+            self.assertEqual(send.call_args[0][0], "LIST")
+            listen.handle("/squeeze stats")
+            self.assertIn("יומן רשימת הסקוויז", send.call_args[0][0])
+            listen.handle("/squeeze gme")
+            rep.assert_called_once_with("GME")
+            self.assertEqual(send.call_args, mock.call("REPORT", signal=True))
+            listen.handle("/squeeze zzzz")
+            self.assertIn("לא מצאתי", send.call_args[0][0])
+        self.assertIn("/squeeze", listen.HELP)
+        self.assertIn("squeeze", [c for c, _ in listen.COMMANDS])
+
+
 if __name__ == "__main__":
     unittest.main()
