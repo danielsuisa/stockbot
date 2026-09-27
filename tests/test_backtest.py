@@ -1,6 +1,12 @@
 """Squeeze backtest engine: a synthetic market with one planted squeeze and two look-ahead traps."""
 import datetime as dt
+import gzip
+import json
+import math
+import tempfile
 import unittest
+from pathlib import Path
+from unittest import mock
 
 from bot import backtest, shorts, squeeze
 
@@ -103,6 +109,49 @@ class Select(unittest.TestCase):
                          "tie-more-hits": tally(200, 80, {})}}
         self.assertEqual(backtest.select(res, list(res["lists"])), "tie-more-hits")
         self.assertIsNone(backtest.select({"bases": res["bases"], "lists": {"x": tally(10, 5, {})}}, ["x"]))
+
+
+class Loaders(unittest.TestCase):
+    def test_to_bars(self):
+        r = {"timestamp": [1704205800, 1704292200, 1704292300, 1704378600],
+             "indicators": {"quote": [{"open": [None, 10.0, 10.5, 11.0], "high": [None, 12.0, 12.5, None],
+                                       "low": [9.0, 9.5, 9.6, None], "close": [9.5, 11.0, 11.5, None],
+                                       "volume": [100, None, 300, 400]}]}}
+        b = backtest.to_bars(r)
+        self.assertEqual(b["d"], ["2024-01-02", "2024-01-03"])  # duplicate session kept once (last), no-close dropped
+        self.assertEqual((b["o"], b["h"], b["c"], b["v"]), ([None, 10.5], [9.5, 12.5], [9.5, 11.5], [100, 300]))
+        self.assertIsNone(backtest.to_bars(None))
+        p = backtest.pack(b)
+        self.assertTrue(math.isnan(p["o"][0]))
+        self.assertEqual(list(p["c"]), [9.5, 11.5])
+
+    def test_cache_saves_only_real_values(self):
+        with tempfile.TemporaryDirectory() as d:
+            path, calls = Path(d, "x.json.gz"), []
+            make = lambda: calls.append(1) or {"a": 1}
+            self.assertEqual(backtest._cached(path, make), {"a": 1})
+            self.assertEqual(backtest._cached(path, make), {"a": 1})
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(json.loads(gzip.decompress(path.read_bytes())), {"a": 1})
+            empty = Path(d, "none.json.gz")
+            self.assertIsNone(backtest._cached(empty, lambda: None))
+            self.assertFalse(empty.exists())
+
+
+class Render(unittest.TestCase):
+    def test_report_shows_verdict_tables_and_choice(self):
+        reports, shares, primary, bars = market()
+        grid = {backtest.vname(V): V}
+        r = backtest.replay(CAL[25:45], CAL, reports, shares, primary, bars, {**grid, "trigger-only":
+                            {"w": 0.0, "g_si": -1.0, "g_rv": 0.0}}, {"all": None})
+        checks, go = backtest.verdict(r["lists"][backtest.vname(V)], r["bases"]["all"], ["2024"])
+        md = backtest.render({"run": "2026-09-27", "lines": ["x"]}, r, grid, backtest.vname(V),
+                             {**r, "lists": {"selected": r["lists"][backtest.vname(V)], **r["lists"]}}, checks, go)
+        self.assertIn("NO-GO", md)
+        self.assertIn("w0.5/si0.1/rv1.5", md)
+        self.assertIn("| 2024 |", md)
+        none = backtest.render({"run": "d", "lines": []}, r, grid, None, None, [], False)
+        self.assertIn("No variant reached", none)
 
 
 if __name__ == "__main__":
