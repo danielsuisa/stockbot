@@ -56,14 +56,21 @@ journal and all existing commands keep their behavior.
 - **Trading calendar**: SPY's Yahoo sessions.
 - **Short interest usable on session D** only if D ≥ settlement date + 8 business days (FINRA disseminates after the
   close of business day 7).
-- **Shares outstanding usable on D** only if D ≥ the fact's `end` date + 15 calendar days (dei facts are dated at
-  the filing's cover date; 15 days covers the filing delay). Latest usable fact wins.
+- **Shares outstanding usable on D** only from the day after the fact's EDGAR filing date (accession → date from
+  the quarterly `full-index/…/xbrl.idx`); when the filing is not found, from the fact date + 140 days. Latest usable
+  fact wins; a fact older than 400 days is not used. (First version: fact date + 15 days — a review measured 10-K
+  filings 20–28 days and 20-F filings up to ~136 days after the cover date, so it leaked.) Live: every fact the API
+  serves is already public.
+- **The $1 price gate uses the price as traded**: Yahoo back-adjusts prices for later splits, so the backtest undoes
+  every split dated after D−1 (split events from the same chart call). Ratios and outcomes stay on the adjusted
+  series, which is correct across splits inside a window.
 - **Price/volume features** use bars through session D−1 only.
 - **Entry** = D's open. **Outcome** window = sessions D … D+9 of the global calendar.
 
 ## 6. Universe, features, scores
 
-**Eligible on D**: FINRA class ∈ {NNM, SC, NYSE, AMEX}; symbol maps to an SEC CIK and is not a warrant / unit /
+**Eligible on D**: FINRA class ∈ {NNM, SC, NYSE, AMEX}; symbol maps to an SEC CIK (FINRA writes class shares
+without a separator: `BRKB` → `BRK-B`) and is not a warrant / unit /
 right / preferred (`common.noncommon`); usable SI and shares outstanding > 0; Yahoo bars exist with a bar on D−1;
 close[D−1] ≥ $1; mean dollar volume over the last 21 sessions ≥ $2M (`market.LOW_LIQUIDITY`). Plausibility (added 2026-09-27 after the first run exposed SEC scale errors, e.g. LAES reported with 100 shares → short interest 88,000 %): an SEC share figure below 100,000 is unusable, and a stock whose short interest exceeds 150 % of shares outstanding is dropped (a stale or mis-scaled denominator; GME's January-2021 peak was ~100–140 %).
 
