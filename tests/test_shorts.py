@@ -21,6 +21,18 @@ class Norm(unittest.TestCase):
         self.assertEqual(shorts.norm(" gme "), "GME")
 
 
+class ToSec(unittest.TestCase):
+    def test_finra_class_share_without_separator_maps_to_sec_ticker(self):
+        known = {"BRK-B", "AAPL", "MOG-A"}
+        self.assertEqual(shorts.to_sec("BRKB", known), "BRK-B")
+        self.assertEqual(shorts.to_sec("MOGA", known), "MOG-A")
+        self.assertEqual(shorts.to_sec("AAPL", known), "AAPL")
+        self.assertIsNone(shorts.to_sec("ABRPRD", known))  # a preferred: no SEC common ticker
+        # unknown symbols stay under their FINRA name, so the coverage table still counts them
+        self.assertEqual(shorts.remap({"BRKB": {"si": 1}, "ZZZZ": {"si": 2}}, known),
+                         {"BRK-B": {"si": 1}, "ZZZZ": {"si": 2}})
+
+
 class Slim(unittest.TestCase):
     def test_fields_and_nulls(self):
         r = {"currentShortPositionQuantity": 500, "daysToCoverQuantity": None, "changePercent": None,

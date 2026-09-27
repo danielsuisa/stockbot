@@ -357,7 +357,7 @@ def main(argv=None):
     dates = [d for d in shorts.settlement_dates() if d >= "2017-12-01"]
     raw = load_reports(dates, a.threads // 2)
     cal = load_bars(["SPY"])["SPY"]["d"]
-    reports = [(u, raw[d]) for d in dates if raw.get(d) and (u := shorts.usable_from(d, cal))]
+    reports = [(u, shorts.remap(raw[d], primary)) for d in dates if raw.get(d) and (u := shorts.usable_from(d, cal))]
     frames = load_frames()
     shares = shorts.shares_index(frames)
     syms = sorted({s for _, rep in reports for s in rep if s in primary})

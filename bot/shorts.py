@@ -18,8 +18,23 @@ MIN_SHARES = 100_000  # a smaller SEC figure is a unit/scale error (e.g. 100 sha
 
 
 def norm(symbol):
-    """FINRA symbol -> the SEC / Yahoo spelling (BRK.B -> BRK-B)."""
+    """FINRA symbol trimmed and upper-cased ('.' or '/' -> '-'; FINRA itself writes class shares as BRKB)."""
     return symbol.strip().upper().replace(".", "-").replace("/", "-")
+
+
+def to_sec(symbol, known):
+    """FINRA symbol -> its ticker in `known` (SEC / Yahoo spelling), or None. FINRA writes class shares without a
+    separator, so BRKB -> BRK-B when that is a known ticker."""
+    if symbol in known:
+        return symbol
+    alt = f"{symbol[:-1]}-{symbol[-1]}" if len(symbol) > 1 else None
+    return alt if alt in known else None
+
+
+def remap(rep, known):
+    """A report {FINRA symbol: row} -> {known ticker: row}; a symbol without a known ticker keeps its FINRA name
+    (it matches nothing downstream but still counts in coverage)."""
+    return {to_sec(sym, known) or sym: row for sym, row in rep.items()}
 
 
 def _post(body):
