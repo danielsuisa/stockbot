@@ -66,6 +66,13 @@ class Report(unittest.TestCase):
         with mock.patch.object(shorts, "_post", return_value=rows):
             self.assertEqual(shorts.settlement_dates(), ["2018-01-12", "2026-09-15"])
 
+    def test_symbol_rows_oldest_first(self):
+        rows = [{"symbolCode": "BRKB", "settlementDate": d, "currentShortPositionQuantity": 5}
+                for d in ("2026-09-15", "2026-08-29")]
+        with mock.patch.object(shorts, "_post", return_value=rows) as post:
+            got = shorts.symbol_rows("BRKB")
+        self.assertEqual([r["date"] for r in got], ["2026-08-29", "2026-09-15"])
+        self.assertEqual(post.call_args[0][0]["compareFilters"][0]["fieldValue"], "BRKB")
 
 class UsableFrom(unittest.TestCase):
     def test_eighth_session_after_settlement(self):

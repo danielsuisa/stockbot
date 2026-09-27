@@ -75,6 +75,13 @@ def report(date):
         offset += PAGE
 
 
+def symbol_rows(symbol):
+    """Every FINRA report row of one symbol (FINRA spelling, e.g. BRKB), slimmed, oldest first."""
+    rows = _post({"limit": PAGE,
+                  "compareFilters": [{"compareType": "EQUAL", "fieldName": "symbolCode", "fieldValue": symbol}]})
+    return sorted((slim(r) for r in rows), key=lambda r: r["date"] or "")
+
+
 def usable_from(settle, cal):
     """First session (ISO) on which a report settled on `settle` may be used: the SI_LAG-th session after it in the
     ascending session list `cal`. A settlement date that is not a session counts from the next session (later, never
