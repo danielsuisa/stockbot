@@ -180,7 +180,7 @@ class Commands(unittest.TestCase):
 
     def test_help_and_menu(self):
         names = [c for c, _ in listen.COMMANDS]
-        self.assertEqual(names, ["check", "scan", "status", "stats", "journal", "verify", "health", "help"])
+        self.assertEqual(names, ["check", "scan", "status", "stats", "journal", "verify", "health", "squeeze", "help"])
         self.assertTrue(all(1 <= len(d) <= 256 for _, d in listen.COMMANDS))
         for c in names:
             self.assertIn(f"/{c}", listen.HELP)
