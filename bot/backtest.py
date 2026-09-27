@@ -1,6 +1,6 @@
 """Squeeze-screener backtest - phase 1 of docs/superpowers/specs/2026-09-27-squeeze-screener-design.md.
 
-    SEC_UA="stockbot backtest (github.com/danielsuisa/stockbot)" python -m bot.backtest
+    SEC_UA="<name> <contact email>" python -m bot.backtest   (SEC rejects a User-Agent without an email: 403)
 
 Downloads FINRA short interest, SEC shares-outstanding frames and Yahoo daily bars into .cache/squeeze/
 (gitignored), replays every session with bot.squeeze's functions, chooses one scoring variant on the in-sample years

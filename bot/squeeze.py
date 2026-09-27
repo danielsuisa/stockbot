@@ -9,6 +9,7 @@ HIT = 1.5  # "exploded": the highest price in the window reaches 1.5x the entry
 WINDOW = 10  # sessions D .. D+9
 MIN_PRICE = 1.0
 MIN_DOLLAR = market.LOW_LIQUIDITY  # $2M a day
+MAX_SI_PCT = 1.5  # short interest above 150% of shares outstanding means a stale / mis-scaled share count
 GRID = tuple({"w": w, "g_si": g, "g_rv": r}
              for w in (0.3, 0.5, 0.7) for g in (0.10, 0.15, 0.20) for r in (1.0, 1.5, 2.0))
 
@@ -31,8 +32,10 @@ def features(b, i):
 
 def make_row(ticker, si_row, shares, feat):
     """One eligible stock for the day, or None: needs a short-interest row, shares outstanding, features,
-    price >= MIN_PRICE and dollar volume >= MIN_DOLLAR."""
+    price >= MIN_PRICE, dollar volume >= MIN_DOLLAR and a plausible short interest (<= MAX_SI_PCT of shares)."""
     if not si_row or not shares or not feat or feat["price"] < MIN_PRICE or feat["dollar"] < MIN_DOLLAR:
+        return None
+    if si_row["si"] / shares > MAX_SI_PCT:
         return None
     return {"t": ticker, "si_pct": si_row["si"] / shares, "dtc": si_row.get("dtc") or 0.0, "chg": si_row.get("chg"),
             "si_date": si_row.get("date"), "shares": shares, **feat}

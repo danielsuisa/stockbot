@@ -14,6 +14,7 @@ PAGE = 5000  # FINRA's row limit per request
 SI_LAG = 8  # sessions after settlement before a report may be used (FINRA publishes after business day 7)
 SHARES_LAG = 15  # days after a dei fact's date (the filing's cover date) before it may be used
 SHARES_MAX_AGE = 400  # days: an older figure (the filer went quiet) is not used
+MIN_SHARES = 100_000  # a smaller SEC figure is a unit/scale error (e.g. 100 shares), not a listed company
 
 
 def norm(symbol):
@@ -83,7 +84,7 @@ def shares_index(frames):
 
 def shares_at(idx, cik, day):
     """Shares outstanding usable on session `day` (ISO): the latest fact dated at least SHARES_LAG days earlier and
-    at most SHARES_MAX_AGE days old; None when there is none."""
+    at most SHARES_MAX_AGE days old; None when there is none or it is below MIN_SHARES (a scale error)."""
     facts = idx.get(cik)
     if not facts:
         return None
@@ -92,4 +93,4 @@ def shares_at(idx, cik, day):
     if i < 0:
         return None
     end, val = facts[i]
-    return val if val > 0 and (d - dt.date.fromisoformat(end)).days <= SHARES_MAX_AGE else None
+    return val if val >= MIN_SHARES and (d - dt.date.fromisoformat(end)).days <= SHARES_MAX_AGE else None

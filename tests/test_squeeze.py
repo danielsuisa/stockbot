@@ -48,6 +48,10 @@ class MakeRow(unittest.TestCase):
         self.assertIsNone(squeeze.make_row("X", si, 100, {**self.FEAT, "price": 0.99}))
         self.assertIsNone(squeeze.make_row("X", si, 100, {**self.FEAT, "dollar": 1_999_999}))
 
+    def test_short_interest_above_plausible_share_count_is_dropped(self):
+        self.assertIsNone(squeeze.make_row("X", {"si": 151, "dtc": 1.0}, 100, self.FEAT))  # stale / mis-scaled shares
+        self.assertAlmostEqual(squeeze.make_row("X", {"si": 150, "dtc": 1.0}, 100, self.FEAT)["si_pct"], 1.5)
+
 
 def row(t, si_pct, dtc=1.0, rvol=1.0, ret5=0.0, brk=1.0):
     return {"t": t, "si_pct": si_pct, "dtc": dtc, "rvol": rvol, "ret5": ret5, "brk": brk}

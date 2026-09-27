@@ -65,7 +65,7 @@ journal and all existing commands keep their behavior.
 
 **Eligible on D**: FINRA class ∈ {NNM, SC, NYSE, AMEX}; symbol maps to an SEC CIK and is not a warrant / unit /
 right / preferred (`common.noncommon`); usable SI and shares outstanding > 0; Yahoo bars exist with a bar on D−1;
-close[D−1] ≥ $1; mean dollar volume over the last 21 sessions ≥ $2M (`market.LOW_LIQUIDITY`).
+close[D−1] ≥ $1; mean dollar volume over the last 21 sessions ≥ $2M (`market.LOW_LIQUIDITY`). Plausibility (added 2026-09-27 after the first run exposed SEC scale errors, e.g. LAES reported with 100 shares → short interest 88,000 %): an SEC share figure below 100,000 is unusable, and a stock whose short interest exceeds 150 % of shares outstanding is dropped (a stale or mis-scaled denominator; GME's January-2021 peak was ~100–140 %).
 
 **Features**
 - `si_pct` = short shares / shares outstanding · `dtc` = FINRA days-to-cover · `si_chg` = FINRA change % since the

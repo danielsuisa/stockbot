@@ -73,17 +73,22 @@ class UsableFrom(unittest.TestCase):
 
 
 class Shares(unittest.TestCase):
-    IDX = shorts.shares_index([{1: ("2025-01-10", 100)}, {1: ("2025-04-10", 120), 2: ("2023-01-01", 50)},
-                               {1: ("2025-04-10", 120)}])
+    IDX = shorts.shares_index([{1: ("2025-01-10", 1_000_000)}, {1: ("2025-04-10", 1_200_000), 2: ("2023-01-01", 500_000)},
+                               {1: ("2025-04-10", 1_200_000)}])
 
     def test_index_collapses_duplicates(self):
-        self.assertEqual(self.IDX[1], [("2025-01-10", 100), ("2025-04-10", 120)])
+        self.assertEqual(self.IDX[1], [("2025-01-10", 1_000_000), ("2025-04-10", 1_200_000)])
 
     def test_lag_and_latest(self):
         self.assertIsNone(shorts.shares_at(self.IDX, 1, "2025-01-24"))
-        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-01-25"), 100)
-        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-04-24"), 100)
-        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-04-25"), 120)
+        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-01-25"), 1_000_000)
+        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-04-24"), 1_000_000)
+        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-04-25"), 1_200_000)
+
+    def test_implausibly_small_share_count_is_unusable(self):
+        idx = shorts.shares_index([{7: ("2025-01-10", 100)}, {8: ("2025-01-10", shorts.MIN_SHARES)}])
+        self.assertIsNone(shorts.shares_at(idx, 7, "2025-03-01"))  # SEC figure of 100 shares (LAES, 2023)
+        self.assertEqual(shorts.shares_at(idx, 8, "2025-03-01"), shorts.MIN_SHARES)
 
     def test_stale_and_unknown(self):
         self.assertIsNone(shorts.shares_at(self.IDX, 2, "2024-06-01"))
