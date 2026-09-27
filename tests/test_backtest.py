@@ -6,9 +6,8 @@ import math
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
-from bot import backtest, shorts, squeeze
+from bot import backtest, shorts
 
 
 def weekdays(start, n):
