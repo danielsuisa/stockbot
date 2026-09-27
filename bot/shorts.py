@@ -9,10 +9,11 @@ from bot import common
 
 FINRA = "https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest"
 FRAME = "https://data.sec.gov/api/xbrl/frames/dei/EntityCommonStockSharesOutstanding/shares/CY{y}Q{q}I.json"
+FULL_INDEX = "https://www.sec.gov/Archives/edgar/full-index/{y}/QTR{q}/xbrl.idx"
 CLASSES = ("NNM", "SC", "NYSE", "AMEX")  # Nasdaq Global (Select), Nasdaq Capital, NYSE, NYSE American
 PAGE = 5000  # FINRA's row limit per request
 SI_LAG = 8  # sessions after settlement before a report may be used (FINRA publishes after business day 7)
-SHARES_LAG = 15  # days after a dei fact's date (the filing's cover date) before it may be used
+SHARES_FALLBACK = 140  # days after a fact's date when its filing date is unknown (20-F filers run ~136 days late)
 SHARES_MAX_AGE = 400  # days: an older figure (the filer went quiet) is not used
 MIN_SHARES = 100_000  # a smaller SEC figure is a unit/scale error (e.g. 100 shares), not a listed company
 
@@ -83,29 +84,48 @@ def usable_from(settle, cal):
 
 
 def frame(y, q):
-    """{cik: (fact date ISO, shares)} from one SEC frame ({} when it is not published)."""
+    """{cik: (fact date ISO, shares, accession)} from one SEC frame ({} when it is not published)."""
     d = common.get_json(FRAME.format(y=y, q=q)) or {}
-    return {int(r["cik"]): (r["end"], int(r["val"])) for r in d.get("data", []) if r.get("val")}
+    return {int(r["cik"]): (r["end"], int(r["val"]), r.get("accn")) for r in d.get("data", []) if r.get("val")}
 
 
-def shares_index(frames):
-    """Frames -> {cik: [(fact date ISO, shares), ...] ascending}; the same fact in several frames counts once."""
+def filings(y, q):
+    """{accession: date filed} for every XBRL filing of one quarter, from EDGAR's full index ({} if unpublished)."""
+    out = {}
+    for line in (common.fetch(FULL_INDEX.format(y=y, q=q)) or b"").decode("latin-1").splitlines():
+        parts = line.split("|")
+        if len(parts) == 5 and parts[4].endswith(".txt"):
+            out[parts[4].rsplit("/", 1)[-1][:-4]] = parts[3]
+    return out
+
+
+def shares_index(frames, filed=None):
+    """Frames -> {cik: [(usable from ISO, fact date ISO, shares), ...] ascending}; a fact in several frames counts
+    once. With `filed` ({accession: date filed}; the backtest) a fact is usable the day after its filing, or
+    SHARES_FALLBACK days after its date when the filing is unknown; without it (live: whatever the API serves is
+    already public) a fact is usable from its date."""
     idx = {}
     for fr in frames:
-        for cik, fact in fr.items():
-            idx.setdefault(cik, set()).add(tuple(fact))
+        for cik, (end, val, accn) in fr.items():
+            if filed is None:
+                use = end
+            elif accn in filed:
+                use = (dt.date.fromisoformat(filed[accn]) + dt.timedelta(1)).isoformat()
+            else:
+                use = (dt.date.fromisoformat(end) + dt.timedelta(SHARES_FALLBACK)).isoformat()
+            idx.setdefault(cik, set()).add((use, end, val))
     return {cik: sorted(s) for cik, s in idx.items()}
 
 
 def shares_at(idx, cik, day):
-    """Shares outstanding usable on session `day` (ISO): the latest fact dated at least SHARES_LAG days earlier and
-    at most SHARES_MAX_AGE days old; None when there is none or it is below MIN_SHARES (a scale error)."""
+    """Shares outstanding usable on session `day` (ISO): the latest fact usable by then, if it is at most
+    SHARES_MAX_AGE days old and not below MIN_SHARES (a scale error); else None."""
     facts = idx.get(cik)
     if not facts:
         return None
-    d = dt.date.fromisoformat(day)
-    i = bisect.bisect_right(facts, ((d - dt.timedelta(SHARES_LAG)).isoformat(), float("inf"))) - 1
+    i = bisect.bisect_right(facts, (day, "~", float("inf"))) - 1
     if i < 0:
         return None
-    end, val = facts[i]
-    return val if val >= MIN_SHARES and (d - dt.date.fromisoformat(end)).days <= SHARES_MAX_AGE else None
+    _, end, val = facts[i]
+    age = (dt.date.fromisoformat(day) - dt.date.fromisoformat(end)).days
+    return val if val >= MIN_SHARES and age <= SHARES_MAX_AGE else None

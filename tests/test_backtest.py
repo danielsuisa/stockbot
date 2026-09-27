@@ -35,8 +35,8 @@ def market():
         b["h"][K0] = 20.0
     aaa["v"][K0] = 5_000_000.0  # still busy on the squeeze day -> qualifies again next day (repeat pick)
     ccc["v"][K0] = 5_000_000.0  # spike ON day K0: must not be visible to the list of K0
-    shares = shorts.shares_index([{1: ("2023-06-30", 1_000_000), 2: ("2023-06-30", 1_000_000),
-                                   3: ("2023-06-30", 1_000_000)}])
+    shares = shorts.shares_index([{1: ("2023-06-30", 1_000_000, "a"), 2: ("2023-06-30", 1_000_000, "b"),
+                                   3: ("2023-06-30", 1_000_000, "c")}])
     row = lambda si: {"si": si, "dtc": 3.0, "chg": 0.0, "date": "x"}
     early = {"AAA": row(400_000), "BBB": row(10_000), "CCC": row(300_000)}
     late = {"AAA": row(400_000), "BBB": row(500_000), "CCC": row(300_000)}  # BBB's big SI settles 3 days pre-squeeze

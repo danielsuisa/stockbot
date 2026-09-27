@@ -232,14 +232,25 @@ def load_reports(dates, threads=4):
     return _parallel(lambda d: _cached(CACHE / "finra" / f"{d}.json.gz", lambda: shorts.report(d)), dates, threads)
 
 
+def _quarters(first, last):
+    return [(y, q) for y in range(first, (last or dt.date.today().year) + 1) for q in (1, 2, 3, 4)]
+
+
 def load_frames(first=2017, last=None):
     """Every quarterly SEC shares-outstanding frame from `first` to this year (cached; unpublished ones skipped)."""
     out = []
-    for y in range(first, (last or dt.date.today().year) + 1):
-        for q in (1, 2, 3, 4):
-            rows = _cached(CACHE / "sec" / f"CY{y}Q{q}I.json.gz",
-                           lambda: [[c, e, v] for c, (e, v) in shorts.frame(y, q).items()])
-            out.append({int(c): (e, v) for c, e, v in rows or []})
+    for y, q in _quarters(first, last):
+        rows = _cached(CACHE / "sec-v2" / f"CY{y}Q{q}I.json.gz",  # v2: with accession numbers
+                       lambda: [[c, e, v, a] for c, (e, v, a) in shorts.frame(y, q).items()])
+        out.append({int(c): (e, v, a) for c, e, v, a in rows or []})
+    return out
+
+
+def load_filings(first=2017, last=None):
+    """{accession: date filed} for every XBRL filing from `first` to this year (EDGAR full index, cached)."""
+    out = {}
+    for y, q in _quarters(first, last):
+        out.update(_cached(CACHE / "edgar-idx" / f"{y}Q{q}.json.gz", lambda: shorts.filings(y, q)) or {})
     return out
 
 
@@ -358,8 +369,10 @@ def main(argv=None):
     raw = load_reports(dates, a.threads // 2)
     cal = load_bars(["SPY"])["SPY"]["d"]
     reports = [(u, shorts.remap(raw[d], primary)) for d in dates if raw.get(d) and (u := shorts.usable_from(d, cal))]
-    frames = load_frames()
-    shares = shorts.shares_index(frames)
+    frames, filed = load_frames(), load_filings()
+    shares = shorts.shares_index(frames, filed)
+    facts = [a for f in frames for _, _, a in f.values()]
+    matched = sum(a in filed for a in facts) / len(facts) if facts else 0.0
     syms = sorted({s for _, rep in reports for s in rep if s in primary})
     bars = load_bars(syms, a.threads)
     print(f"data: {len(reports)} reports, {len(shares)} SEC filers, {len(bars)}/{len(syms)} symbols with bars "
@@ -385,7 +398,9 @@ def main(argv=None):
     last_full = cal[-squeeze.WINDOW]
     meta = {"run": run, "lines": [
         f"FINRA reports: {len(reports)} (settlements {dates[0]} … {dates[-1]}), usable from the 8th session after "
-        f"settlement", f"SEC shares-outstanding frames: {sum(1 for f in frames if f)}, {len(shares)} filers",
+        f"settlement", f"SEC shares-outstanding frames: {sum(1 for f in frames if f)}, {len(shares)} filers; "
+        f"{matched:.1%} of facts matched to their EDGAR filing date (usable the day after it; unmatched: fact date "
+        f"+ {shorts.SHARES_FALLBACK} days)",
         f"Symbols (FINRA NNM/SC/NYSE/AMEX, primary SEC ticker): {len(syms)}, with Yahoo bars: {len(bars)}",
         f"Sessions: in-sample {r_in['days']}, out-of-sample {r_oos['days'] if r_oos else 0} (last full 10-session "
         f"window starts {last_full})", f"Runtime {time.time() - t0:.0f}s · `python -m bot.backtest`"]}

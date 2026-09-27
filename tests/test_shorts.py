@@ -85,20 +85,31 @@ class UsableFrom(unittest.TestCase):
 
 
 class Shares(unittest.TestCase):
-    IDX = shorts.shares_index([{1: ("2025-01-10", 1_000_000)}, {1: ("2025-04-10", 1_200_000), 2: ("2023-01-01", 500_000)},
-                               {1: ("2025-04-10", 1_200_000)}])
+    FRAMES = [{1: ("2025-01-10", 1_000_000, "a1")}, {1: ("2025-04-10", 1_200_000, "a2"), 2: ("2023-01-01", 500_000, "a3")},
+              {1: ("2025-04-10", 1_200_000, "a2")}]
+    FILED = {"a1": "2025-02-05", "a2": "2025-04-20", "a3": "2023-02-01"}
+    IDX = shorts.shares_index(FRAMES, FILED)
 
     def test_index_collapses_duplicates(self):
-        self.assertEqual(self.IDX[1], [("2025-01-10", 1_000_000), ("2025-04-10", 1_200_000)])
+        self.assertEqual(self.IDX[1], [("2025-02-06", "2025-01-10", 1_000_000), ("2025-04-21", "2025-04-10", 1_200_000)])
 
-    def test_lag_and_latest(self):
-        self.assertIsNone(shorts.shares_at(self.IDX, 1, "2025-01-24"))
-        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-01-25"), 1_000_000)
-        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-04-24"), 1_000_000)
-        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-04-25"), 1_200_000)
+    def test_usable_the_day_after_filing(self):
+        self.assertIsNone(shorts.shares_at(self.IDX, 1, "2025-02-05"))
+        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-02-06"), 1_000_000)
+        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-04-20"), 1_000_000)
+        self.assertEqual(shorts.shares_at(self.IDX, 1, "2025-04-21"), 1_200_000)
+
+    def test_unknown_filing_waits_the_fallback(self):
+        idx = shorts.shares_index([{5: ("2025-01-10", 1_000_000, "zz")}], {})
+        self.assertIsNone(shorts.shares_at(idx, 5, "2025-05-29"))
+        self.assertEqual(shorts.shares_at(idx, 5, "2025-05-30"), 1_000_000)  # 2025-01-10 + 140 days
+
+    def test_live_index_without_filing_dates_uses_the_fact_date(self):
+        idx = shorts.shares_index([{5: ("2026-06-30", 2_000_000, None)}])
+        self.assertEqual(shorts.shares_at(idx, 5, "2026-06-30"), 2_000_000)
 
     def test_implausibly_small_share_count_is_unusable(self):
-        idx = shorts.shares_index([{7: ("2025-01-10", 100)}, {8: ("2025-01-10", shorts.MIN_SHARES)}])
+        idx = shorts.shares_index([{7: ("2025-01-10", 100, "x")}, {8: ("2025-01-10", shorts.MIN_SHARES, "y")}])
         self.assertIsNone(shorts.shares_at(idx, 7, "2025-03-01"))  # SEC figure of 100 shares (LAES, 2023)
         self.assertEqual(shorts.shares_at(idx, 8, "2025-03-01"), shorts.MIN_SHARES)
 
@@ -107,11 +118,20 @@ class Shares(unittest.TestCase):
         self.assertIsNone(shorts.shares_at(self.IDX, 3, "2025-06-01"))
 
     def test_frame_parses_sec(self):
-        body = {"data": [{"cik": 1750, "end": "2026-06-30", "val": 39892472}, {"cik": 9, "end": "2026-06-30", "val": 0}]}
+        body = {"data": [{"cik": 1750, "end": "2026-06-30", "val": 39892472, "accn": "0001104659-26-085459"},
+                         {"cik": 9, "end": "2026-06-30", "val": 0, "accn": "x"}]}
         with mock.patch.object(shorts.common, "get_json", return_value=body):
-            self.assertEqual(shorts.frame(2026, 2), {1750: ("2026-06-30", 39892472)})
+            self.assertEqual(shorts.frame(2026, 2), {1750: ("2026-06-30", 39892472, "0001104659-26-085459")})
         with mock.patch.object(shorts.common, "get_json", return_value=None):
             self.assertEqual(shorts.frame(2027, 1), {})
+
+    def test_filing_dates_from_edgar_full_index(self):
+        idx = (b"Description: XBRL Index\n\nCIK|Company Name|Form Type|Date Filed|Filename\n" + b"-" * 80 + b"\n"
+               b"1000045|OLD MARKET CAPITAL Corp|10-Q|2024-11-13|edgar/data/1000045/0000950170-24-126356.txt\n")
+        with mock.patch.object(shorts.common, "fetch", return_value=idx):
+            self.assertEqual(shorts.filings(2024, 4), {"0000950170-24-126356": "2024-11-13"})
+        with mock.patch.object(shorts.common, "fetch", return_value=None):
+            self.assertEqual(shorts.filings(2027, 1), {})
 
 
 if __name__ == "__main__":
