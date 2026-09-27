@@ -167,6 +167,9 @@ class Render(unittest.TestCase):
         self.assertIn("NO-GO", md)
         self.assertIn("w0.5/si0.1/rv1.5", md)
         self.assertIn("| 2024 |", md)
+        self.assertNotIn("## Changes after the first run", md)
+        hist = backtest.render({"run": "d", "lines": [], "history": ["Run 1: GO 6.80×"]}, r, grid, None, None, [], False)
+        self.assertIn("## Changes after the first run\n\n- Run 1: GO 6.80×", hist)
         none = backtest.render({"run": "d", "lines": []}, r, grid, None, None, [], False)
         self.assertIn("No variant reached", none)
 

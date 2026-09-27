@@ -27,6 +27,16 @@ _DATES = {}  # one shared str object per session date (memory)
 START, SPLIT = "2018-02-01", "2024-01-01"
 LIFT, MIN_HITS, MIN_YEARS, EPS = 3.0, 30, 2, 1e-9
 PICK_FIELDS = ("t", "score", "si_pct", "dtc", "rvol", "ret5", "brk", "price")
+HISTORY = (  # data fixes made after the first real run; the verdict rule itself never changed
+    "Run 1 (2026-09-27): GO, lift 6.80×, 118 hits. SEC scale errors inflated short interest (LAES: 100 shares → "
+    "88,000 %; 72 of 1,530 out-of-sample picks above 150 %).",
+    "Run 2: added two plausibility rules (SEC share figure ≥ 100,000; short interest ≤ 150 % of shares) → GO, lift "
+    "6.56×, 108 hits.",
+    "Run 3 (this report), after an independent review: the $1 gate is judged on the price as traded (Yahoo prices are "
+    "split-adjusted, so sub-$1 stocks that later reverse-split had passed it — a look-ahead behind 19 % of run 2's "
+    "hits); FINRA class-share symbols (BRKB) are matched to SEC tickers (BRK-B); shares outstanding are used from the "
+    "day after their EDGAR filing date instead of 15 days after the cover date.",
+)
 
 
 def vname(v):
@@ -295,7 +305,7 @@ def _base_line(name, a):
 def render(meta, r_in, grid, chosen, r_oos=None, checks=(), go=False):
     """The Markdown report."""
     L = [f"# Squeeze screener backtest — {meta['run']}", "", f"**Verdict: {'GO ✅' if go else 'NO-GO ❌'}**", "",
-         "Rule, fixed on 2026-09-27 before any result (out-of-sample years only): the top-10 hit rate is ≥ 3× the "
+         "Verdict rule, fixed on 2026-09-27 before any result (out-of-sample years only): the top-10 hit rate is ≥ 3× the "
          "baseline hit rate, ≥ 30 distinct hits, and ≥ 3× in at least 2 of the 3 years. Hit = the highest price in "
          "sessions D … D+9 reaches ≥ 1.5× the open of D. Baseline = every eligible stock-day.", ""]
     if checks:
@@ -305,6 +315,8 @@ def render(meta, r_in, grid, chosen, r_oos=None, checks=(), go=False):
                 (_x(val) if isinstance(val, float) or val is None else str(val))
             L.append(f"| {label} | {'pass' if ok else 'fail'} | {shown} |")
         L.append("")
+    if meta.get("history"):
+        L += ["## Changes after the first run", "", *[f"- {x}" for x in meta["history"]], ""]
     L += ["## Data", "", *[f"- {x}" for x in meta["lines"]], ""]
     base_in = r_in["bases"]["all"]
     L += [f"## In-sample ({START} … {SPLIT}, exclusive): every grid variant", "",
@@ -396,7 +408,7 @@ def main(argv=None):
         checks, go = verdict(r_oos["lists"]["selected"], r_oos["bases"]["all"], sorted(r_oos["bases"]["all"]["years"]))
         picks = r_oos["picks"]["selected"]
     last_full = cal[-squeeze.WINDOW]
-    meta = {"run": run, "lines": [
+    meta = {"run": run, "history": HISTORY, "lines": [
         f"FINRA reports: {len(reports)} (settlements {dates[0]} … {dates[-1]}), usable from the 8th session after "
         f"settlement", f"SEC shares-outstanding frames: {sum(1 for f in frames if f)}, {len(shares)} filers; "
         f"{matched:.1%} of facts matched to their EDGAR filing date (usable the day after it; unmatched: fact date "
