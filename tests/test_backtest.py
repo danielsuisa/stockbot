@@ -137,6 +137,24 @@ class Loaders(unittest.TestCase):
             self.assertFalse(empty.exists())
 
 
+class SplitAdjustedPrice(unittest.TestCase):
+    def test_splits_parsed_from_yahoo(self):
+        r = {"timestamp": [1718631000], "events": {"splits": {"1718631000": {"date": 1718631000, "numerator": 1.0,
+             "denominator": 20.0}}}, "indicators": {"quote": [{"open": [1.0], "high": [1.0], "low": [1.0],
+                                                            "close": [1.0], "volume": [5]}]}}
+        b = backtest.to_bars(r)
+        self.assertEqual(b["s"], [["2024-06-17", 0.05]])
+        self.assertEqual(backtest.pack(b)["s"], [["2024-06-17", 0.05]])
+
+    def test_price_gate_uses_the_actual_price_before_a_later_reverse_split(self):
+        reports, shares, primary, bars = market()
+        bars["AAA"]["s"] = [[CAL[40], 0.05]]  # 1:20 reverse split at CAL[40]: adjusted 10 = actual 0.50 before it
+        rows, _ = backtest.day_rows(CAL[35], CAL[34], CAL[44], reports[0][1], shares, primary, bars)
+        self.assertNotIn("AAA", [r["t"] for r in rows])
+        rows, _ = backtest.day_rows(CAL[41], CAL[40], CAL[50], reports[0][1], shares, primary, bars)
+        self.assertEqual([r["price"] for r in rows if r["t"] == "AAA"], [10.0])  # bar of the split day is actual
+
+
 class Render(unittest.TestCase):
     def test_report_shows_verdict_tables_and_choice(self):
         reports, shares, primary, bars = market()

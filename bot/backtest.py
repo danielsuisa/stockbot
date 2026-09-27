@@ -75,13 +75,26 @@ def day_rows(day, prev, end, rep, shares, primary, bars):
         i = bisect.bisect_left(b["d"], day) - 1
         if i < 0 or b["d"][i] != prev:
             continue
-        row = squeeze.make_row(sym, si, shorts.shares_at(shares, cik, day), squeeze.features(b, i))
+        feat = squeeze.features(b, i)
+        if feat:
+            feat["price"] = actual_close(b, i)  # the $1 gate needs the price traded then, not the split-adjusted one
+        row = squeeze.make_row(sym, si, shorts.shares_at(shares, cik, day), feat)
         if row is None:
             continue
         rows.append(row)
         nxt = i + 1
         outs[sym] = squeeze.outcome(b, nxt, end) if nxt < len(b["d"]) and b["d"][nxt] == day else None
     return rows, outs
+
+
+def actual_close(b, i):
+    """Close of bar i as it traded: Yahoo back-adjusts closes for later splits, so undo every split dated after
+    bar i (b["s"] = [[date, numerator / denominator], ...]; a 1:20 reverse split -> x 0.05)."""
+    f = 1.0
+    for day, ratio in b.get("s", ()):
+        if day > b["d"][i]:
+            f *= ratio
+    return b["c"][i] * f
 
 
 def coverage(c, rep, primary, bars, shares, day):
@@ -181,8 +194,9 @@ def _parallel(fn, items, threads):
 
 
 def to_bars(r):
-    """Yahoo chart result -> bars {"d","o","h","l","c","v"}: oldest first, UTC session dates, one bar per date (the
-    last), bars without a close dropped; a missing high/low falls back to the close, volume to 0, open stays None."""
+    """Yahoo chart result -> bars {"d","o","h","l","c","v","s"}: oldest first, UTC session dates, one bar per date
+    (the last), bars without a close dropped; a missing high/low falls back to the close, volume to 0, open stays
+    None; "s" = the split events [[date, numerator / denominator], ...] (prices are split-adjusted)."""
     if not r:
         return None
     ts = r.get("timestamp") or []
@@ -198,14 +212,19 @@ def to_bars(r):
                 b[k].pop()
         for k, x in zip("dohlcv", (day, o or None, h or c, l or c, c, v or 0)):
             b[k].append(x)
-    return b if b["d"] else None
+    if not b["d"]:
+        return None
+    splits = ((r.get("events") or {}).get("splits") or {}).values()
+    b["s"] = sorted([dt.datetime.fromtimestamp(x["date"], dt.timezone.utc).date().isoformat(),
+                     x["numerator"] / x["denominator"]] for x in splits if x.get("denominator"))
+    return b
 
 
 def pack(b):
     """Cached bars -> compact in-memory bars: shared date strings, float arrays (a missing open -> NaN)."""
     return {"d": [_DATES.setdefault(d, d) for d in b["d"]],
             "o": array.array("d", (NAN if x is None else x for x in b["o"])),
-            **{k: array.array("d", b[k]) for k in "hlcv"}}
+            **{k: array.array("d", b[k]) for k in "hlcv"}, "s": b.get("s", [])}
 
 
 def load_reports(dates, threads=4):
@@ -230,8 +249,8 @@ def load_bars(symbols, threads=8):
     p2 = int(time.time())
 
     def one(sym):
-        b = _cached(CACHE / "yahoo" / f"{sym}.json.gz",
-                    lambda: to_bars(market.chart(sym, period1=p1, period2=p2, interval="1d")))
+        b = _cached(CACHE / "yahoo-v2" / f"{sym}.json.gz",  # v2: with split events
+                    lambda: to_bars(market.chart(sym, period1=p1, period2=p2, interval="1d", events="split")))
         return pack(b) if b else None
     return {s: b for s, b in _parallel(one, symbols, threads).items() if b}
 
