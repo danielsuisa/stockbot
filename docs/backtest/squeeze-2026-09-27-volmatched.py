@@ -1,6 +1,6 @@
 """Throwaway analysis (not product code): is the list's hit rate explained by volatility alone, and does short
 interest add anything beyond the volume/momentum trigger? Reuses bot.backtest's cache and bot.squeeze's functions.
-Run from the repo root: python <this file> > out.md"""
+Run from the repo root: python <this file> | grep -v "^yahoo " > out.md"""
 import bisect
 import math
 import sys
@@ -29,8 +29,8 @@ def main():
     dates = [d for d in shorts.settlement_dates() if d >= "2017-12-01"]
     raw = backtest.load_reports(dates, 4)
     cal = backtest.load_bars(["SPY"])["SPY"]["d"]
-    reports = [(u, raw[d]) for d in dates if raw.get(d) and (u := shorts.usable_from(d, cal))]
-    shares = shorts.shares_index(backtest.load_frames())
+    reports = [(u, shorts.remap(raw[d], primary)) for d in dates if raw.get(d) and (u := shorts.usable_from(d, cal))]
+    shares = shorts.shares_index(backtest.load_frames(), backtest.load_filings())
     syms = sorted({s for _, rep in reports for s in rep if s in primary})
     bars = backtest.load_bars(syms, 8)
     usable = [u for u, _ in reports]
