@@ -24,6 +24,8 @@ NAME = "w0.7/si0.2/rv2"
 BACKTEST = {"hit": 0.068, "crash": 0.071, "base": 0.010, "years": "2024–2026"}  # out-of-sample, run 3
 CRASH = 1 / squeeze.HIT - 1  # -33%: the fall that mirrors the +50% spike
 LAST, JOURNAL = "squeeze_last.json", "squeeze_journal.json"
+FRAMES = 6  # quarters of SEC frames: facts sit within ~45 days of a quarter end, so 6 cover the 400-day age limit
+BORROW_TIMEOUT = 10  # seconds: an unreachable FTP must not stall the list or the Telegram listener for long
 FIELDS = ("score", "si_pct", "dtc", "chg", "rvol", "ret5", "brk", "price", "fuel", "trigger", "shares")
 
 
@@ -67,9 +69,10 @@ def latest_report(cal, today):
 
 
 def frames_now(today):
-    """SEC shares frames of the current calendar quarter and the three before it (today: a date)."""
+    """SEC shares frames of the current calendar quarter and the FRAMES - 1 before it (today: a date) - enough for
+    shorts.SHARES_MAX_AGE, so the live candidate set matches the backtest's."""
     y, q, out = today.year, (today.month - 1) // 3 + 1, []
-    for _ in range(4):
+    for _ in range(FRAMES):
         out.append(shorts.frame(y, q))
         y, q = (y, q - 1) if q > 1 else (y - 1, 4)
     return out
@@ -103,7 +106,12 @@ def build(today):
     if not raw:
         raise RuntimeError("FINRA: no usable short-interest report")
     primary = {t: cik for cik, t in common.cik_tickers().items()}
-    shares = shorts.shares_index(frames_now(dt.date.fromisoformat(today)))
+    if not primary:
+        raise RuntimeError("SEC: no ticker map")
+    frames = frames_now(dt.date.fromisoformat(today))
+    if not any(frames):  # SEC down must alarm, not read as "no stock passes today"
+        raise RuntimeError("SEC: no shares-outstanding frames")
+    shares = shorts.shares_index(frames)
     gated = []
     for t, si in shorts.remap(raw, primary).items():
         n = shorts.shares_at(shares, primary[t], today) if t in primary else None
@@ -118,8 +126,10 @@ def build(today):
 
 def enrich(rows, today):
     """Unvalidated extras for the listed names: IBKR borrow fee / availability and CBOE gamma fuel (None = missing).
-    today: a date."""
-    fees = borrow.fetch()
+    today: a date. No rows -> no downloads."""
+    if not rows:
+        return rows
+    fees = borrow.fetch(timeout=BORROW_TIMEOUT)
     for r in rows:
         r["borrow"] = fees.get(r["t"])
         chain = options.chain(r["t"])
@@ -186,8 +196,7 @@ def message(res):
 def record(j, res):
     """Journal today's names; a ticker journaled within the last WINDOW sessions counts once (as in the backtest)
     -> the number added."""
-    recent = set(res["recent"])
-    seen = {e["t"] for e in j["entries"] if e["date"] in recent}
+    seen = {e["t"] for e in j["entries"] if e["date"] >= res["recent"][0]}  # by date order: a holiday run counts too
     added = 0
     for k, r in enumerate(res["rows"], 1):
         if r["t"] in seen:
@@ -249,9 +258,11 @@ def stats_text(j):
 
 
 # ---------- /squeeze TICKER ----------
-def reasons(si_pct, feat):
-    """Why a stock is not on the list (Hebrew); [] when it passes every gate."""
+def reasons(si_pct, feat, cls=None):
+    """Why a stock is not on the list (Hebrew); [] when it passes every gate. cls: FINRA market class."""
     out = []
+    if cls and cls not in shorts.CLASSES:
+        out.append(f"לא נסחרת בבורסה (FINRA: {code(cls)})")
     if si_pct is None:
         out.append("אין נתוני שורט או מספר מניות")
     elif si_pct < VARIANT["g_si"]:
@@ -284,7 +295,7 @@ def ticker_text(t, si, shares, feat, rank=None, extra=""):
         brk = " · פריצה ⬆️" if feat["brk"] >= 1 else ""
         lines.append(f"מסחר: מחזור ביום האחרון פי {_num(feat['rvol'], '.1f')} מהממוצע · 5 ימים "
                      f"{_pct(feat['ret5'], True)} · מחיר {code(common.price(feat['price']))}{brk}")
-    why = reasons(si_pct, feat)
+    why = reasons(si_pct, feat, si.get("cls") if si else None)
     if why:
         lines.append("❌ לא עובר את הסינון: " + "; ".join(why) + ".")
     else:
@@ -320,12 +331,15 @@ def main(argv=None):
     today = dt.datetime.now(dt.timezone.utc).date().isoformat()
     try:
         res = build(today)
-        enrich(res["rows"], dt.date.fromisoformat(today))
     except Exception as e:  # the owner must hear about a failed list, not silence
         traceback.print_exc()
         if not a.dry:
             common.send(f"⚠️ רשימת הסקוויז של היום לא נבנתה ({code(type(e).__name__)}): {common.esc(str(e)[:200])}")
         return 1
+    try:
+        enrich(res["rows"], dt.date.fromisoformat(today))
+    except Exception:  # unvalidated extras must never cost the day's list
+        traceback.print_exc()
     j = load(JOURNAL, {"v": 1, "entries": []})
     try:
         filled = followup(j, today)

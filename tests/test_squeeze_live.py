@@ -64,13 +64,37 @@ class Build(unittest.TestCase):
         self.assertNotIn("BBB", self.calls)  # 5 % short interest: no Yahoo call at all
         self.assertEqual(res["recent"], CAL[-9:] + [TODAY])
 
+    def test_missing_sec_data_raises_instead_of_an_empty_list(self):
+        with mock.patch.object(squeeze_live.shorts, "frame", return_value={}), self.assertRaises(RuntimeError):
+            squeeze_live.build(TODAY)
+        with mock.patch.object(squeeze_live.common, "cik_tickers", return_value={}), self.assertRaises(RuntimeError):
+            squeeze_live.build(TODAY)
+
     def test_missing_calendar_raises(self):
         self.charts["SPY"] = None
         with self.assertRaises(RuntimeError):
             squeeze_live.build(TODAY)
 
 
+class FramesNow(unittest.TestCase):
+    def test_six_quarters_reach_the_400_day_age_limit(self):
+        with mock.patch.object(squeeze_live.shorts, "frame", side_effect=lambda y, q: {(y, q): 1}) as f:
+            got = squeeze_live.frames_now(dt.date(2026, 10, 2))
+        self.assertEqual([c.args for c in f.call_args_list],
+                         [(2026, 4), (2026, 3), (2026, 2), (2026, 1), (2025, 4), (2025, 3)])
+        self.assertEqual(len(got), 6)
+
+
 class Enrich(unittest.TestCase):
+    def test_no_rows_no_ftp_and_a_short_timeout(self):
+        with mock.patch.object(squeeze_live.borrow, "fetch", return_value={}) as f, \
+                mock.patch.object(squeeze_live.options, "chain", return_value=None):
+            squeeze_live.enrich([], dt.date(2026, 9, 28))
+            f.assert_not_called()
+            squeeze_live.enrich([{"t": "GME", "shares": 1}], dt.date(2026, 9, 28))
+            f.assert_called_once_with(timeout=squeeze_live.BORROW_TIMEOUT)
+        self.assertLessEqual(squeeze_live.BORROW_TIMEOUT, 10)
+
     def test_extras_attached_and_missing_sources_are_none(self):
         rows = [{"t": "GME", "shares": 1_000_000}, {"t": "XYZ", "shares": 1_000_000}]
         gme = {"iv30": 50.0, "options": [{"option": "GME261002C00020000", "open_interest": 10.0, "volume": 1.0,
@@ -118,6 +142,12 @@ class Journal(unittest.TestCase):
         self.assertEqual((e["date"], e["t"], e["rank"], e["variant"], e["outcome"]),
                          (TODAY, "AAA", 1, squeeze_live.NAME, None))
         self.assertEqual((e["borrow"]["fee"], e["gamma"]["iv30"]), (12.5, 140.0))
+
+    def test_a_run_on_a_holiday_does_not_journal_the_same_trade_again(self):
+        j = {"entries": []}
+        before = weekdays("2026-11-25", 9)  # Thanksgiving (Thu 2026-11-26) is not a session
+        self.assertEqual(squeeze_live.record(j, {**RES, "date": "2026-11-26", "recent": before + ["2026-11-26"]}), 1)
+        self.assertEqual(squeeze_live.record(j, {**RES, "date": "2026-11-27", "recent": before + ["2026-11-27"]}), 0)
 
     def test_followup_fills_closed_windows_only(self):
         days = weekdays("2026-10-16", 30)
@@ -167,6 +197,15 @@ class TickerText(unittest.TestCase):
             self.assertIn("<code>7.1%</code>", text)
 
 
+class TickerTextClass(unittest.TestCase):
+    def test_otc_symbol_does_not_pass(self):
+        feat = {"price": 10.0, "dollar": 1e7, "rvol": 3.0, "ret5": 0.2, "brk": 1.2}
+        text = squeeze_live.ticker_text("OTCX", {**si(300_000), "cls": "OTC"}, 1_000_000, feat)
+        self.assertIn("❌", text)
+        self.assertIn("OTC", text.split("❌")[1])
+        self.assertEqual(common.rtl_bad_lines(text), [])
+
+
 class TickerReport(unittest.TestCase):
     def test_glue(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"SQUEEZE_DIR": d}), \
@@ -207,6 +246,14 @@ class Main(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("לא נבנתה", send.call_args[0][0])
         self.assertEqual(files, [])
+
+    def test_extras_failure_does_not_stop_the_list(self):
+        code, send, files, (last, j) = self.run_main([], build=mock.Mock(return_value=dict(RES, rows=[dict(ROW)])),
+                                                     enrich=mock.Mock(side_effect=ValueError("bad CBOE payload")),
+                                                     followup=mock.Mock(return_value=0))
+        self.assertEqual(code, 0)
+        self.assertIn("<code>AAA</code>", send.call_args[0][0])
+        self.assertEqual(len(j["entries"]), 1)
 
     def test_dry_run_writes_nothing(self):
         code, send, files, _ = self.run_main(["--dry"], build=mock.Mock(return_value=dict(RES, rows=[dict(ROW)])),
