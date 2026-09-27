@@ -203,33 +203,6 @@ def _parallel(fn, items, threads):
         return dict(zip(items, ex.map(fn, items)))
 
 
-def to_bars(r):
-    """Yahoo chart result -> bars {"d","o","h","l","c","v","s"}: oldest first, UTC session dates, one bar per date
-    (the last), bars without a close dropped; a missing high/low falls back to the close, volume to 0, open stays
-    None; "s" = the split events [[date, numerator / denominator], ...] (prices are split-adjusted)."""
-    if not r:
-        return None
-    ts = r.get("timestamp") or []
-    q = (r.get("indicators", {}).get("quote") or [{}])[0]
-    cols = [q.get(k) or [None] * len(ts) for k in ("open", "high", "low", "close", "volume")]
-    b = {k: [] for k in "dohlcv"}
-    for t, o, h, l, c, v in zip(ts, *cols):
-        if not c:
-            continue
-        day = dt.datetime.fromtimestamp(t, dt.timezone.utc).date().isoformat()
-        if b["d"] and b["d"][-1] == day:
-            for k in "dohlcv":
-                b[k].pop()
-        for k, x in zip("dohlcv", (day, o or None, h or c, l or c, c, v or 0)):
-            b[k].append(x)
-    if not b["d"]:
-        return None
-    splits = ((r.get("events") or {}).get("splits") or {}).values()
-    b["s"] = sorted([dt.datetime.fromtimestamp(x["date"], dt.timezone.utc).date().isoformat(),
-                     x["numerator"] / x["denominator"]] for x in splits if x.get("denominator"))
-    return b
-
-
 def pack(b):
     """Cached bars -> compact in-memory bars: shared date strings, float arrays (a missing open -> NaN)."""
     return {"d": [_DATES.setdefault(d, d) for d in b["d"]],
@@ -271,7 +244,7 @@ def load_bars(symbols, threads=8):
 
     def one(sym):
         b = _cached(CACHE / "yahoo-v2" / f"{sym}.json.gz",  # v2: with split events
-                    lambda: to_bars(market.chart(sym, period1=p1, period2=p2, interval="1d", events="split")))
+                    lambda: squeeze.to_bars(market.chart(sym, period1=p1, period2=p2, interval="1d", events="split")))
         return pack(b) if b else None
     return {s: b for s, b in _parallel(one, symbols, threads).items() if b}
 

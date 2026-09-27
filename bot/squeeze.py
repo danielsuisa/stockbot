@@ -1,5 +1,6 @@
 """Short-squeeze screener: features, eligibility, scoring and outcome - pure functions shared by the live run and
 the backtest (docs/superpowers/specs/2026-09-27-squeeze-screener-design.md, sections 5-6)."""
+import datetime as dt
 import heapq
 
 from bot import market
@@ -95,3 +96,30 @@ def outcome(b, i, end):
         j += 1
     hi, lo = max(b["h"][i:j + 1]), min(b["l"][i:j + 1])
     return {"hit": hi >= HIT * o, "maxup": hi / o - 1, "dd": lo / o - 1, "r10": b["c"][j] / o - 1}
+
+
+def to_bars(r):
+    """Yahoo chart result -> bars {"d","o","h","l","c","v","s"}: oldest first, UTC session dates, one bar per date
+    (the last), bars without a close dropped; a missing high/low falls back to the close, volume to 0, open stays
+    None; "s" = the split events [[date, numerator / denominator], ...] (prices are split-adjusted)."""
+    if not r:
+        return None
+    ts = r.get("timestamp") or []
+    q = (r.get("indicators", {}).get("quote") or [{}])[0]
+    cols = [q.get(k) or [None] * len(ts) for k in ("open", "high", "low", "close", "volume")]
+    b = {k: [] for k in "dohlcv"}
+    for t, o, h, l, c, v in zip(ts, *cols):
+        if not c:
+            continue
+        day = dt.datetime.fromtimestamp(t, dt.timezone.utc).date().isoformat()
+        if b["d"] and b["d"][-1] == day:
+            for k in "dohlcv":
+                b[k].pop()
+        for k, x in zip("dohlcv", (day, o or None, h or c, l or c, c, v or 0)):
+            b[k].append(x)
+    if not b["d"]:
+        return None
+    splits = ((r.get("events") or {}).get("splits") or {}).values()
+    b["s"] = sorted([dt.datetime.fromtimestamp(x["date"], dt.timezone.utc).date().isoformat(),
+                     x["numerator"] / x["denominator"]] for x in splits if x.get("denominator"))
+    return b

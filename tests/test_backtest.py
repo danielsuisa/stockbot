@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from bot import backtest, shorts
+from bot import backtest, shorts, squeeze
 
 
 def weekdays(start, n):
@@ -116,10 +116,10 @@ class Loaders(unittest.TestCase):
              "indicators": {"quote": [{"open": [None, 10.0, 10.5, 11.0], "high": [None, 12.0, 12.5, None],
                                        "low": [9.0, 9.5, 9.6, None], "close": [9.5, 11.0, 11.5, None],
                                        "volume": [100, None, 300, 400]}]}}
-        b = backtest.to_bars(r)
+        b = squeeze.to_bars(r)
         self.assertEqual(b["d"], ["2024-01-02", "2024-01-03"])  # duplicate session kept once (last), no-close dropped
         self.assertEqual((b["o"], b["h"], b["c"], b["v"]), ([None, 10.5], [9.5, 12.5], [9.5, 11.5], [100, 300]))
-        self.assertIsNone(backtest.to_bars(None))
+        self.assertIsNone(squeeze.to_bars(None))
         p = backtest.pack(b)
         self.assertTrue(math.isnan(p["o"][0]))
         self.assertEqual(list(p["c"]), [9.5, 11.5])
@@ -142,7 +142,7 @@ class SplitAdjustedPrice(unittest.TestCase):
         r = {"timestamp": [1718631000], "events": {"splits": {"1718631000": {"date": 1718631000, "numerator": 1.0,
              "denominator": 20.0}}}, "indicators": {"quote": [{"open": [1.0], "high": [1.0], "low": [1.0],
                                                             "close": [1.0], "volume": [5]}]}}
-        b = backtest.to_bars(r)
+        b = squeeze.to_bars(r)
         self.assertEqual(b["s"], [["2024-06-17", 0.05]])
         self.assertEqual(backtest.pack(b)["s"], [["2024-06-17", 0.05]])
 
