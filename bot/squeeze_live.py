@@ -125,3 +125,226 @@ def enrich(rows, today):
         chain = options.chain(r["t"])
         r["gamma"] = options.gamma(chain, r["shares"], today) if chain else None
     return rows
+
+
+# ---------- message ----------
+def _pct(x, signed=False):
+    return code(f"{x * 100:+.0f}%" if signed else f"{x * 100:.1f}%")
+
+
+def _num(x, fmt):
+    return code(format(x, fmt))
+
+
+def line(k, r):
+    """One listed stock (Hebrew first, RTL): rank, ticker, score and the numbers behind it."""
+    brk = " · פריצה ⬆️" if r["brk"] >= 1 else ""
+    return (f"מקום {code(k)}: {code(r['t'])} · ציון {_num(r['score'], '.2f')} · שורט {_pct(r['si_pct'])} מהמניות · "
+            f"{_num(r['dtc'], '.1f')} ימי כיסוי · מחזור פי {_num(r['rvol'], '.1f')} · 5 ימים {_pct(r['ret5'], True)}"
+            f" · מחיר {code(common.price(r['price']))}{brk}")
+
+
+def extras(r):
+    """The unvalidated options / borrow numbers of one listed stock, or '' when both sources are missing."""
+    out, g, b = [], r.get("gamma"), r.get("borrow")
+    if g:
+        out.append(f"חשיפת קולים עד {code(options.NEAR)} יום {_pct(g['exposure'])} מהמניות")
+        if g.get("iv30") is not None:
+            out.append(f"תנודתיות גלומה {code(format(g['iv30'], '.0f') + '%')}")
+    if b:
+        fee = "חסרה" if b["fee"] is None else code(format(b["fee"], ".1f") + "%")
+        avail = "חסרה" if b["avail"] is None else code((">" if b["more"] else "") + format(b["avail"], ","))
+        out.append(f"עמלת השאלה {fee} בשנה · זמינות להשאלה {avail}")
+    return f"   ↳ לא מאומת: {' · '.join(out)}" if out else ""
+
+
+def footer():
+    """The backtest line every squeeze message carries: spikes AND crashes, so a pick never reads as a buy signal."""
+    return (f"📊 בבדיקה ההיסטורית ({code(BACKTEST['years'])}): {_pct(BACKTEST['hit'])} מהמניות ברשימה עלו {code('50%+')} "
+            f"תוך {code(squeeze.WINDOW)} ימי מסחר, ו־{_pct(BACKTEST['crash'])} ירדו {code('33%')} ומעלה; בכל השוק "
+            f"{_pct(BACKTEST['base'])} עלו {code('50%+')}. זה סימן לתנודה חדה צפויה, לא לכיוון.")
+
+
+def message(res):
+    """The daily Hebrew list for Telegram."""
+    head = [f"🚀 <b>רשימת סקוויז ליום {code(res['date'])}</b>",
+            f"דירוג בשיטה שנקבעה בבדיקה ההיסטורית ({code(NAME)}): שורט של {code('20%')} מהמניות לפחות, ומחזור ביום "
+            f"המסחר האחרון של פי {code(2)} לפחות מהממוצע."]
+    body = []
+    for k, r in enumerate(res["rows"], 1):
+        x = extras(r)
+        body += [line(k, r)] + ([x] if x else [])
+    missing = f", ל־{code(res['missing'])} אין נתוני Yahoo" if res["missing"] else ""
+    foot = [footer(),
+            f"🗓️ שורט לפי דוח FINRA מ־{code(res['si_date'])} · מחירים עד {code(res['prev'])} · "
+            f"{code(res['gated'])} מניות עם שורט גבוה, {code(res['candidates'])} עברו סינון מחיר ונזילות{missing}.",
+            "ℹ️ שורות ״לא מאומת״ (אופציות, השאלה) עוד לא נבדקו היסטורית ואינן משפיעות על הדירוג."]
+    return "\n".join(head + [""] + (body or ["🤷 אין היום מניה שעוברת את הסינון."]) + [""] + foot)
+
+
+# ---------- journal ----------
+def record(j, res):
+    """Journal today's names; a ticker journaled within the last WINDOW sessions counts once (as in the backtest)
+    -> the number added."""
+    recent = set(res["recent"])
+    seen = {e["t"] for e in j["entries"] if e["date"] in recent}
+    added = 0
+    for k, r in enumerate(res["rows"], 1):
+        if r["t"] in seen:
+            continue
+        g = r.get("gamma")
+        j["entries"].append({"date": res["date"], "t": r["t"], "rank": k, "variant": NAME, "si_date": res["si_date"],
+                             **{f: _round(r.get(f)) for f in FIELDS}, "borrow": r.get("borrow"),
+                             "gamma": {x: _round(v) for x, v in g.items()} if g else None, "outcome": None})
+        added += 1
+    return added
+
+
+def followup(j, today):
+    """Fill the outcome of every journal entry whose 10 sessions have closed: entry = the open of the first session
+    on/after the list date, hit = high >= 1.5x entry, crash = low <= entry / 1.5 -> the number filled. Missing data
+    is retried on the next run, never estimated; no bar on the entry session -> no trade."""
+    todo = [e for e in j["entries"] if e.get("outcome") is None]
+    if not todo:
+        return 0
+    p1 = int(dt.datetime.fromisoformat(min(e["date"] for e in todo)).replace(tzinfo=dt.timezone.utc).timestamp())
+    p1 -= 7 * 86400
+    p2 = int(dt.datetime.now(dt.timezone.utc).timestamp())
+    spy = squeeze.to_bars(market.chart("SPY", period1=p1, period2=p2, interval="1d"))
+    cal = [d for d in (spy or {}).get("d", []) if d < today]
+    filled = 0
+    for e in todo:
+        k = bisect.bisect_left(cal, e["date"])
+        if k + squeeze.WINDOW - 1 >= len(cal):
+            continue
+        b = squeeze.to_bars(market.chart(e["t"], period1=p1, period2=p2, interval="1d"))
+        if not b:
+            continue
+        start, end = cal[k], cal[k + squeeze.WINDOW - 1]
+        i = bisect.bisect_left(b["d"], start)
+        o = squeeze.outcome(b, i, end) if i < len(b["d"]) and b["d"][i] == start else None
+        e["outcome"] = {"trade": False, "start": start} if o is None else {
+            "trade": True, "start": start, "end": end, "hit": o["hit"], "crash": o["dd"] <= CRASH,
+            **{x: round(o[x], 4) for x in ("maxup", "dd", "r10")}}
+        filled += 1
+    return filled
+
+
+def stats_text(j):
+    """/squeeze stats: the journal's closed outcomes against the backtest's out-of-sample rates."""
+    done = [e["outcome"] for e in j["entries"] if e.get("outcome") and e["outcome"].get("trade")]
+    waiting = sum(1 for e in j["entries"] if not e.get("outcome"))
+    head = "📒 <b>יומן רשימת הסקוויז</b>"
+    if not done:
+        return (f"{head}\nעוד אין מניות שעברו {code(squeeze.WINDOW)} ימי מסחר מאז שהופיעו ברשימה "
+                f"({code(waiting)} בהמתנה).")
+    n = len(done)
+    small = f" (מדגם קטן, פחות מ־{code(30)})" if n < 30 else ""
+    return "\n".join([
+        head,
+        f"הושלמו {code(n)} מניות{small}, {code(waiting)} בהמתנה: {_pct(sum(o['hit'] for o in done) / n)} עלו "
+        f"{code('50%+')} ו־{_pct(sum(o['crash'] for o in done) / n)} ירדו {code('33%')} ומעלה.",
+        f"חציון התשואה אחרי {code(squeeze.WINDOW)} ימי מסחר: {_pct(statistics.median(o['r10'] for o in done), True)}.",
+        footer()])
+
+
+# ---------- /squeeze TICKER ----------
+def reasons(si_pct, feat):
+    """Why a stock is not on the list (Hebrew); [] when it passes every gate."""
+    out = []
+    if si_pct is None:
+        out.append("אין נתוני שורט או מספר מניות")
+    elif si_pct < VARIANT["g_si"]:
+        out.append(f"שורט {_pct(si_pct)} נמוך מ־{code('20%')}")
+    elif si_pct > squeeze.MAX_SI_PCT:
+        out.append(f"שורט גבוה מ־{code('150%')} מהמניות, כנראה נתון שגוי")
+    if feat is None:
+        out.append("אין מספיק נתוני מסחר")
+        return out
+    if feat["rvol"] < VARIANT["g_rv"]:
+        out.append(f"מחזור פי {_num(feat['rvol'], '.1f')} נמוך מפי {code(2)}")
+    if feat["price"] < squeeze.MIN_PRICE:
+        out.append(f"מחיר {code(common.price(feat['price']))} נמוך מ־{code('1$')}")
+    if feat["dollar"] < squeeze.MIN_DOLLAR:
+        out.append(f"מחזור דולרי {code(common.money(feat['dollar']))} נמוך מ־{code('2.0M$')}")
+    return out
+
+
+def ticker_text(t, si, shares, feat, rank=None, extra=""):
+    """/squeeze TICKER reply from its parts (si: slim FINRA row or None; feat: squeeze.features or None)."""
+    si_pct = si["si"] / shares if si and shares else None
+    lines = [f"🔎 <b>בדיקת סקוויז: {code(t)}</b>"]
+    if si:
+        pct = f" · {_pct(si_pct)} מהמניות" if si_pct is not None else ""
+        lines.append(f"שורט: {code(format(si['si'], ','))} מניות בדוח FINRA מ־{code(si['date'])}{pct} · "
+                     f"{_num(si['dtc'] or 0.0, '.1f')} ימי כיסוי")
+    else:
+        lines.append("שורט: אין דוח FINRA לטיקר הזה.")
+    if feat:
+        brk = " · פריצה ⬆️" if feat["brk"] >= 1 else ""
+        lines.append(f"מסחר: מחזור ביום האחרון פי {_num(feat['rvol'], '.1f')} מהממוצע · 5 ימים "
+                     f"{_pct(feat['ret5'], True)} · מחיר {code(common.price(feat['price']))}{brk}")
+    why = reasons(si_pct, feat)
+    if why:
+        lines.append("❌ לא עובר את הסינון: " + "; ".join(why) + ".")
+    else:
+        where = f" · מקום {code(rank)} ברשימה של היום" if rank else " (הדירוג נקבע מול כל המועמדים ברשימה היומית)"
+        lines.append(f"✅ עובר את הסינון{where}.")
+    if extra:
+        lines.append(extra.strip())
+    return "\n".join(lines + [footer()])
+
+
+def ticker_report(t, today=None):
+    """/squeeze TICKER: fetch the stock's numbers and explain where it stands against the list's gates."""
+    today = today or dt.datetime.now(dt.timezone.utc).date().isoformat()
+    cal = calendar(today)
+    usable = [r for r in shorts.symbol_rows(t.replace("-", ""))
+              if (u := shorts.usable_from(r["date"], cal + [today])) and u <= today]
+    cik = (common.tickers().get(t) or (None,))[0]
+    shares = shorts.shares_at(shorts.shares_index(frames_now(dt.date.fromisoformat(today))), cik, today) if cik else None
+    feat = features_at(squeeze.to_bars(market.chart(t, range="3mo", interval="1d")), today, cal[-1]) if cal else None
+    last = load(LAST, {})
+    rank = next((k for k, r in enumerate(last.get("rows", []), 1) if r["t"] == t), None) \
+        if last.get("date") == today else None
+    row = {"t": t, "shares": shares}
+    enrich([row], dt.date.fromisoformat(today))
+    return ticker_text(t, usable[-1] if usable else None, shares, feat, rank, extras(row))
+
+
+# ---------- run ----------
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Daily squeeze list -> Telegram and data/squeeze_*.json")
+    ap.add_argument("--dry", action="store_true", help="print the message only, write nothing")
+    a = ap.parse_args(argv)
+    today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    try:
+        res = build(today)
+        enrich(res["rows"], dt.date.fromisoformat(today))
+    except Exception as e:  # the owner must hear about a failed list, not silence
+        traceback.print_exc()
+        if not a.dry:
+            common.send(f"⚠️ רשימת הסקוויז של היום לא נבנתה ({code(type(e).__name__)}): {common.esc(str(e)[:200])}")
+        return 1
+    j = load(JOURNAL, {"v": 1, "entries": []})
+    try:
+        filled = followup(j, today)
+    except Exception:  # a follow-up problem must not hold back today's list; it is retried tomorrow
+        traceback.print_exc()
+        filled = 0
+    added = record(j, res)
+    text = message(res)
+    if filled:
+        text += f"\n📒 הושלם מעקב של {code(squeeze.WINDOW)} ימים ל־{code(filled)} מניות: {code('/squeeze stats')}"
+    if a.dry:
+        print(text)
+        return 0
+    common.send(text, signal=True)
+    save(LAST, {"date": today, "text": text, "rows": [{k: _round(v) for k, v in r.items()} for r in res["rows"]]})
+    save(JOURNAL, j)
+    common.log("squeeze", rows=len(res["rows"]), gated=res["gated"], added=added, filled=filled)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
