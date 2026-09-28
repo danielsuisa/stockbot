@@ -16,7 +16,7 @@ import statistics
 import traceback
 from pathlib import Path
 
-from bot import borrow, common, market, options, shorts, squeeze
+from bot import borrow, common, market, movers, options, sessions, shorts, squeeze
 from bot.common import code
 
 VARIANT = {"w": 0.7, "g_si": 0.20, "g_rv": 2.0}  # frozen by the backtest: docs/backtest/squeeze-2026-09-27.md
@@ -24,6 +24,7 @@ NAME = "w0.7/si0.2/rv2"
 BACKTEST = {"hit": 0.068, "crash": 0.071, "base": 0.010, "years": "2024–2026"}  # out-of-sample, run 3
 CRASH = 1 / squeeze.HIT - 1  # -33%: the fall that mirrors the +50% spike
 LAST, JOURNAL = "squeeze_last.json", "squeeze_journal.json"
+STATE, MOVERS_LOG = "squeeze_state.json", "movers_log.json"
 FRAMES = 6  # quarters of SEC frames: facts sit within ~45 days of a quarter end, so 6 cover the 400-day age limit
 BORROW_TIMEOUT = 10  # seconds: an unreachable FTP must not stall the list or the Telegram listener for long
 FIELDS = ("score", "si_pct", "dtc", "chg", "rvol", "ret5", "brk", "price", "fuel", "trigger", "shares")
@@ -98,7 +99,7 @@ def features_at(b, today, prev):
 def build(today):
     """Today's list (today: ISO) -> {"date", "prev", "si_date", "rows" (the top list), "gated" (short interest past
     the gate), "candidates" (also past price / liquidity), "missing" (no Yahoo bars), "recent" (the last WINDOW
-    sessions incl. today)}. RuntimeError when Yahoo's calendar or a usable FINRA report is missing."""
+    sessions incl. today), "universe" (the gated stocks with their bars, for the movers scan)}. RuntimeError when Yahoo's calendar or a usable FINRA report is missing."""
     cal = calendar(today)
     if not cal:
         raise RuntimeError("Yahoo: no SPY sessions")
@@ -121,7 +122,9 @@ def build(today):
     rows = [r for t, si, n in gated if (r := squeeze.make_row(t, si, n, features_at(bars.get(t), today, cal[-1])))]
     return {"date": today, "prev": cal[-1], "si_date": settle, "rows": squeeze.rank(rows, VARIANT),
             "gated": len(gated), "candidates": len(rows), "missing": len(gated) - len(bars),
-            "recent": cal[-(squeeze.WINDOW - 1):] + [today]}
+            "recent": cal[-(squeeze.WINDOW - 1):] + [today],
+            "universe": [{"t": t, "si_pct": si["si"] / n, "dtc": si.get("dtc") or 0.0, "adv": si.get("adv"),
+                          "bars": bars.get(t)} for t, si, n in gated]}
 
 
 def enrich(rows, today):
@@ -190,6 +193,18 @@ def message(res):
             f"{code(res['gated'])} מניות עם שורט גבוה, {code(res['candidates'])} עברו סינון מחיר ונזילות{missing}.",
             "ℹ️ שורות ״לא מאומת״ (אופציות, השאלה) עוד לא נבדקו היסטורית ואינן משפיעות על הדירוג."]
     return "\n".join(head + [""] + (body or ["🤷 אין היום מניה שעוברת את הסינון."]) + [""] + foot)
+
+
+def change_text(res, old):
+    """What changed since the list already sent for this session: the names that entered (with their line) and the
+    names that left."""
+    was, now = {r["t"] for r in old}, [r["t"] for r in res["rows"]]
+    lines = [f"🔄 <b>שינוי ברשימת הסקוויז ליום {code(res['date'])}</b>"]
+    lines += [line(k, r) for k, r in enumerate(res["rows"], 1) if r["t"] not in was]
+    left = [t for t in sorted(was) if t not in now]
+    if left:
+        lines.append("יצאו מהרשימה: " + ", ".join(map(code, left)) + ".")
+    return "\n".join(lines + [footer()])
 
 
 # ---------- journal ----------
@@ -308,7 +323,7 @@ def ticker_text(t, si, shares, feat, rank=None, extra=""):
 
 def ticker_report(t, today=None):
     """/squeeze TICKER: fetch the stock's numbers and explain where it stands against the list's gates."""
-    today = today or dt.datetime.now(dt.timezone.utc).date().isoformat()
+    today = today or sessions.target_session(sessions.now_ny(), sessions.status())
     cal = calendar(today)
     usable = [r for r in shorts.symbol_rows(t.replace("-", ""))
               if (u := shorts.usable_from(r["date"], cal + [today])) and u <= today]
@@ -324,39 +339,86 @@ def ticker_report(t, today=None):
 
 
 # ---------- run ----------
+def run_movers(res, session, today, state, manual):
+    """The movers part of a run -> (message or '', movers found). Nasdaq down for every stock -> one warning per
+    session (always on a manual run)."""
+    if not session:
+        return (movers.text([], None, today, manual=True) if manual else ""), []
+    cands = [{**u, "ref": movers.reference(u["bars"], session, today)} for u in res["universe"]]
+    qs = movers.quotes([c["t"] for c in cands], session)
+    failed = sum(q is False for q in qs.values())
+    if cands and failed == len(cands):
+        warn = manual or sessions.first(state, f"nasdaq:{session}", today)
+        return (f"⚠️ לא התקבלו ציטוטים מ־Nasdaq לאף מניה ({movers.NAME[session]}); אנסה שוב בריצה הבאה."
+                if warn else ""), []
+    found = movers.fresh(movers.find(cands, qs, today), state, today, session, manual)
+    ranks = {r["t"]: k for k, r in enumerate(res["rows"], 1)}
+    return movers.text(found, session, today, ranks, failed, manual), found
+
+
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Daily squeeze list -> Telegram and data/squeeze_*.json")
-    ap.add_argument("--dry", action="store_true", help="print the message only, write nothing")
+    ap = argparse.ArgumentParser(description="Squeeze list and extended-hours movers -> Telegram and data/")
+    ap.add_argument("--dry", action="store_true", help="print the messages only, write nothing")
+    ap.add_argument("--manual", action="store_true", help="run now, whatever the time (also SQUEEZE_MODE=manual)")
     a = ap.parse_args(argv)
-    today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    manual = a.manual or common.env("SQUEEZE_MODE") == "manual"
+    now = sessions.now_ny()
+    st = sessions.status() or sessions.fallback(now)
+    today = now.date().isoformat()
+    state = load(STATE, {"v": 1})
+    if manual:
+        session = sessions.session_now(now, st)
+    else:
+        name = sessions.slot(now, st)
+        if not name or not sessions.claim(state, name, today):
+            print(f"squeeze {now:%Y-%m-%d %H:%M} New York: no session slot to run")
+            return 0
+        session = sessions.SLOTS[name][1]
+    target = sessions.target_session(now, st)
     try:
-        res = build(today)
-    except Exception as e:  # the owner must hear about a failed list, not silence
+        res = build(target)
+    except Exception as e:  # the owner hears about it once per session (every time on a manual run)
         traceback.print_exc()
         if not a.dry:
-            common.send(f"⚠️ רשימת הסקוויז של היום לא נבנתה ({code(type(e).__name__)}): {common.esc(str(e)[:200])}")
+            if manual or sessions.first(state, f"build:{session}", today):
+                common.send(f"⚠️ סריקת הסקוויז נכשלה ({code(type(e).__name__)}): {common.esc(str(e)[:200])}")
+            save(STATE, state)
         return 1
     try:
-        enrich(res["rows"], dt.date.fromisoformat(today))
-    except Exception:  # unvalidated extras must never cost the day's list
+        enrich(res["rows"], dt.date.fromisoformat(target))
+    except Exception:  # unvalidated extras must never cost the list
         traceback.print_exc()
     j = load(JOURNAL, {"v": 1, "entries": []})
     try:
         filled = followup(j, today)
-    except Exception:  # a follow-up problem must not hold back today's list; it is retried tomorrow
+    except Exception:  # a follow-up problem must not hold back the list; it is retried next run
         traceback.print_exc()
         filled = 0
     added = record(j, res)
-    text = message(res)
-    if filled:
-        text += f"\n📒 הושלם מעקב של {code(squeeze.WINDOW)} ימים ל־{code(filled)} מניות: {code('/squeeze stats')}"
+    full, last = message(res), load(LAST, {})
+    old = last.get("rows") if last.get("date") == target else None
+    if manual or old is None:
+        list_text = ("▶️ הרצה ידנית\n" if manual else "") + full
+    elif {r["t"] for r in res["rows"]} != {r["t"] for r in old}:
+        list_text = change_text(res, old)
+    else:
+        list_text = ""
+    movers_text, found = run_movers(res, session, today, state, manual)
+    note = (f"📒 הושלם מעקב של {code(squeeze.WINDOW)} ימים ל־{code(filled)} מניות: {code('/squeeze stats')}"
+            if filled else "")
+    texts = [t for t in (list_text, movers_text, note) if t]
     if a.dry:
-        print(text)
+        print("\n\n".join(texts) or "nothing new")
         return 0
-    common.send(text, signal=True)
-    save(LAST, {"date": today, "text": text, "rows": [{k: _round(v) for k, v in r.items()} for r in res["rows"]]})
+    for t in texts:
+        common.send(t, signal=True)
+    if found:
+        save(MOVERS_LOG, movers.log(load(MOVERS_LOG, {"v": 1, "entries": []}), found, today, session, manual))
+    save(LAST, {"date": target, "text": full, "rows": [{k: _round(v) for k, v in r.items()} for r in res["rows"]]})
     save(JOURNAL, j)
-    common.log("squeeze", rows=len(res["rows"]), gated=res["gated"], added=added, filled=filled)
+    save(STATE, state)
+    common.log("squeeze", target=target, session=session, manual=manual, rows=len(res["rows"]), movers=len(found),
+               sent=len(texts), added=added, filled=filled)
     return 0
 
 
