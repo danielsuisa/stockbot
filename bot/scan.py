@@ -14,7 +14,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from bot import common, form4, fundamentals, journal, market
+from bot import common, form4, fundamentals, journal, market, sessions
 from bot.common import code, esc, money, price
 
 MIN_INSIDERS = common.env("MIN_INSIDERS", 3)
@@ -33,6 +33,9 @@ DEFAULTS = {"days": {}, "buys": [], "alerted": {}, "info": [], "regime": None, "
 RESCAN = 3  # previous trading days re-read every run for late filings and 4/A amendments
 LEGACY = 5  # days per run re-read to upgrade rows saved before schema 2 (no trade signature -> joint filings unmerged)
 INDICES = ("SPY", "IWM", "%5EVIX")
+TITLE = "🔔 <b>רכישות בעלי עניין בשוק הפתוח</b>"
+INTRADAY_TITLE = "🔔 <b>רכישות בעלי עניין בשוק הפתוח — מהיום</b>"
+DAILY, WEEKLY = "30 5 * * 2-6", "0 7 * * 0"  # daily-scan.yml's morning and Sunday schedules; others = slots
 
 
 def migrate_row(r):
@@ -74,6 +77,7 @@ def prune(state, today):
     state["sent"] = {c: s for c, s in state["sent"].items() if s["date"] >= since.isoformat()}
     state["removed"] = {a: r for a, r in state["removed"].items() if r["date"] >= since.isoformat()}
     keep = sorted(state["days"])[-(RESCAN + MAX_CATCHUP + 1):]  # a catch-up run still knows what its rescans saw
+    keep.append(today.strftime("%Y%m%d"))  # and a same-day run what the earlier same-day runs read
     state["seen"] = {d: v for d, v in state["seen"].items() if d in keep}
     tickers = {b["ticker"] for b in state["buys"]} | set(INDICES)
     state["prices"] = {t: v for t, v in state["prices"].items() if t in tickers}
@@ -269,13 +273,13 @@ def index_urls(day):
     return {r[-1].rsplit("/", 1)[1][:-4]: "https://www.sec.gov/Archives/" + r[-1] for r in rows}, "index"  # once per filer
 
 
-def scan_day(day, state, today, stats=None, rescan=False):
+def scan_day(day, state, today, stats=None, rescan=False, urls=None):
     """Merge one day's listed-issuer purchase filings (and Form 4/A amendments) into state['buys'], keep other
     acquisitions as informational rows -> 'ok' | 'holiday' | None (retry later). A rescan only fetches filings
     that were not in the day's index before (late filings / amendments)."""
     t0, d = time.time(), dt.datetime.strptime(day, "%Y%m%d").date()
     stats = stats if stats is not None else {}
-    urls, source = index_urls(day)
+    urls, source = index_urls(day) if urls is None else (urls, "efts")  # same-day runs pass SEC search hits
     if urls is None:  # holiday, or not published yet
         old = (today - d).days >= 3
         print(f"{day}: no daily index -> {'holiday' if old else 'not published yet, will retry'}")
@@ -514,7 +518,7 @@ def snapshot(ev, today):
             "acks": []}
 
 
-def alerts(state, today, j=None):
+def alerts(state, today, j=None, title=TITLE):
     """Qualifying issuers with not-yet-alerted filings -> [[Hebrew message, {cik: accessions}, {cik: snapshot},
     {cik: journal entry}]] (entries are recorded only once their message is delivered)."""
     j = j if j is not None else {"alerts": []}
@@ -563,7 +567,7 @@ def alerts(state, today, j=None):
     common.log("alerts", qualifying=qualifying, new=len(hits), foreign=len(fpi))
     print(f"alerts: {qualifying} qualifying issuer(s), {len(hits)} with new filings ({len(fpi)} foreign, names only)")
     msgs = []
-    head = (f"🔔 <b>רכישות בעלי עניין בשוק הפתוח</b> · {code(today.isoformat())}", {}, {}, {})
+    head = (f"{title} · {code(today.isoformat())}", {}, {}, {})
     for blk, *extra in [head] + blocks:
         if msgs and len(msgs[-1][0]) + len(blk) < 3500:  # never split one issuer across two messages
             msgs[-1][0] += "\n\n" + blk
@@ -755,6 +759,74 @@ def watchdog(today=None):
     _mark_reported()
 
 
+def deliver(state, today, j, path, dry, title=TITLE):
+    """Send every alert message; each is marked delivered (alerted accessions, snapshot, journal entry) right after it
+    goes out, so a later failure never re-sends it -> issuers alerted."""
+    n = 0
+    for text, marks, snaps, entries in alerts(state, today, j, title):
+        common.send(text, signal=True)
+        state["alerted"].update(marks)
+        state["sent"].update(snaps)
+        for cik, e in entries.items():  # 5.1: the journal gets every delivered alert (unique id)
+            state["sent"][cik]["id"] = journal.record(j, e)["id"]
+        n += len(marks)
+        if not dry:
+            save(path, state)
+            journal.save(j)
+    return n
+
+
+def intraday(now=None, dry=False):
+    """Same-day run at a session slot (docs/superpowers/specs/2026-09-28-extended-hours-scans-design.md, section 4):
+    today's Form 4s from SEC full-text search, only the ones not read yet, merged like the morning scan, then alerts
+    for filings not alerted before. The day is not marked scanned - the morning scan still reads the full index."""
+    now = now or sessions.now_ny()
+    st = sessions.status() or sessions.fallback(now)
+    name, today = sessions.slot(now, st), now.date()
+    path = Path(common.env("STATE_FILE", str(common.DATA / "state.json")))
+    state = prune(load(path), today)
+    if not name or not sessions.claim(state, name, today.isoformat()):
+        print(f"intraday {now:%Y-%m-%d %H:%M} New York: no session slot to run")
+        return 0
+    day, session = today.strftime("%Y%m%d"), sessions.SLOTS[name][1]
+    market.CACHE.update(state["prices"])
+    try:
+        urls = efts_urls(day)
+    except Exception as e:  # SEC search down: one warning per session; the morning scan reads the full index anyway
+        common.log("efts_unavailable", day=day, error=f"{type(e).__name__}: {e}")
+        if sessions.first(state, f"efts:{session}", today.isoformat()):
+            common.send(f"⚠️ חיפוש ההגשות של SEC לא זמין כרגע ({code(type(e).__name__)}); הסריקה של הבוקר תשלים.")
+        if not dry:
+            save(path, state)
+        _mark_reported()
+        return 0
+    stats = {"days": []}
+    scan_day(day, state, today, stats, rescan=True, urls=urls)
+    if not state.get("regime"):
+        state["regime"] = market.regime()
+    j = journal.load()
+    n = deliver(state, today, j, path, dry, INTRADAY_TITLE)
+    rec = (stats["days"] or [{}])[-1]
+    state["intraday"] = {"at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), "slot": name,
+                         "filings": rec.get("filings", 0), "parsed": rec.get("parsed", 0), "alerts": n}
+    state["prices"] = {t: v for t, v in market.CACHE.items()}
+    if not dry:
+        save(path, prune(state, today))
+    common.log("intraday", slot=name, filings=rec.get("filings", 0), alerts=n)
+    _mark_reported()
+    return 0
+
+
+def mode(a):
+    """"followup" | "intraday" | "scan" from the flags, SCAN_MODE and the triggering schedule (SCHEDULE)."""
+    sched = common.env("SCHEDULE")
+    if a.followup or common.env("SCAN_MODE") == "followup" or sched == WEEKLY:
+        return "followup"
+    if a.intraday or common.env("SCAN_MODE") == "intraday" or (sched and sched != DAILY):
+        return "intraday"
+    return "scan"
+
+
 def run(a):
     """One scan: new days + a rescan of the last RESCAN scanned days, corrections, alerts, heartbeat."""
     t0, today = time.time(), dt.datetime.now(dt.timezone.utc).date()
@@ -791,17 +863,7 @@ def run(a):
         common.send(text, signal=True)
     if fixes and not a.dry:  # acknowledged: a later failure in this run must not send them again
         save(path, state)
-    n = 0
-    for text, marks, snaps, entries in alerts(state, today, j):
-        common.send(text, signal=True)
-        state["alerted"].update(marks)  # per delivered message: a later failure never re-sends this one
-        state["sent"].update(snaps)
-        for cik, e in entries.items():  # 5.1: the journal gets every delivered alert (unique id)
-            state["sent"][cik]["id"] = journal.record(j, e)["id"]
-        n += len(marks)
-        if not a.dry:
-            save(path, state)
-            journal.save(j)
+    n = deliver(state, today, j, path, a.dry)
     state["prices"] = {t: v for t, v in market.CACHE.items()}
     filings = sum(r["parsed"] for r in stats["days"])
     errors = sum(r["errors"] for r in stats["days"]) + len(failed)
@@ -856,6 +918,8 @@ def main(argv=None):
     ap.add_argument("--notify", action="store_true", help="kept for compatibility: every run now sends a heartbeat")
     ap.add_argument("--watchdog", action="store_true", help="missed-day check (retries the scan if a day was missed)")
     ap.add_argument("--alarm", metavar="REASON", help="workflow failure step: report unless already reported")
+    ap.add_argument("--intraday", action="store_true", help="same-day run at a session slot (also from the "
+                                                              "schedule: env SCHEDULE)")
     ap.add_argument("--followup", action="store_true", help="weekly: journal returns vs SPY + summary (also "
                                                                "env SCAN_MODE=followup)")
     a = ap.parse_args(argv)
@@ -864,7 +928,8 @@ def main(argv=None):
     if a.watchdog:
         return watchdog()
     try:
-        followup(dry=a.dry) if a.followup or common.env("SCAN_MODE") == "followup" else run(a)
+        m = mode(a)
+        followup(dry=a.dry) if m == "followup" else intraday(dry=a.dry) if m == "intraday" else run(a)
     except BaseException as e:  # heartbeat: a failed run is never silent
         if isinstance(e, KeyboardInterrupt) or (isinstance(e, SystemExit) and (not e.code or _reported[0])):
             raise
