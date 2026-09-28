@@ -634,6 +634,195 @@
     "0000921895-26-002658"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-09-28-QVCG",
+   "date": "2026-09-28",
+   "ticker": "QVCG",
+   "cik": 1254699,
+   "company": "QVC Group, Inc.",
+   "sic": 5961,
+   "kind": "big",
+   "quality": 20,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 20,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 14.14,
+    "asof": "2026-09-28 20:00",
+    "source": "live"
+   },
+   "total": 38992000.0,
+   "insiders": 1,
+   "liquidity": 7989010.575816745,
+   "scores": {
+    "piotroski": "6/8",
+    "altman": "Z -0.33",
+    "beneish": null
+   },
+   "accs": [
+    "0001493152-26-041812",
+    "0001493152-26-042256",
+    "0001493152-26-044626"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-28-LILA",
+   "date": "2026-09-28",
+   "ticker": "LILA",
+   "cik": 1712184,
+   "company": "Liberty Latin America Ltd.",
+   "sic": 4841,
+   "kind": "big",
+   "quality": 39,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 20,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 8.49,
+    "asof": "2026-09-28 20:00",
+    "source": "live"
+   },
+   "total": 12224605.13,
+   "insiders": 2,
+   "liquidity": 3158159.675253005,
+   "scores": {
+    "piotroski": "6/9",
+    "altman": "Z'' -0.55",
+    "beneish": null
+   },
+   "accs": [
+    "0000937797-26-000027",
+    "0000937797-26-000030",
+    "0000937797-26-000032",
+    "0001724519-26-000010"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-28-INBX",
+   "date": "2026-09-28",
+   "ticker": "INBX",
+   "cik": 2007919,
+   "company": "Inhibrx Biosciences, Inc.",
+   "sic": 2836,
+   "kind": "cluster+big",
+   "quality": 54,
+   "parts": {
+    "breadth": 20,
+    "seniority": 16,
+    "size": 17,
+    "conviction": 1,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 101.71,
+    "asof": "2026-09-28 20:00",
+    "source": "live"
+   },
+   "total": 5498380.25,
+   "insiders": 3,
+   "liquidity": 40550710.435086206,
+   "scores": {
+    "piotroski": "2/8",
+    "altman": "Z -0.38",
+    "beneish": null
+   },
+   "accs": [
+    "0001240801-26-000004",
+    "0001366074-26-000002",
+    "0001366074-26-000004",
+    "0001366268-26-000004",
+    "0001366268-26-000006",
+    "0001366268-26-000011"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-28-LLYVA",
+   "date": "2026-09-28",
+   "ticker": "LLYVA",
+   "cik": 2078416,
+   "company": "Liberty Live Holdings, Inc.",
+   "sic": 7900,
+   "kind": "big",
+   "quality": 15,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 15,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 97.07,
+    "asof": "2026-09-28 20:00",
+    "source": "live"
+   },
+   "total": 2904982.49,
+   "insiders": 1,
+   "liquidity": 12753314.083099365,
+   "scores": {
+    "piotroski": "3/6",
+    "altman": "Z'' -8.36",
+    "beneish": null
+   },
+   "accs": [
+    "0001225208-26-007970"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-28-ATCH",
+   "date": "2026-09-28",
+   "ticker": "ATCH",
+   "cik": 1963088,
+   "company": "AtlasClear Holdings, Inc.",
+   "sic": 6199,
+   "kind": "cluster",
+   "quality": 64,
+   "parts": {
+    "breadth": 30,
+    "seniority": 25,
+    "size": 2,
+    "conviction": 7,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 0.183,
+    "asof": "2026-09-28 20:00",
+    "source": "live"
+   },
+   "total": 162524.19,
+   "insiders": 5,
+   "liquidity": 1895759.8234889763,
+   "scores": {
+    "piotroski": "3/6",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001493152-26-044627",
+    "0001493152-26-044628",
+    "0001493152-26-044629",
+    "0001493152-26-044630",
+    "0001493152-26-044631"
+   ],
+   "returns": {}
   }
  ]
 }
