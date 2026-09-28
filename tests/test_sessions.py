@@ -1,9 +1,7 @@
 """Session slots for the extended-hours runs: New York time, daylight-saving twins, holidays, early closes."""
 import datetime as dt
 import json
-import re
 import unittest
-from pathlib import Path
 from unittest import mock
 
 from bot import sessions
@@ -66,32 +64,6 @@ class Slot(unittest.TestCase):
         self.assertEqual(sessions.slot(ny("2026-11-27T16:30"), early), "post1")
         self.assertIsNone(sessions.slot(ny("2026-11-27T19:30"), early))
         self.assertIsNone(sessions.slot(ny("2026-09-28T07:30"), None))
-
-
-class Workflows(unittest.TestCase):
-    """The real schedules: in summer and in winter time, every slot runs exactly once, at its New York time."""
-    def ran(self, workflow, d, st):
-        text = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / workflow).read_text()
-        starts = []
-        for m, h, dow in re.findall(r'cron: "(\d+) (\d+) \* \* ([\d-]+)"', text):
-            lo, _, hi = dow.partition("-")
-            for k in (0, 1):  # the New York day d can be the next UTC day (winter 19:30)
-                utc = dt.datetime.combine(dt.date.fromisoformat(d) + dt.timedelta(k), dt.time(int(h), int(m)))
-                now = utc.replace(tzinfo=dt.timezone.utc).astimezone(NY)
-                if int(lo) <= (utc.weekday() + 1) % 7 <= int(hi or lo) and now.date().isoformat() == d:
-                    starts.append(now)
-        state, out = {}, []
-        for now in sorted(starts):
-            name = sessions.slot(now, st)
-            if name and sessions.claim(state, name, d):
-                out.append((name, f"{now:%H:%M}"))
-        return out
-
-    def test_every_slot_runs_once_on_time_in_summer_and_winter(self):
-        both = [("pre1", "07:30"), ("pre2", "09:15"), ("post1", "16:30"), ("post2", "19:30")]
-        for d, st in (("2026-09-28", day()), ("2026-12-01", day("2026-12-01", nxt="2026-12-02"))):
-            self.assertEqual(self.ran("squeeze.yml", d, st), [("pre0", "04:15")] + both, d)
-            self.assertEqual(self.ran("daily-scan.yml", d, st), both, d)  # SEC takes filings from 06:00 only
 
 
 class Claim(unittest.TestCase):

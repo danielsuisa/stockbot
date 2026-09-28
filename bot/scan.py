@@ -35,7 +35,7 @@ LEGACY = 5  # days per run re-read to upgrade rows saved before schema 2 (no tra
 INDICES = ("SPY", "IWM", "%5EVIX")
 TITLE = "🔔 <b>רכישות בעלי עניין בשוק הפתוח</b>"
 INTRADAY_TITLE = "🔔 <b>רכישות בעלי עניין בשוק הפתוח — מהיום</b>"
-DAILY, WEEKLY = "30 5 * * 2-6", "0 7 * * 0"  # daily-scan.yml's morning and Sunday schedules; others = slots
+MORNING = "05:30"  # UTC: the listener's clock starts the morning scan then (bot/clock.py)
 
 
 def migrate_row(r):
@@ -818,13 +818,21 @@ def intraday(now=None, dry=False):
 
 
 def mode(a):
-    """"followup" | "intraday" | "scan" from the flags, SCAN_MODE and the triggering schedule (SCHEDULE)."""
-    sched = common.env("SCHEDULE")
-    if a.followup or common.env("SCAN_MODE") == "followup" or sched == WEEKLY:
+    """"followup" | "intraday" | "morning" | "scan" from the flags and SCAN_MODE (daily-scan.yml sets it from the
+    Sunday schedule or the dispatch input; the listener's clock dispatches "morning" and "intraday")."""
+    m = common.env("SCAN_MODE")
+    if a.followup or m == "followup":
         return "followup"
-    if a.intraday or common.env("SCAN_MODE") == "intraday" or (sched and sched != DAILY):
+    if a.intraday or m == "intraday":
         return "intraday"
-    return "scan"
+    return "morning" if m == "morning" else "scan"
+
+
+def morning_done(state, now):
+    """True when a scan already reported OK since today's MORNING (UTC) - the clock may start the morning scan twice
+    around a listener hand-over; a failed or earlier run does not count."""
+    hb = state.get("heartbeat") or {}
+    return bool(hb.get("ok")) and hb.get("at", "") >= f"{now:%Y-%m-%d} {MORNING} UTC"
 
 
 def run(a):
@@ -918,8 +926,8 @@ def main(argv=None):
     ap.add_argument("--notify", action="store_true", help="kept for compatibility: every run now sends a heartbeat")
     ap.add_argument("--watchdog", action="store_true", help="missed-day check (retries the scan if a day was missed)")
     ap.add_argument("--alarm", metavar="REASON", help="workflow failure step: report unless already reported")
-    ap.add_argument("--intraday", action="store_true", help="same-day run at a session slot (also from the "
-                                                              "schedule: env SCHEDULE)")
+    ap.add_argument("--intraday", action="store_true", help="same-day run at a session slot (also env "
+                                                              "SCAN_MODE=intraday)")
     ap.add_argument("--followup", action="store_true", help="weekly: journal returns vs SPY + summary (also "
                                                                "env SCAN_MODE=followup)")
     a = ap.parse_args(argv)
@@ -929,6 +937,9 @@ def main(argv=None):
         return watchdog()
     try:
         m = mode(a)
+        if m == "morning" and morning_done(load(Path(common.env("STATE_FILE", str(common.DATA / "state.json")))),
+                                           dt.datetime.now(dt.timezone.utc)):
+            return print(f"the morning scan already ran after {MORNING} UTC today")
         followup(dry=a.dry) if m == "followup" else intraday(dry=a.dry) if m == "intraday" else run(a)
     except BaseException as e:  # heartbeat: a failed run is never silent
         if isinstance(e, KeyboardInterrupt) or (isinstance(e, SystemExit) and (not e.code or _reported[0])):

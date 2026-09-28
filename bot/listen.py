@@ -12,7 +12,7 @@ import traceback
 import urllib.error
 from pathlib import Path
 
-from bot import check, common, fundamentals, health, journal, market, scan, squeeze_live
+from bot import check, clock, common, fundamentals, health, journal, market, scan, squeeze_live
 from bot.common import code
 
 MAX = 3  # reports per message
@@ -294,7 +294,7 @@ def serve(seconds=None, stop_file=None, offset=None):
     end = time.monotonic() + (SERVE_SECONDS if seconds is None else seconds)
     stop = Path(stop_file) if stop_file else None
     handled = failed = errors = 0
-    reason = "deadline"
+    reason, done = "deadline", set()  # done: the clock's jobs this process started
     while True:
         left = end - time.monotonic()
         if stop and stop.exists():
@@ -302,6 +302,10 @@ def serve(seconds=None, stop_file=None, offset=None):
             break
         if left <= 0:
             break
+        try:  # the timed runs (bot/clock.py); a clock problem must never stop the replies
+            clock.tick(done)
+        except Exception:
+            traceback.print_exc()
         try:
             ups = updates(timeout=max(0, min(POLL, int(left))), allowed_updates=["message"],
                           **({} if offset is None else {"offset": offset}))

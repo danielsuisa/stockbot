@@ -126,3 +126,18 @@ Out of scope: continuous polling, down moves, whole-market movers, changing the 
 - movers: +9.9 % no / +10 % yes; volume 9.9 % no / 10 % yes; reference close per session; stale data date skipped;
   re-alert only at +10 points; log written and pruned.
 - messages: RTL clean; warnings once per source per session; `/squeeze now` dispatch and its failure message.
+
+## 11. Clock (added 2026-09-28, owner-approved)
+
+- Measured: GitHub started this repo's scheduled runs 3.5-5.5 hours late (5 of 5 runs, 2026-09-25..27), and the
+  listener's `*/10` backup cron fired about once every 3-5 hours; dispatched runs start within seconds.
+- So the Telegram listener, which runs around the clock, starts the timed runs itself (`bot/clock.py`): each poll
+  (at least every 50 s) it dispatches every job that is 0-60 minutes past its time and not yet started by this process.
+  - `squeeze.yml` `mode=slot` at 04:15 / 07:30 / 09:15 / 16:30 / 19:30 New York, Mon-Fri.
+  - `daily-scan.yml` `mode=intraday` at 07:30 / 09:15 / 16:30 / 19:30 New York, Mon-Fri.
+  - `daily-scan.yml` `mode=morning` at 05:30 UTC, Tue-Sat: the daily scan, skipped when a scan already reported OK
+    after 05:30 UTC today.
+- Runs keep their own checks (`sessions.slot`/`claim`, `scan.morning_done`), so a second start around a listener
+  hand-over is a quiet no-op. A failed dispatch is retried every tick and reported once.
+- The squeeze workflow has no GitHub schedule; the insider workflow keeps only the Sunday follow-up; the watchdog keeps
+  its own schedule, so a stopped listener is still noticed.

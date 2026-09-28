@@ -1,18 +1,8 @@
 name: Squeeze list
 
 on:
-  schedule:  # 04:15 / 07:30 / 09:15 / 16:30 / 19:30 New York, each with a summer (EDT) and a winter (EST) UTC twin;
-    # bot/sessions.py runs only the twin that lands on its slot (extended-hours spec, section 3)
-    - cron: "15 8 * * 1-5"
-    - cron: "15 9 * * 1-5"
-    - cron: "30 11 * * 1-5"
-    - cron: "30 12 * * 1-5"
-    - cron: "15 13 * * 1-5"
-    - cron: "15 14 * * 1-5"
-    - cron: "30 20 * * 1-5"
-    - cron: "30 21 * * 1-5"
-    - cron: "30 23 * * 1-5"
-    - cron: "30 0 * * 2-6"
+  # No GitHub schedule: it starts this repo's runs 3.5-5.5 hours late. The Telegram listener's clock (bot/clock.py)
+  # dispatches mode=slot at 04:15 / 07:30 / 09:15 / 16:30 / 19:30 New York; /squeeze now dispatches mode=manual.
   workflow_dispatch:
     inputs:
       mode:

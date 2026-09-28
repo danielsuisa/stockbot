@@ -97,11 +97,24 @@ class Intraday(unittest.TestCase):
 class Mode(unittest.TestCase):
     def test_from_flags_and_schedule(self):
         a = Namespace(followup=False, intraday=False)
-        for env, want in (({}, "scan"), ({"SCHEDULE": "30 5 * * 2-6"}, "scan"), ({"SCHEDULE": "0 7 * * 0"}, "followup"),
-                          ({"SCHEDULE": "30 20 * * 1-5"}, "intraday"), ({"SCAN_MODE": "followup"}, "followup")):
-            with mock.patch.dict(os.environ, {"SCHEDULE": "", "SCAN_MODE": "", **env}):
+        for env, want in (({}, "scan"), ({"SCAN_MODE": "scan"}, "scan"), ({"SCAN_MODE": "morning"}, "morning"),
+                          ({"SCAN_MODE": "intraday"}, "intraday"), ({"SCAN_MODE": "followup"}, "followup")):
+            with mock.patch.dict(os.environ, {"SCAN_MODE": "", **env}):
                 self.assertEqual(scan.mode(a), want, env)
         self.assertEqual(scan.mode(Namespace(followup=False, intraday=True)), "intraday")
+
+    def test_the_morning_scan_runs_once_a_day_after_0530_utc(self):
+        at = dt.datetime(2026, 9, 29, 6, 0, tzinfo=dt.timezone.utc)
+        hb = lambda s, ok=True: {"heartbeat": {"at": s, "ok": ok}}  # noqa: E731
+        self.assertTrue(scan.morning_done(hb("2026-09-29 05:31 UTC"), at))  # the clock's second start: skipped
+        for st in (hb("2026-09-29 05:29 UTC"), hb("2026-09-28 10:02 UTC"), hb("2026-09-29 05:31 UTC", ok=False), {}):
+            self.assertFalse(scan.morning_done(st, at), st)
+        for done, runs in ((True, 0), (False, 1)):
+            with mock.patch.dict(os.environ, {"SCAN_MODE": "morning", "STATE_FILE": "/nonexistent/state.json"}), \
+                    mock.patch.object(scan, "morning_done", return_value=done), \
+                    mock.patch.object(scan, "run") as run, mock.patch("builtins.print"):
+                scan.main(["--dry"])
+            self.assertEqual(run.call_count, runs, done)
 
 
 if __name__ == "__main__":
