@@ -21,7 +21,14 @@ def day(d="2026-09-28", close="16:00", ah="20:00", business=True, nxt="2026-09-2
 
 MARKET_INFO = {"data": {"isBusinessDay": True, "pmOpenRaw": "2026-09-28T04:00:00", "openRaw": "2026-09-28T09:30:00",
                         "closeRaw": "2026-09-28T16:00:00", "ahCloseRaw": "2026-09-28T20:00:00",
-                        "nextTradeDate": "Sep 29, 2026"}}
+                        "previousTradeDate": "Sep 25, 2026", "nextTradeDate": "Sep 29, 2026"}}
+
+
+def info(d, prev, nxt, business=True, close="16:00:00"):
+    """Nasdaq market-info showing day d."""
+    return json.dumps({"data": {"isBusinessDay": business, "pmOpenRaw": f"{d}T04:00:00", "openRaw": f"{d}T09:30:00",
+                                "closeRaw": f"{d}T{close}", "ahCloseRaw": f"{d}T20:00:00",
+                                "previousTradeDate": prev, "nextTradeDate": nxt}}).encode()
 
 
 class Slot(unittest.TestCase):
@@ -31,8 +38,26 @@ class Slot(unittest.TestCase):
             self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day()), want, t)
 
     def test_too_early_too_late_or_outside_the_session(self):
-        for t in ("07:29", "09:01", "18:01", "20:00", "12:00"):
+        for t in ("07:29", "09:01", "18:01", "21:01", "12:00"):
             self.assertIsNone(sessions.slot(ny(f"2026-09-28T{t}"), day()), t)
+
+    def test_a_late_start_keeps_its_slot_after_the_session_ends(self):
+        # GitHub starts schedules 15-60 minutes late at busy times: 09:15 and 19:30 must survive 09:30 and 20:00
+        for t, want in (("09:40", "pre2"), ("10:45", "pre2"), ("20:10", "post2"), ("21:00", "post2")):
+            self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day()), want, t)
+
+    def test_a_day_of_twin_crons_runs_each_slot_once_on_time(self):
+        crons = ("11:30", "12:30", "13:15", "14:15", "20:30", "21:30", "23:30", "+00:30")
+        for d, st in (("2026-09-28", day()), ("2026-12-01", day("2026-12-01", nxt="2026-12-02"))):
+            state, ran = {}, []
+            for c in crons:
+                nxt = dt.date.fromisoformat(d) + dt.timedelta(1)
+                utc = f"{nxt}T{c[1:]}" if c[0] == "+" else f"{d}T{c}"
+                now = dt.datetime.fromisoformat(utc).replace(tzinfo=dt.timezone.utc).astimezone(NY)
+                name = sessions.slot(now, st)
+                if name and sessions.claim(state, name, d):
+                    ran.append((name, f"{now:%H:%M}"))
+            self.assertEqual(ran, [("pre1", "07:30"), ("pre2", "09:15"), ("post1", "16:30"), ("post2", "19:30")], d)
 
     def test_daylight_saving_twins(self):
         summer, winter = day("2026-09-28"), day("2026-12-01", nxt="2026-12-02")
@@ -41,7 +66,7 @@ class Slot(unittest.TestCase):
         self.assertIsNone(sessions.slot(utc("2026-12-01T11:30"), winter))  # 06:30 EST
         self.assertEqual(sessions.slot(utc("2026-12-01T12:30"), winter), "pre1")
         self.assertEqual(sessions.slot(utc("2026-09-28T23:30"), summer), "post2")
-        self.assertIsNone(sessions.slot(utc("2026-09-29T00:30"), summer))  # 20:30 EDT: after-hours is over
+        self.assertEqual(sessions.slot(utc("2026-09-29T00:30"), summer), "post2")  # 20:30 EDT: a retry; claim stops a repeat
         self.assertEqual(sessions.slot(utc("2026-12-02T00:30"), winter), "post2")  # 19:30 EST, the next UTC day
 
     def test_holiday_early_close_and_no_status(self):
@@ -70,7 +95,7 @@ class Claim(unittest.TestCase):
 class Status(unittest.TestCase):
     def test_parses_nasdaq_market_info(self):
         with mock.patch.object(sessions.common, "fetch", return_value=json.dumps(MARKET_INFO).encode()) as f:
-            self.assertEqual(sessions.status(), day())
+            self.assertEqual(sessions.status(ny("2026-09-28T07:30")), day())
         self.assertEqual(f.call_args.kwargs["headers"]["Accept"], "application/json")
 
     def test_unreadable_is_none_and_the_fallback_uses_weekday_windows(self):
@@ -80,6 +105,22 @@ class Status(unittest.TestCase):
         fri = sessions.fallback(ny("2026-10-02T20:30"))
         self.assertEqual((fri["business"], fri["next"]), (True, "2026-10-05"))
         self.assertFalse(sessions.fallback(ny("2026-10-03T07:30"))["business"])
+
+    def test_another_days_answer_uses_todays_weekday_windows(self):
+        # Nasdaq may already show the next day at the winter 19:30 run (00:30 UTC) - not measured, so guarded
+        with mock.patch.object(sessions.common, "fetch", return_value=info("2026-12-02", "Dec 1, 2026", "Dec 3, 2026")):
+            st = sessions.status(ny("2026-12-01T19:30"))
+        self.assertEqual(st, day("2026-12-01", nxt="2026-12-02"))
+        self.assertEqual(sessions.slot(ny("2026-12-01T19:30"), st), "post2")
+        self.assertEqual(sessions.target_session(ny("2026-12-01T19:30"), st), "2026-12-02")
+        # a holiday that shows the next trading day is still a holiday
+        with mock.patch.object(sessions.common, "fetch",
+                               return_value=info("2026-11-27", "Nov 25, 2026", "Nov 30, 2026", close="13:00:00")):
+            self.assertFalse(sessions.status(ny("2026-11-26T07:30"))["business"])
+        # yesterday's answer: today trades when it is yesterday's next trading day
+        with mock.patch.object(sessions.common, "fetch", return_value=info("2026-09-28", "Sep 25, 2026", "Sep 29, 2026")):
+            st = sessions.status(ny("2026-09-29T07:30"))
+        self.assertEqual((st["business"], st["pre"][0]), (True, dt.datetime(2026, 9, 29, 4)))
 
 
 class Now(unittest.TestCase):
@@ -95,6 +136,7 @@ class Now(unittest.TestCase):
         fri = day("2026-10-02", nxt="2026-10-05")
         self.assertEqual(sessions.target_session(ny("2026-10-02T19:30"), fri), "2026-10-05")
         self.assertEqual(sessions.target_session(ny("2026-10-03T12:00"), None), "2026-10-05")  # Saturday, no status
+        self.assertEqual(sessions.target_session(ny("2026-09-28T10:00"), None), "2026-09-28")  # before the close
 
 
 if __name__ == "__main__":

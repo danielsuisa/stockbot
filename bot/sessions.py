@@ -33,18 +33,27 @@ def _next_weekday(day):
     return day
 
 
-def status():
+def status(now=None):
     """Today's sessions from Nasdaq's market-info -> {"business", "pre", "regular", "post" ((start, end), naive New
-    York datetimes), "next" (ISO)}, or None when it cannot be read."""
+    York datetimes), "next" (ISO)}, or None when it cannot be read. When Nasdaq shows another day than today's New
+    York date (it may roll over before the winter 19:30 run - not measured), today gets the weekday windows and trades
+    iff it is Nasdaq's previous or next trading day."""
     try:
         d = json.loads(common.fetch(MARKET_INFO, headers=HEADERS, tries=2, timeout=20))["data"]
         at = dt.datetime.fromisoformat
-        return {"business": bool(d["isBusinessDay"]), "pre": (at(d["pmOpenRaw"]), at(d["openRaw"])),
-                "regular": (at(d["openRaw"]), at(d["closeRaw"])), "post": (at(d["closeRaw"]), at(d["ahCloseRaw"])),
-                "next": dt.datetime.strptime(d["nextTradeDate"], "%b %d, %Y").date().isoformat()}
+        on = lambda k: dt.datetime.strptime(d[k], "%b %d, %Y").date()  # noqa: E731
+        st = {"business": bool(d["isBusinessDay"]), "pre": (at(d["pmOpenRaw"]), at(d["openRaw"])),
+              "regular": (at(d["openRaw"]), at(d["closeRaw"])), "post": (at(d["closeRaw"]), at(d["ahCloseRaw"])),
+              "next": on("nextTradeDate").isoformat()}
+        known = {on("previousTradeDate"), on("nextTradeDate")}
     except Exception as e:  # any failure -> the caller falls back to the weekday rule
         print(f"nasdaq market-info: {type(e).__name__} {e}")
         return None
+    now, shown = _naive(now or now_ny()), st["regular"][0].date()
+    if shown == now.date():
+        return st
+    later = sorted(x for x in known | ({shown} if st["business"] else set()) if x > now.date())
+    return {**fallback(now), "business": now.date() in known, **({"next": later[0].isoformat()} if later else {})}
 
 
 def fallback(now):
@@ -56,15 +65,16 @@ def fallback(now):
 
 def slot(now, st):
     """The slot a scheduled run started at `now` serves, or None: 0-90 minutes after the slot's time, on a business
-    day, while the slot's session is trading - so the wrong daylight-saving twin, holidays and sessions that do not
-    exist that day all give None."""
+    day whose slot's session is trading at the slot's time - so holidays and sessions that do not exist that day
+    give None, and a late start still serves its slot. A daylight-saving twin that lands inside the 90 minutes is a
+    retry: claim() stops it when the slot already ran."""
     now = _naive(now)
     if not st or not st["business"]:
         return None
     for name, (t, session) in SLOTS.items():
         at = dt.datetime.combine(now.date(), t)
         start, end = st[session]
-        if at <= now <= at + LATE and start <= now < end:
+        if start <= at < end and at <= now <= at + LATE:
             return name
     return None
 
@@ -79,10 +89,10 @@ def session_now(now, st):
 
 def target_session(now, st):
     """The trading day a squeeze list is for (ISO): today until today's regular session closes, then the next one."""
-    now = _naive(now)
-    if st and st["business"] and now < st["regular"][1]:
+    now, st = _naive(now), st or fallback(now)
+    if st["business"] and now < st["regular"][1]:
         return now.date().isoformat()
-    if st and st.get("next", "") > now.date().isoformat():
+    if st.get("next", "") > now.date().isoformat():
         return st["next"]
     return _next_weekday(now.date()).isoformat()
 

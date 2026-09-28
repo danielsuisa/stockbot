@@ -323,7 +323,8 @@ def ticker_text(t, si, shares, feat, rank=None, extra=""):
 
 def ticker_report(t, today=None):
     """/squeeze TICKER: fetch the stock's numbers and explain where it stands against the list's gates."""
-    today = today or sessions.target_session(sessions.now_ny(), sessions.status())
+    now = sessions.now_ny()
+    today = today or sessions.target_session(now, sessions.status(now))
     cal = calendar(today)
     usable = [r for r in shorts.symbol_rows(t.replace("-", ""))
               if (u := shorts.usable_from(r["date"], cal + [today])) and u <= today]
@@ -363,7 +364,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     manual = a.manual or common.env("SQUEEZE_MODE") == "manual"
     now = sessions.now_ny()
-    st = sessions.status() or sessions.fallback(now)
+    st = sessions.status(now) or sessions.fallback(now)
     today = now.date().isoformat()
     state = load(STATE, {"v": 1})
     if manual:
@@ -383,7 +384,7 @@ def main(argv=None):
             if manual or sessions.first(state, f"build:{session}", today):
                 common.send(f"⚠️ סריקת הסקוויז נכשלה ({code(type(e).__name__)}): {common.esc(str(e)[:200])}")
             save(STATE, state)
-        return 1
+        return 0  # reported above; exit 1 would add the workflow alarm on every run of an outage
     try:
         enrich(res["rows"], dt.date.fromisoformat(target))
     except Exception:  # unvalidated extras must never cost the list
@@ -403,20 +404,27 @@ def main(argv=None):
         list_text = change_text(res, old)
     else:
         list_text = ""
-    movers_text, found = run_movers(res, session, today, state, manual)
     note = (f"📒 הושלם מעקב של {code(squeeze.WINDOW)} ימים ל־{code(filled)} מניות: {code('/squeeze stats')}"
             if filled else "")
-    texts = [t for t in (list_text, movers_text, note) if t]
     if a.dry:
-        print("\n\n".join(texts) or "nothing new")
+        movers_text = run_movers(res, session, today, state, manual)[0]
+        print("\n\n".join(t for t in (list_text, movers_text, note) if t) or "nothing new")
         return 0
-    for t in texts:
-        common.send(t, signal=True)
-    if found:
-        save(MOVERS_LOG, movers.log(load(MOVERS_LOG, {"v": 1, "entries": []}), found, today, session, manual))
+    # each part is saved right after it goes out, so a failure later in the run (or the twin's retry) never re-sends it
+    if list_text:
+        common.send(list_text, signal=True)
     save(LAST, {"date": target, "text": full, "rows": [{k: _round(v) for k, v in r.items()} for r in res["rows"]]})
     save(JOURNAL, j)
     save(STATE, state)
+    movers_text, found = run_movers(res, session, today, state, manual)
+    if movers_text:
+        common.send(movers_text, signal=True)
+    if found:
+        save(MOVERS_LOG, movers.log(load(MOVERS_LOG, {"v": 1, "entries": []}), found, today, session, manual))
+    save(STATE, state)
+    if note:
+        common.send(note, signal=True)
+    texts = [t for t in (list_text, movers_text, note) if t]
     common.log("squeeze", target=target, session=session, manual=manual, rows=len(res["rows"]), movers=len(found),
                sent=len(texts), added=added, filled=filled)
     return 0

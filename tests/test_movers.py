@@ -13,6 +13,14 @@ CAND = {"t": "AAA", "ref": 10.0, "adv": 1_000_000.0, "si_pct": 0.3, "dtc": 4.0}
 
 
 class Quote(unittest.TestCase):
+    def test_nasdaq_hanging_fits_in_the_step_timeout(self):
+        # ~120 stocks, THREADS at a time, each call at worst tries x timeout: must leave the 20-minute step room
+        with mock.patch.object(movers.common, "fetch", side_effect=OSError("timed out")) as f, \
+                mock.patch("builtins.print"):
+            movers.quote("AAA", "post")
+        kw = f.call_args.kwargs
+        self.assertLessEqual(-(-120 // movers.THREADS) * kw["tries"] * kw["timeout"], 300)
+
     def test_extended_and_regular(self):
         with mock.patch.object(movers.common, "fetch", return_value=json.dumps(EXT).encode()) as f:
             self.assertEqual(movers.quote("BRK-B", "pre"), {"price": 11.0, "volume": 120000.0, "date": "2026-09-28"})

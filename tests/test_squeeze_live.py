@@ -238,7 +238,7 @@ class Sessions(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.dir = tmp.name
 
-    def run_at(self, when, res=LIVE, argv=(), quotes=AAA_UP):
+    def run_at(self, when, res=LIVE, argv=(), quotes=AAA_UP, send=None):
         """One squeeze_live.main run at New York time `when`, with everything but its logic mocked."""
         build = res if callable(res) else mock.Mock(return_value=copy.deepcopy(res))
         with mock.patch.dict(os.environ, {"SQUEEZE_DIR": self.dir, "SQUEEZE_MODE": ""}), \
@@ -247,9 +247,9 @@ class Sessions(unittest.TestCase):
                 mock.patch.object(squeeze_live, "build", build), mock.patch.object(squeeze_live, "enrich"), \
                 mock.patch.object(squeeze_live, "followup", return_value=0), \
                 mock.patch.object(squeeze_live.movers, "quotes", return_value=quotes), \
-                mock.patch.object(squeeze_live.common, "send") as send, mock.patch("builtins.print"):
+                mock.patch.object(squeeze_live.common, "send", side_effect=send) as sent, mock.patch("builtins.print"):
             code = squeeze_live.main(list(argv))
-        return code, [c.args[0] for c in send.call_args_list], build
+        return code, [c.args[0] for c in sent.call_args_list], build
 
     def test_after_close_sends_the_list_and_movers_then_nothing_repeats(self):
         code, sent, build = self.run_at("2026-09-28T16:35")
@@ -292,10 +292,17 @@ class Sessions(unittest.TestCase):
     def test_failed_build_warns_once_per_session_and_manual_always(self):
         boom = mock.Mock(side_effect=RuntimeError("FINRA: down"))
         code, sent, _ = self.run_at("2026-09-28T16:35", res=boom)
-        self.assertEqual(code, 1)
+        self.assertEqual(code, 0)  # reported here; exit 1 would add the workflow alarm on every run of an outage
         self.assertIn("נכשלה", sent[0])
         self.assertEqual(self.run_at("2026-09-28T19:35", res=boom)[1], [])
         self.assertIn("נכשלה", self.run_at("2026-09-28T19:50", res=boom, argv=["--manual"])[1][0])
+
+    def test_a_crash_after_the_list_went_out_never_resends_it(self):
+        with self.assertRaises(RuntimeError):
+            self.run_at("2026-09-28T16:35", send=[None, RuntimeError("telegram down")])  # the movers message fails
+        with mock.patch.dict(os.environ, {"SQUEEZE_DIR": self.dir}):
+            self.assertEqual(squeeze_live.load(squeeze_live.LAST, {}).get("date"), "2026-09-29")
+        self.assertEqual(self.run_at("2026-09-28T17:30")[1], [])  # the twin: slot already ran, list already sent
 
     def test_nasdaq_down_warns_once_per_session(self):
         down = {"AAA": False}

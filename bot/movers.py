@@ -39,10 +39,10 @@ def quote(t, session):
     sym = t.replace("-", ".")
     try:
         if session == "regular":
-            p = json.loads(common.fetch(INFO.format(t=sym), headers=HEADERS, tries=2, timeout=20))["data"]["primaryData"]
+            p = json.loads(common.fetch(INFO.format(t=sym), headers=HEADERS, tries=1, timeout=10))["data"]["primaryData"]
             return {"price": _number(p.get("lastSalePrice")), "volume": _number(p.get("volume")),
                     "date": _date(p.get("lastTradeTimestamp"))}
-        d = json.loads(common.fetch(EXT.format(t=sym, m=session), headers=HEADERS, tries=2, timeout=20))["data"]
+        d = json.loads(common.fetch(EXT.format(t=sym, m=session), headers=HEADERS, tries=1, timeout=10))["data"]
         rows = (d.get("infoTable") or {}).get("rows") or []
         if not rows:
             return None
