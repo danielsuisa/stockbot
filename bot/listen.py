@@ -153,7 +153,8 @@ def squeeze_cmd(rest):
     arg = rest.split()[0].lower() if rest.split() else ""
     if not arg:
         last = squeeze_live.load(squeeze_live.LAST, None)
-        common.send(last["text"] if last else "עוד אין רשימת סקוויז. היא נשלחת בכל יום מסחר לפני הפתיחה בניו יורק.")
+        common.send(last["text"] if last else "עוד אין רשימת סקוויז. היא תישלח בריצה האוטומטית הבאה, או עכשיו עם"
+                    f" {code('/squeeze now')}.")
         return 0
     if arg == "now":
         return squeeze_now()

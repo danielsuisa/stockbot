@@ -327,7 +327,11 @@ class Command(unittest.TestCase):
                 mock.patch.object(listen.common, "tickers", return_value={"GME": (1, "GameStop")}), \
                 mock.patch.object(listen.squeeze_live, "ticker_report", return_value="REPORT") as rep:
             listen.handle("/squeeze")
-            self.assertIn("עוד אין רשימת סקוויז", send.call_args[0][0])
+            empty = send.call_args[0][0]
+            self.assertIn("עוד אין רשימת סקוויז", empty)
+            self.assertIn("<code>/squeeze now</code>", empty)  # the way to get one right away, at any hour
+            self.assertNotIn("לפני הפתיחה", empty)  # the list is built after the close since the extended-hours runs
+            self.assertEqual(common.rtl_bad_lines(empty), [])
             squeeze_live.save(squeeze_live.LAST, {"date": TODAY, "text": "LIST", "rows": []})
             listen.handle("/squeeze")
             self.assertEqual(send.call_args[0][0], "LIST")
