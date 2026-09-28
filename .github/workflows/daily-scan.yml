@@ -4,6 +4,16 @@ on:
   schedule:
     - cron: "30 5 * * 2-6"  # Tue-Sat 05:30 UTC = the morning after each US trading day
     - cron: "0 7 * * 0"     # Sunday 07:00 UTC: weekly journal follow-up (returns vs SPY + summary)
+    # Same-day insider runs at 07:30 / 09:15 / 16:30 / 19:30 New York, each with a summer (EDT) and a winter (EST)
+    # UTC twin; bot/sessions.py runs only the twin that lands on its slot (extended-hours spec, section 3)
+    - cron: "30 11 * * 1-5"
+    - cron: "30 12 * * 1-5"
+    - cron: "15 13 * * 1-5"
+    - cron: "15 14 * * 1-5"
+    - cron: "30 20 * * 1-5"
+    - cron: "30 21 * * 1-5"
+    - cron: "30 23 * * 1-5"
+    - cron: "30 0 * * 2-6"
   workflow_dispatch:
     inputs:
       notify:
@@ -40,6 +50,7 @@ jobs:
         run: python -m bot.scan
         env:
           SCAN_MODE: ${{ (github.event.schedule == '0 7 * * 0' || inputs.mode == 'followup') && 'followup' || 'scan' }}
+          SCHEDULE: ${{ github.event.schedule }}  # morning / Sunday / session slot: bot.scan picks the mode
           SEC_UA: ${{ secrets.SEC_UA }}
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}

@@ -1,12 +1,26 @@
 name: Squeeze list
 
 on:
-  schedule:
-    - cron: "0 12 * * 1-5"  # 12:00 UTC = 08:00 New York (summer) / 07:00 (winter): before the US open
+  schedule:  # 07:30 / 09:15 / 16:30 / 19:30 New York, each with a summer (EDT) and a winter (EST) UTC twin;
+    # bot/sessions.py runs only the twin that lands on its slot (extended-hours spec, section 3)
+    - cron: "30 11 * * 1-5"
+    - cron: "30 12 * * 1-5"
+    - cron: "15 13 * * 1-5"
+    - cron: "15 14 * * 1-5"
+    - cron: "30 20 * * 1-5"
+    - cron: "30 21 * * 1-5"
+    - cron: "30 23 * * 1-5"
+    - cron: "30 0 * * 2-6"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "manual = run now, whatever the time (like /squeeze now); slot = behave like a scheduled run"
+        type: choice
+        options: [manual, slot]
+        default: manual
 
 permissions:
-  contents: write  # commit data/squeeze_last.json and data/squeeze_journal.json
+  contents: write  # commit the squeeze list, journal, state and movers log
 
 concurrency:
   group: squeeze
@@ -19,23 +33,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}  # branch tip: the journal committed by the last run
+          ref: ${{ github.ref_name }}  # branch tip: the journal and state committed by the last run
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Rank, send and journal today's squeeze list
+      - name: Squeeze list and extended-hours movers
         timeout-minutes: 20  # a step timeout fails the step, so the alarm below runs
         run: python -m bot.squeeze_live
         env:
+          SQUEEZE_MODE: ${{ inputs.mode || 'slot' }}
           SEC_UA: ${{ secrets.SEC_UA }}
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-      - name: Commit the list and the journal
+      - name: Commit the list, journal, state and movers log
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/squeeze_last.json data/squeeze_journal.json 2>/dev/null || true
+          for f in data/squeeze_last.json data/squeeze_journal.json data/squeeze_state.json data/movers_log.json; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
           if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
           git commit -m "Update squeeze list"
           for i in 1 2 3 4 5; do
