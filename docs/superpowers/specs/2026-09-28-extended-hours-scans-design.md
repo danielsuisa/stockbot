@@ -31,6 +31,7 @@ Out of scope: continuous polling, down moves, whole-market movers, changing the 
 
 | Slot | New York | Israel (summer) | UTC cron (EDT) | UTC cron (EST) |
 |---|---|---|---|---|
+| `pre0` (squeeze only, added 2026-09-28) | 04:15 | 11:15 | `15 8 * * 1-5` | `15 9 * * 1-5` |
 | `pre1` | 07:30 | 14:30 | `30 11 * * 1-5` | `30 12 * * 1-5` |
 | `pre2` | 09:15 | 16:15 | `15 13 * * 1-5` | `15 14 * * 1-5` |
 | `post1` | 16:30 | 23:30 | `30 20 * * 1-5` | `30 21 * * 1-5` |

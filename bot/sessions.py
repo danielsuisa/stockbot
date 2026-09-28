@@ -10,7 +10,7 @@ from bot import common
 NY = ZoneInfo("America/New_York")
 MARKET_INFO = "https://api.nasdaq.com/api/market-info"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-SLOTS = {"pre1": (dt.time(7, 30), "pre"), "pre2": (dt.time(9, 15), "pre"),
+SLOTS = {"pre0": (dt.time(4, 15), "pre"), "pre1": (dt.time(7, 30), "pre"), "pre2": (dt.time(9, 15), "pre"),
          "post1": (dt.time(16, 30), "post"), "post2": (dt.time(19, 30), "post")}
 LATE = dt.timedelta(minutes=90)  # GitHub starts schedules late; a run later than this is stale
 WINDOWS = {"pre": (dt.time(4), dt.time(9, 30)), "regular": (dt.time(9, 30), dt.time(16)),
