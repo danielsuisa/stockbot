@@ -335,5 +335,24 @@ class Command(unittest.TestCase):
         self.assertIn("squeeze", [c for c, _ in listen.COMMANDS])
 
 
+    def test_squeeze_now_starts_the_workflow(self):
+        from bot import listen
+        env = {"GITHUB_REPOSITORY": "o/r", "GITHUB_TOKEN": "t"}
+        with mock.patch.dict(os.environ, env), mock.patch.object(listen.common, "send") as send, \
+                mock.patch.object(listen.common, "dispatch", return_value="") as disp:
+            listen.handle("/squeeze now")
+        disp.assert_called_once_with("squeeze.yml", {"mode": "manual"})
+        self.assertIn("הפעלתי", send.call_args[0][0])
+        with mock.patch.dict(os.environ, env), mock.patch.object(listen.common, "send") as send, \
+                mock.patch.object(listen.common, "dispatch", return_value="HTTP 403"), mock.patch("builtins.print"):
+            self.assertEqual(listen.handle("/squeeze now"), 1)
+        self.assertIn("HTTP 403", send.call_args[0][0])
+        with mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "", "GITHUB_TOKEN": ""}), \
+                mock.patch.object(listen.common, "send"), \
+                mock.patch.object(listen.squeeze_live, "main", return_value=0) as run:
+            listen.handle("/squeeze now")
+        run.assert_called_once_with(["--manual"])
+        self.assertIn("/squeeze now", listen.HELP)
+
 if __name__ == "__main__":
     unittest.main()
