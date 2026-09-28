@@ -12,7 +12,7 @@ import traceback
 import urllib.error
 from pathlib import Path
 
-from bot import check, common, fundamentals, health, journal, market, scan, squeeze_live
+from bot import check, clock, common, fundamentals, health, journal, market, scan, squeeze_live
 from bot.common import code
 
 MAX = 3  # reports per message
@@ -25,7 +25,7 @@ COMMANDS = (("check", "דוח פורנזי לטיקר, למשל /check AAPL"), (
             ("status", "מצב הסריקה, דופק ושומר ימים חסרים"), ("stats", "תשואות ההתראות מול SPY"),
             ("journal", "ההתראות האחרונות ביומן, למשל /journal 5"), ("verify", "אימות מחדש מול EDGAR, למשל /verify AAPL"),
             ("health", "בדיקה חיה של המקורות והריצות"),
-            ("squeeze", "רשימת סקוויז: /squeeze, /squeeze GME, /squeeze stats"), ("help", "רשימת הפקודות"))
+            ("squeeze", "סקוויז ומזנקות: /squeeze, /squeeze now, /squeeze GME, /squeeze stats"), ("help", "רשימת הפקודות"))
 HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, עם דולר, {code('$msft')}, או {code('/check msft')}"
         f" (עד {code(MAX)} בהודעה), או {code('/help')} לרשימת הפקודות.")
 HELP = "\n".join((
@@ -38,8 +38,8 @@ HELP = "\n".join((
     f"• ההתראות האחרונות ביומן: {code('/journal 5')} (עד {code(20)})",
     f"• אימות התראה מחדש מול EDGAR: {code('/verify AAPL')}",
     f"• בדיקה חיה של SEC, Yahoo, טלגרם והריצות המתוזמנות: {code('/health')}",
-    f"• רשימת סקוויז יומית (שורט גבוה ומחזור חריג), בדיקת מניה ויומן: {code('/squeeze')},"
-    f" {code('/squeeze GME')}, {code('/squeeze stats')}",
+    f"• רשימת סקוויז ומזנקות: {code('/squeeze')}, הרצה עכשיו {code('/squeeze now')},"
+    f" בדיקת מניה {code('/squeeze GME')}, יומן {code('/squeeze stats')}",
     f"• רשימת הפקודות: {code('/help')}",
     f"אפשר גם לכתוב טיקר באותיות גדולות, {code('AAPL')}, או עם דולר, {code('$tsla')}.",
     "📊 הדוח כולל ציון פיוטרוסקי, אלטמן Z, בנייש M, רכישות בעלי עניין ושינויים בגורמי הסיכון בדוח השנתי.",
@@ -153,8 +153,11 @@ def squeeze_cmd(rest):
     arg = rest.split()[0].lower() if rest.split() else ""
     if not arg:
         last = squeeze_live.load(squeeze_live.LAST, None)
-        common.send(last["text"] if last else "עוד אין רשימת סקוויז. היא נשלחת בכל יום מסחר לפני הפתיחה בניו יורק.")
+        common.send(last["text"] if last else "עוד אין רשימת סקוויז. היא תישלח בריצה האוטומטית הבאה, או עכשיו עם"
+                    f" {code('/squeeze now')}.")
         return 0
+    if arg == "now":
+        return squeeze_now()
     if arg == "stats":
         common.send(squeeze_live.stats_text(squeeze_live.load(squeeze_live.JOURNAL, {"entries": []})))
         return 0
@@ -170,6 +173,22 @@ def squeeze_cmd(rest):
         common.send(f"⚠️ בדיקת הסקוויז עבור {code(known[0])} נכשלה ({code(type(e).__name__)}). נסו שוב מאוחר יותר.")
         return 1
     return 0
+
+
+def squeeze_now():
+    """/squeeze now: on Actions the squeeze workflow is dispatched (the only writer of data/squeeze_*.json); locally
+    the run happens in this process. Either way the owner hears back."""
+    if common.env("GITHUB_REPOSITORY") and common.env("GITHUB_TOKEN"):
+        err = common.dispatch("squeeze.yml", {"mode": "manual"})
+        if err:  # a GitHub permission problem must not look like a data problem
+            print(f"workflow dispatch failed: {err}")
+            common.send(f"⚠️ לא הצלחתי להפעיל את סריקת הסקוויז ב־GitHub ({code(err)}). בדקו שבקובץ"
+                        f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.")
+            return 1
+        common.send("⏳ הפעלתי את סריקת הסקוויז. הרשימה והמזנקות יגיעו בעוד כ־2–3 דקות.")
+        return 0
+    common.send("⏳ מריץ את סריקת הסקוויז...")
+    return squeeze_live.main(["--manual"])
 
 
 class Conflict(Exception):
@@ -275,7 +294,7 @@ def serve(seconds=None, stop_file=None, offset=None):
     end = time.monotonic() + (SERVE_SECONDS if seconds is None else seconds)
     stop = Path(stop_file) if stop_file else None
     handled = failed = errors = 0
-    reason = "deadline"
+    reason, done = "deadline", set()  # done: the clock's jobs this process started
     while True:
         left = end - time.monotonic()
         if stop and stop.exists():
@@ -283,6 +302,10 @@ def serve(seconds=None, stop_file=None, offset=None):
             break
         if left <= 0:
             break
+        try:  # the timed runs (bot/clock.py); a clock problem must never stop the replies
+            clock.tick(done)
+        except Exception:
+            traceback.print_exc()
         try:
             ups = updates(timeout=max(0, min(POLL, int(left))), allowed_updates=["message"],
                           **({} if offset is None else {"offset": offset}))

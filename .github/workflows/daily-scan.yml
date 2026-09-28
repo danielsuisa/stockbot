@@ -2,8 +2,9 @@ name: Daily insider scan
 
 on:
   schedule:
-    - cron: "30 5 * * 2-6"  # Tue-Sat 05:30 UTC = the morning after each US trading day
     - cron: "0 7 * * 0"     # Sunday 07:00 UTC: weekly journal follow-up (returns vs SPY + summary)
+    # The morning scan (05:30 UTC) and the same-day runs (07:30 / 09:15 / 16:30 / 19:30 New York) are started by the
+    # Telegram listener's clock (bot/clock.py): GitHub starts this repo's schedules 3.5-5.5 hours late
   workflow_dispatch:
     inputs:
       notify:
@@ -11,9 +12,10 @@ on:
         type: boolean
         default: false
       mode:
-        description: "scan = the daily scan; followup = the weekly journal follow-up"
+        description: "scan = the daily scan; morning = the daily scan unless it already ran after 05:30 UTC today;
+          intraday = today's filings at a session slot; followup = the weekly journal follow-up"
         type: choice
-        options: [scan, followup]
+        options: [scan, morning, intraday, followup]
         default: scan
 
 permissions:
@@ -39,7 +41,7 @@ jobs:
         timeout-minutes: 100  # a step timeout FAILS the step (the alarm runs); a job timeout would only cancel it
         run: python -m bot.scan
         env:
-          SCAN_MODE: ${{ (github.event.schedule == '0 7 * * 0' || inputs.mode == 'followup') && 'followup' || 'scan' }}
+          SCAN_MODE: ${{ github.event.schedule == '0 7 * * 0' && 'followup' || inputs.mode || 'scan' }}
           SEC_UA: ${{ secrets.SEC_UA }}
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}

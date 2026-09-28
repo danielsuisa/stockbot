@@ -58,6 +58,7 @@ class Serve(unittest.TestCase):
                    mock.patch.object(listen.time, "sleep", side_effect=self.tg.sleep),
                    mock.patch.object(listen, "handle", side_effect=lambda t: self.handled.append(t) or 0),
                    mock.patch.object(listen, "refresh"), mock.patch.object(common, "send"),
+                   mock.patch.object(listen.clock, "tick", return_value=[]),
                    mock.patch("builtins.print")]
         for p in patches:
             p.start()
@@ -66,6 +67,12 @@ class Serve(unittest.TestCase):
     def test_deadline_stops_and_no_poll_outlives_it(self):
         self.assertEqual(listen.serve(seconds=120), ("deadline", None))
         self.assertEqual(self.tg.polls, [(None, 50), (None, 50), (None, 20)])  # the last poll is cut to what is left
+
+    def test_every_poll_ticks_the_clock_and_a_clock_error_never_stops_serving(self):
+        with mock.patch.object(listen.clock, "tick", side_effect=[[], RuntimeError("boom"), []]) as tick:
+            self.assertEqual(listen.serve(seconds=120), ("deadline", None))
+        self.assertEqual(tick.call_count, 3)  # one per poll: a tick at least every 50 seconds
+        self.assertIs(tick.call_args_list[0][0][0], tick.call_args_list[2][0][0])  # one done-set per process
 
     def test_default_deadline_is_5h20m_within_the_job_timeout(self):
         self.assertEqual(listen.serve()[0], "deadline")

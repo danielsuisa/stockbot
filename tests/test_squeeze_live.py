@@ -1,4 +1,5 @@
 """Live squeeze list: build, extras, message, journal, stats, /squeeze TICKER, run."""
+import copy
 import datetime as dt
 import os
 import tempfile
@@ -6,6 +7,7 @@ import unittest
 from unittest import mock
 
 from bot import common, squeeze_live
+from test_sessions import day, ny
 
 TODAY = "2026-09-28"  # a Monday
 
@@ -224,43 +226,97 @@ class TickerReport(unittest.TestCase):
         self.assertEqual(common.rtl_bad_lines(text), [])
 
 
-class Main(unittest.TestCase):
-    def run_main(self, argv, **patches):
-        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"SQUEEZE_DIR": d}), \
-                mock.patch.object(squeeze_live.common, "send") as send, mock.patch("builtins.print"):
-            with mock.patch.multiple(squeeze_live, **patches):
-                code = squeeze_live.main(argv)
-            files = sorted(os.listdir(d))
-            saved = squeeze_live.load(squeeze_live.LAST, {}), squeeze_live.load(squeeze_live.JOURNAL, {})
-        return code, send, files, saved
+UNI = [{"t": "AAA", "si_pct": 0.3, "dtc": 3.0, "adv": 1_000_000.0,
+        "bars": {"d": ["2026-09-25", "2026-09-28"], "c": [9.0, 10.0]}}]
+LIVE = dict(RES, date="2026-09-29", universe=UNI)  # built after Monday's close, for Tuesday
+AAA_UP = {"AAA": {"price": 11.5, "volume": 300_000.0, "date": "2026-09-28"}}
 
-    def test_run_sends_and_saves(self):
-        code, send, files, (last, j) = self.run_main([], build=mock.Mock(return_value=dict(RES, rows=[dict(ROW)])),
-                                                     enrich=mock.Mock(), followup=mock.Mock(return_value=0))
+
+class Sessions(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.dir = tmp.name
+
+    def run_at(self, when, res=LIVE, argv=(), quotes=AAA_UP, send=None):
+        """One squeeze_live.main run at New York time `when`, with everything but its logic mocked."""
+        build = res if callable(res) else mock.Mock(return_value=copy.deepcopy(res))
+        with mock.patch.dict(os.environ, {"SQUEEZE_DIR": self.dir, "SQUEEZE_MODE": ""}), \
+                mock.patch.object(squeeze_live.sessions, "now_ny", return_value=ny(when)), \
+                mock.patch.object(squeeze_live.sessions, "status", return_value=day()), \
+                mock.patch.object(squeeze_live, "build", build), mock.patch.object(squeeze_live, "enrich"), \
+                mock.patch.object(squeeze_live, "followup", return_value=0), \
+                mock.patch.object(squeeze_live.movers, "quotes", return_value=quotes), \
+                mock.patch.object(squeeze_live.common, "send", side_effect=send) as sent, mock.patch("builtins.print"):
+            code = squeeze_live.main(list(argv))
+        return code, [c.args[0] for c in sent.call_args_list], build
+
+    def test_after_close_sends_the_list_and_movers_then_nothing_repeats(self):
+        code, sent, build = self.run_at("2026-09-28T16:35")
         self.assertEqual(code, 0)
-        self.assertTrue(send.call_args.kwargs["signal"])
-        self.assertEqual((last["rows"][0]["t"], len(j["entries"])), ("AAA", 1))
+        build.assert_called_once_with("2026-09-29")  # after Monday's close the list is for Tuesday
+        self.assertEqual(len(sent), 2)
+        self.assertIn("רשימת סקוויז ליום <code>2026-09-29</code>", sent[0])
+        self.assertIn("🌙", sent[1])
+        self.assertIn("<code>+15%</code>", sent[1])  # 11.5 against today's 10.0 close
+        for t in sent:
+            self.assertEqual(common.rtl_bad_lines(t), [])
+        with mock.patch.dict(os.environ, {"SQUEEZE_DIR": self.dir}):
+            self.assertEqual(squeeze_live.load(squeeze_live.MOVERS_LOG, {})["entries"][0]["t"], "AAA")
+        self.assertEqual(self.run_at("2026-09-28T17:30")[1], [])  # the same slot again (daylight-saving twin)
+        self.assertEqual(self.run_at("2026-09-28T19:35")[1], [])  # post2: same list, same move
 
-    def test_failed_build_is_reported(self):
-        code, send, files, _ = self.run_main([], build=mock.Mock(side_effect=RuntimeError("FINRA: down")))
-        self.assertEqual(code, 1)
-        self.assertIn("לא נבנתה", send.call_args[0][0])
-        self.assertEqual(files, [])
+    def test_a_changed_list_sends_only_the_change(self):
+        self.run_at("2026-09-28T16:35", quotes={})
+        sent = self.run_at("2026-09-28T19:35", res=dict(LIVE, rows=[dict(ROW, t="NEW")]), quotes={})[1]
+        self.assertEqual(len(sent), 1)
+        for part in ("🔄", "<code>NEW</code>", "יצאו מהרשימה: <code>AAA</code>"):
+            self.assertIn(part, sent[0])
+        self.assertEqual(common.rtl_bad_lines(sent[0]), [])
 
-    def test_extras_failure_does_not_stop_the_list(self):
-        code, send, files, (last, j) = self.run_main([], build=mock.Mock(return_value=dict(RES, rows=[dict(ROW)])),
-                                                     enrich=mock.Mock(side_effect=ValueError("bad CBOE payload")),
-                                                     followup=mock.Mock(return_value=0))
-        self.assertEqual(code, 0)
-        self.assertIn("<code>AAA</code>", send.call_args[0][0])
-        self.assertEqual(len(j["entries"]), 1)
+    def test_manual_at_night_sends_the_full_list_and_says_the_market_is_closed(self):
+        self.run_at("2026-09-28T16:35", quotes={})
+        code, sent, _ = self.run_at("2026-09-28T21:30", argv=["--manual"])
+        self.assertEqual((code, len(sent)), (0, 2))
+        self.assertIn("▶️", sent[0])
+        self.assertIn("רשימת סקוויז", sent[0])
+        self.assertIn("סגור", sent[1])
 
-    def test_dry_run_writes_nothing(self):
-        code, send, files, _ = self.run_main(["--dry"], build=mock.Mock(return_value=dict(RES, rows=[dict(ROW)])),
-                                             enrich=mock.Mock(), followup=mock.Mock(return_value=0))
-        self.assertEqual(code, 0)
-        send.assert_not_called()
-        self.assertEqual(files, [])
+    def test_manual_during_the_session_shows_live_movers(self):
+        live = {"AAA": {"price": 10.5, "volume": 2e6, "date": "2026-09-28"}}
+        code, sent, build = self.run_at("2026-09-28T11:00", argv=["--manual"], quotes=live)
+        build.assert_called_once_with("2026-09-28")
+        self.assertIn("📈", sent[1])
+        self.assertIn("<code>+17%</code>", sent[1])  # against Friday's 9.0 close
+
+    def test_failed_build_warns_once_per_session_and_manual_always(self):
+        boom = mock.Mock(side_effect=RuntimeError("FINRA: down"))
+        code, sent, _ = self.run_at("2026-09-28T16:35", res=boom)
+        self.assertEqual(code, 0)  # reported here; exit 1 would add the workflow alarm on every run of an outage
+        self.assertIn("נכשלה", sent[0])
+        self.assertEqual(self.run_at("2026-09-28T19:35", res=boom)[1], [])
+        self.assertIn("נכשלה", self.run_at("2026-09-28T19:50", res=boom, argv=["--manual"])[1][0])
+
+    def test_a_crash_after_the_list_went_out_never_resends_it(self):
+        with self.assertRaises(RuntimeError):
+            self.run_at("2026-09-28T16:35", send=[None, RuntimeError("telegram down")])  # the movers message fails
+        with mock.patch.dict(os.environ, {"SQUEEZE_DIR": self.dir}):
+            self.assertEqual(squeeze_live.load(squeeze_live.LAST, {}).get("date"), "2026-09-29")
+        self.assertEqual(self.run_at("2026-09-28T17:30")[1], [])  # the twin: slot already ran, list already sent
+
+    def test_nasdaq_down_warns_once_per_session(self):
+        down = {"AAA": False}
+        self.assertTrue(any("Nasdaq" in t for t in self.run_at("2026-09-28T16:35", quotes=down)[1]))
+        self.assertFalse(any("Nasdaq" in t for t in self.run_at("2026-09-28T19:35", quotes=down)[1]))
+
+    def test_dry_run_writes_and_sends_nothing(self):
+        code, sent, _ = self.run_at("2026-09-28T16:35", argv=["--dry"])
+        self.assertEqual((code, sent, os.listdir(self.dir)), (0, [], []))
+
+    def test_outside_a_slot_does_nothing(self):
+        code, sent, build = self.run_at("2026-09-28T12:00")
+        build.assert_not_called()
+        self.assertEqual((code, sent), (0, []))
 
 
 class Command(unittest.TestCase):
@@ -271,7 +327,11 @@ class Command(unittest.TestCase):
                 mock.patch.object(listen.common, "tickers", return_value={"GME": (1, "GameStop")}), \
                 mock.patch.object(listen.squeeze_live, "ticker_report", return_value="REPORT") as rep:
             listen.handle("/squeeze")
-            self.assertIn("עוד אין רשימת סקוויז", send.call_args[0][0])
+            empty = send.call_args[0][0]
+            self.assertIn("עוד אין רשימת סקוויז", empty)
+            self.assertIn("<code>/squeeze now</code>", empty)  # the way to get one right away, at any hour
+            self.assertNotIn("לפני הפתיחה", empty)  # the list is built after the close since the extended-hours runs
+            self.assertEqual(common.rtl_bad_lines(empty), [])
             squeeze_live.save(squeeze_live.LAST, {"date": TODAY, "text": "LIST", "rows": []})
             listen.handle("/squeeze")
             self.assertEqual(send.call_args[0][0], "LIST")
@@ -285,6 +345,25 @@ class Command(unittest.TestCase):
         self.assertIn("/squeeze", listen.HELP)
         self.assertIn("squeeze", [c for c, _ in listen.COMMANDS])
 
+
+    def test_squeeze_now_starts_the_workflow(self):
+        from bot import listen
+        env = {"GITHUB_REPOSITORY": "o/r", "GITHUB_TOKEN": "t"}
+        with mock.patch.dict(os.environ, env), mock.patch.object(listen.common, "send") as send, \
+                mock.patch.object(listen.common, "dispatch", return_value="") as disp:
+            listen.handle("/squeeze now")
+        disp.assert_called_once_with("squeeze.yml", {"mode": "manual"})
+        self.assertIn("הפעלתי", send.call_args[0][0])
+        with mock.patch.dict(os.environ, env), mock.patch.object(listen.common, "send") as send, \
+                mock.patch.object(listen.common, "dispatch", return_value="HTTP 403"), mock.patch("builtins.print"):
+            self.assertEqual(listen.handle("/squeeze now"), 1)
+        self.assertIn("HTTP 403", send.call_args[0][0])
+        with mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "", "GITHUB_TOKEN": ""}), \
+                mock.patch.object(listen.common, "send"), \
+                mock.patch.object(listen.squeeze_live, "main", return_value=0) as run:
+            listen.handle("/squeeze now")
+        run.assert_called_once_with(["--manual"])
+        self.assertIn("/squeeze now", listen.HELP)
 
 if __name__ == "__main__":
     unittest.main()
