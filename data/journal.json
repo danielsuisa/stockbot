@@ -519,6 +519,121 @@
     "0001493152-26-044458"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-09-28-GPI",
+   "date": "2026-09-28",
+   "ticker": "GPI",
+   "cik": 1031203,
+   "company": "GROUP 1 AUTOMOTIVE INC",
+   "sic": 5500,
+   "kind": "big",
+   "quality": 20,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 20,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 242.23,
+    "asof": "2026-09-28 20:00",
+    "source": "live"
+   },
+   "total": 120986501.17,
+   "insiders": 1,
+   "liquidity": 67422871.25927153,
+   "scores": {
+    "piotroski": "5/9",
+    "altman": "Z 3.25",
+    "beneish": null
+   },
+   "accs": [
+    "0000905148-26-004073",
+    "0000905148-26-004111",
+    "0000905148-26-004138",
+    "0000905148-26-004241",
+    "0000905148-26-004278"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-28-MXF",
+   "date": "2026-09-28",
+   "ticker": "MXF",
+   "cik": 65433,
+   "company": "MEXICO FUND INC",
+   "sic": null,
+   "kind": "big",
+   "quality": 9,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 9,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 20.7,
+    "asof": "2026-09-28 20:00",
+    "source": "live"
+   },
+   "total": 824070.67,
+   "insiders": 1,
+   "liquidity": 627468.2817549933,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000305",
+    "0001510281-26-000309",
+    "0001510281-26-000310",
+    "0001510281-26-000313"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-09-28-HDSN",
+   "date": "2026-09-28",
+   "ticker": "HDSN",
+   "cik": 925528,
+   "company": "HUDSON TECHNOLOGIES INC /NY",
+   "sic": 5080,
+   "kind": "big",
+   "quality": 9,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 9,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 5.1,
+    "asof": "2026-09-28 20:00",
+    "source": "live"
+   },
+   "total": 757279.59,
+   "insiders": 1,
+   "liquidity": 2487149.9364784784,
+   "scores": {
+    "piotroski": "4/9",
+    "altman": "Z 3.79",
+    "beneish": -2.04
+   },
+   "accs": [
+    "0000921895-26-002492",
+    "0000921895-26-002585",
+    "0000921895-26-002633",
+    "0000921895-26-002658"
+   ],
+   "returns": {}
   }
  ]
 }
