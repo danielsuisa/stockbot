@@ -35,7 +35,8 @@ def _date(s):
 def quote(t, session):
     """Nasdaq's numbers for ticker t in `session` -> {"price", "volume", "date"}; None when the session has no trades
     for it; False when Nasdaq could not be read. pre / post: the extended session, dated by its "Data last updated"
-    line; regular: last sale and today's volume so far, dated by the last trade."""
+    line (during the session the price is info's last sale of that day); regular: last sale and today's volume so far,
+    dated by the last trade."""
     sym = t.replace("-", ".")
     try:
         if session == "regular":
@@ -47,8 +48,12 @@ def quote(t, session):
         if not rows:
             return None
         info = d.get("lastUpdateInfo")
-        return {"price": _number(rows[0].get("consolidated")), "volume": _number(rows[0].get("volume")),
-                "date": _date(info[0] if isinstance(info, list) and info else info)}
+        day = _date(" ".join(info) if isinstance(info, list) else info)  # live: the date is on the second line
+        price = _number(rows[0].get("consolidated"))
+        if price is None and day:  # live session: no consolidated last trade yet -> info's last sale of that day
+            p = json.loads(common.fetch(INFO.format(t=sym), headers=HEADERS, tries=1, timeout=10))["data"]["primaryData"]
+            price = _number(p.get("lastSalePrice")) if _date(p.get("lastTradeTimestamp")) == day else None
+        return {"price": price, "volume": _number(rows[0].get("volume")), "date": day}
     except Exception as e:  # an unofficial source: any failure means "could not read"
         print(f"nasdaq {t} {session}: {type(e).__name__} {e}")
         return False

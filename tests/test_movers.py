@@ -9,6 +9,15 @@ EXT = {"data": {"lastUpdateInfo": ["Data last updated Sep 28, 2026 08:05 AM ET."
                 "infoTable": {"rows": [{"consolidated": "$11.00 +1.00 (+10.00%)", "volume": "120,000"}]}}}
 INFO = {"data": {"primaryData": {"lastSalePrice": "$12.50", "volume": "1,500,000",
                                  "lastTradeTimestamp": "Sep 28, 2026 11:02 AM ET"}}}
+# Nasdaq during a live session (TSLA, 2026-09-28 04:14 New York): no consolidated last trade yet, the date on the
+# second lastUpdateInfo line; info's primaryData carries the session's last sale
+LIVE_EXT = {"data": {"lastUpdateInfo": ["This page refreshes every 30 seconds.",
+                                        "Data last updated Sep 28, 2026 04:14 AM ET."],
+                     "infoTable": {"rows": [{"consolidated": None, "volume": "135,604",
+                                             "highPrice": "$371.74 (04:01:03 AM)"}]}}}
+LIVE_INFO = {"data": {"marketStatus": "Pre-Market",
+                      "primaryData": {"lastSalePrice": "$369.3298", "volume": "135,260.915849",
+                                      "lastTradeTimestamp": "Sep 28, 2026 4:14 AM ET", "isRealTime": True}}}
 CAND = {"t": "AAA", "ref": 10.0, "adv": 1_000_000.0, "si_pct": 0.3, "dtc": 4.0}
 
 
@@ -27,6 +36,17 @@ class Quote(unittest.TestCase):
         self.assertIn("/BRK.B/extended-trading?markettype=pre", f.call_args[0][0])
         with mock.patch.object(movers.common, "fetch", return_value=json.dumps(INFO).encode()):
             self.assertEqual(movers.quote("GME", "regular"), {"price": 12.5, "volume": 1500000.0, "date": "2026-09-28"})
+
+    def test_live_session_takes_the_last_sale_from_info(self):
+        def fetch(url, **kw):
+            return json.dumps(LIVE_EXT if "extended-trading" in url else info).encode()
+        info = LIVE_INFO
+        with mock.patch.object(movers.common, "fetch", side_effect=fetch):
+            self.assertEqual(movers.quote("TSLA", "pre"), {"price": 369.3298, "volume": 135604.0, "date": "2026-09-28"})
+        info = {"data": {"primaryData": {"lastSalePrice": "$372.11",
+                                         "lastTradeTimestamp": "Closed at Sep 25, 2026 4:00 PM ET"}}}
+        with mock.patch.object(movers.common, "fetch", side_effect=fetch):  # another day's sale is not this session's
+            self.assertEqual(movers.quote("TSLA", "pre"), {"price": None, "volume": 135604.0, "date": "2026-09-28"})
 
     def test_no_trades_is_none_and_a_failure_is_false(self):
         empty = {"data": {"lastUpdateInfo": [], "infoTable": None}}
