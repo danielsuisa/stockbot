@@ -1,4 +1,83 @@
 {
  "v": 1,
- "entries": []
+ "entries": [
+  {
+   "date": "2026-09-29",
+   "t": "SVRA",
+   "rank": 1,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.6117,
+   "si_pct": 0.211,
+   "dtc": 36.25,
+   "chg": 0.0463,
+   "rvol": 2.8253,
+   "ret5": -0.0697,
+   "brk": 0.9168,
+   "price": 5.07,
+   "fuel": 0.5586,
+   "trigger": 0.7357,
+   "shares": 205460015,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0026,
+    "vol_oi": 0.0087,
+    "pc_oi": 0.1356,
+    "iv30": 83.287
+   },
+   "outcome": null
+  },
+  {
+   "date": "2026-09-29",
+   "t": "ENVX",
+   "rank": 2,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.4851,
+   "si_pct": 0.2413,
+   "dtc": 9.61,
+   "chg": -0.0136,
+   "rvol": 2.9534,
+   "ret5": -0.1426,
+   "brk": 0.7363,
+   "price": 2.555,
+   "fuel": 0.509,
+   "trigger": 0.4294,
+   "shares": 219448535,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0013,
+    "vol_oi": 0.1103,
+    "pc_oi": 0.318,
+    "iv30": 82.67
+   },
+   "outcome": null
+  },
+  {
+   "date": "2026-09-29",
+   "t": "ASPI",
+   "rank": 3,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.2459,
+   "si_pct": 0.2071,
+   "dtc": 6.52,
+   "chg": 0.0231,
+   "rvol": 2.1001,
+   "ret5": -0.1824,
+   "brk": 0.6161,
+   "price": 2.6,
+   "fuel": 0.1982,
+   "trigger": 0.3574,
+   "shares": 125903447,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0056,
+    "vol_oi": 0.0254,
+    "pc_oi": 0.19,
+    "iv30": 84.795
+   },
+   "outcome": null
+  }
+ ]
 }
