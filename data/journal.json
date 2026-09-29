@@ -823,6 +823,42 @@
     "0001493152-26-044631"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-09-29-ACOG",
+   "date": "2026-09-29",
+   "ticker": "ACOG",
+   "cik": 1655923,
+   "company": "Alpha Cognition Inc.",
+   "sic": 2836,
+   "kind": "big",
+   "quality": 11,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 11,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 8.6,
+    "asof": "2026-09-28 20:00",
+    "source": "live"
+   },
+   "total": 1333305.92,
+   "insiders": 1,
+   "liquidity": 1004058.6048126221,
+   "scores": {
+    "piotroski": "3/7",
+    "altman": "Z 7.12",
+    "beneish": null
+   },
+   "accs": [
+    "0001493152-26-042969",
+    "0001493152-26-044690"
+   ],
+   "returns": {}
   }
  ]
 }
