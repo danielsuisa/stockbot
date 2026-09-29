@@ -78,6 +78,58 @@
     "iv30": 84.795
    },
    "outcome": null
+  },
+  {
+   "date": "2026-09-30",
+   "t": "REPL",
+   "rank": 1,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.6866,
+   "si_pct": 0.2711,
+   "dtc": 11.14,
+   "chg": -0.0325,
+   "rvol": 2.2461,
+   "ret5": -0.0349,
+   "brk": 0.8135,
+   "price": 13.0,
+   "fuel": 0.6875,
+   "trigger": 0.6845,
+   "shares": 83945161,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0013,
+    "vol_oi": 0.6556,
+    "pc_oi": 0.1952,
+    "iv30": 81.876
+   },
+   "outcome": null
+  },
+  {
+   "date": "2026-09-30",
+   "t": "LXEO",
+   "rank": 2,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.6781,
+   "si_pct": 0.2514,
+   "dtc": 33.44,
+   "chg": 0.007,
+   "rvol": 6.2931,
+   "ret5": -0.1597,
+   "brk": 0.6994,
+   "price": 3.42,
+   "fuel": 0.7946,
+   "trigger": 0.4062,
+   "shares": 82046255,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0002,
+    "vol_oi": 0.0,
+    "pc_oi": 0.7149,
+    "iv30": 168.628
+   },
+   "outcome": null
   }
  ]
 }
