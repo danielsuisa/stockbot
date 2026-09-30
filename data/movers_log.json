@@ -1,0 +1,16 @@
+{
+ "v": 1,
+ "entries": [
+  {
+   "date": "2026-09-30",
+   "session": "pre",
+   "t": "CAPR",
+   "manual": false,
+   "price": 10.2,
+   "ref": 8.57,
+   "gain": 0.1902,
+   "vol_ratio": 0.2888,
+   "si_pct": 0.3385
+  }
+ ]
+}
