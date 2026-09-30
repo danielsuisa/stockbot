@@ -32920,6 +32920,68 @@
    "original": null
   },
   {
+   "acc": "0001477932-26-005918",
+   "cik": 1921865,
+   "ticker": "ASPI",
+   "company": "ASP Isotopes Inc.",
+   "insider": "Ryan Robert John Andrew",
+   "role": "דירקטור",
+   "insider_cik": "2011790",
+   "od": true,
+   "weight": 0.7,
+   "first": "2026-09-28",
+   "last": "2026-09-28",
+   "shares": 8000.0,
+   "value": 21600.0,
+   "price": 2.7,
+   "filed": "2026-09-30",
+   "form": "4",
+   "sig": [
+    [
+     "2026-09-28",
+     8000.0,
+     2.7
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 660222.0,
+   "pct": 0.0121,
+   "original": null
+  },
+  {
+   "acc": "0001493152-26-044992",
+   "cik": 1172178,
+   "ticker": "LBSR",
+   "company": "LIBERTY STAR URANIUM & METALS CORP.",
+   "insider": "O'Heeron Pete",
+   "role": "דירקטור, COB, Secretary, Treasurer",
+   "insider_cik": "1569334",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-09-28",
+   "last": "2026-09-28",
+   "shares": 171482.0,
+   "value": 3909.79,
+   "price": 0.0228,
+   "filed": "2026-09-30",
+   "form": "4",
+   "sig": [
+    [
+     "2026-09-28",
+     171482.0,
+     0.0228
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 171482.0,
+   "pct": 1.0,
+   "original": null
+  },
+  {
    "acc": "0001510281-26-000314",
    "cik": 65433,
    "ticker": "MXF",
@@ -33144,6 +33206,37 @@
    "plan_value": 0,
    "post": 28806415.0,
    "pct": 0.081,
+   "original": null
+  },
+  {
+   "acc": "0001104659-26-112076",
+   "cik": 1815846,
+   "ticker": "MNSO",
+   "company": "MINISO Group Holding Ltd",
+   "insider": "Zhang Jingjing Eason",
+   "role": "VP and Chief Financial Officer",
+   "insider_cik": "2111254",
+   "od": true,
+   "weight": 1.5,
+   "first": "2026-09-29",
+   "last": "2026-09-29",
+   "shares": 150600.0,
+   "value": 340099.98,
+   "price": 2.2583,
+   "filed": "2026-09-30",
+   "form": "4",
+   "sig": [
+    [
+     "2026-09-29",
+     150600.0,
+     2.2583
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 394474.0,
+   "pct": 0.3818,
    "original": null
   },
   {
@@ -37414,6 +37507,14 @@
    "kinds": {
     "exercise": 1
    }
+  },
+  {
+   "acc": "0001493152-26-044992",
+   "cik": 1172178,
+   "last": "2026-09-28",
+   "kinds": {
+    "other": 1
+   }
   }
  ],
  "regime": {
@@ -41234,6 +41335,18 @@
    "0002137798-26-000006",
    "0002146828-26-000008",
    "0002147680-26-000012"
+  ],
+  "20260930": [
+   "0000950103-26-014830",
+   "0001104659-26-112076",
+   "0001171843-26-006301",
+   "0001171843-26-006302",
+   "0001477932-26-005918",
+   "0001493152-26-044990",
+   "0001493152-26-044992",
+   "0001493152-26-044996",
+   "0001493152-26-045002",
+   "0001493152-26-045006"
   ]
  },
  "sent": {
@@ -42261,13 +42374,16 @@
    "pre2",
    "post1",
    "post2"
+  ],
+  "2026-09-30": [
+   "pre1"
   ]
  },
  "intraday": {
-  "at": "2026-09-29 23:31 UTC",
-  "slot": "post2",
-  "filings": 197,
-  "parsed": 197,
-  "alerts": 5
+  "at": "2026-09-30 11:30 UTC",
+  "slot": "pre1",
+  "filings": 10,
+  "parsed": 10,
+  "alerts": 0
  }
 }
