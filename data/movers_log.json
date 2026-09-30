@@ -11,6 +11,17 @@
    "gain": 0.1902,
    "vol_ratio": 0.2888,
    "si_pct": 0.3385
+  },
+  {
+   "date": "2026-09-30",
+   "session": "post",
+   "t": "GLUE",
+   "manual": false,
+   "price": 13.75,
+   "ref": 11.93,
+   "gain": 0.1526,
+   "vol_ratio": 0.1079,
+   "si_pct": 0.2258
   }
  ]
 }
