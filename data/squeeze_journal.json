@@ -255,6 +255,110 @@
     "iv30": 68.052
    },
    "outcome": null
+  },
+  {
+   "date": "2026-10-02",
+   "t": "GLOB",
+   "rank": 1,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.7108,
+   "si_pct": 0.2529,
+   "dtc": 10.72,
+   "chg": 0.3952,
+   "rvol": 2.163,
+   "ret5": 0.0617,
+   "brk": 0.9133,
+   "price": 36.98,
+   "fuel": 0.6306,
+   "trigger": 0.8979,
+   "shares": 43835604,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0006,
+    "vol_oi": 0.0149,
+    "pc_oi": 0.6828,
+    "iv30": 62.862
+   },
+   "outcome": null
+  },
+  {
+   "date": "2026-10-02",
+   "t": "VUZI",
+   "rank": 2,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.627,
+   "si_pct": 0.2023,
+   "dtc": 29.31,
+   "chg": 0.0539,
+   "rvol": 3.0492,
+   "ret5": 0.0529,
+   "brk": 0.949,
+   "price": 2.885,
+   "fuel": 0.4955,
+   "trigger": 0.9339,
+   "shares": 84414230,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0016,
+    "vol_oi": 0.002,
+    "pc_oi": 0.0708,
+    "iv30": 93.107
+   },
+   "outcome": null
+  },
+  {
+   "date": "2026-10-02",
+   "t": "GLUE",
+   "rank": 3,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.6027,
+   "si_pct": 0.2258,
+   "dtc": 17.08,
+   "chg": 0.0658,
+   "rvol": 2.5107,
+   "ret5": -0.0392,
+   "brk": 0.783,
+   "price": 11.26,
+   "fuel": 0.6036,
+   "trigger": 0.6006,
+   "shares": 85313401,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0017,
+    "vol_oi": 0.0,
+    "pc_oi": 0.1484,
+    "iv30": 108.461
+   },
+   "outcome": null
+  },
+  {
+   "date": "2026-10-02",
+   "t": "FMC",
+   "rank": 5,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.3232,
+   "si_pct": 0.2136,
+   "dtc": 8.08,
+   "chg": -0.0952,
+   "rvol": 2.1662,
+   "ret5": -0.1074,
+   "brk": 0.6422,
+   "price": 8.56,
+   "fuel": 0.2995,
+   "trigger": 0.3784,
+   "shares": 125226839,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0004,
+    "vol_oi": 0.0072,
+    "pc_oi": 0.3194,
+    "iv30": 61.3
+   },
+   "outcome": null
   }
  ]
 }
