@@ -1624,6 +1624,242 @@
     "0001214659-26-012383"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-01-LILA",
+   "date": "2026-10-01",
+   "ticker": "LILA",
+   "cik": 1712184,
+   "company": "Liberty Latin America Ltd.",
+   "sic": 4841,
+   "kind": "big",
+   "quality": 39,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 20,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 8.36,
+    "asof": "2026-10-01 20:00",
+    "source": "live"
+   },
+   "total": 12423802.81,
+   "insiders": 2,
+   "liquidity": 3154392.7571659996,
+   "scores": {
+    "piotroski": "6/9",
+    "altman": "Z'' -0.55",
+    "beneish": null
+   },
+   "accs": [
+    "0000937797-26-000027",
+    "0000937797-26-000030",
+    "0000937797-26-000032",
+    "0000937797-26-000034",
+    "0001724519-26-000010"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-GBR",
+   "date": "2026-10-01",
+   "ticker": "GBR",
+   "cik": 105744,
+   "company": "New Concept Energy, Inc.",
+   "sic": 1311,
+   "kind": "big",
+   "quality": 13,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 13,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 0.85,
+    "asof": "2026-10-01 19:59",
+    "source": "live"
+   },
+   "total": 2000000.0,
+   "insiders": 1,
+   "liquidity": 58477.61963293666,
+   "scores": {
+    "piotroski": "4/8",
+    "altman": "Z 4.14",
+    "beneish": null
+   },
+   "accs": [
+    "0001273348-26-000012"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-XENE",
+   "date": "2026-10-01",
+   "ticker": "XENE",
+   "cik": 1582313,
+   "company": "Xenon Pharmaceuticals Inc.",
+   "sic": 2834,
+   "kind": "big",
+   "quality": 54,
+   "parts": {
+    "breadth": 10,
+    "seniority": 17,
+    "size": 12,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 38.93,
+    "asof": "2026-10-01 20:00",
+    "source": "live"
+   },
+   "total": 1681140.0,
+   "insiders": 2,
+   "liquidity": 96940642.94644311,
+   "scores": {
+    "piotroski": "3/8",
+    "altman": "Z 40.51",
+    "beneish": null
+   },
+   "accs": [
+    "0001193125-26-409999",
+    "0001193125-26-410001"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-MXF",
+   "date": "2026-10-01",
+   "ticker": "MXF",
+   "cik": 65433,
+   "company": "MEXICO FUND INC",
+   "sic": null,
+   "kind": "big",
+   "quality": 10,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 10,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 19.87,
+    "asof": "2026-10-01 20:00",
+    "source": "live"
+   },
+   "total": 935031.91,
+   "insiders": 1,
+   "liquidity": 556751.9509360904,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000305",
+    "0001510281-26-000309",
+    "0001510281-26-000310",
+    "0001510281-26-000313",
+    "0001510281-26-000314",
+    "0001510281-26-000320"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-FUL",
+   "date": "2026-10-01",
+   "ticker": "FUL",
+   "cik": 39368,
+   "company": "FULLER H B CO",
+   "sic": 2891,
+   "kind": "cluster",
+   "quality": 78,
+   "parts": {
+    "breadth": 30,
+    "seniority": 25,
+    "size": 8,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 50.23,
+    "asof": "2026-10-01 20:00",
+    "source": "live"
+   },
+   "total": 621315.61,
+   "insiders": 7,
+   "liquidity": 47464540.418152586,
+   "scores": {
+    "piotroski": "7/9",
+    "altman": "Z 2.02",
+    "beneish": -2.57
+   },
+   "accs": [
+    "0001225208-26-008011",
+    "0001225208-26-008012",
+    "0001225208-26-008013",
+    "0001225208-26-008014",
+    "0001225208-26-008015",
+    "0001225208-26-008045",
+    "0001225208-26-008046"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-SPG",
+   "date": "2026-10-01",
+   "ticker": "SPG",
+   "cik": 1063761,
+   "company": "SIMON PROPERTY GROUP INC.",
+   "sic": 6798,
+   "kind": "cluster",
+   "quality": 58,
+   "parts": {
+    "breadth": 30,
+    "seniority": 21,
+    "size": 7,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 200.81,
+    "asof": "2026-10-01 20:00",
+    "source": "live"
+   },
+   "total": 460716.16,
+   "insiders": 11,
+   "liquidity": 256974304.5839582,
+   "scores": {
+    "piotroski": "6/7",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001123485-26-000010",
+    "0001189793-26-000014",
+    "0001199045-26-000010",
+    "0001210982-26-000010",
+    "0001272064-26-000012",
+    "0001340262-26-000013",
+    "0001464273-26-000010",
+    "0001709407-26-000012",
+    "0001898688-26-000011",
+    "0002007895-26-000016",
+    "0002109729-26-000010"
+   ],
+   "returns": {}
   }
  ]
 }
