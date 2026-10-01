@@ -1455,6 +1455,123 @@
     "0001214659-26-012280"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-01-LEN",
+   "date": "2026-10-01",
+   "ticker": "LEN",
+   "cik": 920760,
+   "company": "LENNAR CORP /NEW/",
+   "sic": 1520,
+   "kind": "big",
+   "quality": 20,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 20,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 81.59,
+    "asof": "2026-09-30 20:00",
+    "source": "live"
+   },
+   "total": 402660528.93,
+   "insiders": 1,
+   "liquidity": 401322812.8136408,
+   "scores": {
+    "piotroski": "3/7",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001193125-26-397059",
+    "0001193125-26-403089",
+    "0001193125-26-409451"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-GPI",
+   "date": "2026-10-01",
+   "ticker": "GPI",
+   "cik": 1031203,
+   "company": "GROUP 1 AUTOMOTIVE INC",
+   "sic": 5500,
+   "kind": "big",
+   "quality": 20,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 20,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 240.44,
+    "asof": "2026-09-30 20:03",
+    "source": "live"
+   },
+   "total": 187264817.59,
+   "insiders": 1,
+   "liquidity": 74869318.85870071,
+   "scores": {
+    "piotroski": "5/9",
+    "altman": "Z 3.25",
+    "beneish": null
+   },
+   "accs": [
+    "0000905148-26-004073",
+    "0000905148-26-004111",
+    "0000905148-26-004138",
+    "0000905148-26-004241",
+    "0000905148-26-004278",
+    "0000905148-26-004310"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-BPRE",
+   "date": "2026-10-01",
+   "ticker": "BPRE",
+   "cik": 1551047,
+   "company": "Bluerock Private Real Estate Fund",
+   "sic": null,
+   "kind": "cluster+big",
+   "quality": 68,
+   "parts": {
+    "breadth": 20,
+    "seniority": 13,
+    "size": 20,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 12.54,
+    "asof": "2026-09-30 20:00",
+    "source": "live"
+   },
+   "total": 11685329.82,
+   "insiders": 3,
+   "liquidity": 10753312.213875,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001398344-26-017226",
+    "0001398344-26-017349",
+    "0001398344-26-017538",
+    "0001398344-26-017550",
+    "0001398344-26-017659",
+    "0001398344-26-017661"
+   ],
+   "returns": {}
   }
  ]
 }
