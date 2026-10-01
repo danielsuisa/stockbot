@@ -1860,6 +1860,233 @@
     "0002109729-26-000010"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-01-UUU",
+   "date": "2026-10-01",
+   "ticker": "UUU",
+   "cik": 102109,
+   "company": "UNIVERSAL SAFETY PRODUCTS, INC.",
+   "sic": 5065,
+   "kind": "big",
+   "quality": 27,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 20,
+    "conviction": 3,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 5.18,
+    "asof": "2026-10-01 19:53",
+    "source": "live"
+   },
+   "total": 92498572.52,
+   "insiders": 1,
+   "liquidity": 107467.381915592,
+   "scores": {
+    "piotroski": "2/9",
+    "altman": "Z 0.60",
+    "beneish": null
+   },
+   "accs": [
+    "0001214659-26-011483",
+    "0001214659-26-011574",
+    "0001214659-26-011835",
+    "0001214659-26-011872",
+    "0001214659-26-011957",
+    "0001214659-26-012438"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-ORCL",
+   "date": "2026-10-01",
+   "ticker": "ORCL",
+   "cik": 1341439,
+   "company": "ORACLE CORP",
+   "sic": 7372,
+   "kind": "big",
+   "quality": 34,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 15,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 138.07,
+    "asof": "2026-10-01 20:04",
+    "source": "live"
+   },
+   "total": 3483800.0,
+   "insiders": 1,
+   "liquidity": 5152588110.185605,
+   "scores": {
+    "piotroski": "6/8",
+    "altman": "Z 1.58",
+    "beneish": null
+   },
+   "accs": [
+    "0001341439-26-000099"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-DKS",
+   "date": "2026-10-01",
+   "ticker": "DKS",
+   "cik": 1089063,
+   "company": "DICK'S SPORTING GOODS, INC.",
+   "sic": 5940,
+   "kind": "cluster+big",
+   "quality": 71,
+   "parts": {
+    "breadth": 30,
+    "seniority": 22,
+    "size": 13,
+    "conviction": 6,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 132.85,
+    "asof": "2026-10-01 20:00",
+    "source": "live"
+   },
+   "total": 1866360.9,
+   "insiders": 4,
+   "liquidity": 408289884.78571576,
+   "scores": {
+    "piotroski": "5/9",
+    "altman": "Z'' 3.06",
+    "beneish": -1.48
+   },
+   "accs": [
+    "0001198906-26-000008",
+    "0001772409-26-000009",
+    "0001817293-26-000006",
+    "0002100573-26-000006"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-FUND",
+   "date": "2026-10-01",
+   "ticker": "FUND",
+   "cik": 825202,
+   "company": "SPROTT FOCUS TRUST INC.",
+   "sic": null,
+   "kind": "big",
+   "quality": 18,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 13,
+    "conviction": 1,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 9.61,
+    "asof": "2026-10-01 20:00",
+    "source": "live"
+   },
+   "total": 1827220.65,
+   "insiders": 1,
+   "liquidity": 221814.2386118571,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001193125-26-410922"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-VENU",
+   "date": "2026-10-01",
+   "ticker": "VENU",
+   "cik": 1770501,
+   "company": "Venu Holding Corp",
+   "sic": 7900,
+   "kind": "cluster",
+   "quality": 55,
+   "parts": {
+    "breadth": 20,
+    "seniority": 14,
+    "size": 6,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 1.32,
+    "asof": "2026-10-01 20:00",
+    "source": "live"
+   },
+   "total": 434051.27,
+   "insiders": 3,
+   "liquidity": 764631.6638912474,
+   "scores": {
+    "piotroski": "3/8",
+    "altman": "Z -0.56",
+    "beneish": null
+   },
+   "accs": [
+    "0001493152-26-041361",
+    "0001493152-26-041957",
+    "0001493152-26-042742",
+    "0001493152-26-042743",
+    "0001493152-26-043617",
+    "0001493152-26-045391"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-01-PRHI",
+   "date": "2026-10-01",
+   "ticker": "PRHI",
+   "cik": 1502292,
+   "company": "Presurance Holdings, Inc.",
+   "sic": 6331,
+   "kind": "cluster",
+   "quality": 74,
+   "parts": {
+    "breadth": 30,
+    "seniority": 25,
+    "size": 4,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 6.7,
+    "asof": "2026-10-01 20:00",
+    "source": "live"
+   },
+   "total": 248877.59,
+   "insiders": 5,
+   "liquidity": 241507.35880760918,
+   "scores": {
+    "piotroski": "1/7",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001193125-26-410889",
+    "0001193125-26-410894",
+    "0001193125-26-410905",
+    "0001193125-26-410913",
+    "0001193125-26-410914"
+   ],
+   "returns": {}
   }
  ]
 }
