@@ -22,6 +22,17 @@
    "gain": 0.1526,
    "vol_ratio": 0.1079,
    "si_pct": 0.2258
+  },
+  {
+   "date": "2026-10-02",
+   "session": "pre",
+   "t": "TNON",
+   "manual": false,
+   "price": 4.51,
+   "ref": 4.04,
+   "gain": 0.1163,
+   "vol_ratio": 0.1408,
+   "si_pct": 0.8085
   }
  ]
 }
