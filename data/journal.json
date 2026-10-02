@@ -2164,6 +2164,169 @@
     "0001817646-26-000028"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-02-ACOG",
+   "date": "2026-10-02",
+   "ticker": "ACOG",
+   "cik": 1655923,
+   "company": "Alpha Cognition Inc.",
+   "sic": 2836,
+   "kind": "big",
+   "quality": 12,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 12,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 9.1,
+    "asof": "2026-10-02 20:00",
+    "source": "live"
+   },
+   "total": 1498939.95,
+   "insiders": 1,
+   "liquidity": 911362.5223795573,
+   "scores": {
+    "piotroski": "3/7",
+    "altman": "Z 7.68",
+    "beneish": null
+   },
+   "accs": [
+    "0001493152-26-042969",
+    "0001493152-26-044690",
+    "0001493152-26-045511"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-02-FGBI",
+   "date": "2026-10-02",
+   "ticker": "FGBI",
+   "cik": 1408534,
+   "company": "First Guaranty Bancshares, Inc.",
+   "sic": 6035,
+   "kind": "cluster+big",
+   "quality": 57,
+   "parts": {
+    "breadth": 20,
+    "seniority": 12,
+    "size": 10,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 8.31,
+    "asof": "2026-10-02 20:00",
+    "source": "live"
+   },
+   "total": 1035124.36,
+   "insiders": 3,
+   "liquidity": 187176.09123275394,
+   "scores": {
+    "piotroski": "2/6",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001437749-26-029825",
+    "0001437749-26-030075",
+    "0001437749-26-030168",
+    "0001437749-26-030686",
+    "0001437749-26-030745",
+    "0001437749-26-031876"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-02-MXF",
+   "date": "2026-10-02",
+   "ticker": "MXF",
+   "cik": 65433,
+   "company": "MEXICO FUND INC",
+   "sic": null,
+   "kind": "big",
+   "quality": 29,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 10,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 19.93,
+    "asof": "2026-10-02 20:00",
+    "source": "live"
+   },
+   "total": 951977.0,
+   "insiders": 2,
+   "liquidity": 568440.6192325411,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000305",
+    "0001510281-26-000309",
+    "0001510281-26-000310",
+    "0001510281-26-000313",
+    "0001510281-26-000314",
+    "0001510281-26-000320",
+    "0002063220-26-000002"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-02-RGCO",
+   "date": "2026-10-02",
+   "ticker": "RGCO",
+   "cik": 1069533,
+   "company": "RGC RESOURCES INC",
+   "sic": 4923,
+   "kind": "cluster",
+   "quality": 46,
+   "parts": {
+    "breadth": 30,
+    "seniority": 14,
+    "size": 2,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 21.8,
+    "asof": "2026-10-02 20:00",
+    "source": "live"
+   },
+   "total": 153730.84,
+   "insiders": 5,
+   "liquidity": 288131.7159380232,
+   "scores": {
+    "piotroski": "6/8",
+    "altman": "Z 1.20",
+    "beneish": null
+   },
+   "accs": [
+    "0001437749-26-030121",
+    "0001437749-26-030157",
+    "0001437749-26-030160",
+    "0001437749-26-030464",
+    "0001437749-26-030468",
+    "0001437749-26-030524",
+    "0001437749-26-031183",
+    "0001437749-26-031185",
+    "0001437749-26-031188",
+    "0001437749-26-031825",
+    "0001437749-26-031827"
+   ],
+   "returns": {}
   }
  ]
 }
