@@ -2087,6 +2087,83 @@
     "0001193125-26-410914"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-02-GME",
+   "date": "2026-10-02",
+   "ticker": "GME",
+   "cik": 1326380,
+   "company": "GameStop Corp.",
+   "sic": 5734,
+   "kind": "cluster+big",
+   "quality": 76,
+   "parts": {
+    "breadth": 30,
+    "seniority": 24,
+    "size": 20,
+    "conviction": 2,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 24.11,
+    "asof": "2026-10-01 20:00",
+    "source": "live"
+   },
+   "total": 59319948.16,
+   "insiders": 5,
+   "liquidity": 221262122.14091164,
+   "scores": {
+    "piotroski": "5/9",
+    "altman": "Z 2.60",
+    "beneish": -4.04
+   },
+   "accs": [
+    "0000921895-26-002531",
+    "0000921895-26-002608",
+    "0000921895-26-002670",
+    "0001822293-26-000002",
+    "0001840480-26-000002",
+    "0001840485-26-000006",
+    "0001840485-26-000008",
+    "0001868288-26-000004"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-02-AVR",
+   "date": "2026-10-02",
+   "ticker": "AVR",
+   "cik": 2011514,
+   "company": "Anteris Technologies Global Corp.",
+   "sic": 3842,
+   "kind": "big",
+   "quality": 15,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 15,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 7.61,
+    "asof": "2026-10-01 20:00",
+    "source": "live"
+   },
+   "total": 3027831.92,
+   "insiders": 1,
+   "liquidity": 6184991.865616753,
+   "scores": {
+    "piotroski": "4/7",
+    "altman": "Z 18.97",
+    "beneish": -6.28
+   },
+   "accs": [
+    "0001817646-26-000028"
+   ],
+   "returns": {}
   }
  ]
 }

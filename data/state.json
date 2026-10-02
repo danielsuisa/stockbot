@@ -1,6 +1,5 @@
 {
  "days": {
-  "20260901": "ok",
   "20260902": "ok",
   "20260903": "ok",
   "20260904": "ok",
@@ -21,1748 +20,10 @@
   "20260925": "ok",
   "20260928": "ok",
   "20260929": "ok",
-  "20260930": "ok"
+  "20260930": "ok",
+  "20261001": "ok"
  },
  "buys": [
-  {
-   "acc": "0000101382-26-000180",
-   "cik": 101382,
-   "ticker": "UMBF",
-   "company": "UMB FINANCIAL CORP",
-   "insider": "Graves Greg M",
-   "role": "דירקטור",
-   "insider_cik": "1267879",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 573.145,
-   "value": 80011.04,
-   "price": 139.6,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     573.145,
-     139.6
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 40463.0277,
-   "pct": 0.0142,
-   "original": null
-  },
-  {
-   "acc": "0000101382-26-000181",
-   "cik": 101382,
-   "ticker": "UMBF",
-   "company": "UMB FINANCIAL CORP",
-   "insider": "Peterman Tamara",
-   "role": "דירקטור",
-   "insider_cik": "1774955",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 394.0553,
-   "value": 55010.12,
-   "price": 139.6,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     394.0553,
-     139.6
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 10680.1247,
-   "pct": 0.0369,
-   "original": null
-  },
-  {
-   "acc": "0000905148-26-004066",
-   "cik": 1818502,
-   "ticker": "OPFI",
-   "company": "OppFi Inc.",
-   "insider": "Schwartz Todd G.",
-   "role": "דירקטור, Chief Executive Officer",
-   "insider_cik": "1873026",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 3550.0,
-   "value": 24542.22,
-   "price": 6.9133,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     3550.0,
-     6.9133
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 615883.0,
-   "pct": 0.0058,
-   "original": null
-  },
-  {
-   "acc": "0000912282-26-001254",
-   "cik": 1833141,
-   "ticker": "HELP",
-   "company": "CYBIN INC.",
-   "insider": "So Eric H. L.",
-   "role": "דירקטור, Executive Chair",
-   "insider_cik": "2116526",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 95000.0,
-   "value": 1121475.0,
-   "price": 11.805,
-   "filed": "2026-09-09",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     95000.0,
-     11.805
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 4265014.0,
-   "pct": 0.0223,
-   "original": null
-  },
-  {
-   "acc": "0000935596-26-000022",
-   "cik": 800457,
-   "ticker": "DGICA",
-   "company": "DONEGAL GROUP INC",
-   "insider": "Donegal Mutual Insurance Co",
-   "role": "בעל 10%",
-   "insider_cik": "935596",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-08-31",
-   "last": "2026-09-01",
-   "shares": 19257.0,
-   "value": 369198.55,
-   "price": 19.1722,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-08-31",
-     10000.0,
-     19.1765
-    ],
-    [
-     "2026-09-01",
-     9257.0,
-     19.1675
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 14272971.0,
-   "pct": 0.0013,
-   "original": null
-  },
-  {
-   "acc": "0000937797-26-000027",
-   "cik": 1712184,
-   "ticker": "LILA",
-   "company": "Liberty Latin America Ltd.",
-   "insider": "Malone John C",
-   "role": "בעל 10%",
-   "insider_cik": "937797",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-08-28",
-   "last": "2026-09-01",
-   "shares": 121286.0,
-   "value": 1029705.8,
-   "price": 8.4899,
-   "filed": "2026-09-01",
-   "form": "4",
-   "sig": [
-    [
-     "2026-08-28",
-     51832.0,
-     8.4773
-    ],
-    [
-     "2026-09-01",
-     69454.0,
-     8.4993
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 306571.0,
-   "pct": 0.3956,
-   "original": null
-  },
-  {
-   "acc": "0001009759-26-000004",
-   "cik": 1009759,
-   "ticker": "CEPL",
-   "company": "Capstone Energy Plus, Inc.",
-   "insider": "Wilson Denise",
-   "role": "דירקטור",
-   "insider_cik": "1375077",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 0,
-   "value": null,
-   "price": null,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     0.0,
-     0.0
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 60795.0,
-   "pct": null,
-   "original": null
-  },
-  {
-   "acc": "0001009759-26-000006",
-   "cik": 1009759,
-   "ticker": "CEPL",
-   "company": "Capstone Energy Plus, Inc.",
-   "insider": "Fu Ping",
-   "role": "דירקטור",
-   "insider_cik": "1742720",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 0,
-   "value": null,
-   "price": null,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     0.0,
-     0.0
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 60795.0,
-   "pct": null,
-   "original": null
-  },
-  {
-   "acc": "0001104659-26-104378",
-   "cik": 101538,
-   "ticker": "UAMY",
-   "company": "UNITED STATES ANTIMONY CORP",
-   "insider": "Carrabba Joseph A",
-   "role": "דירקטור",
-   "insider_cik": "1328270",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 21300.0,
-   "value": 100536.0,
-   "price": 4.72,
-   "filed": "2026-09-01",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     21300.0,
-     4.72
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 198401.0,
-   "pct": 0.1074,
-   "original": null
-  },
-  {
-   "acc": "0001104659-26-104644",
-   "cik": 101538,
-   "ticker": "UAMY",
-   "company": "UNITED STATES ANTIMONY CORP",
-   "insider": "Bardswich Lloyd",
-   "role": "דירקטור, Dir, EVP & Chief Mining Eng",
-   "insider_cik": "1399729",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 20000.0,
-   "value": 92700.0,
-   "price": 4.635,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     20000.0,
-     4.635
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 932881.0,
-   "pct": 0.0214,
-   "original": null
-  },
-  {
-   "acc": "0001178913-26-004392",
-   "cik": 1593984,
-   "ticker": "MDWD",
-   "company": "MediWound Ltd.",
-   "insider": "Rubinstein Samuel",
-   "role": "דירקטור",
-   "insider_cik": "1742152",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 525.0,
-   "value": 6625.5,
-   "price": 12.62,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     525.0,
-     12.62
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 525.0,
-   "pct": 1.0,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-380240",
-   "cik": 1272842,
-   "ticker": "AIRG",
-   "company": "AIRGAIN INC",
-   "insider": "Sims James K",
-   "role": "דירקטור",
-   "insider_cik": "1208317",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-08-31",
-   "last": "2026-09-01",
-   "shares": 15000.0,
-   "value": 77996.2,
-   "price": 5.1997,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-08-31",
-     6731.0,
-     5.31
-    ],
-    [
-     "2026-09-01",
-     8269.0,
-     5.11
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 457733.0,
-   "pct": 0.0328,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-380267",
-   "cik": 1059142,
-   "ticker": "GHI",
-   "company": "Greystone Housing Impact Investors LP",
-   "insider": "Rogozinski Kenneth",
-   "role": "Chief Executive Officer",
-   "insider_cik": "1787579",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 3500.0,
-   "value": 21840.0,
-   "price": 6.24,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     3500.0,
-     6.24
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 170233.0,
-   "pct": 0.0206,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-380595",
-   "cik": 1880438,
-   "ticker": "ANTX",
-   "company": "AN2 Therapeutics, Inc.",
-   "insider": "FitzPatrick Margaret M",
-   "role": "דירקטור",
-   "insider_cik": "1873879",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 2098.0,
-   "value": 11601.94,
-   "price": 5.53,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     2098.0,
-     5.53
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 10708.0,
-   "pct": 0.1959,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-380882",
-   "cik": 2097725,
-   "ticker": "AIIR",
-   "company": "AIR Global PLC",
-   "insider": "Lotfy Bassem",
-   "role": "Chief Financial Officer",
-   "insider_cik": "2128694",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 50.0,
-   "value": 375.0,
-   "price": 7.5,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     50.0,
-     7.5
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 254689.0,
-   "pct": 0.0002,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-381412",
-   "cik": 1325670,
-   "ticker": "FRST",
-   "company": "Primis Financial Corp.",
-   "insider": "Weichert Margaret M",
-   "role": "דירקטור",
-   "insider_cik": "2142452",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 100.0,
-   "value": 1575.0,
-   "price": 15.75,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     100.0,
-     15.75
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 734.0,
-   "pct": 0.1362,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-381567",
-   "cik": 1325670,
-   "ticker": "FRST",
-   "company": "Primis Financial Corp.",
-   "insider": "Johnson Eric Alan",
-   "role": "דירקטור",
-   "insider_cik": "1364419",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 1280.0,
-   "value": 19968.0,
-   "price": 15.6,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     1280.0,
-     15.6
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 50882.0,
-   "pct": 0.0252,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-385370",
-   "cik": 1111741,
-   "ticker": "DYNR",
-   "company": "DYNARESOURCE, INC.",
-   "insider": "Rose Matthew K",
-   "role": "דירקטור",
-   "insider_cik": "1200246",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 1913889.0,
-   "value": null,
-   "price": null,
-   "filed": "2026-09-08",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     1913889.0,
-     null
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 4389304.0,
-   "pct": 0.436,
-   "original": null
-  },
-  {
-   "acc": "0001198906-26-000008",
-   "cik": 1089063,
-   "ticker": "DKS",
-   "company": "DICK'S SPORTING GOODS, INC.",
-   "insider": "Colombo William J",
-   "role": "דירקטור",
-   "insider_cik": "1198906",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 913.0,
-   "value": 121602.47,
-   "price": 133.19,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     913.0,
-     133.19
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 181000.0,
-   "pct": 0.005,
-   "original": null
-  },
-  {
-   "acc": "0001268406-26-000009",
-   "cik": 1692819,
-   "ticker": "VST",
-   "company": "Vistra Corp.",
-   "insider": "Burke James A",
-   "role": "דירקטור, President and CEO",
-   "insider_cik": "1268406",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-08-31",
-   "last": "2026-09-01",
-   "shares": 6665.0,
-   "value": 903069.25,
-   "price": 135.4943,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-08-31",
-     2200.0,
-     135.99
-    ],
-    [
-     "2026-09-01",
-     4465.0,
-     135.25
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 1146352.0,
-   "pct": 0.0058,
-   "original": null
-  },
-  {
-   "acc": "0001325533-26-000007",
-   "cik": 1821175,
-   "ticker": "MSGM",
-   "company": "Motorsport Games Inc.",
-   "insider": "Red Oak Partners, LLC",
-   "role": "בעל 10%",
-   "insider_cik": "1325533",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 2149.0,
-   "value": 8482.1,
-   "price": 3.947,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     1406.0,
-     3.947
-    ],
-    [
-     "2026-09-01",
-     743.0,
-     3.947
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 531360.0,
-   "pct": 0.004,
-   "original": null
-  },
-  {
-   "acc": "0001349628-26-000004",
-   "cik": 67215,
-   "ticker": "DY",
-   "company": "DYCOM INDUSTRIES INC",
-   "insider": "Fallon David Joseph",
-   "role": "דירקטור",
-   "insider_cik": "1349628",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 700.0,
-   "value": 200844.0,
-   "price": 286.92,
-   "filed": "2026-09-01",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     700.0,
-     286.92
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 1043.0,
-   "pct": 0.6711,
-   "original": null
-  },
-  {
-   "acc": "0001381197-26-000149",
-   "cik": 1381197,
-   "ticker": "IBKR",
-   "company": "Interactive Brokers Group, Inc.",
-   "insider": "Conkling Lori A",
-   "role": "דירקטור",
-   "insider_cik": "2067952",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 25.0,
-   "value": 2363.25,
-   "price": 94.53,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     25.0,
-     94.53
-    ]
-   ],
-   "indirect": false,
-   "kind": "plan",
-   "plan_value": 2363.25,
-   "post": 2559.0,
-   "pct": 0.0098,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-029458",
-   "cik": 903419,
-   "ticker": "ALRS",
-   "company": "ALERUS FINANCIAL CORP",
-   "insider": "Bolton Jeffrey",
-   "role": "דירקטור",
-   "insider_cik": "1925331",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 1000.0,
-   "value": 32450.0,
-   "price": 32.45,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     1000.0,
-     32.45
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 15163.0,
-   "pct": 0.066,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-029479",
-   "cik": 1069533,
-   "ticker": "RGCO",
-   "company": "RGC RESOURCES INC",
-   "insider": "Williamson John B Iii",
-   "role": "דירקטור",
-   "insider_cik": "1238836",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 1000.0,
-   "value": 21300.0,
-   "price": 21.3,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     1000.0,
-     21.3
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 178010.24,
-   "pct": 0.0056,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-029481",
-   "cik": 1069533,
-   "ticker": "RGCO",
-   "company": "RGC RESOURCES INC",
-   "insider": "Miles Christen Brooke",
-   "role": "VP, Human Resources",
-   "insider_cik": "1968153",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 4.636,
-   "value": 100.0,
-   "price": 21.57,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     4.636,
-     21.57
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 9942.341,
-   "pct": 0.0005,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-029483",
-   "cik": 1069533,
-   "ticker": "RGCO",
-   "company": "RGC RESOURCES INC",
-   "insider": "Oliver Lawrence T.",
-   "role": "Senior VP and Secretary",
-   "insider_cik": "1801438",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 9.272,
-   "value": 200.0,
-   "price": 21.57,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     9.272,
-     21.57
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 30156.187,
-   "pct": 0.0003,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-029484",
-   "cik": 1811074,
-   "ticker": "TPL",
-   "company": "Texas Pacific Land Corp",
-   "insider": "Horizon Kinetics Asset Management Llc",
-   "role": "בעל 10%",
-   "insider_cik": "1056823",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 1.0,
-   "value": 369.1,
-   "price": 369.1,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     1.0,
-     369.1
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 3242743.0,
-   "pct": 0.0,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-029505",
-   "cik": 919567,
-   "ticker": "RCG",
-   "company": "RENN Fund, Inc.",
-   "insider": "Horizon Kinetics Asset Management Llc",
-   "role": "בעל 10%",
-   "insider_cik": "1056823",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 756.0,
-   "value": 2230.2,
-   "price": 2.95,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     756.0,
-     2.95
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 961392.0,
-   "pct": 0.0008,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-029545",
-   "cik": 1625101,
-   "ticker": "PLSE",
-   "company": "PULSE BIOSCIENCES, INC.",
-   "insider": "Teplitsky Liane Rae",
-   "role": "Chief Operating Officer",
-   "insider_cik": "2132552",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-08-31",
-   "last": "2026-09-01",
-   "shares": 2025.0,
-   "value": 99971.15,
-   "price": 49.3685,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-08-31",
-     1024.0,
-     48.8
-    ],
-    [
-     "2026-09-01",
-     1001.0,
-     49.95
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 4095.0,
-   "pct": 0.4945,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-029608",
-   "cik": 846913,
-   "ticker": "FTEK",
-   "company": "FUEL TECH, INC.",
-   "insider": "Nuggihalli Ramesh",
-   "role": "President & CEO",
-   "insider_cik": "1855199",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 1470.529,
-   "value": 1999.92,
-   "price": 1.36,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     1470.529,
-     1.36
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 1470.529,
-   "pct": 1.0,
-   "original": null
-  },
-  {
-   "acc": "0001475597-26-000230",
-   "cik": 1560293,
-   "ticker": "TNON",
-   "company": "Tenon Medical, Inc.",
-   "insider": "Hrt Financial Lp",
-   "role": "בעל 10%",
-   "insider_cik": "1475597",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 1790.0,
-   "value": 8180.3,
-   "price": 4.57,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     1790.0,
-     4.57
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 2244.0,
-   "pct": 0.7977,
-   "original": null
-  },
-  {
-   "acc": "0001493152-26-041030",
-   "cik": 1534708,
-   "ticker": "BLNE",
-   "company": "Beeline Holdings, Inc.",
-   "insider": "Liuzza Nicholas Reyland JR",
-   "role": "דירקטור, Chief Executive Officer",
-   "insider_cik": "1264473",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 96000.0,
-   "value": 98880.0,
-   "price": 1.03,
-   "filed": "2026-09-01",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     96000.0,
-     1.03
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 4891099.0,
-   "pct": 0.0196,
-   "original": null
-  },
-  {
-   "acc": "0001570372-26-000005",
-   "cik": 1698990,
-   "ticker": "MGY",
-   "company": "Magnolia Oil & Gas Corp",
-   "insider": "Khani David M.",
-   "role": "דירקטור",
-   "insider_cik": "1570372",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 54.0,
-   "value": 1446.12,
-   "price": 26.78,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     54.0,
-     26.78
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 30676.0,
-   "pct": 0.0018,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-059868",
-   "cik": 785557,
-   "ticker": "DLHC",
-   "company": "DLH Holdings Corp.",
-   "insider": "Mink Brook Asset Management LLC",
-   "role": "בעל 10%",
-   "insider_cik": "2052205",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-08-31",
-   "last": "2026-09-01",
-   "shares": 700.0,
-   "value": 3070.98,
-   "price": 4.3871,
-   "filed": "2026-09-01",
-   "form": "4",
-   "sig": [
-    [
-     "2026-08-31",
-     500.0,
-     4.397
-    ],
-    [
-     "2026-09-01",
-     200.0,
-     4.3624
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 2181047.0,
-   "pct": 0.0003,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-059899",
-   "cik": 1840572,
-   "ticker": "LUCK",
-   "company": "Lucky Strike Entertainment Corp",
-   "insider": "Young John Alan",
-   "role": "דירקטור",
-   "insider_cik": "1432026",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-08-28",
-   "last": "2026-09-01",
-   "shares": 4200.0,
-   "value": 633944.0,
-   "price": 150.939,
-   "filed": "2026-09-01",
-   "form": "4",
-   "sig": [
-    [
-     "2026-08-28",
-     2800.0,
-     6.23
-    ],
-    [
-     "2026-08-31",
-     400.0,
-     6.25
-    ],
-    [
-     "2026-09-01",
-     1000.0,
-     614.0
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 89718.0,
-   "pct": 0.0468,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-060001",
-   "cik": 1928446,
-   "ticker": "GRNT",
-   "company": "Granite Ridge Resources, Inc.",
-   "insider": "Mccartney John",
-   "role": "דירקטור",
-   "insider_cik": "923380",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 5000.0,
-   "value": 25200.0,
-   "price": 5.04,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     5000.0,
-     5.04
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 154143.0,
-   "pct": 0.0324,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-060096",
-   "cik": 1909747,
-   "ticker": "JUSH",
-   "company": "Jushi Holdings Inc.",
-   "insider": "Cacioppo James",
-   "role": "דירקטור, Chief Executive Officer",
-   "insider_cik": "1455939",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-08-31",
-   "last": "2026-09-01",
-   "shares": 319686.0,
-   "value": 165271.86,
-   "price": 0.517,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-08-31",
-     71686.0,
-     0.51
-    ],
-    [
-     "2026-09-01",
-     248000.0,
-     0.519
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 4723148.0,
-   "pct": 0.0677,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-060107",
-   "cik": 1842279,
-   "ticker": "OPAL",
-   "company": "OPAL Fuels Inc.",
-   "insider": "Nisar Nadeem",
-   "role": "דירקטור",
-   "insider_cik": "1827382",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-08-31",
-   "last": "2026-09-01",
-   "shares": 20000.0,
-   "value": 38900.0,
-   "price": 1.945,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-08-31",
-     10000.0,
-     1.98
-    ],
-    [
-     "2026-09-01",
-     10000.0,
-     1.91
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 267785.0,
-   "pct": 0.0747,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-060113",
-   "cik": 1842279,
-   "ticker": "OPAL",
-   "company": "OPAL Fuels Inc.",
-   "insider": "Comora Adam",
-   "role": "Co-Chief Executive Officer",
-   "insider_cik": "1933088",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 50000.0,
-   "value": 96500.0,
-   "price": 1.93,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     50000.0,
-     1.93
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 489626.0,
-   "pct": 0.1021,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-060444",
-   "cik": 2089271,
-   "ticker": "HONA",
-   "company": "Honeywell Aerospace Inc.",
-   "insider": "Arnold Craig",
-   "role": "דירקטור",
-   "insider_cik": "1188578",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 6400.0,
-   "value": 998400.0,
-   "price": 156.0,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     6400.0,
-     156.0
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 6400.0,
-   "pct": 1.0,
-   "original": null
-  },
-  {
-   "acc": "0001654954-26-008127",
-   "cik": 924719,
-   "ticker": "SMID",
-   "company": "SMITH MIDLAND CORP",
-   "insider": "Smith Ashley B",
-   "role": "דירקטור, Chief Executive Officer",
-   "insider_cik": "1274098",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 2000.0,
-   "value": 53740.0,
-   "price": 26.87,
-   "filed": "2026-09-04",
-   "form": "4/A",
-   "sig": [
-    [
-     "2026-09-01",
-     2000.0,
-     26.87
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 180539.0,
-   "pct": 0.0111,
-   "original": "2026-09-03"
-  },
-  {
-   "acc": "0001662972-26-000133",
-   "cik": 1662972,
-   "ticker": "BSTT",
-   "company": "Blackstone Real Estate Income Trust, Inc.",
-   "insider": "Harper Robert G IV",
-   "role": "Head of Asset Management",
-   "insider_cik": "1686287",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 955.768,
-   "value": 13999.99,
-   "price": 14.6479,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     955.768,
-     14.6479
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 577820.374,
-   "pct": 0.0017,
-   "original": null
-  },
-  {
-   "acc": "0001667071-26-000004",
-   "cik": 1111741,
-   "ticker": "DYNR",
-   "company": "DYNARESOURCE, INC.",
-   "insider": "Nichol Gareth",
-   "role": "בעל 10%",
-   "insider_cik": "1667071",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 2000000.0,
-   "value": null,
-   "price": null,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     2000000.0,
-     null
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 7425768.0,
-   "pct": 0.2693,
-   "original": null
-  },
-  {
-   "acc": "0001680809-26-000007",
-   "cik": 2082866,
-   "ticker": "PNFP",
-   "company": "Pinnacle Financial Partners, Inc.",
-   "insider": "Blair Kevin S.",
-   "role": "דירקטור, Chief Executive Officer",
-   "insider_cik": "1680809",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 2565.0,
-   "value": 250036.2,
-   "price": 97.48,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     2565.0,
-     97.48
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 152397.0,
-   "pct": 0.0168,
-   "original": null
-  },
-  {
-   "acc": "0001683168-26-006871",
-   "cik": 1829794,
-   "ticker": "EMPD",
-   "company": "Empery Digital Inc.",
-   "insider": "Lane Ryan M.",
-   "role": "דירקטור, Co-Chief Executive Officer",
-   "insider_cik": "2012055",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 500000.0,
-   "value": 1793100.0,
-   "price": 3.5862,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     500000.0,
-     3.5862
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 4930345.0,
-   "pct": 0.1014,
-   "original": null
-  },
-  {
-   "acc": "0001683168-26-006884",
-   "cik": 1941536,
-   "ticker": "BAER",
-   "company": "Bridger Aerospace Group Holdings, Inc.",
-   "insider": "Kelter Jeffrey E",
-   "role": "דירקטור",
-   "insider_cik": "1198068",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 200000.0,
-   "value": 219140.0,
-   "price": 1.0957,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     100000.0,
-     1.0944
-    ],
-    [
-     "2026-09-01",
-     100000.0,
-     1.097
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 1329820.0,
-   "pct": 0.1504,
-   "original": null
-  },
-  {
-   "acc": "0001831631-26-000105",
-   "cik": 1831631,
-   "ticker": "LDI",
-   "company": "loanDepot, Inc.",
-   "insider": "Hsieh Anthony Li",
-   "role": "דירקטור, Executive Chair, CEO & Pres.",
-   "insider_cik": "1655400",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-08-31",
-   "last": "2026-09-01",
-   "shares": 205573.0,
-   "value": 192578.17,
-   "price": 0.9368,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-08-31",
-     145365.0,
-     0.9449
-    ],
-    [
-     "2026-09-01",
-     60208.0,
-     0.9172
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 1000000.0,
-   "pct": 0.2056,
-   "original": null
-  },
-  {
-   "acc": "0001841761-26-000090",
-   "cik": 1841761,
-   "ticker": "GROV",
-   "company": "Grove Collaborative Holdings, Inc.",
-   "insider": "Yurcisin Jeffrey Michael",
-   "role": "דירקטור, President & CEO",
-   "insider_cik": "1989175",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 90000.0,
-   "value": 94689.0,
-   "price": 1.0521,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     90000.0,
-     1.0521
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 815472.0,
-   "pct": 0.1104,
-   "original": null
-  },
-  {
-   "acc": "0001865200-26-000083",
-   "cik": 1865200,
-   "ticker": "ANGX",
-   "company": "Angel Studios, Inc.",
-   "insider": "Sarowitz Steven I",
-   "role": "דירקטור",
-   "insider_cik": "1597870",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 10979.0,
-   "value": 46925.34,
-   "price": 4.2741,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     10979.0,
-     4.2741
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 752204.0,
-   "pct": 0.0146,
-   "original": null
-  },
-  {
-   "acc": "0002057567-26-000008",
-   "cik": 1336706,
-   "ticker": "NPB",
-   "company": "NORTHPOINTE BANCSHARES INC",
-   "insider": "Williams Charles Alan",
-   "role": "דירקטור, CHAIRMAN & CEO",
-   "insider_cik": "2057567",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 85000.0,
-   "value": 1422925.5,
-   "price": 16.7403,
-   "filed": "2026-09-02",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     85000.0,
-     16.7403
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 2475962.0,
-   "pct": 0.0343,
-   "original": null
-  },
-  {
-   "acc": "0002074050-26-000026",
-   "cik": 850027,
-   "ticker": "GRF",
-   "company": "EAGLE CAPITAL GROWTH FUND, INC.",
-   "insider": "Sims Luke E",
-   "role": "דירקטור, President & CEO",
-   "insider_cik": "1038238",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 2560.0,
-   "value": 25575.17,
-   "price": 9.9903,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     2560.0,
-     9.9903
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 297827.0,
-   "pct": 0.0086,
-   "original": null
-  },
-  {
-   "acc": "0002117905-26-000028",
-   "cik": 1468642,
-   "ticker": "AUGO",
-   "company": "Aura Minerals Inc.",
-   "insider": "Sousa Mauad Bruno",
-   "role": "דירקטור",
-   "insider_cik": "2117905",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 1.0,
-   "value": 81.1,
-   "price": 81.1,
-   "filed": "2026-09-03",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     1.0,
-     81.1
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 170592.0,
-   "pct": 0.0,
-   "original": null
-  },
-  {
-   "acc": "0002127924-26-000015",
-   "cik": 1234006,
-   "ticker": "GOOD",
-   "company": "GLADSTONE COMMERCIAL CORP",
-   "insider": "Carter Ryan Stuart",
-   "role": "Executive Vice President",
-   "insider_cik": "2127924",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-01",
-   "last": "2026-09-01",
-   "shares": 100.0,
-   "value": 1302.0,
-   "price": 13.02,
-   "filed": "2026-09-01",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-01",
-     100.0,
-     13.02
-    ]
-   ],
-   "indirect": false,
-   "kind": "plan",
-   "plan_value": 1302.0,
-   "post": 4900.0,
-   "pct": 0.0204,
-   "original": null
-  },
   {
    "acc": "0000905148-26-004073",
    "cik": 1031203,
@@ -31910,6 +30171,37 @@
    "original": null
   },
   {
+   "acc": "0000912282-26-001334",
+   "cik": 1833141,
+   "ticker": "HELP",
+   "company": "CYBIN INC.",
+   "insider": "Cavers Greg",
+   "role": "Chief Financial Officer",
+   "insider_cik": "2116548",
+   "od": true,
+   "weight": 1.5,
+   "first": "2026-09-29",
+   "last": "2026-09-29",
+   "shares": 3000.0,
+   "value": 38730.0,
+   "price": 12.91,
+   "filed": "2026-10-01",
+   "form": "4",
+   "sig": [
+    [
+     "2026-09-29",
+     3000.0,
+     12.91
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 3000.0,
+   "pct": 1.0,
+   "original": null
+  },
+  {
    "acc": "0000921895-26-002670",
    "cik": 1326380,
    "ticker": "GME",
@@ -34417,6 +32709,42 @@
    "original": null
   },
   {
+   "acc": "0001493152-26-045400",
+   "cik": 1535955,
+   "ticker": "LPCN",
+   "company": "Lipocine Inc.",
+   "insider": "Higuchi John W.",
+   "role": "דירקטור",
+   "insider_cik": "1579891",
+   "od": true,
+   "weight": 0.7,
+   "first": "2026-09-29",
+   "last": "2026-09-30",
+   "shares": 25007.0,
+   "value": 55042.65,
+   "price": 2.2011,
+   "filed": "2026-10-01",
+   "form": "4",
+   "sig": [
+    [
+     "2026-09-29",
+     9037.0,
+     2.15
+    ],
+    [
+     "2026-09-30",
+     15970.0,
+     2.23
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 241365.0,
+   "pct": 0.1036,
+   "original": null
+  },
+  {
    "acc": "0001510281-26-000318",
    "cik": 1391437,
    "ticker": "GRX",
@@ -34804,6 +33132,189 @@
    "original": null
   },
   {
+   "acc": "0001199835-26-000361",
+   "cik": 838875,
+   "ticker": "WVVI",
+   "company": "WILLAMETTE VALLEY VINEYARDS INC",
+   "insider": "Bernau James W",
+   "role": "דירקטור, President",
+   "insider_cik": "1299589",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-01",
+   "last": "2026-10-01",
+   "shares": 5500.0,
+   "value": 9490.78,
+   "price": 1.7256,
+   "filed": "2026-10-01",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-01",
+     100.0,
+     1.71
+    ],
+    [
+     "2026-10-01",
+     100.0,
+     1.73
+    ],
+    [
+     "2026-10-01",
+     100.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     100.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     100.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     100.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     100.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     100.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     100.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     100.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     145.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     189.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     211.0,
+     1.73
+    ],
+    [
+     "2026-10-01",
+     2200.0,
+     1.71
+    ],
+    [
+     "2026-10-01",
+     300.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     500.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     55.0,
+     1.75
+    ],
+    [
+     "2026-10-01",
+     900.0,
+     1.71
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 380001.0,
+   "pct": 0.0145,
+   "original": null
+  },
+  {
+   "acc": "0001817646-26-000028",
+   "cik": 2011514,
+   "ticker": "AVR",
+   "company": "Anteris Technologies Global Corp.",
+   "insider": "L1 Capital Pty Ltd",
+   "role": "בעל 10%",
+   "insider_cik": "1817646",
+   "od": false,
+   "weight": 0.0,
+   "first": "2026-09-30",
+   "last": "2026-10-01",
+   "shares": 397226.0,
+   "value": 3027831.92,
+   "price": 7.6224,
+   "filed": "2026-10-01",
+   "form": "4",
+   "sig": [
+    [
+     "2026-09-30",
+     74286.0,
+     7.72
+    ],
+    [
+     "2026-10-01",
+     322940.0,
+     7.6
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 5200767.0,
+   "pct": 0.0764,
+   "original": null
+  },
+  {
+   "acc": "0001822293-26-000002",
+   "cik": 1326380,
+   "ticker": "GME",
+   "company": "GameStop Corp.",
+   "insider": "Turner Nat",
+   "role": "דירקטור",
+   "insider_cik": "1822293",
+   "od": true,
+   "weight": 0.7,
+   "first": "2026-10-01",
+   "last": "2026-10-01",
+   "shares": 10462.0,
+   "value": 254540.46,
+   "price": 24.33,
+   "filed": "2026-10-01",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-01",
+     10462.0,
+     24.33
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 10462.0,
+   "pct": 1.0,
+   "original": null
+  },
+  {
    "acc": "0001877939-26-000084",
    "cik": 1877939,
    "ticker": "CTM",
@@ -35002,7 +33513,8 @@
    "0001840485-26-000006",
    "0000921895-26-002608",
    "0001840485-26-000008",
-   "0000921895-26-002670"
+   "0000921895-26-002670",
+   "0001822293-26-000002"
   ],
   "2088082": [
    "0000947871-26-000880",
@@ -35046,7 +33558,6 @@
    "0001751947-26-000004"
   ],
   "1712184": [
-   "0000937797-26-000027",
    "0001724519-26-000010",
    "0000937797-26-000030",
    "0000937797-26-000032",
@@ -35105,13 +33616,11 @@
    "0001193125-26-385264"
   ],
   "1089063": [
-   "0001198906-26-000008",
    "0001772409-26-000009",
    "0001817293-26-000006",
    "0002100573-26-000006"
   ],
   "800457": [
-   "0000935596-26-000022",
    "0000935596-26-000023",
    "0000935596-26-000024",
    "0000935596-26-000025",
@@ -35125,12 +33634,8 @@
    "0001193125-26-394831"
   ],
   "1865200": [
-   "0001865200-26-000083",
    "0001865200-26-000085",
    "0001865200-26-000087"
-  ],
-  "1336706": [
-   "0002057567-26-000008"
   ],
   "1287032": [
    "0001294357-26-000015"
@@ -35174,9 +33679,6 @@
    "0001628280-26-061406",
    "0001628280-26-062057",
    "0001628280-26-062134"
-  ],
-  "1829794": [
-   "0001683168-26-006871"
   ],
   "1843974": [
    "0000945621-26-001118"
@@ -35278,9 +33780,6 @@
   "1108524": [
    "0001108524-26-000212"
   ],
-  "2089271": [
-   "0001628280-26-060444"
-  ],
   "930236": [
    "0001104659-26-107867",
    "0001233565-26-000006",
@@ -35290,15 +33789,10 @@
    "0001758710-26-000004"
   ],
   "1909747": [
-   "0001628280-26-060096",
    "0001628280-26-061833",
    "0001628280-26-063027"
   ],
-  "1692819": [
-   "0001268406-26-000009"
-  ],
   "1840572": [
-   "0001628280-26-059899",
    "0001628280-26-061140",
    "0001628280-26-061489",
    "0001628280-26-063239"
@@ -35347,7 +33841,6 @@
    "0001628280-26-062235"
   ],
   "67215": [
-   "0001349628-26-000004",
    "0001837347-26-000003",
    "0001919348-26-000002"
   ],
@@ -35400,12 +33893,7 @@
    "0001853874-26-000014"
   ],
   "2082866": [
-   "0001680809-26-000007",
    "0001571561-26-000005"
-  ],
-  "101538": [
-   "0001104659-26-104378",
-   "0001104659-26-104644"
   ],
   "1500881": [
    "0001193125-26-393086",
@@ -35424,7 +33912,6 @@
    "0001437749-26-030745"
   ],
   "1841761": [
-   "0001841761-26-000090",
    "0001841761-26-000092",
    "0001841761-26-000094",
    "0001841761-26-000096",
@@ -35432,8 +33919,6 @@
    "0001841761-26-000100"
   ],
   "1842279": [
-   "0001628280-26-060107",
-   "0001628280-26-060113",
    "0001628280-26-060916"
   ],
   "1825088": [
@@ -35452,10 +33937,6 @@
   "75288": [
    "0000075288-26-000089",
    "0000075288-26-000092"
-  ],
-  "101382": [
-   "0000101382-26-000180",
-   "0000101382-26-000181"
   ],
   "1396536": [
    "0001079973-26-001266",
@@ -35489,7 +33970,6 @@
    "0001887897-26-000003"
   ],
   "1928446": [
-   "0001628280-26-060001",
    "0001628280-26-060851",
    "0001628280-26-061771"
   ],
@@ -35521,17 +34001,14 @@
    "0001292814-26-004666",
    "0001292814-26-004756"
   ],
-  "1468642": [
-   "0002117905-26-000028"
-  ],
   "1833141": [
-   "0000912282-26-001254",
    "0000912282-26-001256",
    "0000912282-26-001257",
    "0000912282-26-001261",
    "0000912282-26-001263",
    "0000912282-26-001264",
-   "0000912282-26-001293"
+   "0000912282-26-001293",
+   "0000912282-26-001334"
   ],
   "1439124": [
    "0001213900-26-100498",
@@ -35645,9 +34122,6 @@
    "0001104659-26-110226"
   ],
   "1069533": [
-   "0001437749-26-029479",
-   "0001437749-26-029481",
-   "0001437749-26-029483",
    "0001437749-26-030121",
    "0001437749-26-030157",
    "0001437749-26-030160",
@@ -35758,17 +34232,12 @@
   ],
   "2070534": [
    "0001104659-26-112844"
+  ],
+  "2011514": [
+   "0001817646-26-000028"
   ]
  },
  "info": [
-  {
-   "acc": "0002117905-26-000040",
-   "cik": 1468642,
-   "last": "2026-09-18",
-   "kinds": {
-    "exercise": 4
-   }
-  },
   {
    "acc": "0002012406-26-000004",
    "cik": 15847,
@@ -35799,14 +34268,6 @@
    "last": "2026-09-17",
    "kinds": {
     "grant": 4
-   }
-  },
-  {
-   "acc": "0001683168-26-007262",
-   "cik": 1941536,
-   "last": "2026-09-18",
-   "kinds": {
-    "grant": 1
    }
   },
   {
@@ -35986,14 +34447,6 @@
    }
   },
   {
-   "acc": "0002117905-26-000041",
-   "cik": 1468642,
-   "last": "2026-09-21",
-   "kinds": {
-    "exercise": 1
-   }
-  },
-  {
    "acc": "0000897069-26-001792",
    "cik": 1825088,
    "last": "2026-09-18",
@@ -36090,14 +34543,6 @@
    }
   },
   {
-   "acc": "0002117905-26-000042",
-   "cik": 1468642,
-   "last": "2026-09-22",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
    "acc": "0000912282-26-001303",
    "cik": 1218683,
    "last": "2026-09-21",
@@ -36174,23 +34619,6 @@
    "cik": 1844971,
    "last": "2026-09-10",
    "kinds": {
-    "other": 1
-   }
-  },
-  {
-   "acc": "0002117905-26-000034",
-   "cik": 1468642,
-   "last": "2026-09-10",
-   "kinds": {
-    "other": 1
-   }
-  },
-  {
-   "acc": "0002117905-26-000035",
-   "cik": 1468642,
-   "last": "2026-09-11",
-   "kinds": {
-    "exercise": 1,
     "other": 1
    }
   },
@@ -36460,36 +34888,11 @@
    }
   },
   {
-   "acc": "0001193125-26-393274",
-   "cik": 1880438,
-   "last": "2026-09-15",
-   "kinds": {
-    "grant": 2
-   }
-  },
-  {
    "acc": "0001213900-26-100498",
    "cik": 1439124,
    "last": "2026-09-14",
    "kinds": {
     "other": 6
-   }
-  },
-  {
-   "acc": "0002117905-26-000037",
-   "cik": 1468642,
-   "last": "2026-09-15",
-   "kinds": {
-    "exercise": 2,
-    "other": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-100338",
-   "cik": 2077709,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
    }
   },
   {
@@ -36565,14 +34968,6 @@
    }
   },
   {
-   "acc": "0001831631-26-000107",
-   "cik": 1831631,
-   "last": "2026-09-14",
-   "kinds": {
-    "exercise": 1
-   }
-  },
-  {
    "acc": "0000079879-26-000293",
    "cik": 79879,
    "last": "2026-09-15",
@@ -36610,22 +35005,6 @@
    "last": "2026-09-16",
    "kinds": {
     "other": 8
-   }
-  },
-  {
-   "acc": "0001213900-26-100341",
-   "cik": 2077709,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-100342",
-   "cik": 2077709,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
    }
   },
   {
@@ -36685,35 +35064,11 @@
    }
   },
   {
-   "acc": "0001213900-26-100344",
-   "cik": 2077709,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
    "acc": "0001213900-26-100677",
    "cik": 1881551,
    "last": "2026-09-14",
    "kinds": {
     "other": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-100345",
-   "cik": 2077709,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-100346",
-   "cik": 2077709,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
    }
   },
   {
@@ -36842,38 +35197,6 @@
    "last": "2026-09-16",
    "kinds": {
     "grant": 1
-   }
-  },
-  {
-   "acc": "0000950103-26-014137",
-   "cik": 1468642,
-   "last": "2026-09-15",
-   "kinds": {
-    "grant": 3
-   }
-  },
-  {
-   "acc": "0000950103-26-014138",
-   "cik": 1468642,
-   "last": "2026-09-15",
-   "kinds": {
-    "grant": 3
-   }
-  },
-  {
-   "acc": "0000950103-26-014139",
-   "cik": 1468642,
-   "last": "2026-09-15",
-   "kinds": {
-    "grant": 3
-   }
-  },
-  {
-   "acc": "0002117905-26-000038",
-   "cik": 1468642,
-   "last": "2026-09-16",
-   "kinds": {
-    "exercise": 2
    }
   },
   {
@@ -37053,14 +35376,6 @@
    }
   },
   {
-   "acc": "0001655936-26-000002",
-   "cik": 1831631,
-   "last": "2026-09-15",
-   "kinds": {
-    "exercise": 1
-   }
-  },
-  {
    "acc": "0000752642-26-000105",
    "cik": 752642,
    "last": "2026-09-16",
@@ -37130,14 +35445,6 @@
    "last": "2026-09-16",
    "kinds": {
     "grant": 1
-   }
-  },
-  {
-   "acc": "0002117905-26-000039",
-   "cik": 1468642,
-   "last": "2026-09-17",
-   "kinds": {
-    "exercise": 6
    }
   },
   {
@@ -37333,15 +35640,6 @@
    }
   },
   {
-   "acc": "0002117905-26-000043",
-   "cik": 1468642,
-   "last": "2026-09-23",
-   "kinds": {
-    "exercise": 2,
-    "other": 1
-   }
-  },
-  {
    "acc": "0001628280-26-063469",
    "cik": 1754301,
    "last": "2026-09-23",
@@ -37418,14 +35716,6 @@
    }
   },
   {
-   "acc": "0001831631-26-000109",
-   "cik": 1831631,
-   "last": "2026-09-23",
-   "kinds": {
-    "exercise": 1
-   }
-  },
-  {
    "acc": "0001628280-26-063461",
    "cik": 1754301,
    "last": "2026-09-23",
@@ -37482,14 +35772,6 @@
    }
   },
   {
-   "acc": "0002117905-26-000030",
-   "cik": 1468642,
-   "last": "2026-09-03",
-   "kinds": {
-    "other": 1
-   }
-  },
-  {
    "acc": "0001373794-26-000002",
    "cik": 800457,
    "last": "2026-09-03",
@@ -37519,22 +35801,6 @@
    "last": "2026-09-04",
    "kinds": {
     "exercise": 2
-   }
-  },
-  {
-   "acc": "0001193125-26-385370",
-   "cik": 1111741,
-   "last": "2026-09-01",
-   "kinds": {
-    "other": 1
-   }
-  },
-  {
-   "acc": "0001186015-26-000006",
-   "cik": 1831631,
-   "last": "2026-09-08",
-   "kinds": {
-    "exercise": 1
    }
   },
   {
@@ -37786,14 +36052,6 @@
    }
   },
   {
-   "acc": "0001009759-26-000010",
-   "cik": 1009759,
-   "last": "2026-09-09",
-   "kinds": {
-    "other": 1
-   }
-  },
-  {
    "acc": "0001628280-26-061623",
    "cik": 1083301,
    "last": "2026-09-10",
@@ -37837,102 +36095,6 @@
    }
   },
   {
-   "acc": "0001607273-26-000012",
-   "cik": 824142,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001963701-26-000009",
-   "cik": 824142,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001437749-26-029468",
-   "cik": 1069533,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001437749-26-029470",
-   "cik": 1069533,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001437749-26-029472",
-   "cik": 1069533,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000575",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000577",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000578",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000574",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000579",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001437749-26-029474",
-   "cik": 1069533,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000576",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
    "acc": "0001104659-26-104746",
    "cik": 2147219,
    "last": "2026-09-02",
@@ -37941,494 +36103,11 @@
    }
   },
   {
-   "acc": "0001437749-26-029522",
-   "cik": 1085243,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000581",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000580",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000584",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000583",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000582",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000585",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000586",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000587",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001437749-26-029477",
-   "cik": 1069533,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000589",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000588",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000590",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000591",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000592",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000593",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001046179-26-000594",
-   "cik": 1046179,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001193125-26-380960",
-   "cik": 1821468,
-   "last": "2026-09-01",
-   "kinds": {
-    "other": 2
-   }
-  },
-  {
-   "acc": "0001629039-26-000019",
-   "cik": 1698990,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001515156-26-000123",
-   "cik": 1515156,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 3
-   }
-  },
-  {
-   "acc": "0002117905-26-000028",
-   "cik": 1468642,
-   "last": "2026-09-01",
-   "kinds": {
-    "exercise": 2,
-    "other": 1
-   }
-  },
-  {
-   "acc": "0002117905-26-000029",
-   "cik": 1468642,
-   "last": "2026-09-02",
-   "kinds": {
-    "other": 1
-   }
-  },
-  {
-   "acc": "0001683168-26-006930",
-   "cik": 1114925,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 3
-   }
-  },
-  {
-   "acc": "0002105540-26-000007",
-   "cik": 1774675,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0000842517-26-000217",
-   "cik": 842517,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001009759-26-000005",
-   "cik": 1009759,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0002037071-26-000003",
-   "cik": 55242,
-   "last": "2026-09-01",
-   "kinds": {
-    "exercise": 1
-   }
-  },
-  {
-   "acc": "0000842517-26-000215",
-   "cik": 842517,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001009759-26-000004",
-   "cik": 1009759,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001009759-26-000006",
-   "cik": 1009759,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001009759-26-000007",
-   "cik": 1009759,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001009759-26-000008",
-   "cik": 1009759,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001009759-26-000009",
-   "cik": 1009759,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 2
-   }
-  },
-  {
-   "acc": "0000842517-26-000213",
-   "cik": 842517,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001555715-26-000006",
-   "cik": 1774675,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001667071-26-000004",
-   "cik": 1111741,
-   "last": "2026-09-01",
-   "kinds": {
-    "other": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-097332",
-   "cik": 1881551,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001193125-26-382489",
-   "cik": 1889123,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1,
-    "exercise": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-097328",
-   "cik": 1881551,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001193125-26-382487",
-   "cik": 1889123,
-   "last": "2026-09-01",
-   "kinds": {
-    "exercise": 3
-   }
-  },
-  {
-   "acc": "0001193125-26-382488",
-   "cik": 1889123,
-   "last": "2026-09-01",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
-   "acc": "0001193125-26-381953",
-   "cik": 1936258,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 2
-   }
-  },
-  {
-   "acc": "0001683168-26-006931",
-   "cik": 1114925,
-   "last": "2026-09-01",
-   "kinds": {
-    "exercise": 4
-   }
-  },
-  {
-   "acc": "0001200244-26-000005",
-   "cik": 55242,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 2
-   }
-  },
-  {
-   "acc": "0001215135-26-000012",
-   "cik": 55242,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001796545-26-000004",
-   "cik": 1636422,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001683168-26-006932",
-   "cik": 1114925,
-   "last": "2026-09-01",
-   "kinds": {
-    "exercise": 4
-   }
-  },
-  {
-   "acc": "0000842517-26-000201",
-   "cik": 842517,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0000842517-26-000203",
-   "cik": 842517,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0000842517-26-000205",
-   "cik": 842517,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0000842517-26-000207",
-   "cik": 842517,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0000842517-26-000209",
-   "cik": 842517,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0000842517-26-000211",
-   "cik": 842517,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001683168-26-006933",
-   "cik": 1114925,
-   "last": "2026-09-01",
-   "kinds": {
-    "exercise": 4
-   }
-  },
-  {
-   "acc": "0001534574-26-000014",
-   "cik": 92230,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 2
-   }
-  },
-  {
-   "acc": "0001213900-26-097329",
-   "cik": 1881551,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-097330",
-   "cik": 1881551,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001654954-26-008104",
-   "cik": 924719,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
    "acc": "0001654954-26-008114",
    "cik": 924719,
    "last": "2026-09-02",
    "kinds": {
     "grant": 1
-   }
-  },
-  {
-   "acc": "0002073281-26-000010",
-   "cik": 1774675,
-   "last": "2026-09-01",
-   "kinds": {
-    "exercise": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-097331",
-   "cik": 1881551,
-   "last": "2026-09-01",
-   "kinds": {
-    "grant": 1,
-    "other": 1
    }
   },
   {
@@ -38443,14 +36122,6 @@
    "acc": "0001193125-26-401623",
    "cik": 1638290,
    "last": "2026-09-23",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001952725-26-000012",
-   "cik": 1698990,
-   "last": "2026-09-24",
    "kinds": {
     "grant": 1
    }
@@ -38488,22 +36159,6 @@
    }
   },
   {
-   "acc": "0001613357-26-000012",
-   "cik": 1698990,
-   "last": "2026-09-24",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001627951-26-000012",
-   "cik": 1698990,
-   "last": "2026-09-24",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
    "acc": "0001193125-26-401624",
    "cik": 1638290,
    "last": "2026-09-23",
@@ -38533,14 +36188,6 @@
    "last": "2026-09-23",
    "kinds": {
     "grant": 1
-   }
-  },
-  {
-   "acc": "0002117905-26-000044",
-   "cik": 1468642,
-   "last": "2026-09-24",
-   "kinds": {
-    "exercise": 1
    }
   },
   {
@@ -38845,14 +36492,6 @@
    "last": "2026-09-28",
    "kinds": {
     "other": 1
-   }
-  },
-  {
-   "acc": "0002117905-26-000045",
-   "cik": 1468642,
-   "last": "2026-09-29",
-   "kinds": {
-    "other": 2
    }
   },
   {
@@ -39199,16 +36838,40 @@
    "kinds": {
     "grant": 1
    }
+  },
+  {
+   "acc": "0001193125-26-411063",
+   "cik": 1420800,
+   "last": "2026-09-30",
+   "kinds": {
+    "grant": 1
+   }
+  },
+  {
+   "acc": "0000912282-26-001332",
+   "cik": 1833141,
+   "last": "2026-09-30",
+   "kinds": {
+    "grant": 1
+   }
+  },
+  {
+   "acc": "0000912282-26-001335",
+   "cik": 1833141,
+   "last": "2026-09-30",
+   "kinds": {
+    "grant": 1
+   }
   }
  ],
  "regime": {
-  "spy20": 0.0011157756218971304,
-  "spy60": 0.019954236898942934,
-  "iwm20": -0.043638339663986336,
-  "iwm60": -0.061784623525869775,
-  "vix": 16.34000015258789,
+  "spy20": -0.0015290696732972453,
+  "spy60": 0.0249395830580037,
+  "iwm20": -0.05098472927470288,
+  "iwm60": -0.04927089216079483,
+  "vix": 16.389999389648438,
   "vol_source": "VIX",
-  "asof": "2026-10-01 05:30",
+  "asof": "2026-10-02 05:32",
   "tag": "normal"
  },
  "prices": {
@@ -39293,8 +36956,8 @@
    "asof": "2026-09-28 20:00"
   },
   "GME": {
-   "price": 23.76,
-   "asof": "2026-09-29 20:00"
+   "price": 24.11,
+   "asof": "2026-10-01 20:00"
   },
   "COUR": {
    "price": 4.67,
@@ -39350,6 +37013,10 @@
   },
   "PRHI": {
    "price": 6.7,
+   "asof": "2026-10-01 20:00"
+  },
+  "AVR": {
+   "price": 7.61,
    "asof": "2026-10-01 20:00"
   }
  },
@@ -40458,443 +38125,6 @@
    "0002112397-26-000010",
    "0002117905-26-000042",
    "0002146263-26-000005"
-  ],
-  "20260918": [
-   "0000004977-26-000104",
-   "0000007789-26-000241",
-   "0000008858-26-000105",
-   "0000040417-26-000048",
-   "0000040417-26-000049",
-   "0000719955-26-000212",
-   "0000719955-26-000214",
-   "0000723188-26-000112",
-   "0000723188-26-000114",
-   "0000752642-26-000108",
-   "0000752642-26-000109",
-   "0000752642-26-000110",
-   "0000752642-26-000111",
-   "0000858877-26-000147",
-   "0000858877-26-000148",
-   "0000858877-26-000149",
-   "0000858877-26-000150",
-   "0000858877-26-000151",
-   "0000858877-26-000152",
-   "0000904454-26-000487",
-   "0000905148-26-004218",
-   "0000905148-26-004220",
-   "0000905148-26-004222",
-   "0000911971-26-000058",
-   "0000912282-26-001279",
-   "0000919574-26-006389",
-   "0000919574-26-006390",
-   "0000919574-26-006398",
-   "0000919574-26-006399",
-   "0000921895-26-002585",
-   "0000921895-26-002590",
-   "0000922147-26-000024",
-   "0000929638-26-003571",
-   "0000929638-26-003572",
-   "0000930413-26-002923",
-   "0000930413-26-002924",
-   "0000930413-26-002925",
-   "0000930413-26-002926",
-   "0000930413-26-002927",
-   "0000930413-26-002928",
-   "0000937797-26-000030",
-   "0000950103-26-014194",
-   "0001022408-26-000088",
-   "0001061630-26-000076",
-   "0001061630-26-000077",
-   "0001088226-26-000007",
-   "0001094891-26-000286",
-   "0001104659-26-108703",
-   "0001104659-26-108719",
-   "0001104659-26-108740",
-   "0001104659-26-108757",
-   "0001104659-26-108758",
-   "0001104659-26-108760",
-   "0001104659-26-108762",
-   "0001104659-26-108764",
-   "0001104659-26-108766",
-   "0001104659-26-108798",
-   "0001104659-26-108916",
-   "0001104659-26-108917",
-   "0001104659-26-108918",
-   "0001104659-26-108919",
-   "0001104659-26-108927",
-   "0001104659-26-108930",
-   "0001104659-26-108931",
-   "0001104659-26-108937",
-   "0001104659-26-109005",
-   "0001104659-26-109010",
-   "0001105838-26-000010",
-   "0001106578-26-000144",
-   "0001114357-26-000038",
-   "0001123292-26-001319",
-   "0001140361-26-037106",
-   "0001140361-26-037155",
-   "0001140361-26-037158",
-   "0001193125-26-394995",
-   "0001193125-26-395001",
-   "0001193125-26-395003",
-   "0001193125-26-395004",
-   "0001193125-26-395095",
-   "0001193125-26-395097",
-   "0001193125-26-395098",
-   "0001193125-26-395188",
-   "0001193125-26-395266",
-   "0001193125-26-395350",
-   "0001193125-26-395355",
-   "0001193125-26-395359",
-   "0001193125-26-395362",
-   "0001193125-26-395364",
-   "0001193125-26-395367",
-   "0001193125-26-395372",
-   "0001193125-26-395503",
-   "0001193125-26-395510",
-   "0001193125-26-395540",
-   "0001193125-26-395541",
-   "0001193125-26-395542",
-   "0001193125-26-395543",
-   "0001193125-26-395552",
-   "0001193125-26-395553",
-   "0001193125-26-395554",
-   "0001193125-26-395610",
-   "0001193125-26-395611",
-   "0001193125-26-395612",
-   "0001193125-26-395613",
-   "0001193125-26-395614",
-   "0001193125-26-395615",
-   "0001193125-26-395616",
-   "0001193125-26-395667",
-   "0001193125-26-395677",
-   "0001193125-26-395684",
-   "0001193125-26-395685",
-   "0001193125-26-395686",
-   "0001193125-26-395687",
-   "0001193125-26-395688",
-   "0001193125-26-395689",
-   "0001193125-26-395690",
-   "0001193125-26-395691",
-   "0001193125-26-395692",
-   "0001193125-26-395693",
-   "0001193125-26-395720",
-   "0001193125-26-395730",
-   "0001193125-26-395741",
-   "0001193125-26-395742",
-   "0001193125-26-395751",
-   "0001193125-26-395755",
-   "0001193125-26-395775",
-   "0001193125-26-395776",
-   "0001193125-26-395777",
-   "0001193125-26-395779",
-   "0001193125-26-395781",
-   "0001193125-26-395782",
-   "0001193125-26-395783",
-   "0001193125-26-395785",
-   "0001193125-26-395788",
-   "0001193125-26-395790",
-   "0001193125-26-395797",
-   "0001193125-26-395806",
-   "0001193125-26-395810",
-   "0001193125-26-395822",
-   "0001193125-26-395826",
-   "0001193125-26-395827",
-   "0001193125-26-395829",
-   "0001193125-26-395831",
-   "0001193125-26-395833",
-   "0001193125-26-395836",
-   "0001193125-26-395837",
-   "0001193125-26-395847",
-   "0001193125-26-395853",
-   "0001193125-26-395864",
-   "0001193125-26-395865",
-   "0001193125-26-395871",
-   "0001193125-26-395877",
-   "0001193125-26-395881",
-   "0001193125-26-395892",
-   "0001193125-26-395893",
-   "0001193805-26-001256",
-   "0001194016-26-000006",
-   "0001197649-26-000012",
-   "0001202094-26-000009",
-   "0001203535-26-000002",
-   "0001207403-26-000002",
-   "0001209181-26-000007",
-   "0001210677-26-000047",
-   "0001213272-26-000023",
-   "0001213900-26-101131",
-   "0001213900-26-101248",
-   "0001213900-26-101287",
-   "0001213900-26-101290",
-   "0001213900-26-101364",
-   "0001213900-26-101384",
-   "0001213900-26-101476",
-   "0001213900-26-101513",
-   "0001213900-26-101530",
-   "0001213900-26-101531",
-   "0001213900-26-101532",
-   "0001213900-26-101533",
-   "0001213900-26-101584",
-   "0001213900-26-101586",
-   "0001213900-26-101588",
-   "0001213900-26-101589",
-   "0001213900-26-101591",
-   "0001213900-26-101592",
-   "0001213900-26-101594",
-   "0001214659-26-011803",
-   "0001224154-26-000003",
-   "0001225208-26-007867",
-   "0001225208-26-007869",
-   "0001225208-26-007874",
-   "0001225208-26-007875",
-   "0001225208-26-007876",
-   "0001225208-26-007877",
-   "0001225208-26-007879",
-   "0001225208-26-007880",
-   "0001225208-26-007881",
-   "0001225208-26-007882",
-   "0001225208-26-007883",
-   "0001225208-26-007884",
-   "0001225208-26-007885",
-   "0001225208-26-007886",
-   "0001225208-26-007887",
-   "0001225208-26-007888",
-   "0001225208-26-007889",
-   "0001225208-26-007890",
-   "0001231589-26-000020",
-   "0001231919-26-001197",
-   "0001237441-26-000004",
-   "0001237678-26-000016",
-   "0001237678-26-000018",
-   "0001240801-26-000006",
-   "0001242025-26-000003",
-   "0001243821-26-000007",
-   "0001246842-26-000008",
-   "0001271373-26-000011",
-   "0001273351-26-000006",
-   "0001276313-26-000005",
-   "0001280263-26-000070",
-   "0001280263-26-000071",
-   "0001280263-26-000072",
-   "0001280263-26-000073",
-   "0001283854-26-000010",
-   "0001284309-26-000028",
-   "0001288952-26-000011",
-   "0001288952-26-000012",
-   "0001292814-26-004603",
-   "0001292814-26-004605",
-   "0001294192-26-000007",
-   "0001319331-26-000001",
-   "0001327439-26-000004",
-   "0001331860-26-000003",
-   "0001338580-26-000003",
-   "0001349297-26-000010",
-   "0001350876-26-000005",
-   "0001366268-26-000009",
-   "0001385613-26-000131",
-   "0001398344-26-017226",
-   "0001411765-26-000009",
-   "0001413631-26-000002",
-   "0001433982-26-000004",
-   "0001436126-26-000106",
-   "0001437749-26-030719",
-   "0001437749-26-030720",
-   "0001437749-26-030728",
-   "0001437749-26-030729",
-   "0001437749-26-030730",
-   "0001437749-26-030745",
-   "0001437749-26-030747",
-   "0001437749-26-030749",
-   "0001437749-26-030752",
-   "0001456817-26-000015",
-   "0001462808-26-000010",
-   "0001464521-26-000149",
-   "0001477932-26-005712",
-   "0001489550-26-000012",
-   "0001493152-26-043246",
-   "0001493152-26-043251",
-   "0001493152-26-043276",
-   "0001493152-26-043332",
-   "0001493152-26-043352",
-   "0001493152-26-043355",
-   "0001493152-26-043358",
-   "0001493152-26-043374",
-   "0001493152-26-043376",
-   "0001493152-26-043378",
-   "0001493152-26-043383",
-   "0001493152-26-043386",
-   "0001493152-26-043388",
-   "0001493152-26-043392",
-   "0001493152-26-043395",
-   "0001493152-26-043399",
-   "0001493152-26-043409",
-   "0001493152-26-043412",
-   "0001493152-26-043431",
-   "0001493152-26-043432",
-   "0001493152-26-043433",
-   "0001493152-26-043437",
-   "0001493152-26-043441",
-   "0001493152-26-043443",
-   "0001493152-26-043445",
-   "0001497487-26-000012",
-   "0001506307-26-000121",
-   "0001517413-26-000287",
-   "0001517413-26-000288",
-   "0001518884-26-000004",
-   "0001525321-26-000010",
-   "0001534574-26-000016",
-   "0001551306-26-000154",
-   "0001571322-26-000005",
-   "0001573298-26-000026",
-   "0001588670-26-000014",
-   "0001598549-26-000013",
-   "0001612508-26-000009",
-   "0001612627-26-000007",
-   "0001614838-26-000020",
-   "0001626201-26-000020",
-   "0001628280-26-062607",
-   "0001628280-26-062608",
-   "0001628280-26-062609",
-   "0001628280-26-062623",
-   "0001628280-26-062642",
-   "0001628280-26-062661",
-   "0001628280-26-062665",
-   "0001628280-26-062689",
-   "0001628280-26-062700",
-   "0001628280-26-062701",
-   "0001628280-26-062703",
-   "0001628280-26-062704",
-   "0001628280-26-062705",
-   "0001628280-26-062706",
-   "0001628280-26-062707",
-   "0001628280-26-062709",
-   "0001628280-26-062712",
-   "0001628280-26-062715",
-   "0001628280-26-062717",
-   "0001628280-26-062720",
-   "0001628280-26-062722",
-   "0001628280-26-062724",
-   "0001628280-26-062727",
-   "0001628280-26-062732",
-   "0001628280-26-062733",
-   "0001628280-26-062736",
-   "0001628280-26-062737",
-   "0001628280-26-062738",
-   "0001628280-26-062740",
-   "0001628280-26-062743",
-   "0001628280-26-062744",
-   "0001628280-26-062745",
-   "0001628280-26-062747",
-   "0001628280-26-062750",
-   "0001628280-26-062756",
-   "0001628280-26-062758",
-   "0001628280-26-062771",
-   "0001628280-26-062773",
-   "0001628280-26-062776",
-   "0001628280-26-062777",
-   "0001628280-26-062778",
-   "0001628280-26-062779",
-   "0001628280-26-062780",
-   "0001628280-26-062786",
-   "0001628280-26-062787",
-   "0001628280-26-062788",
-   "0001628280-26-062790",
-   "0001635088-26-000099",
-   "0001635088-26-000102",
-   "0001653482-26-000164",
-   "0001653482-26-000165",
-   "0001653482-26-000166",
-   "0001653482-26-000167",
-   "0001653820-26-000004",
-   "0001689575-26-000032",
-   "0001696737-26-000019",
-   "0001696841-26-000012",
-   "0001698324-26-000007",
-   "0001699174-26-000014",
-   "0001704336-26-000005",
-   "0001712189-26-000061",
-   "0001736332-26-000002",
-   "0001741576-26-000010",
-   "0001753689-26-000005",
-   "0001754154-26-000016",
-   "0001754464-26-000018",
-   "0001766522-26-000017",
-   "0001772518-26-000004",
-   "0001775297-26-000013",
-   "0001780660-26-000022",
-   "0001781026-26-000002",
-   "0001789970-26-000016",
-   "0001800668-26-000007",
-   "0001807359-26-000016",
-   "0001810417-26-000023",
-   "0001821353-26-000007",
-   "0001833462-26-000016",
-   "0001833678-26-000003",
-   "0001835966-26-000006",
-   "0001839066-26-000047",
-   "0001863056-26-000022",
-   "0001873387-26-000004",
-   "0001874344-26-000002",
-   "0001883313-26-000067",
-   "0001885266-26-000002",
-   "0001885818-26-000004",
-   "0001903596-26-000357",
-   "0001905960-26-000004",
-   "0001907056-26-000024",
-   "0001909734-26-000011",
-   "0001920053-26-000028",
-   "0001924027-26-000004",
-   "0001924613-26-000042",
-   "0001928782-26-000002",
-   "0001936727-26-000014",
-   "0001944119-26-000037",
-   "0001969082-26-000009",
-   "0001972135-26-000005",
-   "0001976408-26-000856",
-   "0001976408-26-000857",
-   "0001979195-26-000002",
-   "0001982651-26-000004",
-   "0001987386-26-000005",
-   "0001992808-26-000027",
-   "0001995275-26-000018",
-   "0001997711-26-000161",
-   "0002002763-26-000014",
-   "0002009633-26-000003",
-   "0002009762-26-000006",
-   "0002010019-26-000029",
-   "0002014632-26-000018",
-   "0002014633-26-000020",
-   "0002015287-26-000022",
-   "0002017618-26-000004",
-   "0002017620-26-000002",
-   "0002018971-26-000004",
-   "0002024169-26-000020",
-   "0002024250-26-000037",
-   "0002026961-26-000009",
-   "0002046433-26-000005",
-   "0002048497-26-000016",
-   "0002052698-26-000008",
-   "0002061851-26-000009",
-   "0002065630-26-000008",
-   "0002071761-26-000012",
-   "0002078580-26-000017",
-   "0002081627-26-000017",
-   "0002082564-26-000016",
-   "0002082642-26-000010",
-   "0002082674-26-000013",
-   "0002083937-26-000005",
-   "0002089263-26-000016",
-   "0002089362-26-000018",
-   "0002089844-26-000003",
-   "0002094766-26-000006",
-   "0002102304-26-000003",
-   "0002111867-26-000013",
-   "0002117905-26-000039",
-   "0002123975-26-000019",
-   "0002124509-26-000008",
-   "0002126294-26-000010",
-   "0002155883-26-000004"
   ],
   "20260924": [
    "0000022356-26-000205",
@@ -42720,6 +39950,21 @@
    "0000789933-26-000180",
    "0000789933-26-000182",
    "0000798354-26-000035",
+   "0000812011-26-000081",
+   "0000812011-26-000082",
+   "0000812011-26-000083",
+   "0000812011-26-000084",
+   "0000812011-26-000085",
+   "0000812011-26-000086",
+   "0000812011-26-000087",
+   "0000812011-26-000088",
+   "0000812011-26-000089",
+   "0000812011-26-000090",
+   "0000812011-26-000091",
+   "0000812011-26-000092",
+   "0000812011-26-000093",
+   "0000812011-26-000094",
+   "0000812011-26-000095",
    "0000835011-26-000110",
    "0000892251-26-000170",
    "0000892251-26-000172",
@@ -42734,6 +39979,9 @@
    "0000912282-26-001320",
    "0000912282-26-001322",
    "0000912282-26-001331",
+   "0000912282-26-001332",
+   "0000912282-26-001334",
+   "0000912282-26-001335",
    "0000912562-26-000151",
    "0000912562-26-000153",
    "0000912562-26-000155",
@@ -42777,6 +40025,7 @@
    "0000950142-26-002659",
    "0000950142-26-002660",
    "0001036437-26-000008",
+   "0001040470-26-000267",
    "0001041061-26-000189",
    "0001042557-26-000010",
    "0001043029-26-000008",
@@ -42784,6 +40033,7 @@
    "0001047862-26-000147",
    "0001058090-26-000098",
    "0001058795-26-000013",
+   "0001061630-26-000079",
    "0001079848-26-000008",
    "0001104659-26-112614",
    "0001104659-26-112638",
@@ -42808,6 +40058,8 @@
    "0001104659-26-112891",
    "0001104659-26-112893",
    "0001104659-26-112894",
+   "0001104659-26-112944",
+   "0001104659-26-112945",
    "0001105577-26-000016",
    "0001105602-26-000012",
    "0001106578-26-000153",
@@ -42815,6 +40067,7 @@
    "0001123292-26-001336",
    "0001123485-26-000010",
    "0001140361-26-038307",
+   "0001140361-26-038315",
    "0001157619-26-000014",
    "0001161697-26-000221",
    "0001161697-26-000222",
@@ -42822,6 +40075,7 @@
    "0001161697-26-000224",
    "0001161697-26-000225",
    "0001161697-26-000227",
+   "0001161697-26-000229",
    "0001166832-26-000012",
    "0001173514-26-000214",
    "0001173514-26-000215",
@@ -42923,10 +40177,21 @@
    "0001193125-26-410986",
    "0001193125-26-410991",
    "0001193125-26-410995",
+   "0001193125-26-411053",
+   "0001193125-26-411063",
+   "0001193125-26-411064",
+   "0001193125-26-411065",
+   "0001193125-26-411070",
+   "0001193125-26-411073",
+   "0001193125-26-411078",
+   "0001193125-26-411086",
    "0001196985-26-000004",
    "0001199045-26-000010",
+   "0001199835-26-000361",
    "0001203074-26-000004",
    "0001203367-26-000026",
+   "0001204679-26-000008",
+   "0001205378-26-000012",
    "0001208590-26-000012",
    "0001209033-26-000012",
    "0001209479-26-000011",
@@ -42945,6 +40210,8 @@
    "0001213900-26-105963",
    "0001213900-26-105971",
    "0001213900-26-106000",
+   "0001213900-26-106019",
+   "0001213900-26-106020",
    "0001214659-26-012383",
    "0001214659-26-012404",
    "0001214659-26-012415",
@@ -42955,6 +40222,7 @@
    "0001216742-26-000005",
    "0001217081-26-000009",
    "0001217124-26-000011",
+   "0001218470-26-000020",
    "0001225208-26-008029",
    "0001225208-26-008030",
    "0001225208-26-008031",
@@ -42980,10 +40248,14 @@
    "0001225208-26-008065",
    "0001225208-26-008066",
    "0001225208-26-008067",
+   "0001225208-26-008068",
+   "0001225208-26-008069",
    "0001225760-26-000010",
    "0001227654-26-000065",
    "0001227654-26-000066",
+   "0001229265-26-000026",
    "0001231589-26-000021",
+   "0001232377-26-000014",
    "0001233126-26-000015",
    "0001233150-26-000013",
    "0001233488-26-000007",
@@ -42995,6 +40267,7 @@
    "0001252544-26-000013",
    "0001253873-26-000003",
    "0001254037-26-000005",
+   "0001256739-26-000008",
    "0001257451-26-000014",
    "0001258162-26-000004",
    "0001269971-26-000004",
@@ -43025,6 +40298,7 @@
    "0001292814-26-004822",
    "0001292814-26-004824",
    "0001300572-26-000010",
+   "0001302110-26-000034",
    "0001302712-26-000010",
    "0001314109-26-000016",
    "0001317996-26-000010",
@@ -43038,6 +40312,8 @@
    "0001388812-26-000015",
    "0001398344-26-017760",
    "0001400956-26-000013",
+   "0001401800-26-000008",
+   "0001425725-26-000011",
    "0001437676-26-000012",
    "0001437749-26-031654",
    "0001437749-26-031669",
@@ -43070,7 +40346,11 @@
    "0001437749-26-031773",
    "0001437749-26-031775",
    "0001437749-26-031777",
+   "0001437749-26-031785",
+   "0001437749-26-031786",
+   "0001437749-26-031787",
    "0001444238-26-000012",
+   "0001452385-26-000010",
    "0001453149-26-000008",
    "0001464273-26-000010",
    "0001466026-26-000083",
@@ -43101,6 +40381,7 @@
    "0001493152-26-045389",
    "0001493152-26-045391",
    "0001493152-26-045392",
+   "0001493152-26-045400",
    "0001503584-26-000015",
    "0001503888-26-000007",
    "0001510281-26-000316",
@@ -43110,7 +40391,9 @@
    "0001510281-26-000320",
    "0001511461-26-000008",
    "0001513845-26-000118",
+   "0001518451-26-000013",
    "0001524472-26-000136",
+   "0001528881-26-000012",
    "0001535264-26-000054",
    "0001536208-26-000009",
    "0001537054-26-000008",
@@ -43128,6 +40411,7 @@
    "0001573516-26-000186",
    "0001573516-26-000188",
    "0001582473-26-000010",
+   "0001595628-26-000008",
    "0001598917-26-000012",
    "0001599097-26-000008",
    "0001600301-26-000008",
@@ -43184,12 +40468,20 @@
    "0001628280-26-064333",
    "0001628280-26-064335",
    "0001628280-26-064337",
+   "0001628280-26-064346",
+   "0001628280-26-064347",
+   "0001628280-26-064348",
+   "0001628280-26-064349",
+   "0001628280-26-064351",
    "0001628797-26-000004",
    "0001630253-26-000005",
    "0001641248-26-000018",
    "0001646293-26-000008",
    "0001653482-26-000174",
    "0001655046-26-000016",
+   "0001657175-26-000011",
+   "0001661859-26-000008",
+   "0001665986-26-000012",
    "0001673321-26-000014",
    "0001676522-26-000008",
    "0001679166-26-000013",
@@ -43205,6 +40497,7 @@
    "0001704720-26-000165",
    "0001704720-26-000166",
    "0001704720-26-000167",
+   "0001705189-26-000017",
    "0001708987-26-000004",
    "0001709407-26-000012",
    "0001721541-26-000008",
@@ -43217,6 +40510,8 @@
    "0001739445-26-000146",
    "0001739445-26-000147",
    "0001740119-26-000009",
+   "0001749345-26-000008",
+   "0001754632-26-000011",
    "0001754868-26-000008",
    "0001759234-26-000011",
    "0001765271-26-000004",
@@ -43241,8 +40536,14 @@
    "0001811683-26-000013",
    "0001814042-26-000008",
    "0001816552-26-000011",
+   "0001817646-26-000028",
+   "0001821008-26-000008",
    "0001821096-26-000016",
+   "0001822293-26-000002",
    "0001822773-26-000010",
+   "0001822991-26-000005",
+   "0001823923-26-000011",
+   "0001823940-26-000010",
    "0001824800-26-000004",
    "0001825383-26-000002",
    "0001827011-26-000041",
@@ -43260,6 +40561,9 @@
    "0001844862-26-000024",
    "0001844862-26-000025",
    "0001844862-26-000026",
+   "0001849121-26-000011",
+   "0001851811-26-000011",
+   "0001855880-26-000018",
    "0001865639-26-000010",
    "0001865965-26-000010",
    "0001868765-26-000011",
@@ -43268,12 +40572,16 @@
    "0001877939-26-000086",
    "0001877939-26-000087",
    "0001880224-26-000004",
+   "0001882102-26-000010",
    "0001888654-26-000003",
    "0001890359-26-000014",
    "0001891533-26-000004",
    "0001894030-26-000016",
+   "0001895106-26-000020",
+   "0001895111-26-000019",
    "0001895381-26-000004",
    "0001898688-26-000011",
+   "0001899894-26-000006",
    "0001910479-26-000014",
    "0001915672-26-000018",
    "0001921051-26-000014",
@@ -43281,13 +40589,19 @@
    "0001927606-26-000009",
    "0001930732-26-000006",
    "0001932848-26-000021",
+   "0001944970-26-000025",
    "0001964921-26-000006",
    "0001972789-26-000010",
    "0001973105-26-000010",
    "0001973917-26-000003",
+   "0001975234-26-000008",
+   "0001975515-26-000006",
+   "0001976012-26-000008",
    "0001987329-26-000018",
+   "0002005790-26-000028",
    "0002007895-26-000016",
    "0002008981-26-000011",
+   "0002009130-26-000004",
    "0002011077-26-000007",
    "0002016680-26-000008",
    "0002018187-26-000017",
@@ -43305,6 +40619,8 @@
    "0002061446-26-000008",
    "0002071308-26-000014",
    "0002072552-26-000006",
+   "0002076280-26-000009",
+   "0002083595-26-000008",
    "0002090751-26-000008",
    "0002097370-26-000006",
    "0002097393-26-000008",
@@ -43315,6 +40631,7 @@
    "0002100573-26-000006",
    "0002100792-26-000011",
    "0002108024-26-000011",
+   "0002108723-26-000008",
    "0002109729-26-000010",
    "0002110069-26-000004",
    "0002115875-26-000007",
@@ -43542,7 +40859,9 @@
      true
     ]
    },
-   "acks": []
+   "acks": [
+    "0001214659-26-011678"
+   ]
   },
   "65433": {
    "id": "2026-10-01-MXF",
@@ -44178,16 +41497,17 @@
    "acks": []
   },
   "1326380": {
-   "id": "2026-09-29-GME",
-   "date": "2026-09-29",
+   "id": "2026-10-02-GME",
+   "date": "2026-10-02",
    "ticker": "GME",
-   "total": 59065407.7,
+   "total": 59319948.16,
    "cluster": true,
    "big": true,
    "accs": [
     "0000921895-26-002531",
     "0000921895-26-002608",
     "0000921895-26-002670",
+    "0001822293-26-000002",
     "0001840480-26-000002",
     "0001840485-26-000006",
     "0001840485-26-000008",
@@ -44227,6 +41547,11 @@
     "0000921895-26-002670": [
      10563796.1,
      "1767470",
+     true
+    ],
+    "0001822293-26-000002": [
+     254540.46,
+     "1822293",
      true
     ]
    },
@@ -44626,7 +41951,9 @@
      true
     ]
    },
-   "acks": []
+   "acks": [
+    "0001214659-26-011565"
+   ]
   },
   "1341439": {
    "id": "2026-10-01-ORCL",
@@ -44752,29 +42079,48 @@
     ]
    },
    "acks": []
+  },
+  "2011514": {
+   "id": "2026-10-02-AVR",
+   "date": "2026-10-02",
+   "ticker": "AVR",
+   "total": 3027831.92,
+   "cluster": false,
+   "big": true,
+   "accs": [
+    "0001817646-26-000028"
+   ],
+   "rows": {
+    "0001817646-26-000028": [
+     3027831.92,
+     "1817646",
+     false
+    ]
+   },
+   "acks": []
   }
  },
  "removed": {},
  "heartbeat": {
-  "at": "2026-10-01 05:31 UTC",
+  "at": "2026-10-02 05:32 UTC",
   "ok": true,
-  "filings": 300,
+  "filings": 758,
   "errors": 0,
   "alerts": 3,
   "corrections": 0,
   "days": [
-   "20260930"
+   "20261001"
   ],
   "rescans": [
-   "20260925",
    "20260928",
-   "20260929"
+   "20260929",
+   "20260930"
   ],
   "failed": [],
   "sources": [
    "index"
   ],
-  "seconds": 45
+  "seconds": 101
  },
  "v": 2,
  "slots": {
