@@ -359,6 +359,58 @@
     "iv30": 61.3
    },
    "outcome": null
+  },
+  {
+   "date": "2026-10-05",
+   "t": "WOLF",
+   "rank": 1,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.8541,
+   "si_pct": 0.4925,
+   "dtc": 10.25,
+   "chg": 0.0593,
+   "rvol": 3.1457,
+   "ret5": 0.2797,
+   "brk": 1.1319,
+   "price": 35.28,
+   "fuel": 0.7928,
+   "trigger": 0.997,
+   "shares": 52995396,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0254,
+    "vol_oi": 0.7232,
+    "pc_oi": 0.4416,
+    "iv30": 106.117
+   },
+   "outcome": null
+  },
+  {
+   "date": "2026-10-05",
+   "t": "TBCH",
+   "rank": 2,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.8023,
+   "si_pct": 0.2521,
+   "dtc": 14.91,
+   "chg": 0.036,
+   "rvol": 4.0257,
+   "ret5": 0.0981,
+   "brk": 1.0921,
+   "price": 13.99,
+   "fuel": 0.7252,
+   "trigger": 0.982,
+   "shares": 17909711,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0368,
+    "vol_oi": 0.0004,
+    "pc_oi": 0.0179,
+    "iv30": 61.973
+   },
+   "outcome": null
   }
  ]
 }
