@@ -411,6 +411,84 @@
     "iv30": 61.973
    },
    "outcome": null
+  },
+  {
+   "date": "2026-10-06",
+   "t": "RXRX",
+   "rank": 1,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.8797,
+   "si_pct": 0.3339,
+   "dtc": 12.56,
+   "chg": -0.0024,
+   "rvol": 3.1207,
+   "ret5": 0.2919,
+   "brk": 1.1574,
+   "price": 4.78,
+   "fuel": 0.8333,
+   "trigger": 0.988,
+   "shares": 535342170,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0052,
+    "vol_oi": 0.6366,
+    "pc_oi": 0.1642,
+    "iv30": 94.927
+   },
+   "outcome": null
+  },
+  {
+   "date": "2026-10-06",
+   "t": "NVAX",
+   "rank": 2,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.7599,
+   "si_pct": 0.3024,
+   "dtc": 9.28,
+   "chg": 0.0224,
+   "rvol": 5.5144,
+   "ret5": 0.163,
+   "brk": 1.1597,
+   "price": 12.56,
+   "fuel": 0.6622,
+   "trigger": 0.988,
+   "shares": 164945726,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0107,
+    "vol_oi": 2.411,
+    "pc_oi": 0.5917,
+    "iv30": 105.968
+   },
+   "outcome": null
+  },
+  {
+   "date": "2026-10-06",
+   "t": "SWKS",
+   "rank": 3,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.3212,
+   "si_pct": 0.2174,
+   "dtc": 4.17,
+   "chg": -0.0534,
+   "rvol": 3.9051,
+   "ret5": -0.042,
+   "brk": 0.9176,
+   "price": 83.91,
+   "fuel": 0.1667,
+   "trigger": 0.6817,
+   "shares": 150472782,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0012,
+    "vol_oi": 0.0641,
+    "pc_oi": 1.0597,
+    "iv30": 57.653
+   },
+   "outcome": null
   }
  ]
 }
