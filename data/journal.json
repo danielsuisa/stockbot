@@ -2451,6 +2451,125 @@
     "0001628280-26-064396"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-05-BPRE",
+   "date": "2026-10-05",
+   "ticker": "BPRE",
+   "cik": 1551047,
+   "company": "Bluerock Private Real Estate Fund",
+   "sic": null,
+   "kind": "cluster+big",
+   "quality": 68,
+   "parts": {
+    "breadth": 20,
+    "seniority": 13,
+    "size": 20,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 12.73,
+    "asof": "2026-10-05 20:00",
+    "source": "live"
+   },
+   "total": 15178613.09,
+   "insiders": 3,
+   "liquidity": 10840527.5765419,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001398344-26-017226",
+    "0001398344-26-017349",
+    "0001398344-26-017538",
+    "0001398344-26-017550",
+    "0001398344-26-017659",
+    "0001398344-26-017661",
+    "0001398344-26-017904",
+    "0001398344-26-017906"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-05-MXF",
+   "date": "2026-10-05",
+   "ticker": "MXF",
+   "cik": 65433,
+   "company": "MEXICO FUND INC",
+   "sic": null,
+   "kind": "big",
+   "quality": 30,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 11,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 20.05,
+    "asof": "2026-10-05 20:00",
+    "source": "live"
+   },
+   "total": 1341448.02,
+   "insiders": 2,
+   "liquidity": 573634.0961456299,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000305",
+    "0001510281-26-000309",
+    "0001510281-26-000310",
+    "0001510281-26-000313",
+    "0001510281-26-000314",
+    "0001510281-26-000320",
+    "0001510281-26-000323",
+    "0002063220-26-000002"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-05-OM",
+   "date": "2026-10-05",
+   "ticker": "OM",
+   "cik": 1484612,
+   "company": "Outset Medical, Inc.",
+   "sic": 3845,
+   "kind": "big",
+   "quality": 9,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 9,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 4.1,
+    "asof": "2026-10-05 20:00",
+    "source": "live"
+   },
+   "total": 870260.4,
+   "insiders": 1,
+   "liquidity": 683823.5736733391,
+   "scores": {
+    "piotroski": "4/9",
+    "altman": "Z -6.16",
+    "beneish": -3.2
+   },
+   "accs": [
+    "0001373604-26-000050"
+   ],
+   "returns": {}
   }
  ]
 }
