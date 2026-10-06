@@ -2570,6 +2570,83 @@
     "0001373604-26-000050"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-06-LEN",
+   "date": "2026-10-06",
+   "ticker": "LEN",
+   "cik": 920760,
+   "company": "LENNAR CORP /NEW/",
+   "sic": 1520,
+   "kind": "big",
+   "quality": 20,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 20,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 74.44,
+    "asof": "2026-10-05 20:00",
+    "source": "live"
+   },
+   "total": 595294961.61,
+   "insiders": 1,
+   "liquidity": 489827904.93312836,
+   "scores": {
+    "piotroski": "3/7",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001193125-26-397059",
+    "0001193125-26-403089",
+    "0001193125-26-409451",
+    "0001193125-26-414744"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-06-ACCV",
+   "date": "2026-10-06",
+   "ticker": "ACCV",
+   "cik": 2141406,
+   "company": "Accelevation Holdings Corp.",
+   "sic": 3620,
+   "kind": "cluster+big",
+   "quality": 84,
+   "parts": {
+    "breadth": 30,
+    "seniority": 23,
+    "size": 16,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 16.46,
+    "asof": "2026-10-05 20:00",
+    "source": "live"
+   },
+   "total": 4098600.0,
+   "insiders": 5,
+   "liquidity": 127148813.69021368,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001628280-26-065154",
+    "0001628280-26-065155",
+    "0001628280-26-065156",
+    "0001628280-26-065157",
+    "0001628280-26-065167"
+   ],
+   "returns": {}
   }
  ]
 }
