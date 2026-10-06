@@ -489,6 +489,58 @@
     "iv30": 57.653
    },
    "outcome": null
+  },
+  {
+   "date": "2026-10-07",
+   "t": "HTZ",
+   "rank": 3,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.7761,
+   "si_pct": 0.3669,
+   "dtc": 8.51,
+   "chg": 0.0122,
+   "rvol": 3.317,
+   "ret5": 0.2262,
+   "brk": 0.9428,
+   "price": 2.06,
+   "fuel": 0.7072,
+   "trigger": 0.9369,
+   "shares": 315764523,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0059,
+    "vol_oi": 2.8372,
+    "pc_oi": 1.0471,
+    "iv30": 129.858
+   },
+   "outcome": null
+  },
+  {
+   "date": "2026-10-07",
+   "t": "FCEL",
+   "rank": 5,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.6162,
+   "si_pct": 0.3114,
+   "dtc": 3.23,
+   "chg": 0.2389,
+   "rvol": 2.1436,
+   "ret5": 0.2219,
+   "brk": 1.118,
+   "price": 20.65,
+   "fuel": 0.4595,
+   "trigger": 0.982,
+   "shares": 79954196,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0321,
+    "vol_oi": 0.4685,
+    "pc_oi": 0.4896,
+    "iv30": 96.643
+   },
+   "outcome": null
   }
  ]
 }
