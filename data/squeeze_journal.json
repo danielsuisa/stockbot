@@ -541,6 +541,32 @@
     "iv30": 96.643
    },
    "outcome": null
+  },
+  {
+   "date": "2026-10-08",
+   "t": "MVIS",
+   "rank": 4,
+   "variant": "w0.7/si0.2/rv2",
+   "si_date": "2026-09-15",
+   "score": 0.4621,
+   "si_pct": 0.2392,
+   "dtc": 4.86,
+   "chg": -0.065,
+   "rvol": 2.4371,
+   "ret5": 0.0133,
+   "brk": 0.9048,
+   "price": 1.52,
+   "fuel": 0.308,
+   "trigger": 0.8214,
+   "shares": 23788425,
+   "borrow": null,
+   "gamma": {
+    "exposure": 0.0017,
+    "vol_oi": 0.0962,
+    "pc_oi": 0.1321,
+    "iv30": 113.587
+   },
+   "outcome": null
   }
  ]
 }

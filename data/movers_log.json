@@ -33,6 +33,17 @@
    "gain": 0.1163,
    "vol_ratio": 0.1408,
    "si_pct": 0.8085
+  },
+  {
+   "date": "2026-10-07",
+   "session": "post",
+   "t": "WOLF",
+   "manual": false,
+   "price": 39.501,
+   "ref": 31.37,
+   "gain": 0.2592,
+   "vol_ratio": 0.932,
+   "si_pct": 0.4925
   }
  ]
 }
