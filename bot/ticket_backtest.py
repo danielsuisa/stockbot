@@ -3,9 +3,9 @@
 
 Fills are conservative (spec section 6): a buy limit fills only when a minute's low reaches it, at the limit; a stop
 fills at the stop, or at the minute's open when it opened beyond it; a minute that touches both stop and target counts
-as the stop. On the fill minute only a stop on the side the price is moving to is checked: a limit fills on the way
-down (a long's stop below may follow; a mirrored short's stop above came before the fill), a stop-limit on the way up
-(the reverse). Results are in R: P&L / (R x shares)."""
+as the stop. On the fill minute a stop counts only when its side of the minute comes after the fill, on the usual bar
+path (open-low-high-close for a minute that closes at or above its open, else open-high-low-close), the same for
+both directions. Results are in R: P&L / (R x shares)."""
 import argparse
 import bisect
 import collections
@@ -24,8 +24,18 @@ COMMISSION, MIN_ORDER = 0.0035, 0.35  # dollars per share, minimum per order (ea
 TIME_STOP, TRAIL_PAD = 60, 0.10  # ORIGINAL: minutes to target 1 after the fill; trail below the last higher low
 
 
+def _after(o, h, l, c, at_open, down):
+    """Which extremes of a fill minute come after the fill, on the usual bar path (open-low-high-close when the minute
+    closes at or above its open, else open-high-low-close) -> (low after, high after). at_open: filled at the open;
+    down: reached on the way down (a limit under the open), else on the way up (a stop over the open)."""
+    if at_open:
+        return True, True
+    bull = c >= o
+    return (True, bull) if down else (not bull, True)
+
+
 def _fill(t, bars):
-    """-> (index into bars, price) of the entry fill, or None."""
+    """-> (index into bars, price, (low after, high after)) of the entry fill, or None."""
     at, until, limit = t["at"], t["valid_until"], t["limit"]
     triggered = t["entry_type"] == "LMT"
     for i, (m, o, h, l, c, v, vw) in enumerate(bars):
@@ -39,9 +49,9 @@ def _fill(t, bars):
             triggered = True
             px = max(o, t["level"])
             if px <= limit:
-                return i, px
+                return i, px, _after(o, h, l, c, o >= t["level"], False)
         if l <= limit:
-            return i, limit
+            return i, limit, _after(o, h, l, c, o <= limit, True)
     return None
 
 
@@ -58,10 +68,10 @@ def simulate(t, bars1, ctx, direction=1):
     got = _fill(t, bars)
     if got is None:
         return {"filled": False, "fill_at": None, "fill": None, "exits": [], "gross_r": 0, "cost_r": 0, "net_r": 0}
-    i, fill = got
+    i, fill, after = got
     play = bars if direction == 1 else _mirror(bars)
     entry = fill * direction
-    first = (t["entry_type"] == "LMT") == (direction == 1)  # check a stop on the fill minute
+    first = after[0] if direction == 1 else after[1]  # the stop's side of the fill minute comes after the fill
     exits = (_original if t["rules"] == "ORIGINAL" else _improved)(t, play, i, entry, t0, first)
     risk = t["R"] * t["shares"]
     gross = sum((e["price"] - entry) * e["qty"] for e in exits) / risk
@@ -319,10 +329,17 @@ ASSUMPTIONS = (
     "IMPROVED: opening-range breakout; the first 1-minute high above the level decides (a stop-limit triggers once).",
     "Halts are approximated as 5+ minutes without a 1-minute bar during the regular session.",
     "Fills: a buy limit fills only when a minute's low reaches it, at the limit; a stop at the stop or at the open if "
-    "gapped; stop first when a minute touches stop and target; on the fill minute only the stop is checked.",
-    "Costs: $0.0035 a share, $0.35 minimum per order, each side; half the SIP spread at the signal in and out.",
+    "gapped; stop first when a minute touches stop and target; on the fill minute a stop counts only when its side of "
+    "the minute comes after the fill (bar path open-low-high-close if the minute closes at or above its open, else "
+    "open-high-low-close).",
+    "Stops act on pre-market minutes too (the intended protection; a plain IBKR STP would not trigger outside RTH).",
+    "Costs: $0.0035 a share, $0.35 minimum per order, each side; half the SIP spread at the signal in and out; a "
+    "locked quote (bid = ask) counts as a $0.01 spread.",
     "Risk $100 a trade; fewer than 10 shares is NO TICKET; results in R = P&L / (R x shares).",
-    "Random benchmark: the same entries with a coin-flip direction (20 seeds), shorts mirrored around the fill.",
+    "Random benchmark: the same entries with a coin-flip direction (20 seeds), shorts mirrored around the fill; the "
+    "short takes the long's conservative limit price, so it is credited what the long is charged.",
+    "Universe B's average volume comes from Alpaca daily bars, which include extended hours (~14% more than the "
+    "regular session), so its REGULAR entry bar of 2x is ~2.3x of regular-session volume.",
     "Periods: tuning 2024; verdict 2025-01-01 to the last complete session. GO needs >= 100 trades, mean net R > 0 "
     "with t >= 2, above the 95th percentile of the random means, and > 0 in 2025 and in 2026.",
     "Verdict basis: universe B; A and B pooled when B has fewer than 100 verdict trades.",
@@ -402,10 +419,13 @@ def _gate_tickers(days, reports, shares, primary):
     return out
 
 
+TICK = 0.01  # a locked quote (bid = ask) still costs a tick
+
+
 def _spread(t, day):
     def get(hhmm):
         q = alpaca.quote_at(t, alpaca.utc(day, hhmm))
-        return None if q is None else round(q[1] - q[0], 4)
+        return None if q is None else round(max(q[1] - q[0], TICK), 4)
     return get
 
 

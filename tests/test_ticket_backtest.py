@@ -101,17 +101,26 @@ class Exits(unittest.TestCase):
         r = tb.simulate(ORIG, PRE + run("10:25", [(10.08, 10.70, 9.70, 10.0)]) + flat("10:26", "16:00", 10.0), CTX)
         self.assertEqual(r["exits"], [{"qty": 333, "price": 9.75, "at": "10:25", "kind": "stop"}])
 
-    def test_fill_minute_stop_only_on_the_side_the_price_moves_to(self):
-        # a limit fills on the way down: the long's stop below can follow in the same minute, the mirrored short's
-        # stop above came before the fill; a stop-limit fills on the way up: the reverse
-        lmt = PRE + run("10:25", [(10.40, 10.40, 10.04, 10.10)]) + flat("10:26", "16:00", 10.10)
-        self.assertEqual(tb.simulate(ORIG, lmt, CTX, -1)["exits"][0]["kind"], "time")  # 10.40 >= 10.35 came first
-        stp = flat("09:30", "09:40", 9.95) + run("09:40", [(9.75, 10.25, 9.75, 10.10)]) + flat("09:41", "16:00", 10.10)
-        long_ = tb.simulate(IMPR, stp, CTX)
-        self.assertEqual((long_["fill"], [e["kind"] for e in long_["exits"]]), (10.00, ["eod", "eod"]))  # 9.75 first
-        short = tb.simulate(IMPR, stp, CTX, -1)
-        self.assertEqual([e["kind"] for e in short["exits"]], ["stop", "stop"])  # 10.25 after the 10.00 fill
-        self.assertEqual(short["exits"][0]["price"], 10.20)
+    def test_fill_minute_stop_follows_the_bar_path(self):
+        # within a minute the price runs open-low-high-close when it closes at or above the open, else
+        # open-high-low-close; a stop on the fill minute counts only if its extreme comes after the fill
+        def kinds(t, minute, d=1, start="10:25", pre=PRE):
+            bars = pre + run(start, [minute]) + flat(ticket.hhmm(ticket.mins(start) + 1), "16:00", minute[3])
+            return [e["kind"] for e in tb.simulate(t, bars, CTX, d)["exits"]]
+        # limit 10.05 reached on the way down from 10.40: a falling minute's 10.40 high came first, a rising one's after
+        self.assertEqual(kinds(ORIG, (10.40, 10.40, 10.04, 10.10), -1), ["time"])
+        self.assertEqual(kinds(ORIG, (10.10, 10.40, 10.04, 10.30), -1), ["stop"])
+        self.assertEqual(kinds(ORIG, (10.10, 10.40, 9.70, 10.30)), ["stop"])  # the long's low comes after either way
+        pre = flat("09:30", "09:40", 9.95)
+        # stop-limit at 10.00 crossed on the way up from 9.75: a rising minute's 9.75 low came first
+        self.assertEqual(kinds(IMPR, (9.75, 10.25, 9.75, 10.10), 1, "09:40", pre), ["eod", "eod"])
+        self.assertEqual(kinds(IMPR, (9.75, 10.25, 9.75, 10.10), -1, "09:40", pre), ["stop", "stop"])
+        # a falling minute runs up through 10.00 to its high, then down to 9.75: the long's 9.80 stop follows
+        self.assertEqual(kinds(IMPR, (9.90, 10.25, 9.75, 9.78), 1, "09:40", pre), ["stop", "stop"])
+        # filled at the open (10.05): the whole minute follows, 9.84 is under the re-based 9.85 stop
+        self.assertEqual(kinds(IMPR, (10.05, 10.10, 9.84, 10.08), 1, "09:40", pre), ["stop", "stop"])
+        # triggered at an open above the limit, filled at 10.20 on the way down: a falling minute's high came first
+        self.assertEqual(kinds(IMPR, (10.30, 10.45, 10.15, 10.18), -1, "09:40", pre), ["eod", "eod"])
 
     def test_target_then_breakeven_original(self):
         r = tb.simulate(ORIG, FILLED + run("10:26", [(10.30, 10.66, 10.30, 10.50), (10.50, 10.52, 10.04, 10.10)]) +
@@ -149,6 +158,11 @@ class Exits(unittest.TestCase):
         r = tb.simulate(t, bars, ctx)
         self.assertEqual(r["exits"], [{"qty": 227, "price": 10.15, "at": "12:55", "kind": "eod"},
                                       {"qty": 227, "price": 10.15, "at": "12:55", "kind": "eod"}])
+
+    def test_a_locked_quote_costs_one_tick(self):
+        with mock.patch.object(tb.alpaca, "quote_at", side_effect=[(10.0, 10.0), (10.0, 10.03), None]):
+            get = tb._spread("AAA", "2024-03-01")
+            self.assertEqual((get("10:25"), get("10:30"), get("10:35")), (0.01, 0.03, None))
 
     def test_costs(self):
         r = tb.simulate(ORIG, FILLED + run("10:26", [(9.90, 9.92, 9.74, 9.80)]) + flat("10:27", "16:00", 9.80), CTX)
