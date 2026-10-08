@@ -28,7 +28,8 @@ class Base(unittest.TestCase):
     def setUp(self):
         d = tempfile.TemporaryDirectory()
         self.addCleanup(d.cleanup)
-        p = [mock.patch.object(alpaca, "CACHE", Path(d.name)), mock.patch.dict(os.environ, KEYS)]
+        p = [mock.patch.object(alpaca, "CACHE", Path(d.name)), mock.patch.dict(os.environ, KEYS),
+             mock.patch.object(alpaca, "GAP", 0)]
         for x in p:
             x.start()
             self.addCleanup(x.stop)

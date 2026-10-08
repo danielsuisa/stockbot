@@ -101,6 +101,18 @@ class Exits(unittest.TestCase):
         r = tb.simulate(ORIG, PRE + run("10:25", [(10.08, 10.70, 9.70, 10.0)]) + flat("10:26", "16:00", 10.0), CTX)
         self.assertEqual(r["exits"], [{"qty": 333, "price": 9.75, "at": "10:25", "kind": "stop"}])
 
+    def test_fill_minute_stop_only_on_the_side_the_price_moves_to(self):
+        # a limit fills on the way down: the long's stop below can follow in the same minute, the mirrored short's
+        # stop above came before the fill; a stop-limit fills on the way up: the reverse
+        lmt = PRE + run("10:25", [(10.40, 10.40, 10.04, 10.10)]) + flat("10:26", "16:00", 10.10)
+        self.assertEqual(tb.simulate(ORIG, lmt, CTX, -1)["exits"][0]["kind"], "time")  # 10.40 >= 10.35 came first
+        stp = flat("09:30", "09:40", 9.95) + run("09:40", [(9.75, 10.25, 9.75, 10.10)]) + flat("09:41", "16:00", 10.10)
+        long_ = tb.simulate(IMPR, stp, CTX)
+        self.assertEqual((long_["fill"], [e["kind"] for e in long_["exits"]]), (10.00, ["eod", "eod"]))  # 9.75 first
+        short = tb.simulate(IMPR, stp, CTX, -1)
+        self.assertEqual([e["kind"] for e in short["exits"]], ["stop", "stop"])  # 10.25 after the 10.00 fill
+        self.assertEqual(short["exits"][0]["price"], 10.20)
+
     def test_target_then_breakeven_original(self):
         r = tb.simulate(ORIG, FILLED + run("10:26", [(10.30, 10.66, 10.30, 10.50), (10.50, 10.52, 10.04, 10.10)]) +
                         flat("10:28", "16:00", 10.10), CTX)
@@ -260,6 +272,104 @@ class Universes(unittest.TestCase):
         with mock.patch.object(tb.alpaca, "bars", return_value=sorted(rows[1:])):
             self.assertIsNone(tb.open_rel_vol("AAA", DAY, prior + [DAY]))  # 13 prior opening bars
         self.assertIsNone(tb.open_rel_vol("AAA", DAY, prior[1:] + [DAY]))  # 13 prior sessions in the calendar
+
+
+# ---------- statistics, verdict, report, run ----------
+from bot import common  # noqa: E402
+
+
+def trades(values, years=("2025", "2026"), fill=6.0):
+    """net R values, alternating over `years` (so each year gets the same mix)."""
+    return [{"day": f"{years[i % len(years)]}-03-02", "net_r": v, "fill": fill, "kinds": "stop"}
+            for i, v in enumerate(values)]
+
+
+def spread_t(t, n=100, s=1.0):
+    """n values m +- s with Student t = t: t = m * sqrt(n - 1) / s for a half-and-half sample."""
+    m = t * s / (n - 1) ** 0.5
+    return [m + s if i % 4 in (0, 3) else m - s for i in range(n)]  # +, -, -, + keeps each year's mean at m
+
+
+class Verdict(unittest.TestCase):
+    def test_stats_t_and_years(self):
+        st = tb.stats(trades([1.0, -0.5, 2.0, 0.5], years=("2024", "2025")) +
+                      [{"day": "2025-05-01", "net_r": -1.0, "fill": 3.0, "kinds": "target/trail"}])
+        self.assertEqual(st["n"], 5)
+        self.assertAlmostEqual(st["mean"], 0.4)
+        sd = (sum((x - 0.4) ** 2 for x in (1.0, -0.5, 2.0, 0.5, -1.0)) / 4) ** 0.5
+        self.assertAlmostEqual(st["t"], 0.4 / (sd / 5 ** 0.5))
+        self.assertAlmostEqual(st["win"], 0.6)
+        self.assertEqual(st["median"], 0.5)
+        self.assertEqual(st["years"], {"2024": {"n": 2, "mean": 1.5}, "2025": {"n": 3, "mean": -1 / 3}})
+        self.assertEqual(st["buckets"]["<5"], {"n": 1, "mean": -1.0})
+        self.assertEqual(st["exits"], {"stop": 4, "target": 1, "trail": 1})
+        self.assertEqual(tb.stats([])["n"], 0)
+
+    def test_verdict_edges(self):
+        rand = [0.01] * 19 + [0.02]
+        good = trades(spread_t(2.01))
+        self.assertTrue(tb.verdict(good, rand)[1], tb.verdict(good, rand)[0])
+        self.assertFalse(tb.verdict(good[:99], rand)[1])  # 99 trades
+        self.assertFalse(tb.verdict(trades(spread_t(1.99)), rand)[1])  # t 1.99
+        mean = sum(x["net_r"] for x in good) / 100
+        self.assertFalse(tb.verdict(good, [mean] * 20)[1])  # not above the random 95th percentile
+        strong = trades(spread_t(6.0, n=90), years=("2025",)) + trades([-0.01] * 10, years=("2026",))
+        checks, ok = tb.verdict(strong, [-99.0] * 20)
+        self.assertEqual([c for c, passed in checks if not passed], [checks[3][0]])  # only the 2026 check fails
+        self.assertFalse(ok)
+
+    def test_report_rtl_clean_and_names_every_assumption(self):
+        st = tb.stats(trades([0.5, -1.0, 0.2]))
+        res = {(r, s): {"basis": "B", "checks": [("trades", False)], "go": False,
+                        "by": {u: {"tune": st, "verdict": st, "p95": 0.1, "tickets": 3, "fills": 3,
+                                   "reasons": {"trigger": 4}} for u in ("A", "B", "AB")}}
+               for r in tb.RULES for s in tb.SESSIONS}
+        meta = {"run": "2026-10-08", "start": "2024-01-02", "end": "2026-10-07", "universes": "AB", "runtime": 12.0,
+                "requests": 34, "gaps": {"no minute bars": 2}, "counts": {"B ticker-days": 10}}
+        text = tb.render(meta, res)
+        summary = text.split("## סיכום", 1)[1].split("\n## ", 1)[0]
+        self.assertEqual(common.rtl_bad_lines(summary), [])
+        for a in tb.ASSUMPTIONS:
+            self.assertIn(a, text)
+        self.assertIn("NO-GO", text)
+        self.assertNotIn("SECRET", text)
+
+    def test_main_dry_on_tiny_mocked_data(self):
+        day = "2024-03-01"
+        bars = day_bars()
+        sessions = sessions_before(day, 80) + [day]
+        cal = {d: ("09:30", "16:00") for d in sessions}
+        dly = [(d, 9.9, 10.4, 9.4, 9.9, 3_000_000) for d in sessions_before(day, 80)]
+        five = [(f"{d} 09:30", 1, 1, 1, 1, 1000, 1) for d in sessions_before(day, 14)] + \
+            [(f"{day} 09:30", 1, 1, 1, 1, 3000, 1)]
+        reports = [("2024-02-01", {"BBB": {"si": 20_000_000}})]
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(tb.alpaca, "calendar", return_value=cal), \
+                mock.patch.object(tb.alpaca, "minute_bars", side_effect=lambda syms, _: {s: bars for s in syms}), \
+                mock.patch.object(tb.alpaca, "daily", side_effect=lambda syms, a, b: {s: dly for s in syms}), \
+                mock.patch.object(tb.alpaca, "quote_at", return_value=(10.00, 10.02)), \
+                mock.patch.object(tb.alpaca, "bars", return_value=five), \
+                mock.patch.object(tb, "load_b", return_value=(reports, {2: [("2024-01-01", "2023-12-31", 30_000_000)]},
+                                                              {"BBB": 2})), \
+                mock.patch("builtins.print"):
+            picks = os.path.join(d, "picks.csv")
+            with open(picks, "w") as f:
+                f.write(f"date,t\n{day},AAA\n")
+            self.assertEqual(tb.main(["--start", day, "--end", day, "--out", d, "--picks", picks]), 0)
+            md = open(os.path.join(d, f"ticket-{dt.date.today().isoformat()}.md")).read()
+            rows = open(os.path.join(d, f"ticket-{dt.date.today().isoformat()}-trades.csv")).read().splitlines()
+        self.assertIn("NO-GO", md)
+        self.assertTrue(any(",AAA," in r for r in rows) and any(",BBB," in r for r in rows), rows[:3])
+
+
+def day_bars():
+    """A day with a pre-market and a regular breakout (BASE-like): enough for tickets in both universes."""
+    pre = [mk(ticket.hhmm(n), 9.5, 9.6, 9.4, 9.5, 20_000) for n in range(ticket.mins("04:00"), ticket.mins("09:30"))]
+    reg = fives("09:30", [(9.80, 9.40, 9.70, 1_000_000), (9.90, 9.60, 9.85, 1_000_000), (10.00, 9.80, 9.90, 1_000_000),
+                          (9.95, 9.70, 9.75, 1_000_000), (9.90, 9.50, 9.60, 1_000_000), (9.95, 9.90, 9.92, 1_000_000),
+                          (9.98, 9.92, 9.95, 1_000_000), (9.95, 9.85, 9.90, 1_000_000), (9.97, 9.90, 9.95, 1_000_000),
+                          (9.99, 9.95, 9.97, 1_000_000), (10.20, 9.98, 10.10, 5_000_000)])
+    return pre + reg + flat("10:25", "16:00", 10.05, 10_000)
 
 
 if __name__ == "__main__":

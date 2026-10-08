@@ -3,11 +3,21 @@
 
 Fills are conservative (spec section 6): a buy limit fills only when a minute's low reaches it, at the limit; a stop
 fills at the stop, or at the minute's open when it opened beyond it; a minute that touches both stop and target counts
-as the stop; on the fill minute only the stop is checked. Results are in R: P&L / (R x shares)."""
+as the stop. On the fill minute only a stop on the side the price is moving to is checked: a limit fills on the way
+down (a long's stop below may follow; a mirrored short's stop above came before the fill), a stop-limit on the way up
+(the reverse). Results are in R: P&L / (R x shares)."""
+import argparse
 import bisect
+import collections
 import csv
+import datetime as dt
+import os
+import random
+import statistics
+import time
+from zoneinfo import ZoneInfo
 
-from bot import alpaca, shorts, ticket
+from bot import alpaca, backtest, common, shorts, ticket
 from bot.ticket import hhmm, mins
 
 COMMISSION, MIN_ORDER = 0.0035, 0.35  # dollars per share, minimum per order (each side)
@@ -51,7 +61,8 @@ def simulate(t, bars1, ctx, direction=1):
     i, fill = got
     play = bars if direction == 1 else _mirror(bars)
     entry = fill * direction
-    exits = (_original if t["rules"] == "ORIGINAL" else _improved)(t, play, i, entry, t0)
+    first = (t["entry_type"] == "LMT") == (direction == 1)  # check a stop on the fill minute
+    exits = (_original if t["rules"] == "ORIGINAL" else _improved)(t, play, i, entry, t0, first)
     risk = t["R"] * t["shares"]
     gross = sum((e["price"] - entry) * e["qty"] for e in exits) / risk
     orders = [t["shares"]] if t["rules"] == "ORIGINAL" else [g["qty"] for g in t["legs"]]  # IMPROVED: 2 brackets
@@ -68,7 +79,7 @@ def _stop_px(o, l, stop):
     return o if o <= stop else stop if l <= stop else None
 
 
-def _original(t, bars, i, entry, t0):
+def _original(t, bars, i, entry, t0, first=True):
     """The owner's management (long space): stop on all shares until target 1; then the rest's stop at entry, trailed
     to the last higher low - 0.10, exit at the next open after a 5-minute close under VWAP; time stop 60 minutes after
     the fill while target 1 is not hit; anything open exits at the last minute's close."""
@@ -85,7 +96,7 @@ def _original(t, bars, i, entry, t0):
         exits.append({"qty": qty, "price": px, "at": at, "kind": kind})
 
     m, o, h, l, c = bars[i][:5]
-    if l <= stop:  # the fill minute: the stop only
+    if first and l <= stop:  # the fill minute: the stop only
         out(open_qty, stop, m, "stop")
         return exits
     for m, o, h, l, c, v, vw in bars[i + 1:]:
@@ -115,7 +126,7 @@ def _original(t, bars, i, entry, t0):
     return exits
 
 
-def _improved(t, bars, i, entry, t0):
+def _improved(t, bars, i, entry, t0, first=True):
     """Two legs (long space), each with its own stop at fill - D; leg A also a target at fill + 2D; both flat at
     their exit_at minute (the open), else at the last minute's close."""
     D = t["R"]
@@ -129,7 +140,7 @@ def _improved(t, bars, i, entry, t0):
         legs.remove(g)
 
     m, o, h, l, c = bars[i][:5]
-    if l <= stop:
+    if first and l <= stop:
         for g in list(legs):
             out(g, stop, m, "stop")
         return exits
@@ -220,3 +231,327 @@ def open_rel_vol(symbol, day, sessions):
     if len(vols) < OPEN_DAYS or not sum(vols):
         return None
     return first.get(day, 0) / (sum(vols) / OPEN_DAYS)
+
+
+# ---------- statistics and verdict ----------
+RULES, SESSIONS, UNIVERSES = ("ORIGINAL", "IMPROVED"), ("REGULAR", "PREMARKET"), ("A", "B", "AB")
+TUNE_END, VERDICT_START = "2024-12-31", "2025-01-01"
+MIN_TRADES, MIN_T, SEEDS, PCTL = 100, 2.0, 20, 0.95
+LOOKBACK = "2023-06-01"  # daily bars from here: 63 sessions + ATR before 2024-01-02
+PICKS = "docs/backtest/squeeze-2026-09-27-picks.csv"
+NY = ZoneInfo("America/New_York")
+
+
+def _mean(xs):
+    return sum(xs) / len(xs) if xs else None
+
+
+def stats(trades):
+    """Filled trades ({"day", "net_r", "fill", "kinds"}) -> {"n", "mean", "t", "win", "median", "years": {year: {"n",
+    "mean"}}, "buckets": {"<5" | ">=5": {"n", "mean"}}, "exits": {kind: count}}."""
+    xs = [x["net_r"] for x in trades]
+    n = len(xs)
+    out = {"n": n, "mean": _mean(xs), "t": None, "win": None, "median": None, "years": {}, "buckets": {},
+           "exits": {}}
+    if not n:
+        return out
+    sd = statistics.stdev(xs) if n > 1 else 0.0
+    out.update(t=out["mean"] / (sd / n ** 0.5) if sd else None, win=sum(x > 0 for x in xs) / n,
+               median=statistics.median(xs))
+    groups = collections.defaultdict(list)
+    for x in trades:
+        groups[("y", x["day"][:4])].append(x["net_r"])
+        groups[("b", "<5" if x["fill"] < 5 else ">=5")].append(x["net_r"])
+    for (kind, key), v in sorted(groups.items()):
+        out["years" if kind == "y" else "buckets"][key] = {"n": len(v), "mean": _mean(v)}
+    out["exits"] = dict(collections.Counter(k for x in trades for k in x["kinds"].split("/") if k))
+    return out
+
+
+def pctl(xs, q):
+    """Inclusive linear-interpolation percentile."""
+    xs = sorted(xs)
+    pos = q * (len(xs) - 1)
+    lo = int(pos)
+    return xs[lo] if lo + 1 >= len(xs) else xs[lo] + (xs[lo + 1] - xs[lo]) * (pos - lo)
+
+
+def verdict(real, random_means):
+    """The pre-registered verdict on the verdict period's trades -> ([(check, passed)], GO?)."""
+    st = stats(real)
+    p95 = pctl(random_means, PCTL) if random_means else None
+    m = st["mean"]
+    years = [st["years"].get(y, {}).get("mean") for y in ("2025", "2026")]
+    checks = [(f"at least {MIN_TRADES} trades ({st['n']})", st["n"] >= MIN_TRADES),
+              (f"mean net R > 0 with t >= {MIN_T:g}", m is not None and m > 0 and (st["t"] or 0) >= MIN_T),
+              (f"mean net R above the 95th percentile of {SEEDS} random-direction means",
+               m is not None and p95 is not None and m > p95),
+              ("mean net R > 0 in 2025 and in 2026", all(y is not None and y > 0 for y in years))]
+    return checks, all(ok for _, ok in checks)
+
+
+def random_means(trades, seeds=SEEDS):
+    """For each seed: the mean net R with each ticker-day's direction a coin flip (random.Random per seed and
+    ticker-day), the short taking the same entry moment and price."""
+    out = []
+    for seed in range(seeds):
+        xs = [x["net_r"] if random.Random(f"{seed}|{x['day']}|{x['t']}").random() < 0.5 else x["net_r_short"]
+              for x in trades]
+        out.append(_mean(xs) if xs else 0.0)
+    return out
+
+
+# ---------- report ----------
+ASSUMPTIONS = (
+    "Universe A: the 1,330 out-of-sample picks of docs/backtest/squeeze-2026-09-27-picks.csv, each tested on its day "
+    "in both sessions from the session start (all tickers still listed: survivorship bias).",
+    "Universe B: each session, tickers in SEC's current map (survivorship bias) with FINRA short interest usable that "
+    "day, SEC shares outstanding as the float (< 50M; short / shares > 20%), the mean volume of the last 63 daily "
+    "bars > 500K, short / that mean > 5, previous close > $2; listed options not checked (no history).",
+    "Universe B enters the list at the first minute with regular volume > 2x the average day (REGULAR) or pre-market "
+    "volume >= 10% of it with a price over $2 (PREMARKET); rules act only after that minute closes.",
+    "Ticker-days with a day-over-day close ratio < 0.5 or > 2 in the 63-day window are skipped (raw prices, splits).",
+    "A ticker-day in both A and B counts once when pooled (B's result).",
+    "5-minute bars are built from the 1-minute bars that exist and used only after they close; swings need the 2 "
+    "bars after them; VWAP runs from 09:30 (REGULAR) or 04:00 (PREMARKET).",
+    "ORIGINAL: the owner's rules with two fixes: the trail uses the most recent higher low; swing high / higher low "
+    "use the 2-bar definition. Volume is compared with up to 10 previous bars of the session.",
+    "IMPROVED: opening-range breakout; the first 1-minute high above the level decides (a stop-limit triggers once).",
+    "Halts are approximated as 5+ minutes without a 1-minute bar during the regular session.",
+    "Fills: a buy limit fills only when a minute's low reaches it, at the limit; a stop at the stop or at the open if "
+    "gapped; stop first when a minute touches stop and target; on the fill minute only the stop is checked.",
+    "Costs: $0.0035 a share, $0.35 minimum per order, each side; half the SIP spread at the signal in and out.",
+    "Risk $100 a trade; fewer than 10 shares is NO TICKET; results in R = P&L / (R x shares).",
+    "Random benchmark: the same entries with a coin-flip direction (20 seeds), shorts mirrored around the fill.",
+    "Periods: tuning 2024; verdict 2025-01-01 to the last complete session. GO needs >= 100 trades, mean net R > 0 "
+    "with t >= 2, above the 95th percentile of the random means, and > 0 in 2025 and in 2026.",
+    "Verdict basis: universe B; A and B pooled when B has fewer than 100 verdict trades.",
+)
+HE_RULES = {"ORIGINAL": "הכללים המקוריים", "IMPROVED": "הכללים המשופרים"}
+HE_SESSIONS = {"REGULAR": "מסחר רגיל", "PREMARKET": "טרום מסחר"}
+
+
+def _f(x, fmt="{:+.3f}"):
+    return "—" if x is None else fmt.format(x)
+
+
+def render(meta, results):
+    """The Markdown report: a Hebrew summary (every line starts in Hebrew), the tables, the assumptions, the data."""
+    L = [f"# Order-ticket backtest — {meta['run']}", "", "## סיכום", ""]
+    for (r, s), res in results.items():
+        st = res["by"][res["basis"]]["verdict"]
+        L.append(f"- {HE_RULES[r]} · {HE_SESSIONS[s]}: {'GO ✅' if res['go'] else 'NO-GO ❌'} — עסקאות "
+                 f"`{st['n']}`, ממוצע `{_f(st['mean'])}R`, סטטיסטי t `{_f(st['t'], '{:.2f}')}` (בסיס `{res['basis']}`)")
+    L += ["", "תקופת הכוונון היא 2024 ותקופת ההכרעה מ־2025; כל ההנחות מפורטות למטה.", "",
+          "## Verdict checks (verdict period)", "", "| Rules · session | Basis | Check | Pass |", "|---|---|---|---|"]
+    for (r, s), res in results.items():
+        L += [f"| {r} · {s} | {res['basis']} | {c} | {'pass' if ok else 'fail'} |" for c, ok in res["checks"]]
+    L += ["", "## Results", "",
+          "| Rules · session | Universe | Period | Tickets | Trades | Mean net R | t | Win | Median | Random p95 | "
+          "2024 | 2025 | 2026 | <$5 | ≥$5 |", "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for (r, s), res in results.items():
+        for u, b in res["by"].items():
+            for period in ("tune", "verdict"):
+                st = b[period]
+                y = {k: _f(st["years"].get(k, {}).get("mean")) for k in ("2024", "2025", "2026")}
+                bk = {k: _f(st["buckets"].get(k, {}).get("mean")) for k in ("<5", ">=5")}
+                L.append(f"| {r} · {s} | {u} | {period} | {b['tickets'] if period == 'verdict' else ''} | {st['n']} | "
+                         f"{_f(st['mean'])} | {_f(st['t'], '{:.2f}')} | {_f(st['win'], '{:.0%}')} | "
+                         f"{_f(st['median'])} | {_f(b['p95']) if period == 'verdict' else ''} | {y['2024']} | "
+                         f"{y['2025']} | {y['2026']} | {bk['<5']} | {bk['>=5']} |")
+    L += ["", "## NO TICKET reasons and exits (whole range)", "", "| Rules · session | Universe | Tickets | Filled | "
+          "NO TICKET reasons | Exits |", "|---|---|---:|---:|---|---|"]
+    for (r, s), res in results.items():
+        for u, b in res["by"].items():
+            exits = collections.Counter(b["verdict"]["exits"]) + collections.Counter(b["tune"]["exits"])
+            L.append(f"| {r} · {s} | {u} | {b['tickets']} | {b['fills']} | "
+                     f"{', '.join(f'{k} {v}' for k, v in sorted(b['reasons'].items(), key=lambda kv: -kv[1]))} | "
+                     f"{', '.join(f'{k} {v}' for k, v in sorted(exits.items()))} |")
+    L += ["", "## Assumptions", ""] + [f"- {a}" for a in ASSUMPTIONS]
+    L += ["", "## Data", "", f"- Range {meta['start']} … {meta['end']} · universes {meta['universes']} · "
+          f"runtime {meta['runtime']:.0f}s · Alpaca requests {meta['requests']}"]
+    L += [f"- {k}: {v}" for k, v in {**meta["counts"], **meta["gaps"]}.items()]
+    L += ["", "`python -m bot.ticket_backtest` · data: Alpaca SIP (Basic plan), FINRA short interest, SEC shares", ""]
+    return "\n".join(L)
+
+
+# ---------- run ----------
+def load_b(sessions):
+    """FINRA reports usable per session, the SEC shares index and {ticker: cik} (the squeeze backtest's loaders)."""
+    primary = {t: cik for cik, t in common.cik_tickers().items()}
+    dates = [d for d in shorts.settlement_dates() if d >= LOOKBACK]
+    raw = backtest.load_reports(dates)
+    reports = [(u, shorts.remap(raw[d], primary)) for d in dates if raw.get(d) and (u := shorts.usable_from(d, sessions))]
+    shares = shorts.shares_index(backtest.load_frames(int(LOOKBACK[:4]) - 1), backtest.load_filings(int(LOOKBACK[:4]) - 1))
+    return reports, shares, primary
+
+
+def _gate_tickers(days, reports, shares, primary):
+    """Tickers that pass the short / shares gates on any of `days` (they need daily bars)."""
+    usable, out = [u for u, _ in reports], set()
+    for day in days:
+        j = bisect.bisect_right(usable, day) - 1
+        if j < 0:
+            continue
+        for t, row in reports[j][1].items():
+            short, cik = row.get("si") or 0, primary.get(t)
+            if cik and short > SHORT_AVG_MIN * AVG_VOL_MIN and t not in out:
+                n = shorts.shares_at(shares, cik, day)
+                if n and n < SHARES_MAX and short / n > SHORT_SHARES_MIN:
+                    out.add(t)
+    return out
+
+
+def _spread(t, day):
+    def get(hhmm):
+        q = alpaca.quote_at(t, alpaca.utc(day, hhmm))
+        return None if q is None else round(q[1] - q[0], 4)
+    return get
+
+
+def _play(rules, session, bars, ctx, spread, day, t, universe):
+    """One rule set on one ticker-session -> (NO TICKET reason, None) or (None, trade row)."""
+    tk = ticket.signal(rules, session, bars, ctx, spread)
+    if not tk["ok"]:
+        return tk["reason"], None
+    res = simulate(tk, bars, ctx)
+    short = simulate(tk, bars, ctx, -1) if res["filled"] else res
+    return None, {"universe": universe, "day": day, "t": t, "rules": rules, "session": session,
+                  **{k: tk[k] for k in ("at", "level", "entry_type", "entry", "limit", "stop", "R", "shares", "spread")},
+                  "filled": res["filled"], "fill_at": res["fill_at"], "fill": res["fill"],
+                  "kinds": "/".join(e["kind"] for e in res["exits"]), "gross_r": res["gross_r"],
+                  "cost_r": res["cost_r"], "net_r": res["net_r"], "net_r_short": short["net_r"]}
+
+
+def _day(day, hours, a_tickers, b_rows, daily, sessions, gaps):
+    """Every rule set x session x universe on one session -> (trade rows, Counter of (universe, rules, session,
+    reason))."""
+    open_, close = hours
+    syms = sorted(set(a_tickers) | set(b_rows))
+    if not syms:
+        return [], collections.Counter()
+    mb = alpaca.minute_bars(syms, day)
+    rows, reasons, orv = [], collections.Counter(), {}
+    for universe, tickers in (("A", a_tickers), ("B", sorted(b_rows))):
+        for t in tickers:
+            bars = mb.get(t) or []
+            if not bars:
+                gaps["ticker-days without minute bars"] += 1
+                continue
+            row = b_rows.get(t) if universe == "B" else None
+            atr = row["atr"] if row else ticket.atr14(daily.get(t, []), day)
+            spread = _spread(t, day)
+            for session in SESSIONS:
+                start = open_ if session == "REGULAR" else ticket.PRE_OPEN
+                if row:
+                    start = eligible_from(session, bars, row["avg_vol"], open_)
+                    if start is None:
+                        reasons[(universe, None, session, "not in the list")] += 1
+                        continue
+                for rules in RULES:
+                    ctx = {"day": day, "open": open_, "close": close, "atr": atr, "open_rel_vol": None, "from": start}
+                    if rules == "IMPROVED" and session == "REGULAR" and atr:
+                        if t not in orv:
+                            orv[t] = open_rel_vol(t, day, sessions)
+                        ctx["open_rel_vol"] = orv[t]
+                    reason, trade = _play(rules, session, bars, ctx, spread, day, t, universe)
+                    if trade:
+                        rows.append(trade)
+                    else:
+                        reasons[(universe, rules, session, reason)] += 1
+    return rows, reasons
+
+
+def _results(rows, reasons):
+    """Trade rows + NO TICKET counts -> {(rules, session): {"basis", "checks", "go", "by": {universe: {...}}}}."""
+    out = {}
+    for r in RULES:
+        for s in SESSIONS:
+            mine = [x for x in rows if x["rules"] == r and x["session"] == s]
+            pooled = {(x["day"], x["t"]): x for x in sorted(mine, key=lambda x: x["universe"])}  # B over A
+            by = {}
+            for u, xs in (("A", [x for x in mine if x["universe"] == "A"]),
+                          ("B", [x for x in mine if x["universe"] == "B"]), ("AB", list(pooled.values()))):
+                filled = [x for x in xs if x["filled"]]
+                tune = [x for x in filled if x["day"] <= TUNE_END]
+                ver = [x for x in filled if x["day"] >= VERDICT_START]
+                rm = random_means(ver)
+                why = collections.Counter()
+                for (uu, rr, ss, reason), n in reasons.items():
+                    if ss == s and (rr == r or rr is None) and (uu == u or u == "AB"):
+                        why[reason] += n
+                by[u] = {"tune": stats(tune), "verdict": stats(ver), "random": rm, "p95": pctl(rm, PCTL) if ver else None,
+                         "tickets": len(xs), "fills": len(filled), "reasons": dict(why), "_ver": ver}
+            basis = "B" if by["B"]["verdict"]["n"] >= MIN_TRADES else "AB"
+            checks, go = verdict(by[basis]["_ver"], by[basis]["random"])
+            for b in by.values():
+                del b["_ver"]
+            out[(r, s)] = {"basis": basis, "checks": checks, "go": go, "by": by}
+    return out
+
+
+COLUMNS = ("universe", "day", "t", "rules", "session", "at", "level", "entry_type", "entry", "limit", "stop", "R",
+           "shares", "spread", "filled", "fill_at", "fill", "kinds", "gross_r", "cost_r", "net_r", "net_r_short")
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Order-ticket backtest -> docs/backtest/ticket-<date>.md")
+    ap.add_argument("--start", default="2024-01-02")
+    ap.add_argument("--end", help="last session (default: the last complete one)")
+    ap.add_argument("--universe", default="AB", choices=("A", "B", "AB"))
+    ap.add_argument("--picks", default=PICKS)
+    ap.add_argument("--out", default="docs/backtest")
+    a = ap.parse_args(argv)
+    t0, run = time.time(), dt.date.today().isoformat()
+    today = dt.datetime.now(NY).date().isoformat()
+    hours = alpaca.calendar(LOOKBACK, a.end or today)
+    sessions = sorted(hours)
+    end = a.end or max(d for d in sessions if d < today)
+    days = [d for d in sessions if a.start <= d <= end]
+    gaps, counts = collections.Counter(), collections.Counter()
+    picks = collections.defaultdict(list)
+    if "A" in a.universe:
+        for d, t in universe_a(a.picks):
+            if a.start <= d <= end:
+                picks[d].append(t)
+    counts["A ticker-days"] = sum(map(len, picks.values()))
+    reports = shares = primary = None
+    gate = set()
+    if "B" in a.universe:
+        reports, shares, primary = load_b(sessions)
+        gate = _gate_tickers(days, reports, shares, primary)
+    a_syms = sorted({t for ts in picks.values() for t in ts})
+    daily = alpaca.daily(sorted(gate | set(a_syms)), LOOKBACK, end)
+    print(f"{len(days)} sessions, {counts['A ticker-days']} A ticker-days, {len(gate)} B tickers "
+          f"({time.time() - t0:.0f}s)", flush=True)
+    rows, reasons = [], collections.Counter()
+    for k, day in enumerate(days):
+        b_rows = fixed_b(day, reports, shares, primary, daily, counts) if reports is not None else {}
+        counts["B ticker-days"] += len(b_rows)
+        got, why = _day(day, hours[day], picks.get(day, []), b_rows, daily, sessions, gaps)
+        rows += got
+        reasons += why
+        if k % 20 == 0 or k == len(days) - 1:
+            print(f"{day}: {len(rows)} tickets, {alpaca.REQUESTS[0]} requests ({time.time() - t0:.0f}s)", flush=True)
+    results = _results(rows, reasons)
+    meta = {"run": run, "start": a.start, "end": end, "universes": a.universe, "runtime": time.time() - t0,
+            "requests": alpaca.REQUESTS[0], "gaps": dict(gaps), "counts": dict(counts)}
+    os.makedirs(a.out, exist_ok=True)
+    md, out_csv = os.path.join(a.out, f"ticket-{run}.md"), os.path.join(a.out, f"ticket-{run}-trades.csv")
+    with open(md, "w") as f:
+        f.write(render(meta, results))
+    with open(out_csv, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(COLUMNS)
+        for x in rows:
+            w.writerow([round(x[c], 4) if isinstance(x[c], float) else x[c] for c in COLUMNS])
+    for (r, s), res in results.items():
+        st = res["by"][res["basis"]]["verdict"]
+        print(f"{r} {s}: {'GO' if res['go'] else 'NO-GO'} (basis {res['basis']}, {st['n']} trades, "
+              f"mean {_f(st['mean'])}R)")
+    print(f"wrote {md} and {out_csv} ({time.time() - t0:.0f}s)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

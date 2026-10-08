@@ -6,6 +6,8 @@ Prices are raw (not split-adjusted); minutes are New York time."""
 import datetime as dt
 import gzip
 import json
+import threading
+import time
 import urllib.parse
 from zoneinfo import ZoneInfo
 
@@ -17,6 +19,9 @@ CACHE = common.ROOT / ".cache" / "alpaca"
 NY = ZoneInfo("America/New_York")
 LIMIT, CHUNK = 10_000, 100  # bars per page (Alpaca's maximum); symbols per multi-symbol request
 QUOTE_WINDOW = dt.timedelta(seconds=60)
+GAP = 60 / 190  # seconds between requests: under Alpaca's 200 a minute
+REQUESTS = [0]  # requests sent this run (the report's metadata)
+_lock, _next = threading.Lock(), [0.0]
 
 
 def _headers():
@@ -27,6 +32,10 @@ def _headers():
 
 
 def _get(url, query):
+    with _lock:
+        time.sleep(max(0.0, _next[0] - time.monotonic()))
+        _next[0] = time.monotonic() + GAP
+        REQUESTS[0] += 1
     body = common.fetch(f"{url}?{urllib.parse.urlencode(query)}", headers=_headers(), tries=5, timeout=60)
     if body is None:
         raise RuntimeError(f"alpaca: 404 for {url}")
