@@ -13,9 +13,9 @@ WINDOW = dt.timedelta(minutes=60)  # a job is started up to this long after its 
 WEEKDAYS, TUE_SAT = range(0, 5), range(1, 6)
 # (name, time zone, time, weekdays in that zone, workflow, dispatch inputs)
 JOBS = ([(f"squeeze:{s}", sessions.NY, t, WEEKDAYS, "squeeze.yml", {"mode": "slot"})
-         for s, (t, _) in sessions.SLOTS.items()]
+         for s, (t, _) in sessions.SLOTS.items() if s in sessions.SQUEEZE]
         + [(f"insider:{s}", sessions.NY, t, WEEKDAYS, "daily-scan.yml", {"mode": "intraday"})
-           for s, (t, _) in sessions.SLOTS.items() if s != "pre0"]  # SEC takes filings from 06:00 New York only
+           for s, (t, _) in sessions.SLOTS.items() if s in sessions.INSIDER]
         + [("scan:morning", UTC, dt.time(5, 30), TUE_SAT, "daily-scan.yml", {"mode": "morning"})])
 
 

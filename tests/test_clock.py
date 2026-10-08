@@ -33,19 +33,24 @@ def ticks(start, end):
 class Due(unittest.TestCase):
     def test_a_summer_monday(self):
         got = {(t, k) for t, k, _, _ in ticks("2026-09-28T00:00", "2026-09-29T06:00")}
-        want = {("09-28 08:15", "squeeze:pre0:2026-09-28")}
-        for utc_t, slot in (("11:30", "pre1"), ("13:15", "pre2"), ("20:30", "post1"), ("23:30", "post2")):
+        want = {(f"09-28 {8 + h:02}:15", f"squeeze:pm{h + 1}:2026-09-28") for h in range(6)}  # 04:15-09:15 EDT
+        want |= {("09-28 11:30", "insider:pre1:2026-09-28"), ("09-28 13:15", "insider:pre2:2026-09-28")}
+        for utc_t, slot in (("20:30", "post1"), ("23:30", "post2")):
             want |= {(f"09-28 {utc_t}", f"squeeze:{slot}:2026-09-28"), (f"09-28 {utc_t}", f"insider:{slot}:2026-09-28")}
         want.add(("09-29 05:30", "scan:morning:2026-09-29"))  # Tuesday's morning scan of Monday's filings
+        for h in range(6):  # the screen hourly through the regular session: 10:30-15:30 New York = 14:30-19:30 UTC
+            want.add((f"09-28 {14 + h}:30", f"squeeze:reg{h + 1}:2026-09-28"))
         self.assertEqual(got, want)
 
     def test_a_winter_tuesday_and_the_after_midnight_1930_run(self):
         got = {(t, k) for t, k, _, _ in ticks("2026-12-01T00:00", "2026-12-02T01:00")}
         want = {("12-01 00:30", "squeeze:post2:2026-11-30"), ("12-01 00:30", "insider:post2:2026-11-30"),
-                ("12-01 05:30", "scan:morning:2026-12-01"), ("12-01 09:15", "squeeze:pre0:2026-12-01")}
-        for utc_t, slot in (("12-01 12:30", "pre1"), ("12-01 14:15", "pre2"), ("12-01 21:30", "post1"),
-                            ("12-02 00:30", "post2")):
+                ("12-01 05:30", "scan:morning:2026-12-01"),
+                ("12-01 12:30", "insider:pre1:2026-12-01"), ("12-01 14:15", "insider:pre2:2026-12-01")}
+        want |= {(f"12-01 {9 + h:02}:15", f"squeeze:pm{h + 1}:2026-12-01") for h in range(6)}  # 04:15-09:15 EST
+        for utc_t, slot in (("12-01 21:30", "post1"), ("12-02 00:30", "post2")):
             want |= {(utc_t, f"squeeze:{slot}:2026-12-01"), (utc_t, f"insider:{slot}:2026-12-01")}
+        want |= {(f"12-01 {15 + h}:30", f"squeeze:reg{h + 1}:2026-12-01") for h in range(6)}  # EST: 15:30-20:30 UTC
         self.assertEqual(got, want)
 
     def test_every_started_slot_is_the_slot_its_run_serves(self):
@@ -58,7 +63,8 @@ class Due(unittest.TestCase):
                     continue
                 name, slot, _ = key.split(":")
                 now = utc(f"{end[:4]}-{t[:5]}T{t[6:]}").astimezone(sessions.NY)
-                self.assertEqual(sessions.slot(now, st), slot, key)
+                self.assertEqual(sessions.slot(now, st, {"squeeze": sessions.SQUEEZE,
+                                                         "insider": sessions.INSIDER}[name]), slot, key)
                 self.assertEqual((wf, mode), {"squeeze": ("squeeze.yml", "slot"),
                                               "insider": ("daily-scan.yml", "intraday")}[name])
 
@@ -68,9 +74,9 @@ class Due(unittest.TestCase):
                          ["scan:morning:2026-10-03"])
 
     def test_a_late_listener_catches_up_within_the_hour_and_never_twice(self):
-        self.assertEqual([k for k, _, _ in clock.due(utc("2026-09-28T09:15"), set())], ["squeeze:pre0:2026-09-28"])
-        self.assertEqual(clock.due(utc("2026-09-28T09:16"), set()), [])
-        self.assertEqual(clock.due(utc("2026-09-28T08:20"), {"squeeze:pre0:2026-09-28"}), [])
+        self.assertEqual([k for k, _, _ in clock.due(utc("2026-09-28T09:14"), set())], ["squeeze:pm1:2026-09-28"])
+        self.assertEqual([k for k, _, _ in clock.due(utc("2026-09-28T10:14"), set())], ["squeeze:pm2:2026-09-28"])
+        self.assertEqual(clock.due(utc("2026-09-28T08:20"), {"squeeze:pm1:2026-09-28"}), [])
 
 
 class Tick(unittest.TestCase):
@@ -78,7 +84,7 @@ class Tick(unittest.TestCase):
         done = set()
         with mock.patch.dict(os.environ, ACTIONS), mock.patch.object(common, "dispatch", return_value="") as d, \
                 mock.patch("builtins.print"):
-            self.assertEqual(clock.tick(done, utc("2026-09-28T08:16")), ["squeeze:pre0:2026-09-28"])
+            self.assertEqual(clock.tick(done, utc("2026-09-28T08:16")), ["squeeze:pm1:2026-09-28"])
             self.assertEqual(clock.tick(done, utc("2026-09-28T08:17")), [])
         d.assert_called_once_with("squeeze.yml", {"mode": "slot"})
 
@@ -93,7 +99,7 @@ class Tick(unittest.TestCase):
         self.assertEqual(d.call_count, 6)
         send.assert_called_once()
         text = send.call_args[0][0]
-        for part in ("squeeze:pre1:2026-09-28", "insider:pre1:2026-09-28", "HTTP 500"):
+        for part in ("squeeze:pm4:2026-09-28", "insider:pre1:2026-09-28", "HTTP 500"):
             self.assertIn(part, text)
         self.assertEqual(common.rtl_bad_lines(text), [])
 

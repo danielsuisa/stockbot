@@ -1,11 +1,13 @@
-"""Live short-squeeze list - phases 2-3 of docs/superpowers/specs/2026-09-27-squeeze-screener-design.md.
+"""Live short-squeeze list: the owner's screen (bot/screen.py, 2026-10-08, not backtested) and the extended-hours
+movers, started by the listener's clock (bot/clock.py) at the session slots (bot/sessions.py) or by /squeeze now.
 
-Once a trading day before the US open (.github/workflows/squeeze.yml): rank the market with the variant the
-backtest froze, send the top 10 to Telegram with the backtest's spike AND crash rates, journal the names, and fill
-in the 10-session outcome of earlier lists. Borrow (IBKR) and options (CBOE) numbers are shown as unvalidated.
+Hourly in the regular session and after the close the screen runs; the first list of a day goes out in full, later
+runs send only who entered and who left. Pre-market runs send movers only (today's relative volume means nothing
+yet). Every listed name is journaled once per WINDOW sessions with the next regular open as its entry, and its
+10-session outcome is filled in later. The backtested list this screen replaced (NAME) keeps its journal entries.
 
-    python -m bot.squeeze_live          # run, send, write data/squeeze_last.json and data/squeeze_journal.json
-    python -m bot.squeeze_live --dry    # print the message only, write nothing"""
+    python -m bot.squeeze_live          # run, send, write data/squeeze_*.json and data/movers_log.json
+    python -m bot.squeeze_live --dry    # print the messages only, write nothing"""
 import argparse
 import bisect
 import concurrent.futures as cf
@@ -16,18 +18,19 @@ import statistics
 import traceback
 from pathlib import Path
 
-from bot import borrow, common, market, movers, options, sessions, shorts, squeeze
+from bot import common, market, movers, screen, sessions, shorts, squeeze
 from bot.common import code
 
-VARIANT = {"w": 0.7, "g_si": 0.20, "g_rv": 2.0}  # frozen by the backtest: docs/backtest/squeeze-2026-09-27.md
-NAME = "w0.7/si0.2/rv2"
-BACKTEST = {"hit": 0.068, "crash": 0.071, "base": 0.010, "years": "2024–2026"}  # out-of-sample, run 3
+SCREEN = "screen-2026-10-08"  # the journal's name for the owner's screen
+SCREEN_PRE = "screen-pre-2026-10-08"  # ... and for its pre-market list (pre-market volume instead of relative volume)
+NAME = "w0.7/si0.2/rv2"  # the backtested list the screen replaced on 2026-10-08 (its journal entries keep this name)
+BACKTEST = {"hit": 0.068, "crash": 0.071, "base": 0.010, "years": "2024–2026"}  # that list's out-of-sample rates
 CRASH = 1 / squeeze.HIT - 1  # -33%: the fall that mirrors the +50% spike
+MOVERS_SI = 0.20  # the movers' stocks: short interest of at least 20% of shares outstanding (SEC)
 LAST, JOURNAL = "squeeze_last.json", "squeeze_journal.json"
 STATE, MOVERS_LOG = "squeeze_state.json", "movers_log.json"
 FRAMES = 6  # quarters of SEC frames: facts sit within ~45 days of a quarter end, so 6 cover the 400-day age limit
-BORROW_TIMEOUT = 10  # seconds: an unreachable FTP must not stall the list or the Telegram listener for long
-FIELDS = ("score", "si_pct", "dtc", "chg", "rvol", "ret5", "brk", "price", "fuel", "trigger", "shares")
+FIELDS = ("float", "short_float", "short_ratio", "avg_vol", "rel_vol", "pre_vol", "price", "chg")
 
 
 # ---------- files ----------
@@ -88,18 +91,12 @@ def bars_for(tickers, threads=8):
     return {t: b for t, b in got.items() if b}
 
 
-def features_at(b, today, prev):
-    """Features of a ticker for session `today` from its bars through `prev` (= D-1); None without a bar on D-1."""
-    if not b:
-        return None
-    i = bisect.bisect_left(b["d"], today) - 1
-    return squeeze.features(b, i) if i >= 0 and b["d"][i] == prev else None
-
-
 def build(today):
-    """Today's list (today: ISO) -> {"date", "prev", "si_date", "rows" (the top list), "gated" (short interest past
-    the gate), "candidates" (also past price / liquidity), "missing" (no Yahoo bars), "recent" (the last WINDOW
-    sessions incl. today), "universe" (the gated stocks with their bars, for the movers scan)}. RuntimeError when Yahoo's calendar or a usable FINRA report is missing."""
+    """FINRA + SEC + Yahoo for one run (today: ISO New York date) -> {"date", "prev", "si_date", "short" ({ticker:
+    FINRA short shares}, for the screen), "recent" (the last WINDOW sessions incl. today), "universe" (stocks whose
+    short interest is MOVERS_SI-150% of shares outstanding, with their bars: the movers scan), "gated", "missing"
+    (gated, no Yahoo bars)}. RuntimeError when Yahoo's calendar, a usable FINRA report, SEC's ticker map or its
+    share frames are missing."""
     cal = calendar(today)
     if not cal:
         raise RuntimeError("Yahoo: no SPY sessions")
@@ -113,113 +110,112 @@ def build(today):
     if not any(frames):  # SEC down must alarm, not read as "no stock passes today"
         raise RuntimeError("SEC: no shares-outstanding frames")
     shares = shorts.shares_index(frames)
+    short = shorts.remap(raw, primary)
     gated = []
-    for t, si in shorts.remap(raw, primary).items():
+    for t, si in short.items():
         n = shorts.shares_at(shares, primary[t], today) if t in primary else None
-        if n and VARIANT["g_si"] <= si["si"] / n <= squeeze.MAX_SI_PCT:
+        if n and MOVERS_SI <= si["si"] / n <= squeeze.MAX_SI_PCT:
             gated.append((t, si, n))
     bars = bars_for([t for t, _, _ in gated])
-    rows = [r for t, si, n in gated if (r := squeeze.make_row(t, si, n, features_at(bars.get(t), today, cal[-1])))]
-    return {"date": today, "prev": cal[-1], "si_date": settle, "rows": squeeze.rank(rows, VARIANT),
-            "gated": len(gated), "candidates": len(rows), "missing": len(gated) - len(bars),
-            "recent": cal[-(squeeze.WINDOW - 1):] + [today],
+    return {"date": today, "prev": cal[-1], "si_date": settle, "short": {t: si["si"] for t, si in short.items()},
+            "gated": len(gated), "missing": len(gated) - len(bars), "recent": cal[-(squeeze.WINDOW - 1):] + [today],
             "universe": [{"t": t, "si_pct": si["si"] / n, "dtc": si.get("dtc") or 0.0, "adv": si.get("adv"),
                           "bars": bars.get(t)} for t, si, n in gated]}
 
 
-def enrich(rows, today):
-    """Unvalidated extras for the listed names: IBKR borrow fee / availability and CBOE gamma fuel (None = missing).
-    today: a date. No rows -> no downloads."""
-    if not rows:
-        return rows
-    fees = borrow.fetch(timeout=BORROW_TIMEOUT)
-    for r in rows:
-        r["borrow"] = fees.get(r["t"])
-        chain = options.chain(r["t"])
-        r["gamma"] = options.gamma(chain, r["shares"], today) if chain else None
-    return rows
-
-
 # ---------- message ----------
-def _pct(x, signed=False):
-    return code(f"{x * 100:+.0f}%" if signed else f"{x * 100:.1f}%")
+def _count(x):
+    return f"{x / 1e6:.1f}M" if x >= 1e6 else f"{x / 1e3:.0f}K"
 
 
-def _num(x, fmt):
-    return code(format(x, fmt))
+FMT = {"float": _count, "avg_vol": _count, "short_float": lambda v: f"{v * 100:.1f}%", "short_ratio": "{:.1f}".format,
+       "rel_vol": "{:.1f}".format, "pre_vol": "{:.0%}".format, "price": common.price, "chg": lambda v: f"{v * 100:+.1f}%",
+       "options": lambda v: "יש" if v else "אין"}
+LABEL = {"float": ("מצוף", f"מתחת ל־{code('50M')}"), "short_float": ("שורט מהמצוף", f"מעל {code('20%')}"),
+         "short_ratio": ("ימים לכיסוי", f"מעל {code(5)}"),
+         "avg_vol": ("ממוצע מחזור של 3 חודשים", f"מעל {code('500K')}"), "price": ("מחיר", f"מעל {code('2$')}"),
+         "rel_vol": ("מחזור יחסי", f"מעל {code(2)}"), "options": ("אופציות", "נסחרות")}
+UNTESTED = "⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון."
+SHORTABLE = (f"ℹ️ אפשרות לשורט לא נבדקת בנפרד: מניה עם שורט של {code('20%')} ומעלה מהמצוף כבר משורטת בפועל.")
+
+
+def _v(key, v):
+    return "חסר" if v is None else code(FMT[key](v))
 
 
 def line(k, r):
-    """One listed stock (Hebrew first, RTL): rank, ticker, score and the numbers behind it."""
-    brk = " · פריצה ⬆️" if r["brk"] >= 1 else ""
-    return (f"מקום {code(k)}: {code(r['t'])} · ציון {_num(r['score'], '.2f')} · שורט {_pct(r['si_pct'])} מהמניות · "
-            f"{_num(r['dtc'], '.1f')} ימי כיסוי · מחזור פי {_num(r['rvol'], '.1f')} · 5 ימים {_pct(r['ret5'], True)}"
-            f" · מחיר {code(common.price(r['price']))}{brk}")
+    """One listed stock, the owner's fields in the owner's order (Hebrew first, RTL); before the open, the
+    pre-market volume against a normal day stands in for the relative volume."""
+    vol = (f"מחזור בפרה־מרקט {_v('pre_vol', r['pre_vol'])} מיום רגיל" if "pre_vol" in r
+           else f"מחזור יחסי {_v('rel_vol', r['rel_vol'])}")
+    return (f"מקום {code(k)}: {code(r['t'])} · מצוף {_v('float', r['float'])} · שורט {_v('short_float', r['short_float'])}"
+            f" מהמצוף · ימים לכיסוי {_v('short_ratio', r['short_ratio'])} · {vol}"
+            f" · מחיר {_v('price', r['price'])} · שינוי {_v('chg', r['chg'])}")
 
 
-def extras(r):
-    """The unvalidated options / borrow numbers of one listed stock, or '' when both sources are missing."""
-    out, g, b = [], r.get("gamma"), r.get("borrow")
-    if g:
-        out.append(f"חשיפת קולים עד {code(options.NEAR)} יום {_pct(g['exposure'])} מהמניות")
-        if g.get("iv30") is not None:
-            out.append(f"תנודתיות גלומה {code(format(g['iv30'], '.0f') + '%')}")
-    if b:
-        fee = "חסרה" if b["fee"] is None else code(format(b["fee"], ".1f") + "%")
-        avail = "חסרה" if b["avail"] is None else code((">" if b["more"] else "") + format(b["avail"], ","))
-        out.append(f"עמלת השאלה {fee} בשנה · זמינות להשאלה {avail}")
-    return f"   ↳ לא מאומת: {' · '.join(out)}" if out else ""
+def _when(scr, at):
+    pre = "לפני הפתיחה " if scr.get("kind") == "pre" else ""
+    return f"{pre}ליום {code(scr['date'])}</b> · מצב ב־{code(f'{at:%H:%M}')} שעון ניו יורק"
 
 
-def footer():
-    """The backtest line every squeeze message carries: spikes AND crashes, so a pick never reads as a buy signal."""
-    return (f"📊 בבדיקה ההיסטורית ({code(BACKTEST['years'])}): {_pct(BACKTEST['hit'])} מהמניות ברשימה עלו {code('50%+')} "
-            f"תוך {code(squeeze.WINDOW)} ימי מסחר, ו־{_pct(BACKTEST['crash'])} ירדו {code('33%')} ומעלה; בכל השוק "
-            f"{_pct(BACKTEST['base'])} עלו {code('50%+')}. זה סימן לתנודה חדה צפויה, לא לכיוון.")
+def _gaps(pairs):
+    return [f"ל־{code(n)} {what}" for n, what in pairs if n]
 
 
-def message(res):
-    """The daily Hebrew list for Telegram."""
-    head = [f"🚀 <b>רשימת סקוויז ליום {code(res['date'])}</b>",
-            f"דירוג בשיטה שנקבעה בבדיקה ההיסטורית ({code(NAME)}): שורט של {code('20%')} מהמניות לפחות, ומחזור ביום "
-            f"המסחר האחרון של פי {code(2)} לפחות מהממוצע."]
-    body = []
-    for k, r in enumerate(res["rows"], 1):
-        x = extras(r)
-        body += [line(k, r)] + ([x] if x else [])
-    missing = f", ל־{code(res['missing'])} אין נתוני Yahoo" if res["missing"] else ""
-    foot = [footer(),
-            f"🗓️ שורט לפי דוח FINRA מ־{code(res['si_date'])} · מחירים עד {code(res['prev'])} · "
-            f"{code(res['gated'])} מניות עם שורט גבוה, {code(res['candidates'])} עברו סינון מחיר ונזילות{missing}.",
-            "ℹ️ שורות ״לא מאומת״ (אופציות, השאלה) עוד לא נבדקו היסטורית ואינן משפיעות על הדירוג."]
-    return "\n".join(head + [""] + (body or ["🤷 אין היום מניה שעוברת את הסינון."]) + [""] + foot)
+def message(res, scr, at, static=None):
+    """The full list (res: build(), scr: screen.screen() or screen.premarket(), at: New York time of the run,
+    static: the pre-market's fixed set with its counts)."""
+    pre = scr.get("kind") == "pre"
+    head = [f"{'🌅' if pre else '🚀'} <b>רשימת סקוויז {_when(scr, at)}",
+            f"מצוף מתחת ל־{code('50M')} · שורט מעל {code('20%')} מהמצוף · ימים לכיסוי מעל {code(5)} · ממוצע מחזור של "
+            f"3 חודשים מעל {code('500K')} · "
+            + (f"מחיר בפרה־מרקט מעל {code('2$')} · מחזור בפרה־מרקט {code('10%')} לפחות מיום רגיל" if pre else
+               f"מחיר מעל {code('2$')} · מחזור יחסי מעל {code(2)}")
+            + " · נסחרות אופציות. ממוין לפי השורט מהמצוף."]
+    body = [line(k, r) for k, r in enumerate(scr["rows"], 1)] or ["🤷 אף מניה לא עומדת כרגע בכל התנאים."]
+    if pre:
+        static = static or {}
+        gaps = _gaps(((scr["failed"], "לא התקבל ציטוט מ־Nasdaq"), (static.get("failed"), "לא התקבל מחיר מ־Yahoo"),
+                      (static.get("no_float"), "אין נתון מצוף ב־Yahoo"),
+                      (static.get("no_options"), "לא התקבל מידע על אופציות מ־CBOE")))
+        count = (f"📋 עומדות בתנאים הקבועים {code(scr['checked'])} מניות, מתוך "
+                 f"{code(format(static.get('screened', 0), ','))} עם שורט של יותר מ־{code('2.5M')} מניות")
+        source = "מחיר ומחזור בפרה־מרקט מ־Nasdaq · מצוף וממוצע מחזור מ־Yahoo · אופציות מ־CBOE."
+    else:
+        gaps = _gaps(((scr["failed"], "לא התקבל מחיר מ־Yahoo"), (scr["no_float"], "אין נתון מצוף ב־Yahoo"),
+                      (scr["no_options"], "לא התקבל מידע על אופציות מ־CBOE")))
+        count = (f"📋 נבדקו {code(format(scr['screened'], ','))} מניות עם שורט של יותר מ־{code('2.5M')} מניות")
+        source = "מחירים, מחזורים ומצוף מ־Yahoo · אופציות מ־CBOE."
+    foot = [UNTESTED, f"🗓️ שורט לפי דוח FINRA מ־{code(res['si_date'])} · {source}",
+            count + (f"; {'; '.join(gaps)}" if gaps else "") + ".", SHORTABLE]
+    return "\n".join(head + [""] + body + [""] + foot)
 
 
-def change_text(res, old):
-    """What changed since the list already sent for this session: the names that entered (with their line) and the
-    names that left."""
-    was, now = {r["t"] for r in old}, [r["t"] for r in res["rows"]]
-    lines = [f"🔄 <b>שינוי ברשימת הסקוויז ליום {code(res['date'])}</b>"]
-    lines += [line(k, r) for k, r in enumerate(res["rows"], 1) if r["t"] not in was]
+def change_text(scr, old, at):
+    """Who entered the list (with their line) and who left it since the last list of the same day."""
+    was, now = {r["t"] for r in old}, [r["t"] for r in scr["rows"]]
+    lines = [f"🔄 <b>שינוי ברשימת הסקוויז {_when(scr, at)}"]
+    lines += [line(k, r) for k, r in enumerate(scr["rows"], 1) if r["t"] not in was]
     left = [t for t in sorted(was) if t not in now]
     if left:
         lines.append("יצאו מהרשימה: " + ", ".join(map(code, left)) + ".")
-    return "\n".join(lines + [footer()])
+    return "\n".join(lines + [UNTESTED])
 
 
 # ---------- journal ----------
-def record(j, res):
-    """Journal today's names; a ticker journaled within the last WINDOW sessions counts once (as in the backtest)
-    -> the number added."""
-    seen = {e["t"] for e in j["entries"] if e["date"] >= res["recent"][0]}  # by date order: a holiday run counts too
+def record(j, scr, entry, res):
+    """Journal the listed names with `entry` (the next regular open) as their entry session; a ticker journaled
+    within the last WINDOW sessions counts once -> the number added."""
+    seen = {e["t"] for e in j["entries"] if e["date"] >= res["recent"][0]}
     added = 0
-    for k, r in enumerate(res["rows"], 1):
+    for k, r in enumerate(scr["rows"], 1):
         if r["t"] in seen:
             continue
-        g = r.get("gamma")
-        j["entries"].append({"date": res["date"], "t": r["t"], "rank": k, "variant": NAME, "si_date": res["si_date"],
-                             **{f: _round(r.get(f)) for f in FIELDS}, "borrow": r.get("borrow"),
-                             "gamma": {x: _round(v) for x, v in g.items()} if g else None, "outcome": None})
+        seen.add(r["t"])
+        j["entries"].append({"date": entry, "seen": scr["date"] or res["date"], "t": r["t"], "rank": k,
+                             "variant": SCREEN_PRE if scr.get("kind") == "pre" else SCREEN, "si_date": res["si_date"],
+                             **{f: _round(r.get(f)) for f in FIELDS},
+                             "outcome": None})
         added += 1
     return added
 
@@ -254,93 +250,79 @@ def followup(j, today):
     return filled
 
 
-def stats_text(j):
-    """/squeeze stats: the journal's closed outcomes against the backtest's out-of-sample rates."""
-    done = [e["outcome"] for e in j["entries"] if e.get("outcome") and e["outcome"].get("trade")]
-    waiting = sum(1 for e in j["entries"] if not e.get("outcome"))
-    head = "📒 <b>יומן רשימת הסקוויז</b>"
+def _summary(entries):
+    """Closed outcomes of some journal entries -> Hebrew lines."""
+    done = [e["outcome"] for e in entries if e.get("outcome") and e["outcome"].get("trade")]
+    waiting = sum(1 for e in entries if not e.get("outcome"))
     if not done:
-        return (f"{head}\nעוד אין מניות שעברו {code(squeeze.WINDOW)} ימי מסחר מאז שהופיעו ברשימה "
-                f"({code(waiting)} בהמתנה).")
+        return [f"עוד אין מניות שעברו {code(squeeze.WINDOW)} ימי מסחר מאז שהופיעו ברשימה ({code(waiting)} בהמתנה)."]
     n = len(done)
     small = f" (מדגם קטן, פחות מ־{code(30)})" if n < 30 else ""
-    return "\n".join([
-        head,
-        f"הושלמו {code(n)} מניות{small}, {code(waiting)} בהמתנה: {_pct(sum(o['hit'] for o in done) / n)} עלו "
-        f"{code('50%+')} ו־{_pct(sum(o['crash'] for o in done) / n)} ירדו {code('33%')} ומעלה.",
-        f"חציון התשואה אחרי {code(squeeze.WINDOW)} ימי מסחר: {_pct(statistics.median(o['r10'] for o in done), True)}.",
-        footer()])
+    pct = lambda x: code(f"{x * 100:.1f}%")  # noqa: E731
+    med = statistics.median(o["r10"] for o in done)
+    return [f"הושלמו {code(n)} מניות{small}, {code(waiting)} בהמתנה: {pct(sum(o['hit'] for o in done) / n)} עלו "
+            f"{code('50%+')} ו־{pct(sum(o['crash'] for o in done) / n)} ירדו {code('33%')} ומעלה.",
+            f"חציון התשואה אחרי {code(squeeze.WINDOW)} ימי מסחר: {code(format(med, '+.0%'))}."]
+
+
+def stats_text(j):
+    """/squeeze stats: the screen's closed outcomes, and the replaced list's apart, next to its own backtest."""
+    new = [e for e in j["entries"] if e.get("variant") == SCREEN]
+    pre = [e for e in j["entries"] if e.get("variant") == SCREEN_PRE]
+    old = [e for e in j["entries"] if e.get("variant") not in (SCREEN, SCREEN_PRE)]
+    lines = ["📒 <b>יומן רשימת הסקוויז</b>", "🔎 <b>הסינון הנוכחי</b>, לא נבדק היסטורית:"] + _summary(new)
+    lines += ["", "🌅 <b>הסינון לפני הפתיחה</b>, לא נבדק היסטורית:"] + _summary(pre)
+    if old:
+        lines += ["", f"🗂️ <b>השיטה הקודמת</b> ({code(NAME)}, עד {code('2026-10-08')}):"] + _summary(old)
+        hit, crash = (code(format(BACKTEST[k], ".1%")) for k in ("hit", "crash"))
+        lines.append(f"בבדיקה ההיסטורית שלה ({code(BACKTEST['years'])}): {hit} עלו {code('50%+')} ו־{crash} ירדו "
+                     f"{code('33%')} ומעלה.")
+    return "\n".join(lines)
 
 
 # ---------- /squeeze TICKER ----------
-def reasons(si_pct, feat, cls=None):
-    """Why a stock is not on the list (Hebrew); [] when it passes every gate. cls: FINRA market class."""
-    out = []
-    if cls and cls not in shorts.CLASSES:
-        out.append(f"לא נסחרת בבורסה (FINRA: {code(cls)})")
-    if si_pct is None:
-        out.append("אין נתוני שורט או מספר מניות")
-    elif si_pct < VARIANT["g_si"]:
-        out.append(f"שורט {_pct(si_pct)} נמוך מ־{code('20%')}")
-    elif si_pct > squeeze.MAX_SI_PCT:
-        out.append(f"שורט גבוה מ־{code('150%')} מהמניות, כנראה נתון שגוי")
-    if feat is None:
-        out.append("אין מספיק נתוני מסחר")
-        return out
-    if feat["rvol"] < VARIANT["g_rv"]:
-        out.append(f"מחזור פי {_num(feat['rvol'], '.1f')} נמוך מפי {code(2)}")
-    if feat["price"] < squeeze.MIN_PRICE:
-        out.append(f"מחיר {code(common.price(feat['price']))} נמוך מ־{code('1$')}")
-    if feat["dollar"] < squeeze.MIN_DOLLAR:
-        out.append(f"מחזור דולרי {code(common.money(feat['dollar']))} נמוך מ־{code('2.0M$')}")
-    return out
-
-
-def ticker_text(t, si, shares, feat, rank=None, extra=""):
-    """/squeeze TICKER reply from its parts (si: slim FINRA row or None; feat: squeeze.features or None)."""
-    si_pct = si["si"] / shares if si and shares else None
-    lines = [f"🔎 <b>בדיקת סקוויז: {code(t)}</b>"]
-    if si:
-        pct = f" · {_pct(si_pct)} מהמניות" if si_pct is not None else ""
-        lines.append(f"שורט: {code(format(si['si'], ','))} מניות בדוח FINRA מ־{code(si['date'])}{pct} · "
-                     f"{_num(si['dtc'] or 0.0, '.1f')} ימי כיסוי")
+def ticker_text(t, si, m, rank=None, note=""):
+    """/squeeze TICKER reply: every criterion with the stock's value (si: slim FINRA row or None; m: screen.metrics)."""
+    lines = [f"🔎 <b>בדיקת סקוויז: {code(t)}</b>",
+             f"שורט: {code(format(si['si'], ','))} מניות בדוח FINRA מ־{code(si['date'])}" if si
+             else "שורט: אין דוח FINRA לטיקר הזה."]
+    if m.get("chg") is not None:
+        lines.append(f"שינוי היום: {_v('chg', m['chg'])}")
+    bad = screen.fails(m)
+    for key, _, _ in screen.CRITERIA:
+        label, need = LABEL[key]
+        val = "חסר" if m.get(key) is None else _v(key, m[key])
+        lines.append(f"{'❌' if key in bad else '✅'} {label}: {val} (צריך {need})")
+    if bad:
+        lines.append(f"❌ לא עומדת ב־{code(len(bad))} מהתנאים.")
     else:
-        lines.append("שורט: אין דוח FINRA לטיקר הזה.")
-    if feat:
-        brk = " · פריצה ⬆️" if feat["brk"] >= 1 else ""
-        lines.append(f"מסחר: מחזור ביום האחרון פי {_num(feat['rvol'], '.1f')} מהממוצע · 5 ימים "
-                     f"{_pct(feat['ret5'], True)} · מחיר {code(common.price(feat['price']))}{brk}")
-    why = reasons(si_pct, feat, si.get("cls") if si else None)
-    if why:
-        lines.append("❌ לא עובר את הסינון: " + "; ".join(why) + ".")
-    else:
-        where = f" · מקום {code(rank)} ברשימה של היום" if rank else " (הדירוג נקבע מול כל המועמדים ברשימה היומית)"
-        lines.append(f"✅ עובר את הסינון{where}.")
-    if extra:
-        lines.append(extra.strip())
-    return "\n".join(lines + [footer()])
+        lines.append("✅ עומדת בכל התנאים" + (f" · מקום {code(rank)} ברשימה האחרונה." if rank else "."))
+    return "\n".join(lines + ([note] if note else []) + [SHORTABLE, UNTESTED])
 
 
-def ticker_report(t, today=None):
-    """/squeeze TICKER: fetch the stock's numbers and explain where it stands against the list's gates."""
-    now = sessions.now_ny()
-    today = today or sessions.target_session(now, sessions.status(now))
+def ticker_report(t):
+    """/squeeze TICKER: the stock's numbers now (FINRA, Yahoo, CBOE) against every criterion of the screen."""
+    today = sessions.now_ny().date().isoformat()
     cal = calendar(today)
     usable = [r for r in shorts.symbol_rows(t.replace("-", ""))
               if (u := shorts.usable_from(r["date"], cal + [today])) and u <= today]
-    cik = (common.tickers().get(t) or (None,))[0]
-    shares = shorts.shares_at(shorts.shares_index(frames_now(dt.date.fromisoformat(today))), cik, today) if cik else None
-    feat = features_at(squeeze.to_bars(market.chart(t, range="3mo", interval="1d")), today, cal[-1]) if cal else None
-    last = load(LAST, {})
-    rank = next((k for k, r in enumerate(last.get("rows", []), 1) if r["t"] == t), None) \
-        if last.get("date") == today else None
-    row = {"t": t, "shares": shares}
-    enrich([row], dt.date.fromisoformat(today))
-    return ticker_text(t, usable[-1] if usable else None, shares, feat, rank, extras(row))
+    si = usable[-1] if usable else None
+    q = flt = None
+    note = ""
+    try:
+        get = screen.connect()
+        q = screen.quotes(get, [t]).get(t) or None
+        flt = screen.float_shares(get, t) or None
+    except Exception as e:  # an unofficial source: say so, still show what FINRA and CBOE give
+        print(f"yahoo {t}: {type(e).__name__} {e}")
+        note = "⚠️ לא התקבלו נתונים מ־Yahoo; נסו שוב בעוד כמה דקות."
+    m = screen.metrics(si["si"] if si else None, q, flt, screen.optionable(t))
+    rank = next((k for k, r in enumerate(load(LAST, {}).get("rows", []), 1) if r["t"] == t), None)
+    return ticker_text(t, si, m, rank, note)
 
 
 # ---------- run ----------
-def run_movers(res, session, today, state, manual):
+def run_movers(res, session, today, state, manual, rows=()):
     """The movers part of a run -> (message or '', movers found). Nasdaq down for every stock -> one warning per
     session (always on a manual run)."""
     if not session:
@@ -353,12 +335,12 @@ def run_movers(res, session, today, state, manual):
         return (f"⚠️ לא התקבלו ציטוטים מ־Nasdaq לאף מניה ({movers.NAME[session]}); אנסה שוב בריצה הבאה."
                 if warn else ""), []
     found = movers.fresh(movers.find(cands, qs, today), state, today, session, manual)
-    ranks = {r["t"]: k for k, r in enumerate(res["rows"], 1)}
+    ranks = {r["t"]: k for k, r in enumerate(rows, 1)}
     return movers.text(found, session, today, ranks, failed, manual), found
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Squeeze list and extended-hours movers -> Telegram and data/")
+    ap = argparse.ArgumentParser(description="Short-squeeze screen and extended-hours movers -> Telegram and data/")
     ap.add_argument("--dry", action="store_true", help="print the messages only, write nothing")
     ap.add_argument("--manual", action="store_true", help="run now, whatever the time (also SQUEEZE_MODE=manual)")
     a = ap.parse_args(argv)
@@ -370,14 +352,13 @@ def main(argv=None):
     if manual:
         session = sessions.session_now(now, st)
     else:
-        name = sessions.slot(now, st)
+        name = sessions.slot(now, st, sessions.SQUEEZE)
         if not name or not sessions.claim(state, name, today):
             print(f"squeeze {now:%Y-%m-%d %H:%M} New York: no session slot to run")
             return 0
         session = sessions.SLOTS[name][1]
-    target = sessions.target_session(now, st)
     try:
-        res = build(target)
+        res = build(today)
     except Exception as e:  # the owner hears about it once per session (every time on a manual run)
         traceback.print_exc()
         if not a.dry:
@@ -385,38 +366,54 @@ def main(argv=None):
                 common.send(f"⚠️ סריקת הסקוויז נכשלה ({code(type(e).__name__)}): {common.esc(str(e)[:200])}")
             save(STATE, state)
         return 0  # reported above; exit 1 would add the workflow alarm on every run of an outage
-    try:
-        enrich(res["rows"], dt.date.fromisoformat(target))
-    except Exception:  # unvalidated extras must never cost the list
-        traceback.print_exc()
     j = load(JOURNAL, {"v": 1, "entries": []})
     try:
         filled = followup(j, today)
     except Exception:  # a follow-up problem must not hold back the list; it is retried next run
         traceback.print_exc()
         filled = 0
-    added = record(j, res)
-    full, last = message(res), load(LAST, {})
-    old = last.get("rows") if last.get("date") == target else None
-    if manual or old is None:
-        list_text = ("▶️ הרצה ידנית\n" if manual else "") + full
-    elif {r["t"] for r in res["rows"]} != {r["t"] for r in old}:
-        list_text = change_text(res, old)
-    else:
-        list_text = ""
+    scr, list_text, added, static = None, "", 0, None
+    kind = "pre" if session == "pre" else "day" if manual or session in ("regular", "post") else None
+    if kind:
+        try:
+            if kind == "pre":  # before the open: the fixed set (once a day) + pre-market price and volume
+                static = state.get("static")
+                if not static or static.get("date") != today:
+                    static = state["static"] = {"date": today, **screen.candidates(res["short"], screen.connect())}
+                scr = screen.premarket(static, lambda t: movers.quote(t, "pre"), today)
+            else:
+                scr = screen.screen(res["short"], screen.connect())
+        except Exception as e:
+            traceback.print_exc()
+            if manual or sessions.first(state, f"screen:{session}", today):
+                list_text = (f"⚠️ סינון השורט לא רץ ({code(type(e).__name__)}: {common.esc(str(e)[:150])}). "
+                             "אנסה שוב בריצה הבאה.")
+    if scr:
+        date = scr["date"] or today
+        full, last = message(res, scr, now, static), load(LAST, {})
+        old = last.get("rows") if (last.get("date"), last.get("kind")) == (date, kind) else None  # no kind: replaced method
+        if manual or old is None:
+            list_text = ("▶️ הרצה ידנית\n" if manual else "") + full
+        elif {r["t"] for r in scr["rows"]} != {r["t"] for r in old}:
+            list_text = change_text(scr, old, now)
+        added = record(j, scr, sessions.next_open(now, st), res)
+    rows = scr["rows"] if scr else ()
+    with_movers = manual or session != "regular"  # the hourly runs are the screen's; movers stay pre/post-market
     note = (f"📒 הושלם מעקב של {code(squeeze.WINDOW)} ימים ל־{code(filled)} מניות: {code('/squeeze stats')}"
             if filled else "")
     if a.dry:
-        movers_text = run_movers(res, session, today, state, manual)[0]
+        movers_text = run_movers(res, session, today, state, manual, rows)[0] if with_movers else ""
         print("\n\n".join(t for t in (list_text, movers_text, note) if t) or "nothing new")
         return 0
     # each part is saved right after it goes out, so a failure later in the run (or the twin's retry) never re-sends it
     if list_text:
-        common.send(list_text, signal=True)
-    save(LAST, {"date": target, "text": full, "rows": [{k: _round(v) for k, v in r.items()} for r in res["rows"]]})
+        common.send(list_text, signal=bool(scr))
+    if scr:
+        save(LAST, {"date": date, "kind": kind, "at": f"{now:%H:%M}", "text": full,
+                    "rows": [{k: _round(v) for k, v in r.items()} for r in scr["rows"]]})
     save(JOURNAL, j)
     save(STATE, state)
-    movers_text, found = run_movers(res, session, today, state, manual)
+    movers_text, found = run_movers(res, session, today, state, manual, rows) if with_movers else ("", [])
     if movers_text:
         common.send(movers_text, signal=True)
     if found:
@@ -424,9 +421,9 @@ def main(argv=None):
     save(STATE, state)
     if note:
         common.send(note, signal=True)
-    texts = [t for t in (list_text, movers_text, note) if t]
-    common.log("squeeze", target=target, session=session, manual=manual, rows=len(res["rows"]), movers=len(found),
-               sent=len(texts), added=added, filled=filled)
+    common.log("squeeze", session=session, manual=manual, rows=len(rows), screened=scr and scr.get("screened", scr.get("checked")),
+               movers=len(found), sent=sum(bool(t) for t in (list_text, movers_text, note)), added=added,
+               filled=filled)
     return 0
 
 
