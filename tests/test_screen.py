@@ -159,10 +159,12 @@ class Candidates(unittest.TestCase):
         with mock.patch.object(screen, "optionable", side_effect=lambda t: opts.get(t, True)), \
                 mock.patch("builtins.print"):
             c = screen.candidates(short, y)
-        # price and today's volume are the pre-market's to judge: CHEAP ($1.50 close) and QUIET (no volume) stay in
-        self.assertEqual(sorted(c["rows"]), ["CHEAP", "OK", "QUIET"])
+        # price and today's volume are the pre-market's to judge: CHEAP ($1.50 close) and QUIET (no volume) stay in;
+        # UNK (CBOE did not answer) stays in too, to be asked again if it moves - the set is kept all morning
+        self.assertEqual(sorted(c["rows"]), ["CHEAP", "OK", "QUIET", "UNK"])
         self.assertEqual(c["rows"]["OK"], {"float": 30e6, "short_float": 10e6 / 30e6, "short_ratio": 10.0,
-                                           "avg_vol": 1e6})
+                                           "avg_vol": 1e6, "options": True})
+        self.assertIsNone(c["rows"]["UNK"]["options"])
         self.assertEqual((c["screened"], c["failed"], c["no_float"], c["no_options"]), (6, 0, 0, 1))
         self.assertFalse(any("SMALL" in u for u in y.calls))
 
@@ -186,6 +188,16 @@ class Premarket(unittest.TestCase):
         for q in (pq(volume=99_999), pq(price=2.0), pq(date="2026-10-07"), pq(price=None), None):
             self.assertEqual(self.run_pre({"AAA": q}, one)["rows"], [], q)  # yesterday's data never counts
         self.assertIsNone(self.run_pre({"AAA": pq(prev=None)}, one)["rows"][0]["chg"])
+
+    def test_unknown_options_are_asked_again_only_for_stocks_that_move(self):
+        static = {**STATIC, "AAA": {**STATIC["AAA"], "options": None}, "BBB": {**STATIC["BBB"], "options": None},
+                  "CCC": {**STATIC["CCC"], "options": None}}
+        quotes = {"AAA": pq(), "BBB": pq(volume=300_000), "CCC": pq(volume=1)}  # CCC does not move: no CBOE call
+        with mock.patch.object(screen, "optionable", side_effect=lambda t: {"AAA": True, "BBB": None}[t]) as o:
+            res = self.run_pre(quotes, static)
+        self.assertEqual(sorted(c.args[0] for c in o.call_args_list), ["AAA", "BBB"])
+        self.assertEqual(([r["t"] for r in res["rows"]], res["no_options"]), (["AAA"], 1))
+        self.assertIs(res["rows"][0]["options"], True)
 
     def test_nasdaq_down_for_every_stock_raises_and_some_failing_are_counted(self):
         with self.assertRaises(RuntimeError):

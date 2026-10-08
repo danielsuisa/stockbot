@@ -93,9 +93,9 @@ ROW2 = {**ROW, "t": "BBB", "short_float": 0.478, "price": 19.53, "chg": 0.022}
 SCR = {"rows": [ROW, ROW2], "screened": 2467, "failed": 0, "no_float": 0, "no_options": 0, "date": TODAY}
 PRE_ROW = {"t": "AAA", "float": 31_500_000, "short_float": 0.828, "short_ratio": 7.2, "avg_vol": 3_600_000,
            "pre_vol": 0.15, "price": 31.5, "chg": 0.05, "options": True}
-PRE = {"kind": "pre", "rows": [PRE_ROW], "checked": 70, "failed": 2, "date": TODAY}
+PRE = {"kind": "pre", "rows": [PRE_ROW], "checked": 70, "failed": 2, "no_options": 3, "date": TODAY}
 STATIC = {"rows": {"AAA": {"float": 31_500_000, "short_float": 0.828, "short_ratio": 7.2, "avg_vol": 3_600_000}},
-          "screened": 2658, "failed": 0, "no_float": 4, "no_options": 0}
+          "screened": 2658, "failed": 0, "no_float": 4, "no_options": 8}  # 8 kept in the set and asked again
 RES = {"date": TODAY, "prev": "2026-09-25", "si_date": "2026-09-15", "short": {"AAA": 26e6, "BBB": 13e6},
        "recent": CAL[-9:] + [TODAY], "universe": []}
 AT = ny(f"{TODAY}T12:30")
@@ -126,8 +126,9 @@ class Message(unittest.TestCase):
         self.assertEqual(common.rtl_bad_lines(text), [])
         for part in ("לפני הפתיחה", "<code>07:31</code>", "מחזור בפרה־מרקט <code>15%</code> מיום רגיל",
                      "<code>31.50$</code>", "<code>+5.0%</code>", "<code>70</code>", "Nasdaq", "<code>2</code>",
-                     "<code>2,658</code>", "לא נבדק היסטורית"):
+                     "<code>2,658</code>", "לא נבדק היסטורית", "ל־<code>3</code> לא התקבל מידע על אופציות"):
             self.assertIn(part, text)
+        self.assertNotIn("<code>8</code>", text)
 
     def test_change_lists_who_entered_and_who_left(self):
         text = squeeze_live.change_text({**SCR, "rows": [ROW2]}, [ROW], AT)
