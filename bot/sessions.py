@@ -94,10 +94,11 @@ def session_now(now, st):
     return next((s for s in ("pre", "regular", "post") if st[s][0] <= now < st[s][1]), None)
 
 
-def target_session(now, st):
-    """The trading day a squeeze list is for (ISO): today until today's regular session closes, then the next one."""
+def next_open(now, st):
+    """The trading day of the next regular open at or after `now` (ISO): today before today's open, else the next
+    trading day - where a stock seen now can first be bought (the screen's journal entry)."""
     now, st = _naive(now), st or fallback(now)
-    if st["business"] and now < st["regular"][1]:
+    if st["business"] and now < st["regular"][0]:
         return now.date().isoformat()
     if st.get("next", "") > now.date().isoformat():
         return st["next"]

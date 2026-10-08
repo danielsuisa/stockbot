@@ -119,7 +119,7 @@ class Status(unittest.TestCase):
             st = sessions.status(ny("2026-12-01T19:30"))
         self.assertEqual(st, day("2026-12-01", nxt="2026-12-02"))
         self.assertEqual(sessions.slot(ny("2026-12-01T19:30"), st), "post2")
-        self.assertEqual(sessions.target_session(ny("2026-12-01T19:30"), st), "2026-12-02")
+        self.assertEqual(sessions.next_open(ny("2026-12-01T19:30"), st), "2026-12-02")
         # a holiday that shows the next trading day is still a holiday
         with mock.patch.object(sessions.common, "fetch",
                                return_value=info("2026-11-27", "Nov 25, 2026", "Nov 30, 2026", close="13:00:00")):
@@ -137,13 +137,11 @@ class Now(unittest.TestCase):
             self.assertEqual(sessions.session_now(ny(f"2026-09-28T{t}"), day()), want, t)
         self.assertIsNone(sessions.session_now(ny("2026-11-26T10:00"), day("2026-11-26", business=False)))
 
-    def test_target_session(self):
-        self.assertEqual(sessions.target_session(ny("2026-09-28T07:30"), day()), "2026-09-28")
-        self.assertEqual(sessions.target_session(ny("2026-09-28T16:30"), day()), "2026-09-29")
-        fri = day("2026-10-02", nxt="2026-10-05")
-        self.assertEqual(sessions.target_session(ny("2026-10-02T19:30"), fri), "2026-10-05")
-        self.assertEqual(sessions.target_session(ny("2026-10-03T12:00"), None), "2026-10-05")  # Saturday, no status
-        self.assertEqual(sessions.target_session(ny("2026-09-28T10:00"), None), "2026-09-28")  # before the close
+    def test_next_open_is_where_a_stock_seen_now_can_first_be_bought(self):
+        self.assertEqual(sessions.next_open(ny("2026-09-28T07:30"), day()), "2026-09-28")  # before the open
+        self.assertEqual(sessions.next_open(ny("2026-09-28T10:31"), day()), "2026-09-29")  # seen during the session
+        self.assertEqual(sessions.next_open(ny("2026-10-02T16:35"), day("2026-10-02", nxt="2026-10-05")), "2026-10-05")
+        self.assertEqual(sessions.next_open(ny("2026-10-03T12:00"), None), "2026-10-05")  # Saturday, no status
 
 
 if __name__ == "__main__":
