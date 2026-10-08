@@ -314,7 +314,7 @@ class Sessions(unittest.TestCase):
         self.assertEqual((code, sent, os.listdir(self.dir)), (0, [], []))
 
     def test_outside_a_slot_does_nothing(self):
-        code, sent, build = self.run_at("2026-09-28T12:00")
+        code, sent, build = self.run_at("2026-09-28T03:00")
         build.assert_not_called()
         self.assertEqual((code, sent), (0, []))
 

@@ -37,6 +37,8 @@ class Due(unittest.TestCase):
         for utc_t, slot in (("11:30", "pre1"), ("13:15", "pre2"), ("20:30", "post1"), ("23:30", "post2")):
             want |= {(f"09-28 {utc_t}", f"squeeze:{slot}:2026-09-28"), (f"09-28 {utc_t}", f"insider:{slot}:2026-09-28")}
         want.add(("09-29 05:30", "scan:morning:2026-09-29"))  # Tuesday's morning scan of Monday's filings
+        for h in range(6):  # the screen hourly through the regular session: 10:30-15:30 New York = 14:30-19:30 UTC
+            want.add((f"09-28 {14 + h}:30", f"squeeze:reg{h + 1}:2026-09-28"))
         self.assertEqual(got, want)
 
     def test_a_winter_tuesday_and_the_after_midnight_1930_run(self):
@@ -46,6 +48,7 @@ class Due(unittest.TestCase):
         for utc_t, slot in (("12-01 12:30", "pre1"), ("12-01 14:15", "pre2"), ("12-01 21:30", "post1"),
                             ("12-02 00:30", "post2")):
             want |= {(utc_t, f"squeeze:{slot}:2026-12-01"), (utc_t, f"insider:{slot}:2026-12-01")}
+        want |= {(f"12-01 {15 + h}:30", f"squeeze:reg{h + 1}:2026-12-01") for h in range(6)}  # EST: 15:30-20:30 UTC
         self.assertEqual(got, want)
 
     def test_every_started_slot_is_the_slot_its_run_serves(self):

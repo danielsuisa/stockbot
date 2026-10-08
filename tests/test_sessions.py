@@ -39,14 +39,32 @@ class Slot(unittest.TestCase):
         for t in ("04:15", "05:45"):  # right after the pre-market opens (11:15 Israel time)
             self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day()), "pre0", t)
 
+    def test_hourly_slots_in_the_regular_session_each_run_their_own_hour(self):
+        # 10:30-15:30 New York (17:30-22:30 Israel); 90-minute windows overlap, so the latest slot started wins
+        for t, want in (("10:30", "reg1"), ("11:29", "reg1"), ("11:30", "reg2"), ("12:00", "reg2"), ("15:30", "reg6"),
+                        ("16:29", "reg6"), ("16:30", "post1"), ("10:44", "reg1")):
+            self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day()), want, t)
+        self.assertEqual([n for n, (_, s) in sessions.SLOTS.items() if s == "regular"],
+                         ["reg1", "reg2", "reg3", "reg4", "reg5", "reg6"])
+        early = day("2026-11-27", close="13:00", ah="17:00")  # an early close: no slot after 13:00 is regular
+        self.assertEqual(sessions.slot(ny("2026-11-27T13:30"), early), "reg3")
+        self.assertIsNone(sessions.slot(ny("2026-11-27T14:31"), early))
+
     def test_too_early_too_late_or_outside_the_session(self):
-        for t in ("04:14", "05:46", "07:29", "09:01", "18:01", "21:01", "12:00"):
+        for t in ("04:14", "05:46", "07:29", "09:01", "18:01", "21:01"):
             self.assertIsNone(sessions.slot(ny(f"2026-09-28T{t}"), day()), t)
 
     def test_a_late_start_keeps_its_slot_after_the_session_ends(self):
         # GitHub starts schedules 15-60 minutes late at busy times: 09:15 and 19:30 must survive 09:30 and 20:00
-        for t, want in (("09:40", "pre2"), ("10:45", "pre2"), ("20:10", "post2"), ("21:00", "post2")):
+        for t, want in (("09:40", "pre2"), ("10:29", "pre2"), ("20:10", "post2"), ("21:00", "post2")):
             self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day()), want, t)
+
+    def test_a_run_serves_only_its_own_slots(self):
+        # the insider scan has no hourly or 04:15 slots: at 12:00 and 04:15 it has nothing to run
+        for t in ("12:00", "04:15"):
+            self.assertIsNone(sessions.slot(ny(f"2026-09-28T{t}"), day(), sessions.INSIDER), t)
+        self.assertEqual(sessions.slot(ny("2026-09-28T16:31"), day(), sessions.INSIDER), "post1")
+        self.assertEqual(sessions.INSIDER, ["pre1", "pre2", "post1", "post2"])
 
     def test_daylight_saving_twins(self):
         summer, winter = day("2026-09-28"), day("2026-12-01", nxt="2026-12-02")

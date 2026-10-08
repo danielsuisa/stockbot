@@ -11,7 +11,10 @@ NY = ZoneInfo("America/New_York")
 MARKET_INFO = "https://api.nasdaq.com/api/market-info"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 SLOTS = {"pre0": (dt.time(4, 15), "pre"), "pre1": (dt.time(7, 30), "pre"), "pre2": (dt.time(9, 15), "pre"),
+         **{f"reg{h - 9}": (dt.time(h, 30), "regular") for h in range(10, 16)},  # the screen, hourly 10:30-15:30
          "post1": (dt.time(16, 30), "post"), "post2": (dt.time(19, 30), "post")}
+INSIDER = [n for n, (_, session) in SLOTS.items()  # the same-day insider scan: SEC takes filings from 06:00 New York
+           if n != "pre0" and session != "regular"]   # only, and the hourly slots are the screen's
 LATE = dt.timedelta(minutes=90)  # GitHub starts schedules late; a run later than this is stale
 WINDOWS = {"pre": (dt.time(4), dt.time(9, 30)), "regular": (dt.time(9, 30), dt.time(16)),
            "post": (dt.time(16), dt.time(20))}  # only when Nasdaq's market-info is unavailable
@@ -63,20 +66,24 @@ def fallback(now):
             **{s: (dt.datetime.combine(day, a), dt.datetime.combine(day, b)) for s, (a, b) in WINDOWS.items()}}
 
 
-def slot(now, st):
+def slot(now, st, names=None):
     """The slot a scheduled run started at `now` serves, or None: 0-90 minutes after the slot's time, on a business
     day whose slot's session is trading at the slot's time - so holidays and sessions that do not exist that day
-    give None, and a late start still serves its slot. A daylight-saving twin that lands inside the 90 minutes is a
-    retry: claim() stops it when the slot already ran."""
+    give None, and a late start still serves its slot. Windows overlap (hourly slots), so the latest slot started
+    wins. names: the slots this run may serve (e.g. INSIDER). A daylight-saving twin that lands inside the 90 minutes
+    is a retry: claim() stops it when the slot already ran."""
     now = _naive(now)
     if not st or not st["business"]:
         return None
+    best = None  # windows overlap (hourly slots, 90 minutes each): the latest slot started is the one this run serves
     for name, (t, session) in SLOTS.items():
+        if names is not None and name not in names:
+            continue
         at = dt.datetime.combine(now.date(), t)
         start, end = st[session]
-        if start <= at < end and at <= now <= at + LATE:
-            return name
-    return None
+        if start <= at < end and at <= now <= at + LATE and (best is None or at > best[0]):
+            best = (at, name)
+    return best and best[1]
 
 
 def session_now(now, st):

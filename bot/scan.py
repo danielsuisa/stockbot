@@ -782,7 +782,7 @@ def intraday(now=None, dry=False):
     for filings not alerted before. The day is not marked scanned - the morning scan still reads the full index."""
     now = now or sessions.now_ny()
     st = sessions.status(now) or sessions.fallback(now)
-    name, today = sessions.slot(now, st), now.date()
+    name, today = sessions.slot(now, st, sessions.INSIDER), now.date()
     path = Path(common.env("STATE_FILE", str(common.DATA / "state.json")))
     state = prune(load(path), today)
     if not name or not sessions.claim(state, name, today.isoformat()):
