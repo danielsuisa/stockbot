@@ -3015,6 +3015,85 @@
     "0002063220-26-000002"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-08-FUL",
+   "date": "2026-10-08",
+   "ticker": "FUL",
+   "cik": 39368,
+   "company": "FULLER H B CO",
+   "sic": 2891,
+   "kind": "cluster+big",
+   "quality": 80,
+   "parts": {
+    "breadth": 30,
+    "seniority": 25,
+    "size": 10,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 50.44,
+    "asof": "2026-10-08 20:00",
+    "source": "live"
+   },
+   "total": 1121315.61,
+   "insiders": 8,
+   "liquidity": 51451050.298586756,
+   "scores": {
+    "piotroski": "7/9",
+    "altman": "Z 2.02",
+    "beneish": -2.57
+   },
+   "accs": [
+    "0001225208-26-008011",
+    "0001225208-26-008012",
+    "0001225208-26-008013",
+    "0001225208-26-008014",
+    "0001225208-26-008015",
+    "0001225208-26-008045",
+    "0001225208-26-008046",
+    "0001225208-26-008325"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-08-PDI",
+   "date": "2026-10-08",
+   "ticker": "PDI",
+   "cik": 1510599,
+   "company": "PIMCO Dynamic Income Fund",
+   "sic": null,
+   "kind": "cluster",
+   "quality": 53,
+   "parts": {
+    "breadth": 20,
+    "seniority": 12,
+    "size": 6,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 14.33,
+    "asof": "2026-10-08 20:00",
+    "source": "live"
+   },
+   "total": 405048.46,
+   "insiders": 3,
+   "liquidity": 67045325.37004731,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001201917-26-000004",
+    "0001495443-26-000007",
+    "0002084606-26-000014"
+   ],
+   "returns": {}
   }
  ]
 }
