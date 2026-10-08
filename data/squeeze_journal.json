@@ -567,6 +567,40 @@
     "iv30": 113.587
    },
    "outcome": null
+  },
+  {
+   "date": "2026-10-09",
+   "seen": "2026-10-08",
+   "t": "MMED",
+   "rank": 2,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-15",
+   "float": 28466986,
+   "short_float": 0.4776,
+   "short_ratio": 5.4801,
+   "avg_vol": 2480765,
+   "rel_vol": 3.6649,
+   "pre_vol": null,
+   "price": 19.77,
+   "chg": 0.0345,
+   "outcome": null
+  },
+  {
+   "date": "2026-10-09",
+   "seen": "2026-10-08",
+   "t": "PCRX",
+   "rank": 3,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-15",
+   "float": 36193397,
+   "short_float": 0.2089,
+   "short_ratio": 12.84,
+   "avg_vol": 588873,
+   "rel_vol": 38.9455,
+   "pre_vol": null,
+   "price": 36.3,
+   "chg": 0.4405,
+   "outcome": null
   }
  ]
 }
