@@ -177,7 +177,7 @@ def message(res, scr, at, static=None):
         static = static or {}
         gaps = _gaps(((scr["failed"], "לא התקבל ציטוט מ־Nasdaq"), (static.get("failed"), "לא התקבל מחיר מ־Yahoo"),
                       (static.get("no_float"), "אין נתון מצוף ב־Yahoo"),
-                      (static.get("no_options"), "לא התקבל מידע על אופציות מ־CBOE")))
+                      (scr.get("no_options"), "לא התקבל מידע על אופציות מ־CBOE")))  # asked again on a move
         count = (f"📋 עומדות בתנאים הקבועים {code(scr['checked'])} מניות, מתוך "
                  f"{code(format(static.get('screened', 0), ','))} עם שורט של יותר מ־{code('2.5M')} מניות")
         source = "מחיר ומחזור בפרה־מרקט מ־Nasdaq · מצוף וממוצע מחזור מ־Yahoo · אופציות מ־CBOE."

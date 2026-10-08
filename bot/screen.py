@@ -135,7 +135,8 @@ def optionable(t):
 
 # ---------- the screen ----------
 def _funnel(short, get, keys):
-    """FINRA short shares -> (quotes, the stocks that pass `keys` and the float and options criteria, counts)."""
+    """FINRA short shares -> (quotes, floats, the stocks that pass `keys` and the float criteria with their CBOE
+    answer {ticker: True / False / None}, counts)."""
     cands = sorted(t for t, n in short.items() if n and n > MIN_SHORT)
     qs = quotes(get, cands)
     failed = sum(q is False for q in qs.values())
@@ -148,44 +149,51 @@ def _funnel(short, get, keys):
     stage = [t for t in stage if floats[t] and not fails(metrics(short[t], qs[t], floats[t]), FLOAT_KEYS)]
     with cf.ThreadPoolExecutor(THREADS) as ex:
         opts = dict(zip(stage, ex.map(optionable, stage)))
-    passed = [t for t in stage if opts[t]]
     counts = {"screened": len(cands), "failed": failed, "no_float": no_float,
               "no_options": sum(opts[t] is None for t in stage)}
-    return qs, floats, passed, counts
+    return qs, floats, opts, counts
 
 
 def candidates(short, get):
     """Before the open, the fixed part of the screen: {"rows": {ticker: {"float", "short_float", "short_ratio",
-    "avg_vol"}} (every criterion but price and relative volume), "screened", "failed", "no_float", "no_options"}.
-    Float for ~1,000 stocks, so once a day (the caller keeps it)."""
-    qs, floats, passed, counts = _funnel(short, get, STATIC_KEYS)
+    "avg_vol", "options"}} (every criterion but price and relative volume), "screened", "failed", "no_float",
+    "no_options"}. Float for ~1,000 stocks, so once a day (the caller keeps it); a stock CBOE did not answer for keeps
+    "options": None and is asked again by premarket() if it moves (measured on GitHub's runners: 8 of 71)."""
+    qs, floats, opts, counts = _funnel(short, get, STATIC_KEYS)
     keep = ("float", "short_float", "short_ratio", "avg_vol")
-    return {"rows": {t: {k: v for k, v in metrics(short[t], qs[t], floats[t]).items() if k in keep} for t in passed},
-            **counts}
+    return {"rows": {t: {**{k: v for k, v in metrics(short[t], qs[t], floats[t]).items() if k in keep},
+                         "options": opts[t]} for t in opts if opts[t] is not False}, **counts}
 
 
 def premarket(static, pre_quote, today):
     """The pre-market list: the fixed set (candidates()) with a pre-market price over PRICE_MIN and pre-market
     volume of at least PRE_VOL_MIN of a normal day, both dated today (pre_quote: ticker -> movers.quote(t, "pre")).
-    -> {"kind": "pre", "rows" (short float, highest first; "chg" = against the last regular close), "checked",
-    "failed", "date"}. RuntimeError when no pre-market quote can be read."""
+    A stock whose options are unknown is asked CBOE again once it moves. -> {"kind": "pre", "rows" (short float,
+    highest first; "chg" = against the last regular close), "checked", "failed", "no_options", "date"}.
+    RuntimeError when no pre-market quote can be read."""
     ts = sorted(static["rows"])
     with cf.ThreadPoolExecutor(THREADS) as ex:
         qs = dict(zip(ts, ex.map(pre_quote, ts)))
     failed = sum(q is False for q in qs.values())
     if ts and failed == len(ts):
         raise RuntimeError("Nasdaq: no pre-market quotes")
-    rows = []
+    rows, no_options = [], 0
     for t in ts:
         q, c = qs[t], static["rows"][t]
         if not q or q.get("date") != today or q.get("price") is None or q.get("volume") is None:
             continue
         m = {**c, "price": q["price"], "chg": q["price"] / q["prev"] - 1 if q.get("prev") else None,
-             "pre_vol": q["volume"] / c["avg_vol"], "options": True}
-        if m["price"] > PRICE_MIN and m["pre_vol"] >= PRE_VOL_MIN:
+             "pre_vol": q["volume"] / c["avg_vol"], "options": c.get("options", True)}
+        if not (m["price"] > PRICE_MIN and m["pre_vol"] >= PRE_VOL_MIN):
+            continue
+        if m["options"] is None:
+            m["options"] = optionable(t)
+            no_options += m["options"] is None
+        if m["options"]:
             rows.append({"t": t, **m})
     rows.sort(key=lambda r: -r["short_float"])
-    return {"kind": "pre", "rows": rows, "checked": len(ts), "failed": failed, "date": today}
+    return {"kind": "pre", "rows": rows, "checked": len(ts), "failed": failed, "no_options": no_options,
+            "date": today}
 
 
 
@@ -194,8 +202,8 @@ def screen(short, get):
     "t", short float highest first), "screened" (stocks quoted), "failed" (quotes Yahoo could not read), "no_float"
     (Yahoo has no float), "no_options" (CBOE could not be read), "date" (the session of the quotes)}. RuntimeError
     when Yahoo quotes none of them."""
-    qs, floats, passed, counts = _funnel(short, get, QUOTE_KEYS)
-    rows = [{"t": t, **metrics(short[t], qs[t], floats[t], True)} for t in passed]
+    qs, floats, opts, counts = _funnel(short, get, QUOTE_KEYS)
+    rows = [{"t": t, **metrics(short[t], qs[t], floats[t], True)} for t in opts if opts[t]]
     rows.sort(key=lambda r: -r["short_float"])
     dates = [q["date"] for q in qs.values() if q and q.get("date")]
     return {"kind": "day", "rows": rows, **counts, "date": max(dates) if dates else None}
