@@ -10,11 +10,12 @@ from bot import common
 NY = ZoneInfo("America/New_York")
 MARKET_INFO = "https://api.nasdaq.com/api/market-info"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-SLOTS = {"pre0": (dt.time(4, 15), "pre"), "pre1": (dt.time(7, 30), "pre"), "pre2": (dt.time(9, 15), "pre"),
+SLOTS = {**{f"pm{h - 3}": (dt.time(h, 15), "pre") for h in range(4, 10)},  # the screen, hourly 04:15-09:15
+         "pre1": (dt.time(7, 30), "pre"), "pre2": (dt.time(9, 15), "pre"),  # the same-day insider scan
          **{f"reg{h - 9}": (dt.time(h, 30), "regular") for h in range(10, 16)},  # the screen, hourly 10:30-15:30
-         "post1": (dt.time(16, 30), "post"), "post2": (dt.time(19, 30), "post")}
-INSIDER = [n for n, (_, session) in SLOTS.items()  # the same-day insider scan: SEC takes filings from 06:00 New York
-           if n != "pre0" and session != "regular"]   # only, and the hourly slots are the screen's
+         "post1": (dt.time(16, 30), "post"), "post2": (dt.time(19, 30), "post")}  # both
+INSIDER = ["pre1", "pre2", "post1", "post2"]  # SEC takes filings from 06:00 New York
+SQUEEZE = [n for n in SLOTS if n not in ("pre1", "pre2")]
 LATE = dt.timedelta(minutes=90)  # GitHub starts schedules late; a run later than this is stale
 WINDOWS = {"pre": (dt.time(4), dt.time(9, 30)), "regular": (dt.time(9, 30), dt.time(16)),
            "post": (dt.time(16), dt.time(20))}  # only when Nasdaq's market-info is unavailable

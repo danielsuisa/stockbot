@@ -22,6 +22,7 @@ from bot import common, market, movers, screen, sessions, shorts, squeeze
 from bot.common import code
 
 SCREEN = "screen-2026-10-08"  # the journal's name for the owner's screen
+SCREEN_PRE = "screen-pre-2026-10-08"  # ... and for its pre-market list (pre-market volume instead of relative volume)
 NAME = "w0.7/si0.2/rv2"  # the backtested list the screen replaced on 2026-10-08 (its journal entries keep this name)
 BACKTEST = {"hit": 0.068, "crash": 0.071, "base": 0.010, "years": "2024–2026"}  # that list's out-of-sample rates
 CRASH = 1 / squeeze.HIT - 1  # -33%: the fall that mirrors the +50% spike
@@ -29,7 +30,7 @@ MOVERS_SI = 0.20  # the movers' stocks: short interest of at least 20% of shares
 LAST, JOURNAL = "squeeze_last.json", "squeeze_journal.json"
 STATE, MOVERS_LOG = "squeeze_state.json", "movers_log.json"
 FRAMES = 6  # quarters of SEC frames: facts sit within ~45 days of a quarter end, so 6 cover the 400-day age limit
-FIELDS = ("float", "short_float", "short_ratio", "avg_vol", "rel_vol", "price", "chg")
+FIELDS = ("float", "short_float", "short_ratio", "avg_vol", "rel_vol", "pre_vol", "price", "chg")
 
 
 # ---------- files ----------
@@ -128,7 +129,7 @@ def _count(x):
 
 
 FMT = {"float": _count, "avg_vol": _count, "short_float": lambda v: f"{v * 100:.1f}%", "short_ratio": "{:.1f}".format,
-       "rel_vol": "{:.1f}".format, "price": common.price, "chg": lambda v: f"{v * 100:+.1f}%",
+       "rel_vol": "{:.1f}".format, "pre_vol": "{:.0%}".format, "price": common.price, "chg": lambda v: f"{v * 100:+.1f}%",
        "options": lambda v: "יש" if v else "אין"}
 LABEL = {"float": ("מצוף", f"מתחת ל־{code('50M')}"), "short_float": ("שורט מהמצוף", f"מעל {code('20%')}"),
          "short_ratio": ("ימים לכיסוי", f"מעל {code(5)}"),
@@ -143,38 +144,57 @@ def _v(key, v):
 
 
 def line(k, r):
-    """One listed stock, the owner's fields in the owner's order (Hebrew first, RTL)."""
+    """One listed stock, the owner's fields in the owner's order (Hebrew first, RTL); before the open, the
+    pre-market volume against a normal day stands in for the relative volume."""
+    vol = (f"מחזור בפרה־מרקט {_v('pre_vol', r['pre_vol'])} מיום רגיל" if "pre_vol" in r
+           else f"מחזור יחסי {_v('rel_vol', r['rel_vol'])}")
     return (f"מקום {code(k)}: {code(r['t'])} · מצוף {_v('float', r['float'])} · שורט {_v('short_float', r['short_float'])}"
-            f" מהמצוף · ימים לכיסוי {_v('short_ratio', r['short_ratio'])} · מחזור יחסי {_v('rel_vol', r['rel_vol'])}"
+            f" מהמצוף · ימים לכיסוי {_v('short_ratio', r['short_ratio'])} · {vol}"
             f" · מחיר {_v('price', r['price'])} · שינוי {_v('chg', r['chg'])}")
 
 
 def _when(scr, at):
-    return f"{code(scr['date'])}</b> · מצב ב־{code(f'{at:%H:%M}')} שעון ניו יורק"
+    pre = "לפני הפתיחה " if scr.get("kind") == "pre" else ""
+    return f"{pre}ליום {code(scr['date'])}</b> · מצב ב־{code(f'{at:%H:%M}')} שעון ניו יורק"
 
 
-def message(res, scr, at):
-    """The full list (res: build(), scr: screen.screen(), at: New York time of the run)."""
-    head = [f"🚀 <b>רשימת סקוויז ליום {_when(scr, at)}",
+def _gaps(pairs):
+    return [f"ל־{code(n)} {what}" for n, what in pairs if n]
+
+
+def message(res, scr, at, static=None):
+    """The full list (res: build(), scr: screen.screen() or screen.premarket(), at: New York time of the run,
+    static: the pre-market's fixed set with its counts)."""
+    pre = scr.get("kind") == "pre"
+    head = [f"{'🌅' if pre else '🚀'} <b>רשימת סקוויז {_when(scr, at)}",
             f"מצוף מתחת ל־{code('50M')} · שורט מעל {code('20%')} מהמצוף · ימים לכיסוי מעל {code(5)} · ממוצע מחזור של "
-            f"3 חודשים מעל {code('500K')} · מחיר מעל {code('2$')} · מחזור יחסי מעל {code(2)} · נסחרות אופציות. "
-            "ממוין לפי השורט מהמצוף."]
+            f"3 חודשים מעל {code('500K')} · "
+            + (f"מחיר בפרה־מרקט מעל {code('2$')} · מחזור בפרה־מרקט {code('10%')} לפחות מיום רגיל" if pre else
+               f"מחיר מעל {code('2$')} · מחזור יחסי מעל {code(2)}")
+            + " · נסחרות אופציות. ממוין לפי השורט מהמצוף."]
     body = [line(k, r) for k, r in enumerate(scr["rows"], 1)] or ["🤷 אף מניה לא עומדת כרגע בכל התנאים."]
-    gaps = [f"ל־{code(n)} {what}" for n, what in ((scr["failed"], "לא התקבל מחיר מ־Yahoo"),
-                                                   (scr["no_float"], "אין נתון מצוף ב־Yahoo"),
-                                                   (scr["no_options"], "לא התקבל מידע על אופציות מ־CBOE")) if n]
-    foot = [UNTESTED,
-            f"🗓️ שורט לפי דוח FINRA מ־{code(res['si_date'])} · מחירים, מחזורים ומצוף מ־Yahoo · אופציות מ־CBOE.",
-            f"📋 נבדקו {code(format(scr['screened'], ','))} מניות עם שורט של יותר מ־{code('2.5M')} מניות"
-            + (f"; {'; '.join(gaps)}" if gaps else "") + ".",
-            SHORTABLE]
+    if pre:
+        static = static or {}
+        gaps = _gaps(((scr["failed"], "לא התקבל ציטוט מ־Nasdaq"), (static.get("failed"), "לא התקבל מחיר מ־Yahoo"),
+                      (static.get("no_float"), "אין נתון מצוף ב־Yahoo"),
+                      (static.get("no_options"), "לא התקבל מידע על אופציות מ־CBOE")))
+        count = (f"📋 עומדות בתנאים הקבועים {code(scr['checked'])} מניות, מתוך "
+                 f"{code(format(static.get('screened', 0), ','))} עם שורט של יותר מ־{code('2.5M')} מניות")
+        source = "מחיר ומחזור בפרה־מרקט מ־Nasdaq · מצוף וממוצע מחזור מ־Yahoo · אופציות מ־CBOE."
+    else:
+        gaps = _gaps(((scr["failed"], "לא התקבל מחיר מ־Yahoo"), (scr["no_float"], "אין נתון מצוף ב־Yahoo"),
+                      (scr["no_options"], "לא התקבל מידע על אופציות מ־CBOE")))
+        count = (f"📋 נבדקו {code(format(scr['screened'], ','))} מניות עם שורט של יותר מ־{code('2.5M')} מניות")
+        source = "מחירים, מחזורים ומצוף מ־Yahoo · אופציות מ־CBOE."
+    foot = [UNTESTED, f"🗓️ שורט לפי דוח FINRA מ־{code(res['si_date'])} · {source}",
+            count + (f"; {'; '.join(gaps)}" if gaps else "") + ".", SHORTABLE]
     return "\n".join(head + [""] + body + [""] + foot)
 
 
 def change_text(scr, old, at):
     """Who entered the list (with their line) and who left it since the last list of the same day."""
     was, now = {r["t"] for r in old}, [r["t"] for r in scr["rows"]]
-    lines = [f"🔄 <b>שינוי ברשימת הסקוויז ליום {_when(scr, at)}"]
+    lines = [f"🔄 <b>שינוי ברשימת הסקוויז {_when(scr, at)}"]
     lines += [line(k, r) for k, r in enumerate(scr["rows"], 1) if r["t"] not in was]
     left = [t for t in sorted(was) if t not in now]
     if left:
@@ -193,7 +213,8 @@ def record(j, scr, entry, res):
             continue
         seen.add(r["t"])
         j["entries"].append({"date": entry, "seen": scr["date"] or res["date"], "t": r["t"], "rank": k,
-                             "variant": SCREEN, "si_date": res["si_date"], **{f: _round(r.get(f)) for f in FIELDS},
+                             "variant": SCREEN_PRE if scr.get("kind") == "pre" else SCREEN, "si_date": res["si_date"],
+                             **{f: _round(r.get(f)) for f in FIELDS},
                              "outcome": None})
         added += 1
     return added
@@ -247,8 +268,10 @@ def _summary(entries):
 def stats_text(j):
     """/squeeze stats: the screen's closed outcomes, and the replaced list's apart, next to its own backtest."""
     new = [e for e in j["entries"] if e.get("variant") == SCREEN]
-    old = [e for e in j["entries"] if e.get("variant") != SCREEN]
+    pre = [e for e in j["entries"] if e.get("variant") == SCREEN_PRE]
+    old = [e for e in j["entries"] if e.get("variant") not in (SCREEN, SCREEN_PRE)]
     lines = ["📒 <b>יומן רשימת הסקוויז</b>", "🔎 <b>הסינון הנוכחי</b>, לא נבדק היסטורית:"] + _summary(new)
+    lines += ["", "🌅 <b>הסינון לפני הפתיחה</b>, לא נבדק היסטורית:"] + _summary(pre)
     if old:
         lines += ["", f"🗂️ <b>השיטה הקודמת</b> ({code(NAME)}, עד {code('2026-10-08')}):"] + _summary(old)
         hit, crash = (code(format(BACKTEST[k], ".1%")) for k in ("hit", "crash"))
@@ -329,7 +352,7 @@ def main(argv=None):
     if manual:
         session = sessions.session_now(now, st)
     else:
-        name = sessions.slot(now, st)
+        name = sessions.slot(now, st, sessions.SQUEEZE)
         if not name or not sessions.claim(state, name, today):
             print(f"squeeze {now:%Y-%m-%d %H:%M} New York: no session slot to run")
             return 0
@@ -349,19 +372,26 @@ def main(argv=None):
     except Exception:  # a follow-up problem must not hold back the list; it is retried next run
         traceback.print_exc()
         filled = 0
-    scr, list_text, added = None, "", 0
-    if manual or session in ("regular", "post"):  # pre-market: today's relative volume means nothing yet
+    scr, list_text, added, static = None, "", 0, None
+    kind = "pre" if session == "pre" else "day" if manual or session in ("regular", "post") else None
+    if kind:
         try:
-            scr = screen.screen(res["short"], screen.connect())
+            if kind == "pre":  # before the open: the fixed set (once a day) + pre-market price and volume
+                static = state.get("static")
+                if not static or static.get("date") != today:
+                    static = state["static"] = {"date": today, **screen.candidates(res["short"], screen.connect())}
+                scr = screen.premarket(static, lambda t: movers.quote(t, "pre"), today)
+            else:
+                scr = screen.screen(res["short"], screen.connect())
         except Exception as e:
             traceback.print_exc()
-            if manual or sessions.first(state, f"yahoo:{session}", today):
-                list_text = (f"⚠️ סינון השורט לא רץ: לא התקבלו נתונים מ־Yahoo ({code(type(e).__name__)}). "
+            if manual or sessions.first(state, f"screen:{session}", today):
+                list_text = (f"⚠️ סינון השורט לא רץ ({code(type(e).__name__)}: {common.esc(str(e)[:150])}). "
                              "אנסה שוב בריצה הבאה.")
     if scr:
         date = scr["date"] or today
-        full, last = message(res, scr, now), load(LAST, {})
-        old = last.get("rows") if last.get("date") == date else None
+        full, last = message(res, scr, now, static), load(LAST, {})
+        old = last.get("rows") if (last.get("date"), last.get("kind")) == (date, kind) else None  # no kind: replaced method
         if manual or old is None:
             list_text = ("▶️ הרצה ידנית\n" if manual else "") + full
         elif {r["t"] for r in scr["rows"]} != {r["t"] for r in old}:
@@ -379,7 +409,7 @@ def main(argv=None):
     if list_text:
         common.send(list_text, signal=bool(scr))
     if scr:
-        save(LAST, {"date": date, "at": f"{now:%H:%M}", "text": full,
+        save(LAST, {"date": date, "kind": kind, "at": f"{now:%H:%M}", "text": full,
                     "rows": [{k: _round(v) for k, v in r.items()} for r in scr["rows"]]})
     save(JOURNAL, j)
     save(STATE, state)
@@ -391,7 +421,7 @@ def main(argv=None):
     save(STATE, state)
     if note:
         common.send(note, signal=True)
-    common.log("squeeze", session=session, manual=manual, rows=len(rows), screened=scr and scr["screened"],
+    common.log("squeeze", session=session, manual=manual, rows=len(rows), screened=scr and scr.get("screened", scr.get("checked")),
                movers=len(found), sent=sum(bool(t) for t in (list_text, movers_text, note)), added=added,
                filled=filled)
     return 0

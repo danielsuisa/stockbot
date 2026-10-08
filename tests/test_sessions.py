@@ -35,29 +35,37 @@ class Slot(unittest.TestCase):
     def test_each_slot_on_time_and_late(self):
         for t, want in (("07:30", "pre1"), ("08:59", "pre1"), ("09:15", "pre2"), ("16:30", "post1"),
                         ("17:59", "post1"), ("19:30", "post2")):
-            self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day()), want, t)
-        for t in ("04:15", "05:45"):  # right after the pre-market opens (11:15 Israel time)
-            self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day()), "pre0", t)
+            self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day(), sessions.INSIDER), want, t)
+
+    def test_the_screen_runs_hourly_in_the_pre_market(self):
+        # 04:15-09:15 New York = 11:15-16:15 Israel, from right after the pre-market opens
+        for t, want in (("04:15", "pm1"), ("05:14", "pm1"), ("05:15", "pm2"), ("07:31", "pm4"), ("09:15", "pm6"),
+                        ("10:29", "pm6"), ("10:30", "reg1")):
+            self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day(), sessions.SQUEEZE), want, t)
+        self.assertEqual(sessions.SQUEEZE, ["pm1", "pm2", "pm3", "pm4", "pm5", "pm6", "reg1", "reg2", "reg3", "reg4",
+                                            "reg5", "reg6", "post1", "post2"])
 
     def test_hourly_slots_in_the_regular_session_each_run_their_own_hour(self):
         # 10:30-15:30 New York (17:30-22:30 Israel); 90-minute windows overlap, so the latest slot started wins
         for t, want in (("10:30", "reg1"), ("11:29", "reg1"), ("11:30", "reg2"), ("12:00", "reg2"), ("15:30", "reg6"),
                         ("16:29", "reg6"), ("16:30", "post1"), ("10:44", "reg1")):
-            self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day()), want, t)
+            self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day(), sessions.SQUEEZE), want, t)
         self.assertEqual([n for n, (_, s) in sessions.SLOTS.items() if s == "regular"],
                          ["reg1", "reg2", "reg3", "reg4", "reg5", "reg6"])
         early = day("2026-11-27", close="13:00", ah="17:00")  # an early close: no slot after 13:00 is regular
-        self.assertEqual(sessions.slot(ny("2026-11-27T13:30"), early), "reg3")
-        self.assertIsNone(sessions.slot(ny("2026-11-27T14:31"), early))
+        self.assertEqual(sessions.slot(ny("2026-11-27T13:30"), early, sessions.SQUEEZE), "reg3")
+        self.assertIsNone(sessions.slot(ny("2026-11-27T14:31"), early, sessions.SQUEEZE))
 
     def test_too_early_too_late_or_outside_the_session(self):
-        for t in ("04:14", "05:46", "07:29", "09:01", "18:01", "21:01"):
-            self.assertIsNone(sessions.slot(ny(f"2026-09-28T{t}"), day()), t)
+        for t in ("04:14", "07:29", "09:01", "18:01", "21:01"):
+            self.assertIsNone(sessions.slot(ny(f"2026-09-28T{t}"), day(), sessions.INSIDER), t)
+        for t in ("04:14", "18:01", "21:01"):
+            self.assertIsNone(sessions.slot(ny(f"2026-09-28T{t}"), day(), sessions.SQUEEZE), t)
 
     def test_a_late_start_keeps_its_slot_after_the_session_ends(self):
         # GitHub starts schedules 15-60 minutes late at busy times: 09:15 and 19:30 must survive 09:30 and 20:00
         for t, want in (("09:40", "pre2"), ("10:29", "pre2"), ("20:10", "post2"), ("21:00", "post2")):
-            self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day()), want, t)
+            self.assertEqual(sessions.slot(ny(f"2026-09-28T{t}"), day(), sessions.INSIDER), want, t)
 
     def test_a_run_serves_only_its_own_slots(self):
         # the insider scan has no hourly or 04:15 slots: at 12:00 and 04:15 it has nothing to run
@@ -69,9 +77,9 @@ class Slot(unittest.TestCase):
     def test_daylight_saving_twins(self):
         summer, winter = day("2026-09-28"), day("2026-12-01", nxt="2026-12-02")
         utc = lambda s: dt.datetime.fromisoformat(s).replace(tzinfo=dt.timezone.utc).astimezone(NY)  # noqa: E731
-        self.assertEqual(sessions.slot(utc("2026-09-28T11:30"), summer), "pre1")
-        self.assertIsNone(sessions.slot(utc("2026-12-01T11:30"), winter))  # 06:30 EST
-        self.assertEqual(sessions.slot(utc("2026-12-01T12:30"), winter), "pre1")
+        self.assertEqual(sessions.slot(utc("2026-09-28T11:30"), summer, sessions.INSIDER), "pre1")
+        self.assertIsNone(sessions.slot(utc("2026-12-01T11:30"), winter, sessions.INSIDER))  # 06:30 EST
+        self.assertEqual(sessions.slot(utc("2026-12-01T12:30"), winter, sessions.INSIDER), "pre1")
         self.assertEqual(sessions.slot(utc("2026-09-28T23:30"), summer), "post2")
         self.assertEqual(sessions.slot(utc("2026-09-29T00:30"), summer), "post2")  # 20:30 EDT: a retry; claim stops a repeat
         self.assertEqual(sessions.slot(utc("2026-12-02T00:30"), winter), "post2")  # 19:30 EST, the next UTC day

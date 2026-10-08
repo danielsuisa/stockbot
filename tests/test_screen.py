@@ -139,5 +139,62 @@ class Screen(unittest.TestCase):
             screen.screen({"AAA": 10e6, "BBB": 10e6}, y)
 
 
+STATIC = {"AAA": {"float": 30e6, "short_float": 0.5, "short_ratio": 7.0, "avg_vol": 1e6},
+          "BBB": {"float": 20e6, "short_float": 0.8, "short_ratio": 9.0, "avg_vol": 2e6},
+          "CCC": {"float": 40e6, "short_float": 0.3, "short_ratio": 6.0, "avg_vol": 1e6}}
+TODAY = "2026-10-08"
+
+
+def pq(price=11.0, volume=150_000, date=TODAY, prev=10.0):
+    """movers.quote(t, "pre")."""
+    return {"price": price, "volume": volume, "date": date, "prev": prev}
+
+
+class Candidates(unittest.TestCase):
+    def test_every_criterion_but_price_and_volume_once_a_day(self):
+        short = {"OK": 10e6, "CHEAP": 10e6, "QUIET": 10e6, "SMALL": 2_500_000, "BIGF": 10e6, "NOOPT": 10e6, "UNK": 10e6}
+        quotes = [yq(t) for t in short] + [yq("CHEAP", price=1.5, vol=0), yq("QUIET", vol=0)]
+        y = FakeYahoo(quotes, {"OK": 30e6, "CHEAP": 30e6, "QUIET": 30e6, "BIGF": 60e6, "NOOPT": 30e6, "UNK": 30e6})
+        opts = {"NOOPT": False, "UNK": None}
+        with mock.patch.object(screen, "optionable", side_effect=lambda t: opts.get(t, True)), \
+                mock.patch("builtins.print"):
+            c = screen.candidates(short, y)
+        # price and today's volume are the pre-market's to judge: CHEAP ($1.50 close) and QUIET (no volume) stay in
+        self.assertEqual(sorted(c["rows"]), ["CHEAP", "OK", "QUIET"])
+        self.assertEqual(c["rows"]["OK"], {"float": 30e6, "short_float": 10e6 / 30e6, "short_ratio": 10.0,
+                                           "avg_vol": 1e6})
+        self.assertEqual((c["screened"], c["failed"], c["no_float"], c["no_options"]), (6, 0, 0, 1))
+        self.assertFalse(any("SMALL" in u for u in y.calls))
+
+
+class Premarket(unittest.TestCase):
+    def run_pre(self, quotes, static=STATIC):
+        with mock.patch("builtins.print"):
+            return screen.premarket({"rows": static}, lambda t: quotes.get(t), TODAY)
+
+    def test_pre_market_volume_and_price_decide_sorted_by_short_float(self):
+        res = self.run_pre({"AAA": pq(), "BBB": pq(price=5.0, volume=300_000, prev=4.0), "CCC": pq(volume=50_000)})
+        self.assertEqual([r["t"] for r in res["rows"]], ["BBB", "AAA"])  # CCC: 5% of a normal day
+        bbb = res["rows"][0]
+        self.assertEqual({k: bbb[k] for k in ("price", "chg", "pre_vol", "options")},
+                         {"price": 5.0, "chg": 0.25, "pre_vol": 0.15, "options": True})
+        self.assertEqual((res["kind"], res["date"], res["checked"], res["failed"]), ("pre", TODAY, 3, 0))
+
+    def test_edges(self):
+        one = {"AAA": STATIC["AAA"]}
+        self.assertEqual(len(self.run_pre({"AAA": pq(volume=100_000)}, one)["rows"]), 1)  # exactly 10%: at least
+        for q in (pq(volume=99_999), pq(price=2.0), pq(date="2026-10-07"), pq(price=None), None):
+            self.assertEqual(self.run_pre({"AAA": q}, one)["rows"], [], q)  # yesterday's data never counts
+        self.assertIsNone(self.run_pre({"AAA": pq(prev=None)}, one)["rows"][0]["chg"])
+
+    def test_nasdaq_down_for_every_stock_raises_and_some_failing_are_counted(self):
+        with self.assertRaises(RuntimeError):
+            self.run_pre({t: False for t in STATIC})
+        self.assertEqual(self.run_pre({"AAA": False, "BBB": pq(), "CCC": None})["failed"], 1)
+
+    def test_an_empty_fixed_set_is_an_empty_list(self):
+        self.assertEqual(self.run_pre({}, {})["rows"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

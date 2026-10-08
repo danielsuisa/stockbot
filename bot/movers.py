@@ -53,7 +53,8 @@ def quote(t, session):
         if price is None and day:  # live session: no consolidated last trade yet -> info's last sale of that day
             p = json.loads(common.fetch(INFO.format(t=sym), headers=HEADERS, tries=1, timeout=10))["data"]["primaryData"]
             price = _number(p.get("lastSalePrice")) if _date(p.get("lastTradeTimestamp")) == day else None
-        return {"price": price, "volume": _number(rows[0].get("volume")), "date": day}
+        return {"price": price, "volume": _number(rows[0].get("volume")), "date": day,
+                "prev": _number(d.get("previousInfo"))}  # " Market Close: $372.11": the last regular close
     except Exception as e:  # an unofficial source: any failure means "could not read"
         print(f"nasdaq {t} {session}: {type(e).__name__} {e}")
         return False

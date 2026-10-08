@@ -91,6 +91,11 @@ ROW = {"t": "AAA", "float": 31_500_000, "short_float": 0.828, "short_ratio": 7.2
        "rel_vol": 4.7, "price": 30.42, "chg": -0.03, "options": True}
 ROW2 = {**ROW, "t": "BBB", "short_float": 0.478, "price": 19.53, "chg": 0.022}
 SCR = {"rows": [ROW, ROW2], "screened": 2467, "failed": 0, "no_float": 0, "no_options": 0, "date": TODAY}
+PRE_ROW = {"t": "AAA", "float": 31_500_000, "short_float": 0.828, "short_ratio": 7.2, "avg_vol": 3_600_000,
+           "pre_vol": 0.15, "price": 31.5, "chg": 0.05, "options": True}
+PRE = {"kind": "pre", "rows": [PRE_ROW], "checked": 70, "failed": 2, "date": TODAY}
+STATIC = {"rows": {"AAA": {"float": 31_500_000, "short_float": 0.828, "short_ratio": 7.2, "avg_vol": 3_600_000}},
+          "screened": 2658, "failed": 0, "no_float": 4, "no_options": 0}
 RES = {"date": TODAY, "prev": "2026-09-25", "si_date": "2026-09-15", "short": {"AAA": 26e6, "BBB": 13e6},
        "recent": CAL[-9:] + [TODAY], "universe": []}
 AT = ny(f"{TODAY}T12:30")
@@ -116,6 +121,14 @@ class Message(unittest.TestCase):
             self.assertIn(part, text.split("נבדקו")[1])
         self.assertEqual(common.rtl_bad_lines(text), [])
 
+    def test_the_pre_market_list(self):
+        text = squeeze_live.message(RES, PRE, ny(f"{TODAY}T07:31"), STATIC)
+        self.assertEqual(common.rtl_bad_lines(text), [])
+        for part in ("לפני הפתיחה", "<code>07:31</code>", "מחזור בפרה־מרקט <code>15%</code> מיום רגיל",
+                     "<code>31.50$</code>", "<code>+5.0%</code>", "<code>70</code>", "Nasdaq", "<code>2</code>",
+                     "<code>2,658</code>", "לא נבדק היסטורית"):
+            self.assertIn(part, text)
+
     def test_change_lists_who_entered_and_who_left(self):
         text = squeeze_live.change_text({**SCR, "rows": [ROW2]}, [ROW], AT)
         for part in ("🔄", "<code>BBB</code>", "<code>47.8%</code>", "יצאו מהרשימה: <code>AAA</code>", "<code>12:30</code>"):
@@ -132,6 +145,13 @@ class Journal(unittest.TestCase):
         self.assertEqual((e["date"], e["seen"], e["t"], e["rank"], e["variant"], e["si_date"], e["outcome"]),
                          ("2026-09-29", TODAY, "AAA", 1, squeeze_live.SCREEN, "2026-09-15", None))
         self.assertEqual((e["float"], e["short_float"], e["rel_vol"]), (31_500_000, 0.828, 4.7))
+
+    def test_the_pre_market_list_is_journaled_apart(self):
+        j = {"entries": []}
+        self.assertEqual(squeeze_live.record(j, PRE, TODAY, RES), 1)
+        e = j["entries"][0]
+        self.assertEqual((e["date"], e["variant"], e["pre_vol"], e["rel_vol"]), (TODAY, squeeze_live.SCREEN_PRE, 0.15, None))
+        self.assertEqual(squeeze_live.record(j, SCR, "2026-09-29", RES), 1)  # AAA already journaled: only BBB
 
     def test_followup_fills_closed_windows_only(self):
         days = weekdays("2026-10-16", 30)
@@ -157,7 +177,10 @@ class Journal(unittest.TestCase):
                          {"variant": new, "outcome": {"trade": True, "hit": False, "crash": True, "r10": -0.4}},
                          {"variant": new, "outcome": None},
                          {"variant": old, "outcome": {"trade": True, "hit": False, "crash": False, "r10": 0.0}}]}
+        j["entries"].append({"variant": squeeze_live.SCREEN_PRE,
+                             "outcome": {"trade": True, "hit": True, "crash": True, "r10": 0.1}})
         text = squeeze_live.stats_text(j)
+        self.assertIn("לפני הפתיחה", text)
         screen_part, old_part = text.split(old)
         self.assertIn("<code>50.0%</code>", screen_part)
         self.assertIn("לא נבדק", screen_part)
@@ -233,16 +256,19 @@ class Sessions(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.dir = tmp.name
 
-    def run_at(self, when, res=LIVE, argv=(), quotes=AAA_UP, send=None, scr=SCR):
+    def run_at(self, when, res=LIVE, argv=(), quotes=AAA_UP, send=None, scr=SCR, pre=PRE, cands=STATIC):
         """One squeeze_live.main run at New York time `when`, with everything but its logic mocked."""
         build = res if callable(res) else mock.Mock(return_value=copy.deepcopy(res))
-        self.scr = scr if callable(scr) else mock.Mock(return_value=copy.deepcopy(scr))
+        mk = lambda x: x if callable(x) else mock.Mock(return_value=copy.deepcopy(x))  # noqa: E731
+        self.scr, self.pre, self.cands = mk(scr), mk(pre), mk(cands)
         with mock.patch.dict(os.environ, {"SQUEEZE_DIR": self.dir, "SQUEEZE_MODE": ""}), \
                 mock.patch.object(squeeze_live.sessions, "now_ny", return_value=ny(when)), \
                 mock.patch.object(squeeze_live.sessions, "status", return_value=day()), \
                 mock.patch.object(squeeze_live, "build", build), \
                 mock.patch.object(squeeze_live.screen, "connect", return_value="GET"), \
                 mock.patch.object(squeeze_live.screen, "screen", self.scr), \
+                mock.patch.object(squeeze_live.screen, "candidates", self.cands), \
+                mock.patch.object(squeeze_live.screen, "premarket", self.pre), \
                 mock.patch.object(squeeze_live, "followup", return_value=0), \
                 mock.patch.object(squeeze_live.movers, "quotes", return_value=quotes) as self.quotes, \
                 mock.patch.object(squeeze_live.common, "send", side_effect=send) as sent, mock.patch("builtins.print"):
@@ -283,12 +309,48 @@ class Sessions(unittest.TestCase):
         self.assertEqual(self.run_at("2026-09-28T17:30")[1], [])  # the same slot again (daylight-saving twin)
         self.assertEqual(self.run_at("2026-09-28T19:35", scr={**SCR, "rows": [ROW, ROW2, {**ROW, "t": "CCC"}]})[1], [])
 
-    def test_premarket_runs_send_movers_only(self):
+    def test_pre_market_runs_hourly_list_then_changes_with_the_fixed_set_once_a_day(self):
         code, sent, _ = self.run_at("2026-09-28T07:31")
-        self.scr.assert_not_called()  # before the open, today's relative volume means nothing
-        self.assertEqual((code, len(sent)), (0, 1))
-        self.assertIn("🌅", sent[0])
-        self.assertEqual(self.file(squeeze_live.LAST), {})
+        self.assertEqual((code, len(sent)), (0, 2))
+        self.assertIn("לפני הפתיחה", sent[0])
+        self.assertIn("🌅", sent[1])  # the movers too
+        self.scr.assert_not_called()  # today's relative volume means nothing before the open
+        self.cands.assert_called_once_with(LIVE["short"], "GET")
+        static, pre_quote, day_ = self.pre.call_args[0]
+        self.assertEqual((static["rows"], day_), (STATIC["rows"], TODAY))
+        with mock.patch.object(squeeze_live.movers, "quote", return_value="Q") as q:
+            self.assertEqual(pre_quote("AAA"), "Q")
+        q.assert_called_once_with("AAA", "pre")
+        self.assertEqual(self.run_at("2026-09-28T08:16")[1], [])  # same names, same move: nothing
+        self.cands.assert_not_called()  # the fixed set is computed once a day
+        sent = self.run_at("2026-09-28T09:16", pre={**PRE, "rows": []})[1]
+        self.assertEqual(len(sent), 1)
+        self.assertIn("יצאו מהרשימה: <code>AAA</code>", sent[0])
+        journal = self.file(squeeze_live.JOURNAL)["entries"]
+        self.assertEqual([(e["t"], e["date"], e["variant"]) for e in journal], [("AAA", TODAY, squeeze_live.SCREEN_PRE)])
+        sent = self.run_at("2026-09-28T10:31")[1]  # the first regular-session list of the day goes out in full
+        self.assertIn("🚀", sent[0])
+        self.assertNotIn("🔄", sent[0])
+
+    def test_the_first_list_after_the_switch_goes_out_in_full(self):
+        with mock.patch.dict(os.environ, {"SQUEEZE_DIR": self.dir}):  # the replaced method's last list, same date
+            squeeze_live.save(squeeze_live.LAST, {"date": TODAY, "text": "OLD", "rows": [{"t": "HTZ"}]})
+        sent = self.run_at("2026-09-28T13:31")[1]
+        self.assertIn("🚀", sent[0])
+        self.assertNotIn("🔄", sent[0])
+
+    def test_manual_before_the_open_sends_the_pre_market_list(self):
+        code, sent, _ = self.run_at("2026-09-28T06:00", argv=["--manual"])
+        self.assertIn("▶️", sent[0])
+        self.assertIn("לפני הפתיחה", sent[0])
+        self.scr.assert_not_called()
+
+    def test_the_fixed_set_failing_warns_once_per_session(self):
+        down = mock.Mock(side_effect=RuntimeError("Yahoo: no quotes"))
+        sent = self.run_at("2026-09-28T07:31", cands=down, quotes={})[1]
+        self.assertEqual(len(sent), 1)
+        self.assertIn("Yahoo", sent[0])
+        self.assertEqual(self.run_at("2026-09-28T08:16", cands=down, quotes={})[1], [])
 
     def test_manual_at_night_sends_the_full_list_and_says_the_market_is_closed(self):
         self.run_at("2026-09-28T16:35", quotes={})
