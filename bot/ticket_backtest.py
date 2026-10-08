@@ -4,7 +4,10 @@
 Fills are conservative (spec section 6): a buy limit fills only when a minute's low reaches it, at the limit; a stop
 fills at the stop, or at the minute's open when it opened beyond it; a minute that touches both stop and target counts
 as the stop; on the fill minute only the stop is checked. Results are in R: P&L / (R x shares)."""
-from bot import ticket
+import bisect
+import csv
+
+from bot import alpaca, shorts, ticket
 from bot.ticket import hhmm, mins
 
 COMMISSION, MIN_ORDER = 0.0035, 0.35  # dollars per share, minimum per order (each side)
@@ -145,3 +148,75 @@ def _improved(t, bars, i, entry, t0):
     for g in list(legs):
         out(g, c, m, "eod")
     return exits
+
+
+# ---------- candidate universes ----------
+SHARES_MAX, SHORT_SHARES_MIN, AVG_VOL_MIN, SHORT_AVG_MIN, PRICE_MIN = 50_000_000, 0.20, 500_000, 5.0, 2.0
+AVG_DAYS, REL_VOL_MIN, PRE_VOL_MIN, SPLIT_RATIO, OPEN_DAYS = 63, 2.0, 0.10, 2.0, 14
+
+
+def universe_a(path):
+    """The earlier backtest's picks CSV -> [(day, ticker)] in file order."""
+    with open(path, newline="") as f:
+        return [(r["date"], r["t"]) for r in csv.DictReader(f)]
+
+
+def fixed_b(day, reports, shares, primary, daily, counts=None):
+    """The current screen's fixed part, from data before `day`: {ticker: {"short", "shares", "avg_vol",
+    "prev_close", "atr"}}. reports [(usable ISO, {ticker: shorts.slim row})] ascending; shares shorts.shares_index();
+    primary {ticker: cik}; daily {ticker: alpaca daily bars} (any span; only bars before `day` are used). SEC shares
+    outstanding stand in for the float (no free float history); listed options are not checked (no history). A
+    ticker-day whose closes jump by more than 2x inside the window (a split: raw prices) is skipped and counted in
+    counts["skipped_split"]."""
+    j = bisect.bisect_right([u for u, _ in reports], day) - 1
+    if j < 0:
+        return {}
+    out = {}
+    for t, row in reports[j][1].items():
+        cik, short = primary.get(t), row.get("si") or 0
+        n = cik and shorts.shares_at(shares, cik, day)
+        if not n or not n < SHARES_MAX or not short / n > SHORT_SHARES_MIN or t not in daily:
+            continue
+        bars = [b for b in daily[t] if b[0] < day][-AVG_DAYS:]
+        if len(bars) < AVG_DAYS:
+            continue
+        avg, prev = sum(b[5] for b in bars) / AVG_DAYS, bars[-1][4]
+        if not (avg > AVG_VOL_MIN and short / avg > SHORT_AVG_MIN and prev > PRICE_MIN):
+            continue
+        if any(not 1 / SPLIT_RATIO <= b[4] / a[4] <= SPLIT_RATIO for a, b in zip(bars, bars[1:]) if a[4]):
+            if counts is not None:
+                counts["skipped_split"] = counts.get("skipped_split", 0) + 1
+            continue
+        out[t] = {"short": short, "shares": n, "avg_vol": avg, "prev_close": prev, "atr": ticket.atr14(bars, day)}
+    return out
+
+
+def eligible_from(session, bars1, avg_vol, open_):
+    """The minute a stock enters the live list (rules are evaluated only once it has closed): REGULAR - the first
+    minute from the open whose cumulative regular volume is over 2x the average day; PREMARKET - the first
+    pre-market minute whose cumulative pre-market volume is at least 10% of it, with a last price over $2."""
+    cum = 0
+    for m, o, h, l, c, v, vw in bars1:
+        if (m >= open_) != (session == "REGULAR"):
+            continue
+        cum += v
+        if session == "REGULAR" and cum / avg_vol > REL_VOL_MIN:
+            return m
+        if session == "PREMARKET" and cum / avg_vol >= PRE_VOL_MIN and c > PRICE_MIN:
+            return m
+    return None
+
+
+def open_rel_vol(symbol, day, sessions):
+    """The 09:30-09:35 volume of `day` / the mean 09:30-09:35 volume of the 14 sessions before it (one request of
+    5-minute bars); None with fewer than 14 prior sessions that traded at the open."""
+    k = bisect.bisect_left(sessions, day)
+    if k < OPEN_DAYS:
+        return None
+    prior = sessions[k - OPEN_DAYS:k]
+    first = {b[0][:10]: b[5] for b in alpaca.bars(symbol, alpaca.utc(prior[0], "09:30"), alpaca.utc(day, "09:35"),
+                                                   "5Min") if b[0][11:] == "09:30"}
+    vols = [first[d] for d in prior if d in first]
+    if len(vols) < OPEN_DAYS or not sum(vols):
+        return None
+    return first.get(day, 0) / (sum(vols) / OPEN_DAYS)

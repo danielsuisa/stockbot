@@ -162,5 +162,105 @@ class Exits(unittest.TestCase):
         self.assertAlmostEqual(short["exits"][0]["price"], 10.35)
 
 
+# ---------- candidate universes ----------
+import datetime as dt  # noqa: E402
+import os  # noqa: E402
+import tempfile  # noqa: E402
+from unittest import mock  # noqa: E402
+
+DAY = "2024-06-03"
+
+
+def sessions_before(day, n):
+    """n weekdays before `day`, ascending (a stand-in calendar)."""
+    out, d = [], dt.date.fromisoformat(day)
+    while len(out) < n:
+        d -= dt.timedelta(1)
+        if d.weekday() < 5:
+            out.append(d.isoformat())
+    return out[::-1]
+
+
+def daily(vol=1_000_000, close=5.0, n=63, jump=None):
+    rows = [(d, close, close + 0.5, close - 0.5, close, vol) for d in sessions_before(DAY, n)]
+    if jump:
+        k, c = jump
+        rows[k] = rows[k][:4] + (c, vol)
+    return rows
+
+
+def b_case(short=6_000_000, shares=20_000_000, **kw):
+    """One ticker AAA (cik 1): FINRA short shares, SEC shares outstanding, Alpaca daily bars."""
+    reports = [("2024-05-01", {"AAA": {"si": 1}}), ("2024-05-20", {"AAA": {"si": short}}),
+               ("2024-06-04", {"AAA": {"si": 1}})]  # the last is usable only after DAY
+    idx = {1: [("2024-04-01", "2024-03-31", shares)]}
+    return tb.fixed_b(DAY, reports, idx, {"AAA": 1}, {"AAA": daily(**kw)})
+
+
+class Universes(unittest.TestCase):
+    def test_universe_a_reads_the_picks(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "picks.csv")
+            with open(p, "w") as f:
+                f.write("date,t,score\n2024-01-02,AAOI,0.4\n2024-01-03,AVXL,0.5\n")
+            self.assertEqual(tb.universe_a(p), [("2024-01-02", "AAOI"), ("2024-01-03", "AVXL")])
+
+    def test_fixed_b_each_gate_at_its_edge(self):
+        row = b_case()["AAA"]
+        self.assertEqual((row["short"], row["shares"], row["avg_vol"], row["prev_close"]),
+                         (6_000_000, 20_000_000, 1_000_000, 5.0))
+        self.assertAlmostEqual(row["atr"], 1.0)
+        self.assertIn("AAA", b_case(short=10_000_000, shares=49_999_999))
+        self.assertNotIn("AAA", b_case(short=10_000_000, shares=50_000_000))  # shares under 50M
+        self.assertNotIn("AAA", b_case(short=4_000_000, shares=20_000_000, vol=700_000))  # short/shares 0.20
+        self.assertIn("AAA", b_case(short=4_000_001, shares=20_000_000, vol=700_000))
+        self.assertNotIn("AAA", b_case(short=6_000_000, vol=500_000))  # average volume over 500K
+        self.assertNotIn("AAA", b_case(short=6_000_000, vol=1_200_000))  # short/avg 5
+        self.assertIn("AAA", b_case(short=6_000_001, vol=1_200_000))
+        self.assertNotIn("AAA", b_case(close=2.0))  # previous close over $2
+        self.assertIn("AAA", b_case(close=2.01))
+        self.assertNotIn("AAA", b_case(n=62))  # fewer than 63 sessions of history
+
+    def test_fixed_b_uses_only_reports_usable_that_day(self):
+        self.assertEqual(b_case(short=6_000_000)["AAA"]["short"], 6_000_000)  # not the 2024-06-04 report
+        reports = [("2024-06-04", {"AAA": {"si": 6_000_000}})]
+        self.assertEqual(tb.fixed_b(DAY, reports, {1: [("2024-04-01", "2024-03-31", 20_000_000)]}, {"AAA": 1},
+                                    {"AAA": daily()}), {})
+        late = {1: [("2024-06-04", "2024-03-31", 20_000_000)]}  # shares filed after DAY
+        self.assertEqual(tb.fixed_b(DAY, [("2024-05-20", {"AAA": {"si": 6_000_000}})], late, {"AAA": 1},
+                                    {"AAA": daily()}), {})
+
+    def test_split_in_window_skips_and_counts(self):
+        counts = {}
+        reports = [("2024-05-20", {"AAA": {"si": 6_000_000}})]
+        idx = {1: [("2024-04-01", "2024-03-31", 20_000_000)]}
+        for jump, out in (((30, 2.4), True), ((30, 10.1), True), ((30, 2.6), False)):
+            with self.subTest(jump):
+                got = tb.fixed_b(DAY, reports, idx, {"AAA": 1}, {"AAA": daily(jump=jump)}, counts)
+                self.assertEqual("AAA" not in got, out)
+        self.assertEqual(counts["skipped_split"], 2)
+
+    def test_eligible_from_is_the_first_qualifying_minute(self):
+        bars = [("09:29", 3, 3, 3, 3, 5_000_000, 3), ("09:30", 3, 3, 3, 3, 1_000_000, 3),
+                ("09:31", 3, 3, 3, 3, 1_000_000, 3), ("09:32", 3, 3, 3, 3, 1, 3)]
+        self.assertEqual(tb.eligible_from("REGULAR", bars, 1_000_000, "09:30"), "09:32")  # 2.0 is not over 2
+        self.assertIsNone(tb.eligible_from("REGULAR", bars[:3], 1_000_000, "09:30"))
+        pre = [("04:00", 1.9, 1.9, 1.9, 1.9, 60_000, 1.9), ("04:01", 1.9, 1.9, 1.9, 1.9, 40_000, 1.9),
+               ("04:02", 2.1, 2.1, 2.1, 2.1, 1, 2.1), ("09:30", 5, 5, 5, 5, 9_000_000, 5)]
+        self.assertEqual(tb.eligible_from("PREMARKET", pre, 1_000_000, "09:30"), "04:02")  # 10% at 04:01, close 1.90
+        self.assertIsNone(tb.eligible_from("PREMARKET", pre[:2] + pre[3:], 1_000_000, "09:30"))
+
+    def test_open_rel_vol_same_window_of_14_sessions(self):
+        prior = sessions_before(DAY, 14)
+        rows = [(f"{d} 09:30", 1, 1, 1, 1, 1000, 1) for d in prior] + [(f"{d} 09:35", 1, 1, 1, 1, 9e9, 1) for d in prior]
+        rows += [(f"{DAY} 04:00", 1, 1, 1, 1, 9e9, 1), (f"{DAY} 09:30", 1, 1, 1, 1, 2000, 1)]
+        with mock.patch.object(tb.alpaca, "bars", return_value=sorted(rows)) as f:
+            self.assertEqual(tb.open_rel_vol("AAA", DAY, prior + [DAY]), 2.0)
+        self.assertEqual(f.call_args.args, ("AAA", tb.alpaca.utc(prior[0], "09:30"), tb.alpaca.utc(DAY, "09:35"), "5Min"))
+        with mock.patch.object(tb.alpaca, "bars", return_value=sorted(rows[1:])):
+            self.assertIsNone(tb.open_rel_vol("AAA", DAY, prior + [DAY]))  # 13 prior opening bars
+        self.assertIsNone(tb.open_rel_vol("AAA", DAY, prior[1:] + [DAY]))  # 13 prior sessions in the calendar
+
+
 if __name__ == "__main__":
     unittest.main()
