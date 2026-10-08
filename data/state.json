@@ -23137,6 +23137,62 @@
    "original": null
   },
   {
+   "acc": "0002029760-26-000010",
+   "cik": 1659494,
+   "ticker": "COE",
+   "company": "51Talk Online Education Group",
+   "insider": "Huang Jack Jiajia",
+   "role": "דירקטור, Chief Executive Officer",
+   "insider_cik": "2029760",
+   "od": true,
+   "weight": 1.5,
+   "first": "2026-09-17",
+   "last": "2026-09-25",
+   "shares": 2812140.0,
+   "value": 32333529.6,
+   "price": 11.4978,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-09-17",
+     304020.0,
+     11.48
+    ],
+    [
+     "2026-09-18",
+     1920.0,
+     11.5
+    ],
+    [
+     "2026-09-22",
+     378420.0,
+     11.5
+    ],
+    [
+     "2026-09-23",
+     897300.0,
+     11.5
+    ],
+    [
+     "2026-09-24",
+     2880.0,
+     11.5
+    ],
+    [
+     "2026-09-25",
+     1227600.0,
+     11.5
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 38427300.0,
+   "pct": 0.0732,
+   "original": null
+  },
+  {
    "acc": "0002035244-26-000009",
    "cik": 1076378,
    "ticker": "CX",
@@ -31580,6 +31636,941 @@
    "post": 21823.0,
    "pct": 0.5041,
    "original": null
+  },
+  {
+   "acc": "0001046179-26-000672",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Chen Chih-Ho",
+   "role": "Controller",
+   "insider_cik": "2114026",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 31.0,
+   "value": 2461.09,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     31.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 233.0,
+   "pct": 0.133,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000673",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Chen Pei-Hung",
+   "role": "VP",
+   "insider_cik": "2114027",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 43.0,
+   "value": 3413.77,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     43.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 1438.0,
+   "pct": 0.0299,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000674",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Chuang Juiping",
+   "role": "VP",
+   "insider_cik": "2114029",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 46.0,
+   "value": 3651.94,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     46.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 48.0,
+   "pct": 0.9583,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000675",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Fang Shu-Hua",
+   "role": "SVP and GC",
+   "insider_cik": "2113698",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 53.0,
+   "value": 4207.67,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     53.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 6761.0,
+   "pct": 0.0078,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000676",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Chang Tzonz-Sheng",
+   "role": "SVP",
+   "insider_cik": "2113710",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 51.0,
+   "value": 4048.89,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     51.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 52.0,
+   "pct": 0.9808,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000677",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Chin Yung-Pei",
+   "role": "EVP and Co-COO",
+   "insider_cik": "2117998",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 67.0,
+   "value": 5319.13,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     67.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 8573.0,
+   "pct": 0.0078,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000678",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Cao Min",
+   "role": "VP",
+   "insider_cik": "2113031",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 51.0,
+   "value": 4048.89,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     51.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 6824.0,
+   "pct": 0.0075,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000679",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Chuang Tzu-Sou",
+   "role": "VP",
+   "insider_cik": "2114030",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 46.0,
+   "value": 3651.94,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     46.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 47.0,
+   "pct": 0.9787,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000684",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "He Jun",
+   "role": "VP",
+   "insider_cik": "2113771",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 43.0,
+   "value": 3413.77,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     43.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 45.0,
+   "pct": 0.9556,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000685",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Hsu Kuo-Chin",
+   "role": "VP",
+   "insider_cik": "2114031",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 52.0,
+   "value": 4128.28,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     52.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 6781.0,
+   "pct": 0.0077,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000686",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Hou Yung-Chin",
+   "role": "SVP and Deputy Co-COO",
+   "insider_cik": "2113680",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 60.0,
+   "value": 4763.4,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     60.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 60.0,
+   "pct": 1.0,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000690",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Jang Syun-Ming",
+   "role": "VP",
+   "insider_cik": "2113688",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 46.0,
+   "value": 3651.94,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     46.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 5988.0,
+   "pct": 0.0077,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000691",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Huang Jen-Chau",
+   "role": "SVP and CFO",
+   "insider_cik": "2113699",
+   "od": true,
+   "weight": 1.5,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 28.0,
+   "value": 2222.92,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     28.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 3611.0,
+   "pct": 0.0078,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000692",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Hwang Yuan-Ko",
+   "role": "VP",
+   "insider_cik": "2114064",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 39.0,
+   "value": 3096.21,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     39.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 338.0,
+   "pct": 0.1154,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000696",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Ku Yao-Ching",
+   "role": "VP",
+   "insider_cik": "2135989",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 46.0,
+   "value": 3651.94,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     46.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 234.0,
+   "pct": 0.1966,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000697",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Lee Chun-Hsien",
+   "role": "SVP",
+   "insider_cik": "2113739",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 51.0,
+   "value": 4048.89,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     51.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 6092.0,
+   "pct": 0.0084,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000698",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Lin Chris Horng-Dar",
+   "role": "VP and CIO",
+   "insider_cik": "2113756",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 44.0,
+   "value": 3493.16,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     44.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 45.0,
+   "pct": 0.9778,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000702",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Lin Shyue-Shyh",
+   "role": "VP",
+   "insider_cik": "2114025",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 44.0,
+   "value": 3493.16,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     44.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 384.0,
+   "pct": 0.1146,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000703",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Lu Lee-Chung",
+   "role": "VP",
+   "insider_cik": "2114032",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 49.0,
+   "value": 3890.11,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     49.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 6534.0,
+   "pct": 0.0075,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000704",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Lu Chin-Sheng",
+   "role": "VP",
+   "insider_cik": "2135942",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 36.0,
+   "value": 2858.04,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     36.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 187.0,
+   "pct": 0.1925,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000708",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Tien Bor-Zen",
+   "role": "VP",
+   "insider_cik": "2114023",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 47.0,
+   "value": 3731.33,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     40.0,
+     79.39
+    ],
+    [
+     "2026-10-07",
+     7.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 445.0,
+   "pct": 0.1056,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000709",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Mii Yuh-Jier",
+   "role": "EVP and Co-COO",
+   "insider_cik": "2113729",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 68.0,
+   "value": 5398.52,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     68.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 8238.0,
+   "pct": 0.0083,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000710",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Wang Ying-Lang",
+   "role": "SVP",
+   "insider_cik": "2118010",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 52.0,
+   "value": 4128.28,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     52.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 6551.0,
+   "pct": 0.0079,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000714",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Wu Yi-Huang",
+   "role": "VP",
+   "insider_cik": "2136731",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 39.0,
+   "value": 3096.21,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     39.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 199.0,
+   "pct": 0.196,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000715",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Wei Che-Chia",
+   "role": "דירקטור, Chairman and CEO",
+   "insider_cik": "2113717",
+   "od": true,
+   "weight": 1.5,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 144.0,
+   "value": 11432.16,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     144.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 18280.0,
+   "pct": 0.0079,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000716",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Wu Shien-Yang",
+   "role": "SVP",
+   "insider_cik": "2113784",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 53.0,
+   "value": 4207.67,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     53.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 6915.0,
+   "pct": 0.0077,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000721",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Yoo Chue-San",
+   "role": "VP",
+   "insider_cik": "2113775",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 50.0,
+   "value": 3969.5,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     50.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 6744.0,
+   "pct": 0.0074,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000722",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Zhang Kevin Xiaoqiang",
+   "role": "SVP and Deputy Co-COO",
+   "insider_cik": "2115263",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 59.0,
+   "value": 4684.01,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     59.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 7406.0,
+   "pct": 0.008,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000723",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Yeap Choh Fei",
+   "role": "SVP",
+   "insider_cik": "2113762",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 52.0,
+   "value": 4128.28,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     52.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 53.0,
+   "pct": 0.9811,
+   "original": null
+  },
+  {
+   "acc": "0001046179-26-000724",
+   "cik": 1046179,
+   "ticker": "TSM",
+   "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "insider": "Yuan Lipen",
+   "role": "VP",
+   "insider_cik": "2114024",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-07",
+   "last": "2026-10-07",
+   "shares": 40.0,
+   "value": 3175.6,
+   "price": 79.39,
+   "filed": "2026-10-08",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-07",
+     40.0,
+     79.39
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 1341.0,
+   "pct": 0.0298,
+   "original": null
   }
  ],
  "alerted": {
@@ -32272,6 +33263,9 @@
    "0002120886-26-000001",
    "0002119332-26-000001",
    "0001445826-26-000013"
+  ],
+  "1659494": [
+   "0002029760-26-000010"
   ]
  },
  "info": [
@@ -35885,6 +36879,22 @@
    "acc": "0001493152-26-046202",
    "cik": 1357459,
    "last": "2026-10-06",
+   "kinds": {
+    "exercise": 1
+   }
+  },
+  {
+   "acc": "0002029760-26-000010",
+   "cik": 1659494,
+   "last": "2026-10-01",
+   "kinds": {
+    "exercise": 1
+   }
+  },
+  {
+   "acc": "0001104659-26-114515",
+   "cik": 1659494,
+   "last": "2026-10-01",
    "kinds": {
     "exercise": 1
    }
@@ -41724,6 +42734,43 @@
    "0002156537-26-000004",
    "0002156592-26-000002",
    "0002156859-26-000004"
+  ],
+  "20261008": [
+   "0001046179-26-000672",
+   "0001046179-26-000673",
+   "0001046179-26-000674",
+   "0001046179-26-000675",
+   "0001046179-26-000676",
+   "0001046179-26-000677",
+   "0001046179-26-000678",
+   "0001046179-26-000679",
+   "0001046179-26-000684",
+   "0001046179-26-000685",
+   "0001046179-26-000686",
+   "0001046179-26-000690",
+   "0001046179-26-000691",
+   "0001046179-26-000692",
+   "0001046179-26-000696",
+   "0001046179-26-000697",
+   "0001046179-26-000698",
+   "0001046179-26-000702",
+   "0001046179-26-000703",
+   "0001046179-26-000704",
+   "0001046179-26-000708",
+   "0001046179-26-000709",
+   "0001046179-26-000710",
+   "0001046179-26-000714",
+   "0001046179-26-000715",
+   "0001046179-26-000716",
+   "0001046179-26-000721",
+   "0001046179-26-000722",
+   "0001046179-26-000723",
+   "0001046179-26-000724",
+   "0001104659-26-114488",
+   "0001104659-26-114506",
+   "0001104659-26-114515",
+   "0002029760-26-000010",
+   "0002122411-26-000002"
   ]
  },
  "sent": {
@@ -43526,12 +44573,6 @@
  },
  "v": 2,
  "slots": {
-  "2026-09-30": [
-   "pre1",
-   "pre2",
-   "post1",
-   "post2"
-  ],
   "2026-10-01": [
    "pre1",
    "pre2",
@@ -43560,13 +44601,16 @@
    "pre2",
    "post1",
    "post2"
+  ],
+  "2026-10-08": [
+   "pre1"
   ]
  },
  "intraday": {
-  "at": "2026-10-07 23:30 UTC",
-  "slot": "post2",
-  "filings": 108,
-  "parsed": 108,
-  "alerts": 0
+  "at": "2026-10-08 11:30 UTC",
+  "slot": "pre1",
+  "filings": 35,
+  "parsed": 35,
+  "alerts": 1
  }
 }
