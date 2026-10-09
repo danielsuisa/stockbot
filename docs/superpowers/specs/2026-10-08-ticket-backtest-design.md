@@ -179,3 +179,24 @@ verdict.
 - Verdict for the selected variant on 2024-02-01 → the last complete session: ≥ 100 trades, mean net R > 0 with
   t ≥ 2, above the 95th percentile of 20 random-side means, and mean net R > 0 in 2024, 2025 and 2026 separately.
 - A GO is a reason to paper-trade it forward in the bot, not to trade it.
+
+## 13. Realism check of the selected ZBA variant (pre-registered 2026-10-09, after section 12's run, before this check)
+
+Section 12 selected K10s and its verdict passed (2,007 trades, +0.284R, t 2.92). An independent review found that
+three optimistic modelling choices could carry that result: (1) the fill minute's stop is decided by the bar-path
+assumption, and 125 K10s trades survive only because of it; (2) Rule 201 (the short-sale restriction after a 10%
+drop) is not modelled, though it blocks short sales at or below the bid; (3) no slippage beyond the half spread.
+These are corrections to the fill model, not new variants: nothing is re-selected.
+
+- Tick-level fill minute, for every filled K10s trade in both periods: SIP trades of the trigger minute (round lots,
+  conditions that update the last sale). The stop triggers on the first trade at or through the level; the order
+  fills at the next trade (latency), or the trigger trade when none follows in that minute; then the stop loss
+  (fill ∓ D) is checked on the remaining trades of that minute and, if hit, fills at the next trade. From the next
+  minute on, the bar model of section 11. A trade whose trigger minute has no round-lot trade at the level is
+  dropped (counted).
+- Rule 201: a short is dropped when the previous session's low was ≤ 90% of the close before it, or the day's
+  regular-session low before the fill is ≤ 90% of the previous close (counted).
+- Costs as in section 11. Reported, not gated: +$0.005 and +$0.01 a share each side.
+- **Realistic verdict** for K10s on 2024-02-01 onward, the four checks of section 12 on the corrected trades. If it
+  fails, the conclusion is NO-GO for the whole ZBA line (every other variant was already negative on 2024+ under the
+  optimistic model).
