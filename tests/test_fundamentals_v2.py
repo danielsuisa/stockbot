@@ -4,6 +4,7 @@ import json
 import unittest
 from unittest import mock
 
+import msgrules
 from bot import common, fundamentals as F
 
 TODAY = dt.date(2026, 9, 24)
@@ -80,7 +81,7 @@ class Base(unittest.TestCase):
                 mock.patch.object(F, "quote", return_value=quote), mock.patch.object(F, "_today", return_value=today):
             res = F.analyze(1, "ACME", sic)
         text = "\n".join(F.format_he(res))
-        self.assertEqual(common.rtl_bad_lines(text), [], text)
+        msgrules.check(self, text)
         self.assertLessEqual(common.visible(text), 1500, text)
         return res, text
 
@@ -107,16 +108,11 @@ class Ttm(Base):
         self.assertAlmostEqual(res["alt"]["z"], z)
         self.assertIn("m", res["ben"])  # Beneish stays on the annual figures
         self.assertAlmostEqual(res["ben"]["idx"]["SGI"], 416 / 391)
-        for want in (
-                "<b>🧮 ציונים פורנזיים מדוחות <code>10-K</code> ו־<code>10-Q</code></b>",
-                "<b>פיוטרוסקי F: <code>9/9</code></b> (TTM עד <code>2026-06-27</code>, <code>10-Q</code> הוגש"
-                " <code>2026-07-31</code>)",
-                "· אזור בטוח (TTM עד <code>2026-06-27</code>, <code>10-Q</code> הוגש <code>2026-07-31</code>)",
-                "· סיכון נמוך (<code>10-K</code> FY <code>2025-09-27</code>, הוגש <code>2025-10-31</code>)",
-                "(TTM) עד <code>2026-06-27</code>: הכנסות <code>467$</code>",
-                "לא הונפקו מניות (ממוצע משוקלל מתחילת השנה ב־<code>10-Q</code>, לא TTM): <code>14.700B</code> מול"
-                " <code>15.000B</code>"):
+        for want in ("ב־4 הרבעונים עד <code>27.6.2026</code>: הכנסות: <code>467</code> דולר",
+                     "פיוטרוסקי (איכות): <code>9</code> מתוך <code>9</code>, חזק", "אלטמן (סיכון פשיטת רגל): אזור בטוח",
+                     "בנייש (תמרון רווחים): סיכון נמוך לתמרון רווחים"):
             self.assertIn(want, text)
+        self.assertEqual(res["alt"]["price"], 50.0)  # market value from the cover-page shares x price (in Z above)
         self.assertNotIn("⚠️", text)  # fresh, not fast-growing, not young
 
     def test_amended_10q_is_the_basis(self):
@@ -124,7 +120,7 @@ class Ttm(Base):
         res, text = self.run_it(companyfacts(extra=amend, old=True))
         self.assertEqual(res["ttm"]["v"]["rev"][0], 416 + 365 - 313)  # the latest filing wins per period
         self.assertEqual(res["basis"]["pio"], {"kind": "TTM", "end": E, "form": "10-Q/A", "filed": "2026-08-20"})
-        self.assertIn("(TTM עד <code>2026-06-27</code>, <code>10-Q/A</code> הוגש <code>2026-08-20</code>)", text)
+        self.assertIn("ב־4 הרבעונים עד <code>27.6.2026</code>", text)
 
     def test_piotroski_falls_back_to_fy_when_a_ttm_input_is_missing(self):
         drop = lambda r: r[0] == "NetCashProvidedByUsedInOperatingActivities" and r[4] == "10-Q" and r[3] == E1
@@ -133,9 +129,9 @@ class Ttm(Base):
         self.assertEqual(res["basis"]["pio"]["kind"], "FY")
         self.assertEqual(res["basis"]["alt"]["kind"], "TTM")  # Altman needs no cash flow
         self.assertEqual(res["pio"][0]["vals"], [112 / 365])  # FY: NI 2025 / assets at the FY 2024 end
-        self.assertIn("<b>פיוטרוסקי F: <code>8/9</code></b> (<code>10-K</code> FY <code>2025-09-27</code>, הוגש"
-                      " <code>2025-10-31</code>)", text)
-        self.assertIn("לא הונפקו מניות (ממוצע משוקלל): ", text)
+        self.assertEqual(res["basis"]["pio"], {"kind": "FY", "end": "2025-09-27", "form": "10-K", "filed": "2025-10-31"})
+        self.assertIn("פיוטרוסקי (איכות): <code>8</code> מתוך <code>9</code>, חזק", text)
+        self.assertIn("תזרים מפעילות: <code>111</code> דולר (שנתי)", text)  # no TTM cash flow: the yearly one, said so
 
     def test_altman_falls_back_to_fy_when_a_ttm_input_is_missing(self):
         drop = lambda r: r[0] == "OperatingIncomeLoss" and r[4] == "10-Q"
@@ -143,8 +139,8 @@ class Ttm(Base):
         self.assertEqual((res["basis"]["alt"]["kind"], res["basis"]["pio"]["kind"]), ("FY", "TTM"))
         z = 1.2 * (148 - 166) / 359 + 1.4 * -14 / 359 + 3.3 * 133 / 359 + 0.6 * 50 * 14.6 / 285 + 1.0 * 416 / 359
         self.assertAlmostEqual(res["alt"]["z"], z)
-        line = next(s for s in text.splitlines() if s.startswith("<b>אלטמן"))
-        self.assertTrue(line.endswith("(<code>10-K</code> FY <code>2025-09-27</code>, הוגש <code>2025-10-31</code>)"))
+        self.assertEqual(res["basis"]["alt"], {"kind": "FY", "end": "2025-09-27", "form": "10-K", "filed": "2025-10-31"})
+        self.assertIn("אלטמן (סיכון פשיטת רגל): אזור בטוח", text)
 
     def test_long_term_debt_zero_rule_does_not_hide_a_lost_input(self):
         drop = lambda r: r[0] == "LongTermDebtNoncurrent" and r[4] == "10-Q"
@@ -159,8 +155,8 @@ class Ttm(Base):
         res, text = self.run_it(companyfacts(drop, old=True), today=dt.date(2026, 1, 15))
         self.assertIsNone(res["ttm"])
         self.assertEqual({b["kind"] for b in res["basis"].values()}, {"FY"})
-        self.assertIn("<b>🧮 ציונים פורנזיים מדוחות <code>10-K</code></b>", text)
-        self.assertNotIn("TTM", text)
+        self.assertIn("בשנת הכספים שהסתיימה ב־<code>27.9.2025</code>", text)
+        self.assertNotIn("4 הרבעונים", text)
 
     def test_10q_after_a_missing_10k_is_not_bridged(self):
         res, text = self.run_it(companyfacts(lambda r: r[5] == "2025-10-31", old=True))  # FY2025 10-K never filed
@@ -169,14 +165,14 @@ class Ttm(Base):
         self.assertEqual(res["ttm"]["v"]["ebit"][0], 123 + 101 - 94)
         self.assertEqual(res["basis"]["alt"], {"kind": "TTM", "end": E1, "form": "10-Q", "filed": "2026-07-31"})
         self.assertEqual(res["basis"]["pio"]["kind"], "FY")  # no YTD two years before E1 -> TTM would lose criteria
-        self.assertIn("(TTM עד <code>2025-06-28</code>, <code>10-Q</code> הוגש <code>2026-07-31</code>)", text)
+        self.assertIn("ב־4 הרבעונים עד <code>28.6.2025</code>", text)
 
     def test_bank_uses_ttm_piotroski_only(self):
         res, text = self.run_it(companyfacts(old=True), sic=6022)
         self.assertTrue(res["fin"] and "alt" not in res)
         self.assertEqual(set(res["basis"]), {"pio"})
         self.assertEqual((res["basis"]["pio"]["kind"], res["newest"], res["stale"]), ("TTM", "2026-07-31", False))
-        self.assertIn("אלטמן ובנייש לא חושבו", text)
+        self.assertIn("אלטמן ובנייש לא מתאימים לבנק", text)
 
     def test_derived_ttm_input_is_noted(self):  # gross profit tagged in the 10-K only -> TTM derives it, and says so
         gp = [("GrossProfit", r - c, FY[end][0], end, "10-K", FY[end][1])
@@ -184,7 +180,7 @@ class Ttm(Base):
         res, text = self.run_it(companyfacts(extra=gp, old=True))
         self.assertEqual((res["src"]["gp"], res["ttm"]["src"]["gp"]), ("GrossProfit", "rev-cogs"))
         self.assertEqual(res["basis"]["pio"]["kind"], "TTM")
-        self.assertIn("ℹ️ רווח גולמי חושב: הכנסות פחות <code>CostOfRevenue</code>", text)
+        self.assertIn("gp", res["notes"])  # the message no longer says so; the data does
 
     def test_cover_page_shares_missing_or_stale(self):
         cf = companyfacts(old=True)
@@ -196,7 +192,9 @@ class Ttm(Base):
                                                               "filed": "2024-02-01"}]}}
         res, text = self.run_it(cf)
         self.assertEqual(res["alt"]["why"], "stale")
-        self.assertIn("מספר המניות בעמוד השער ישן (<code>2024-01-31</code>)", text)
+        self.assertEqual((res["alt"]["kind"], res["alt"]["shares_date"]), ("Z''", "2024-01-31"))  # stale: book value
+        self.assertAlmostEqual(res["alt"]["z"], 6.56 * 10 / 383 + 3.26 * 5 / 383 + 6.72 * 154 / 383 + 1.05 * 93 / 290)
+        self.assertIn("אלטמן (סיכון פשיטת רגל): אזור בטוח", text)
 
     def test_chain_helpers(self):
         q = {("2025-01-01", "2025-06-30"): 1, ("2025-04-01", "2025-06-30"): 2, ("2024-01-01", "2024-06-30"): 3,
@@ -214,10 +212,10 @@ class Freshness(Base):
         filed = dt.date(2025, 10, 31)
         res, text = self.run_it(cf, today=filed + dt.timedelta(274))
         self.assertEqual((res["newest"], res["stale"]), ("2025-10-31", False))
-        self.assertNotIn("ישנים", text)
+        self.assertNotIn("הדוח האחרון ישן", text)
         res, text = self.run_it(cf, today=filed + dt.timedelta(275))
         self.assertTrue(res["stale"])
-        self.assertIn("⚠️ נתונים פונדמנטליים ישנים (הדוח האחרון הוגש <code>2025-10-31</code>)", text)
+        self.assertIn("⚠️ הדוח האחרון ישן: הוגש ב־<code>31.10.2025</code>.", text)
 
     def test_ttm_filing_counts_as_newest(self):
         res, text = self.run_it(companyfacts(old=True), today=dt.date(2027, 4, 1))  # 244 days after the 10-Q
@@ -230,17 +228,15 @@ class BeneishCaveat(Base):
         extra = [("Revenues", 520, "2024-09-29", "2025-09-27", "10-K", "2025-10-31")]  # SGI 520/391 = 1.33
         res, text = self.run_it(companyfacts(fast, extra, old=True))
         self.assertEqual(res["ben"]["caveat"], {"growth": 520 / 391 - 1, "first": None})
-        self.assertIn("⚠️ סיכון גבוה לחיובי־שגוי בבנייש: צמיחת הכנסות של <code>+33%</code> בשנה", text)
-        self.assertNotIn("5 שנים", text)
+        self.assertIn("⚠️ בחברה צעירה או שצומחת מהר, בנייש מתריע לא פעם לשווא.", text)
         res, text = self.run_it(companyfacts(fast, extra))  # earliest filing 2023-11-03 -> under 5 years
         self.assertEqual(res["ben"]["caveat"], {"growth": 520 / 391 - 1, "first": "2023"})
-        self.assertIn("<code>+33%</code> בשנה · כנראה פחות מ־5 שנים בבורסה", text)
-        self.assertIn("<code>2023</code>, הערכה)", text)
+        self.assertIn("בחברה צעירה או שצומחת מהר", text)
 
     def test_young_only_and_boundaries(self):
         res, text = self.run_it(companyfacts())
         self.assertEqual((res["first_filed"], res["ben"]["caveat"]), ("2023-11-03", {"growth": None, "first": "2023"}))
-        self.assertNotIn("צמיחת הכנסות", text)
+        self.assertIn("בחברה צעירה או שצומחת מהר", text)
         res, _ = self.run_it(companyfacts(), today=dt.date(2023, 11, 3) + dt.timedelta(F.YOUNG_DAYS))
         self.assertNotIn("caveat", res["ben"])  # 5 years after the first filing: no longer young
         flat = [("Revenues", 391 * 1.3, "2024-09-29", "2025-09-27", "10-K", "2025-10-31")]
@@ -249,20 +245,17 @@ class BeneishCaveat(Base):
 
 
 class Formatting(Base):
-    def test_basis_he(self):
-        self.assertEqual(F._basis_he({"kind": "FY", "end": "2025-09-27", "form": None, "filed": None}),
-                         " (<code>10-K</code> FY <code>2025-09-27</code>)")
-        self.assertEqual(F._basis_he({"kind": "TTM", "end": "2026-06-27", "form": None, "filed": None}),
-                         " (TTM עד <code>2026-06-27</code>)")
-
     def test_missing_scores_still_show_basis(self):
         keep = ("Revenues", "NetIncomeLoss", "NetCashProvidedByUsedInOperatingActivities")
         res, text = self.run_it(companyfacts(lambda r: r[0] not in keep, old=True), quote=(None, 1.0))
         self.assertNotIn("z", res["alt"])
-        self.assertIn("<b>בנייש M:</b> חסר", text)
-        self.assertEqual(text.count("(<code>10-K</code> FY <code>2025-09-27</code>, הוגש <code>2025-10-31</code>)"), 2)
-        line = next(s for s in text.splitlines() if s.startswith("<b>אלטמן Z:</b> חסר"))
-        self.assertTrue(line.endswith(" (<code>10-K</code> FY <code>2025-09-27</code>)"))  # no balance sheet: no date
+        self.assertNotIn("m", res["ben"])
+        self.assertEqual({k: b["kind"] for k, b in res["basis"].items()}, {"pio": "FY", "alt": "FY", "ben": "FY"})
+        self.assertIn("אלטמן (סיכון פשיטת רגל): לא חושב, חסרים נתונים", text)
+        self.assertIn("בנייש (תמרון רווחים): לא חושב, חסרים נתונים", text)
+        line = next(x for x in text.split("\n") if x.startswith("פיוטרוסקי"))
+        self.assertIn("לא חושבו", line)  # part of the test only: no strong / weak verdict on it
+        self.assertFalse(any(w in line for w in ("חזק", "חלש", "בינוני")), line)
 
     def test_zero_denominators(self):
         zero = [("AccountsReceivableNetCurrent", 0, None, "2024-09-28", "10-K", "2025-10-31"),
@@ -270,8 +263,12 @@ class Formatting(Base):
         drop = lambda r: r[4] == "10-Q" or (r[0] == "AccountsReceivableNetCurrent" and r[3] == "2024-09-28") or \
             (r[0] == "Liabilities" and r[3] == "2025-09-27")
         res, text = self.run_it(companyfacts(drop, zero, old=True))
-        self.assertIn("<b>אלטמן Z:</b> לא ניתן לחישוב (מכנה אפס) (<code>10-K</code> FY", text)
-        self.assertIn("<b>בנייש M:</b> לא ניתן לחישוב (מכנה אפס ב־<code>DSRI</code>) (<code>10-K</code> FY", text)
+        self.assertNotIn("z", res["alt"])
+        self.assertEqual(res["alt"]["miss"], [])  # nothing missing: the score is undefined (zero denominator)
+        self.assertNotIn("m", res["ben"])
+        self.assertIsNone(res["ben"]["idx"]["DSRI"])
+        self.assertIn("אלטמן (סיכון פשיטת רגל): לא חושב, חסרים נתונים", text)
+        self.assertIn("בנייש (תמרון רווחים): לא חושב, חסרים נתונים", text)
 
     def test_errors(self):
         for cf, key in ((None, "nofacts"), ({"facts": {"dei": {}}}, "nogaap"),
@@ -280,7 +277,7 @@ class Formatting(Base):
             self.assertEqual(res["error"], key)
             self.assertIn(F.ERR[key], text)
 
-    def test_long_worst_case_stays_under_budget(self):
+    def test_long_worst_case_stays_short(self):
         gone = ("OperatingIncomeLoss", "Liabilities", "LongTermDebtNoncurrent", "SellingGeneralAndAdministrativeExpense")
         drop = lambda r: r[0] in gone or (r[0] == "Revenues" and r[3] == "2025-09-27")
         pretax = F.FLOW["ebit"][2]  # the longest fallback tag name
@@ -295,9 +292,7 @@ class Formatting(Base):
         self.assertEqual(sorted(res["notes"]), ["gp", "ltd0", "sga", "tl"])
         self.assertEqual(set(res["ben"]["caveat"]), {"growth", "first"})
         self.assertEqual(res["basis"]["pio"]["kind"], "TTM")
-        self.assertNotIn(F.TTM_LINE, text)  # over budget: the optional TTM summary line is the one dropped
-        with mock.patch.object(F, "BUDGET", 10 ** 6):
-            self.assertIn(F.TTM_LINE, "\n".join(F.format_he(res)))
+        self.assertIn("⚠️ בחברה צעירה או שצומחת מהר", text)
 
 
 class Quote(unittest.TestCase):

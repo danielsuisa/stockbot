@@ -72,7 +72,7 @@ def quote(ticker, since=None):
     _load_cache()
     c = CACHE.get(ticker)
     if c:
-        common.stamp("price", f"{c['asof']} (⚠ מטמון)")
+        common.stamp("price", f"{common.il_when(c['asof'])} (שמור)")
         return {"price": c["price"], "split": 1.0, "asof": c["asof"], "source": "cache"}
     return {"price": None, "split": 1.0, "asof": None, "source": None}
 
@@ -110,18 +110,9 @@ def regime():
 
 
 def regime_line(r):
-    """One Hebrew line for an alert: the tag, its inputs, and what it means for cluster quality."""
-    from bot.common import code
-    pct = lambda x: code(f"{x * 100:+.1f}%") if x is not None else "חסר"
-    tag = r.get("tag") if r.get("tag") in TAGS else "unknown"
-    head = f"📈 מצב שוק: <b>{TAGS[tag]}</b>"
-    if tag == "unknown" or r.get("vix") is None or r.get("spy20") is None:
-        return head + (" (נתוני Yahoo לא זמינים)" if tag == "unknown" else "")
-    level = f"{r['vix']:.1f}"
-    vol = f"{'VIX' if r.get('vol_source') == 'VIX' else 'תנודתיות SPY'} {code(level)}"
-    why = {"panic": " — אשכול בזמן ירידות רוחב איכותי יותר", "euphoria": " — בזמן אופוריה האיכות נמוכה יותר",
-           "normal": ""}[tag]
-    return f"{head} (SPY 20 יום {pct(r['spy20'])} · IWM 20 יום {pct(r.get('iwm20'))} · {vol}){why}"
+    """One Hebrew line for an alert, only when the market mood moved the quality score (panic / euphoria); "" else."""
+    return {"panic": "📉 השוק בירידות חדות: רכישה של בעלי עניין בזמן כזה נחשבת חזקה יותר.",
+            "euphoria": "📈 השוק באופוריה: רכישה של בעלי עניין בזמן כזה נחשבת חלשה יותר."}.get(r.get("tag"), "")
 
 
 def liquidity(ticker):

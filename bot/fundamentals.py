@@ -3,13 +3,12 @@ Annual 10-K figures; Piotroski and Altman are refreshed to trailing-12-months (T
 import datetime as dt
 
 from bot import common, market
-from bot.common import code, money
+from bot.common import code
 
 FORMS = {"10-K", "10-K/A", "10-KT", "10-KT/A"}
 QFORMS = {"10-Q", "10-Q/A"}
 Q_MAX_DAYS = 300  # a 10-Q ends at most ~9 months (Q3 of a 53-week year: ~280 days) after the FY end it follows
 STALE_DAYS = 274  # ~9 months: older than this, the newest filing used is flagged
-BUDGET = 1500  # visible chars for the whole section; past it the optional TTM summary line is dropped
 YOUNG_DAYS = 1826  # ~5 years: earliest XBRL filing newer than this -> Beneish false-positive caveat
 SGI_HIGH = 1.30
 FLOW = {  # duration items, fallback tags in priority order
@@ -376,129 +375,59 @@ LABEL = {"roa": "תשואה על הנכסים חיובית", "cfo": "תזרים 
          "droa": "תשואה על הנכסים השתפרה", "accr": "תזרים מפעילות גבוה מהרווח הנקי",
          "lev": "מינוף לא עלה (חוב לזמן ארוך/נכסים)", "liq": "יחס שוטף עלה",
          "sh": "לא הונפקו מניות (ממוצע משוקלל)", "gm": "שיעור הרווח הגולמי עלה", "at": "מחזור הנכסים עלה"}
-TTM_LINE = "ארבעת הרבעונים האחרונים (TTM)"
-LABEL_SHQ = f"לא הונפקו מניות (ממוצע משוקלל מתחילת השנה ב־{code('10-Q')}, לא TTM)"  # not additive
-FMT = {"pct": lambda a: f"{a * 100:.1f}%", "usd": money, "x": lambda a: f"{a:.2f}",
-       "qty": lambda a: f"{a / 1e9:.3f}B" if a >= 1e9 else f"{a / 1e6:.2f}M"}
-ERR = {"nofacts": "אין נתוני XBRL של SEC לחברה זו (companyfacts לא פורסם).",
-       "nogaap": f"אין עדיין נתוני {code('us-gaap')} מדוח שנתי (חברה חדשה בבורסה, או חברה זרה המדווחת לפי IFRS"
-                 f" בטופס {code('20-F')}/{code('40-F')}).",
-       "no10k": f"לא נמצאו נתונים שנתיים מדוחות {code('10-K')} (ייתכן חברה זרה המגישה {code('20-F')})."}
+ERR = {"nofacts": "אין לחברה נתונים כספיים ב־SEC.",
+       "nogaap": "אין עדיין דוח שנתי אמריקאי (חברה חדשה בבורסה, או חברה זרה שמדווחת אחרת).",
+       "no10k": "לא נמצא דוח שנתי אמריקאי (ייתכן שזו חברה זרה)."}
 
 
-def _c(a, f=money):
-    return "חסר" if a is None else code(f(a))
+def altman_zone(kind, z):
+    """Altman Z (public company) or Z'' (book equity) -> its zone in words."""
+    hi, lo = (2.99, 1.81) if kind == "Z" else (2.60, 1.10)
+    return "אזור בטוח" if z > hi else "אזור אפור" if z >= lo else "אזור מצוקה"
 
 
-def _tags(ts, cap=4):
-    more = f" ועוד {code(len(ts) - cap)}" if len(ts) > cap else ""
-    return "חסר " + ", ".join(code(t) if t.isascii() else t for t in ts[:cap]) + more
+def beneish_zone(m):
+    return "סיכון גבוה לתמרון רווחים" if m > -1.78 else "אזור ביניים" if m > -2.22 else "סיכון נמוך לתמרון רווחים"
 
 
-def _basis_he(b):
-    """' (10-K FY 2025-09-27, הוגש 2025-10-31)' or ' (TTM עד 2026-06-27, 10-Q הוגש 2026-07-31)'."""
-    filed = f"הוגש {code(b['filed'])}" if b["filed"] else ""
-    if b["kind"] == "TTM":
-        return f" (TTM עד {code(b['end'])}" + (f", {code(b['form'])} {filed}" if filed else "") + ")"
-    return f" ({code(b['form'] or '10-K')} FY {code(b['end'])}" + (f", {filed}" if filed else "") + ")"
-
-
-def _caveat(c):
-    """Beneish false-positive warning: revenue growth above 30% and/or a company public for under ~5 years."""
-    why = []
-    if c["growth"] is not None:
-        why.append(f"צמיחת הכנסות של {code('%+.0f%%' % (c['growth'] * 100))} בשנה")
-    if c["first"]:
-        why.append(f"כנראה פחות מ־5 שנים בבורסה (דיווח ראשון ב־XBRL של SEC: {code(c['first'])}, הערכה)")
-    return "⚠️ סיכון גבוה לחיובי־שגוי בבנייש: " + " · ".join(why)
+def _flow(name, x, neg=None):
+    """A yearly figure in words; a negative one says so in words ("הפסד נקי"), never with a minus sign."""
+    if x is None:
+        return f"{name}: חסר"
+    return f"{neg if x < 0 and neg else name}: {common.amount(x)}" + (" (שלילי)" if x < 0 and not neg else "")
 
 
 def format_he(res):
-    """Result dict -> Hebrew Telegram HTML lines (RTL-safe, <= ~1500 visible chars)."""
-    basis = res.get("basis", {})
-    ttm = any(b["kind"] == "TTM" for b in basis.values())
-    out = [f"<b>🧮 ציונים פורנזיים מדוחות {code('10-K')}" + (f" ו־{code('10-Q')}" if ttm else "") + "</b>"]
+    """Result dict -> short Hebrew lines: the year's figures, then one plain verdict per score (details stay in the
+    numbers behind them, not in the message)."""
+    out = ["🧮 <b>בריאות פיננסית</b>"]
     if res.get("error"):
         return out + ["ℹ️ " + ERR[res["error"]]]
-    fy, v, p = res["fy"], res["v"], res["pio"]
-    out.append(f"שנות כספים: {code(fy[0])}" + (f" מול {code(fy[1])}" if len(fy) > 1 else " (אין שנה קודמת)")
-               + f" ({code(res['form'])})")
-    out.append(f"הכנסות {_c(v['rev'][0])} · רווח נקי {_c(v['ni'][0])} · תזרים מפעילות {_c(v['cfo'][0])}"
-               f" · נכסים {_c(v['ta'][0])}")
-    if ttm:
-        t = res["ttm"]["v"]
-        out.append(f"{TTM_LINE} עד {code(res['ttm']['end'])}: הכנסות {_c(t['rev'][0])} · רווח נקי {_c(t['ni'][0])}"
-                   f" · תזרים מפעילות {_c(t['cfo'][0])}")
+    ttm = res.get("ttm")
+    when = (f"ב־4 הרבעונים עד {code(common.il_date(ttm['end']))}" if ttm else
+            f"בשנת הכספים שהסתיימה ב־{code(common.il_date(res['fy'][0]))}")
+
+    def fig(f, name, neg=None):  # the 4-quarter figure, else the yearly one (said so)
+        x = ttm["v"][f][0] if ttm else None
+        if x is None and ttm and res["v"][f][0] is not None:
+            return _flow(name, res["v"][f][0], neg) + " (שנתי)"
+        return _flow(name, x if ttm else res["v"][f][0], neg)
+    out.append(f"{when}: " + " · ".join((fig("rev", "הכנסות"), fig("ni", "רווח נקי", "הפסד נקי"),
+                                         fig("cfo", "תזרים מפעילות"))))
     if res.get("stale"):
-        out.append(f"⚠️ נתונים פונדמנטליים ישנים (הדוח האחרון הוגש {code(res['newest'])})")
+        out.append(f"⚠️ הדוח האחרון ישן: הוגש ב־{code(common.il_date(res['newest']))}.")
+    p = res["pio"]
     n, k = sum(x["ok"] is not None for x in p), sum(x["ok"] is True for x in p)
-    out.append(f"<b>פיוטרוסקי F: {code(f'{k}/{n}')}</b>" + _basis_he(basis["pio"])
-               + (f" · {code(9 - n)} קריטריונים חסרים" if n < 9 else ""))
-    for x in p:
-        label = LABEL_SHQ if x["id"] == "sh" and basis["pio"]["kind"] == "TTM" else LABEL[x["id"]]
-        if x["ok"] is None:
-            out.append(f"➖ {label}: " + (_tags(x["miss"]) if x["miss"] else "לא ניתן לחישוב (מכנה אפס)"))
-        else:
-            vals = " מול ".join(code(FMT[x["kind"]](a)) for a in x["vals"])
-            out.append(f"{'✅' if x['ok'] else '❌'} {label}: {vals}")
+    level = ", " + ("חזק" if k >= 7 else "חלש" if k <= 3 else "בינוני") if n == 9 else ""  # no verdict on part of it
+    out.append(f"פיוטרוסקי (איכות): {code(k)} מתוך {code(n)}{level}" + (f" ({code(9 - n)} לא חושבו)" if n < 9 else ""))
+    bad = [LABEL[x["id"]] for x in p if x["ok"] is False]
+    if bad:
+        out.append("❌ לא עמדה ב: " + ", ".join(bad) + ".")
     if res["fin"]:
-        sic = f"SIC {res['sic']}"
-        out.append(f"⏭️ אלטמן ובנייש לא חושבו: חברה פיננסית ({code(sic)}) – המודלים לא מתאימים למאזן של בנקים,"
-                   " חברות ביטוח וחברות השקעה.")
-        return _fit(out + _notes(res))
+        return out + ["ℹ️ אלטמן ובנייש לא מתאימים לבנק, לחברת ביטוח או לחברת השקעות."]
     a, b = res["alt"], res["ben"]
-    if "z" not in a:
-        out.append("<b>אלטמן Z:</b> " + (_tags(a["miss"]) if a["miss"] else "לא ניתן לחישוב (מכנה אפס)")
-                   + _basis_he(basis["alt"]))
-    else:
-        hi, lo = (2.99, 1.81) if a["kind"] == "Z" else (2.60, 1.10)
-        zone = "אזור בטוח" if a["z"] > hi else "אזור אפור" if a["z"] >= lo else "אזור מצוקה"
-        z, e = f"{a['z']:.2f}", a["ebit_tag"]
-        out.append(f"<b>אלטמן {code(a['kind'])}: {code(z)}</b> · {zone}" + _basis_he(basis["alt"]))
-        ebit = (f"רווח תפעולי: {code(e)}" if e == TAGS["ebit"][0] else
-                f"רווח תפעולי ({code(TAGS['ebit'][0])}) חסר, שימש רווח לפני מס: {code(e)}")
-        if a["kind"] == "Z":
-            px = common.price(a["price"]) + (f" ({a['px']})" if a["px"] != res["ticker"] else "")
-            split = f" (מותאם לפיצול מניות: {code('×%.4g' % a['split'])})" if a["split"] != 1 else ""
-            split += f" (⚠ מחיר מ־{code(a['price_asof'])})" if a.get("price_asof") else ""
-            out.append(f"שווי שוק {_c(a['mve'])} = מחיר {code(px)} × "
-                       f"{_c(a['shares'], FMT['qty'])} מניות ({code(a['shares_date'])}){split} · {ebit}")
-        else:
-            why = {"stale": f"מספר המניות בעמוד השער ישן ({code(a.get('shares_date'))})",
-                   "noncommon": f"לחברה אין מניה רגילה ברשימת SEC ({code(a['px'])})",
-                   "noprice": "מחיר המניה מ־Yahoo לא זמין",
-                   "cached": f"מחיר חי מ־Yahoo לא זמין (המחיר השמור מ־{code(a.get('price_asof'))} לא משמש לשווי שוק,"
-                             " כי לא ניתן לבדוק אם היה פיצול מניות מאז)",
-                   "noshares": f"מספר המניות בעמוד השער חסר ({code('dei:' + SHARES)})"}[a["why"]]
-            out.append(f"⚠️ {why} – לכן חושב {code(a['kind'])} על בסיס הון עצמי בספרים במקום שווי שוק · {ebit}")
-    if "m" in b:
-        zone = "סיכון גבוה לתמרון רווחים" if b["m"] > -1.78 else "אזור ביניים" if b["m"] > -2.22 else "סיכון נמוך"
-        m = f"{b['m']:.2f}"
-        out.append(f"<b>בנייש M: {code(m)}</b> · {zone}" + _basis_he(basis["ben"]))
-        out.append("מדדים: " + " ".join(code(f"{i} {val:.2f}") for i, val in b["idx"].items()))
-        if b.get("caveat"):
-            out.append(_caveat(b["caveat"]))
-    elif b["miss"]:
-        out.append("<b>בנייש M:</b> " + _tags(b["miss"]) + _basis_he(basis["ben"]))
-    else:
-        zero = [i for i, val in b["idx"].items() if val is None]
-        out.append("<b>בנייש M:</b> לא ניתן לחישוב (מכנה אפס ב־" + ", ".join(code(i) for i in zero) + ")"
-                   + _basis_he(basis["ben"]))
-    return _fit(out + _notes(res))
-
-
-def _fit(out):
-    """Keep the section within BUDGET visible chars: the TTM summary line is the one optional line."""
-    if common.visible("\n".join(out)) > BUDGET:
-        out = [s for s in out if not s.startswith(TTM_LINE)]
+    out.append("אלטמן (סיכון פשיטת רגל): " + (altman_zone(a["kind"], a["z"]) if "z" in a else "לא חושב, חסרים נתונים"))
+    out.append("בנייש (תמרון רווחים): " + (beneish_zone(b["m"]) if "m" in b else "לא חושב, חסרים נתונים"))
+    if "m" in b and b.get("caveat"):
+        out.append("⚠️ בחברה צעירה או שצומחת מהר, בנייש מתריע לא פעם לשווא.")
     return out
-
-
-def _notes(res):
-    q = (res.get("ttm") or {}).get("src") or {}
-    s = {k: t or q.get(k) for k, t in res["src"].items()}  # a note raised by the TTM figures names their tags
-    msg = {"ltd0": f"חוב לזמן ארוך לא דווח ({code(TAGS['ltd'][0])}) – נחשב כ־{code(0)} לפי הכללים",
-           "gp": f"רווח גולמי חושב: הכנסות פחות {code(s['cogs'] or '')}",
-           "tl": f"התחייבויות חושבו: {code('LiabilitiesAndStockholdersEquity')} פחות הון עצמי",
-           "sga": f"הוצאות מכירה והנהלה חושבו: {code(s['sm'] or '')} ועוד {code(s['ga'] or '')}"}
-    return [f"ℹ️ {msg[k]}" for k in res["notes"]]

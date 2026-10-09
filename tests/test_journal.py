@@ -7,6 +7,7 @@ import unittest
 from unittest import mock
 
 from bot import check, common, journal, market, scan
+import msgrules
 from test_reliability import row
 
 TODAY = dt.date(2026, 9, 24)
@@ -79,7 +80,7 @@ class Journal(unittest.TestCase):
 
     def test_stats_and_texts(self):
         j = {"alerts": [entry(1)]}
-        self.assertIn("עדיין אין התראות", journal.stats_text(j))
+        self.assertIn("עוד אין התראות בנות <code>30</code> יום", journal.stats_text(j))
         self.assertIn("היומן ריק", journal.journal_text({"alerts": []}))
         j = {"alerts": [entry(1, returns={"30": ret(0.10), "90": ret(0.20)}),
                         entry(2, ticker="BETA", quality=30, regime="panic", returns={"30": ret(-0.05)}),
@@ -94,12 +95,15 @@ class Journal(unittest.TestCase):
         self.assertEqual(s["worst"][0][0]["ticker"], "BETA")
         for text in (journal.stats_text(j), journal.journal_text(j, 3), journal.journal_text(j, 99)):
             self.assertEqual(common.rtl_bad_lines(text), [])
-        self.assertIn("אחרי <code>30</code> יום: <code>3</code> התראות · הצלחה <code>67%</code>", journal.stats_text(j))
-        self.assertIn("פאניקה <code>1</code>", journal.stats_text(j))
+        self.assertIn("אחרי <code>30</code> יום: <code>3</code> התראות, <code>67%</code> עברו את SPY"
+                      " · חציון: יותר ב־<code>2.0%</code> מ־SPY", journal.stats_text(j))
+        self.assertEqual((s["regime"]["panic"]["n"], s["regime"]["normal"]["n"]), (1, 2))  # not shown in the text any more
+        for text in (journal.stats_text(j), journal.journal_text(j, 99)):
+            msgrules.check(self, text)
         text = journal.journal_text(j, 2)
         self.assertEqual(text.count("• התראה"), 2)
         self.assertIn("<code>NEW</code>", text.splitlines()[1])  # newest first
-        self.assertIn("עוד אין תשואה", text)
+        self.assertIn("עוד אין תוצאה", text)
         self.assertEqual(journal.journal_text(j, 0).count("• התראה"), 1)
 
     def test_entry_scores_and_context(self):
@@ -116,14 +120,18 @@ class Journal(unittest.TestCase):
         self.assertEqual(journal.scores_of(res), {"piotroski": "1/2", "altman": "Z'' 3.46", "beneish": -1.23})
         lines = journal.context_lines({**e, "price": {"price": 4.5, "asof": "2026-09-23 06:00", "source": "cache"}}, 3)
         text = "\n".join(lines)
-        for want in ("(⚠ מחיר מ־<code>2026-09-23 06:00</code>)", "⚠ נזילות נמוכה", "ריכוז סקטוריאלי: כבר <code>3</code>",
-                     "<code>SIC 35xx</code>", "בנייש <code>-2.4</code>"):
+        for want in ("(שמור מ־<code>23.9</code>)", "⚠️ נמוך", "כבר <code>3</code> התראות פתוחות באותו ענף",
+                     "פיוטרוסקי <code>6</code> מתוך <code>9</code>", "אלטמן: אזור אפור",
+                     "בנייש: סיכון נמוך לתמרון רווחים"):
             self.assertIn(want, text)
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        self.assertEqual(journal.score_words(SCORES)[1:], ["אלטמן: אזור אפור", "בנייש: סיכון נמוך לתמרון רווחים"])
+        msgrules.check(self, text)
         plain = "\n".join(journal.context_lines({**e, "liquidity": None, "scores": journal.scores_of(None),
                                                  "price": {"price": None}}, 2))
         self.assertNotIn("⚠", plain)
-        self.assertEqual(plain.count("חסר"), 5)
+        self.assertEqual(plain.count("חסר"), 1)  # only the price says so; missing liquidity and scores are left out
+        self.assertEqual(len(plain.splitlines()), 1)  # price only: no liquidity, scores or concentration lines
+        self.assertEqual(journal.score_words(journal.scores_of(None)), [])
 
 
 class Market(unittest.TestCase):
@@ -156,9 +164,9 @@ class Enrich(unittest.TestCase):
             lines, f = scan.enrich("7", "ACME", j, TODAY)
         self.assertEqual((f["sic"], f["liquidity"], f["company"], f["scores"]["altman"]), (3571, 900_000.0, "Acme Corp", None))
         text = "\n".join(lines)
-        self.assertIn("⚠ נזילות נמוכה", text)
-        self.assertIn("ריכוז סקטוריאלי", text)
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        self.assertIn("⚠️ נמוך", text)
+        self.assertIn("כבר <code>3</code> התראות פתוחות באותו ענף", text)
+        msgrules.check(self, text)
 
     def test_alerts_carry_context_and_journal_entries(self):
         st = {"buys": [row("a1", "x", 60_000), row("a2", "y", 50_000), row("a3", "z", 40_000)], "alerted": {},
@@ -234,14 +242,15 @@ class CheckSizing(unittest.TestCase):
 
     def test_liquidity_and_sizing_lines(self):
         low = self.report(1_200_000.0)
-        self.assertIn("💧 נזילות: <code>1.2M$</code> ליום (ממוצע 30 יום) · ⚠ נזילות נמוכה", low)
-        self.assertIn("📏 כלל אצבע (מידע כללי, לא המלצה): 2–3% מהתיק, יציאה לפי זמן 12 חודשים · ⚠ נזילות נמוכה", low)
-        self.assertIn("החלק \"דוחות כספיים\" נכשל", low)  # one broken section never kills the report
-        self.assertIn("לא נמצאו רכישות", low)
-        self.assertEqual(common.rtl_bad_lines(low), [])
+        self.assertIn("💧 מחזור יומי ממוצע: <code>1.2</code> מיליון דולר ⚠️ נמוך", low)
+        self.assertNotIn("כלל אצבע", low)  # no sizing advice any more, only the liquidity line
+        self.assertIn("לא הצלחתי להביא את החלק \"דוחות כספיים\"", low)  # one broken section never kills the report
+        self.assertIn("לא היו רכישות", low)
+        msgrules.check(self, low)
         high = self.report(50_000_000.0)
-        self.assertNotIn("⚠ נזילות נמוכה", high)
-        self.assertIn("חסר (נתוני Yahoo לא זמינים)", self.report(None))
+        self.assertIn("💧 מחזור יומי ממוצע", high)
+        self.assertNotIn("⚠️ נמוך", high)
+        self.assertNotIn("💧", self.report(None))  # unknown liquidity: the line is left out
 
     def test_main_sends_with_prompt(self):
         with mock.patch.object(check, "report", return_value="📊 דוח"), mock.patch.object(common, "send") as snd, \

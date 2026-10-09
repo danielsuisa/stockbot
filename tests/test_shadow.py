@@ -170,9 +170,16 @@ class Message(unittest.TestCase):
                          ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"])
 
     def test_other_messages_keep_the_sec_footer(self):
-        (m,) = sent("🚀 סקוויז")
-        self.assertTrue(m.endswith(f"\n\n{common.freshness()}\n\n{common.DISCLAIMER}"))
-        self.assertIn("SEC EDGAR", m)
+        with mock.patch.dict(common.STAMPS, clear=True):  # nothing stamped: no freshness line at all
+            (m,) = sent("🚀 סקוויז")
+            self.assertTrue(m.endswith(f"\n\n{common.DISCLAIMER}"))
+            self.assertIn("SEC EDGAR", m)
+            self.assertNotIn("נתונים עדכניים", m)
+            common.stamp("sec")  # a source answered: its freshness line sits between the text and the disclaimer
+            (m,) = sent("🚀 סקוויז")
+            self.assertIn(common.freshness(), m)
+            self.assertTrue(m.endswith(f"\n\n{common.freshness()}\n\n{common.DISCLAIMER}"))
+            self.assertIn("🕒 נתונים עדכניים ל: SEC <code>", m)
 
 
 class Pending(unittest.TestCase):

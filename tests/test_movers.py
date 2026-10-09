@@ -3,7 +3,8 @@ import json
 import unittest
 from unittest import mock
 
-from bot import common, movers
+import msgrules
+from bot import movers
 
 EXT = {"data": {"previousInfo": " Market Close: $10.00", "lastUpdateInfo": ["Data last updated Sep 28, 2026 08:05 AM ET."],
                 "infoTable": {"rows": [{"consolidated": "$11.00 +1.00 (+10.00%)", "volume": "120,000"}]}}}
@@ -120,15 +121,15 @@ class Text(unittest.TestCase):
 
     def test_messages_are_rtl_clean(self):
         t = movers.text([self.M], "pre", "2026-09-28", ranks={"AAA": 3}, failed=2)
-        for part in ("<code>AAA</code>", "<code>+15%</code>", "מקום <code>3</code>", "לא נבדק", "<code>2</code>"):
+        for part in ("<code>AAA</code>", "ב־<code>15%</code>", "מקום <code>3</code>", "לא נבדק"):
             self.assertIn(part, t)
         self.assertEqual(movers.text([], "post", "2026-09-28"), "")
         manual = movers.text([], "regular", "2026-09-28", manual=True)
         closed = movers.text([], None, "2026-09-28", manual=True)
-        self.assertIn("▶️", manual)
+        self.assertIn("אין כרגע מניה", manual)  # a manual run answers even with nothing to report
         self.assertIn("סגור", closed)
         for x in (t, manual, closed):
-            self.assertEqual(common.rtl_bad_lines(x), [])
+            msgrules.check(self, x)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import unittest
 from unittest import mock
 
 from bot import common, tenk
+import msgrules
 
 WORDS = ("supply weather credit labor pricing currency software regulatory privacy climate energy shipping insurance "
          "pension patent brand retail wholesale lending hiring leasing tax audit freight semiconductor fraud cyber "
@@ -179,21 +180,23 @@ class Ranked(unittest.TestCase):
 
         lines = tenk.format_he(r)
         text = "\n".join(lines)
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        msgrules.check(self, text)
         self.assertLessEqual(common.visible(text), tenk.BUDGET)
-        self.assertIn("נערכו קלות: <code>6</code> (מתוכם <code>2</code> שגרתיים", text)
-        self.assertIn("Lazy Prices", text)
+        self.assertIn("<code>77%</code> מהמשפטים נשארו זהים, <code>2</code> חדשים, <code>5</code> הוסרו", text)
+        self.assertEqual(sum(x.startswith("• ") for x in lines), tenk.SHOW)  # 5 ranked, only the top 3 are shown
         at = {x: i for i, x in enumerate(lines)}
-        i = at["• הוסר (<code>going concern</code>):"]
+        i = at["• משפט שהוסר (<code>going concern</code>):"]
         self.assertTrue(lines[i + 1].startswith("לפני: <i>There is substantial doubt"))
-        self.assertTrue(lines[i + 2].startswith("• הוסר (<code>covenant</code>) ועוד <code>2</code> כאלה:"))
-        i = at["• חדש (<code>delisting</code>):"]
+        self.assertTrue(lines[i + 2].startswith("• משפט שהוסר (<code>covenant</code>) ועוד <code>2</code> כאלה:"))
+        i = at["• משפט חדש (<code>delisting</code>):"]
         self.assertTrue(lines[i + 1].startswith("אחרי: <i>Our common stock could be delisted"))
-        i = at["• נוסח הוקשח (<code>could→has</code>):"]
-        self.assertTrue(lines[i + 1].startswith("לפני: ") and "could adversely affect" in lines[i + 1])
-        self.assertTrue(lines[i + 2].startswith("אחרי: ") and "has adversely affected" in lines[i + 2])
-        self.assertIn("• נוסח הוקשח (<code>+has</code>):", at)
-        for line in lines:
+        hedge = tenk.format_he({**r, "top": r["top"][3:]})  # the hedge -> firm changes, shown when they rank higher
+        msgrules.check(self, "\n".join(hedge))
+        i = hedge.index("• ניסוח זהיר הפך לקביעה (<code>could→has</code>):")
+        self.assertTrue(hedge[i + 1].startswith("לפני: ") and "could adversely affect" in hedge[i + 1])
+        self.assertTrue(hedge[i + 2].startswith("אחרי: ") and "has adversely affected" in hedge[i + 2])
+        self.assertIn("• ניסוח זהיר הפך לקביעה (<code>+has</code>):", hedge)
+        for line in lines + hedge:
             if line.startswith(("לפני:", "אחרי:")):
                 self.assertLessEqual(common.visible(line), 6 + tenk.SNIP + 2)
 
@@ -211,12 +214,12 @@ class Ranked(unittest.TestCase):
         res = {**run(CUR, PRI), "top": [c] * 5}
         text = "\n".join(tenk.format_he(res))
         self.assertLessEqual(common.visible(text), tenk.BUDGET)
-        self.assertIn("(<code>may→has, covenant +1</code>) ועוד <code>3</code> כאלה:", text)
-        self.assertEqual(text.count("• נוסח הוקשח"), 5)
-        with mock.patch.object(tenk, "BUDGET", 900):
+        self.assertIn("(<code>may→has, covenant</code>) ועוד <code>3</code> כאלה:", text)
+        self.assertEqual(text.count("• ניסוח זהיר הפך לקביעה"), tenk.SHOW)  # 5 given, 3 shown
+        with mock.patch.object(tenk, "BUDGET", 700):
             text = "\n".join(tenk.format_he(res))
-        self.assertTrue(1 <= text.count("• נוסח הוקשח") < 5)
-        self.assertLessEqual(common.visible(text), 900)
+        self.assertTrue(1 <= text.count("• ניסוח זהיר הפך לקביעה") < tenk.SHOW)
+        self.assertLessEqual(common.visible(text), 700)
 
     def test_nothing_material(self):
         cur = [FILL[0].replace("margins", "operating margins"), *FILL[1:]]
@@ -233,15 +236,15 @@ class Ranked(unittest.TestCase):
 class Problems(unittest.TestCase):
     def fmt(self, res):
         text = "\n".join(tenk.format_he(res))
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        msgrules.check(self, text)
         return text
 
     def test_count(self):
         with mock.patch.object(common, "submissions", return_value={}):
             r = tenk.analyze(1, ROWS[:1])
         self.assertEqual(r, {"dates": ["2026-02-01"], "problem": "count"})
-        self.assertIn("נמצא רק דוח", self.fmt(r))
-        self.assertIn("לא נמצאו דוחות שנתיים", self.fmt(tenk.analyze(1, [])))
+        self.assertIn("יש רק אחד", self.fmt(r))
+        self.assertIn("אין שני דוחות שנתיים להשוואה", self.fmt(tenk.analyze(1, [])))
 
     def test_prior_10k_on_an_older_page(self):
         sub = {"filings": {"files": [{"name": "far.json", "filingFrom": "2010-01-01", "filingTo": "2012-01-01"},
@@ -261,10 +264,10 @@ class Problems(unittest.TestCase):
         for p, s in why.items():
             r = run(doc([s]), CUR)
             self.assertEqual((r["problem"], r["which"]), (p, "2026-02-01"))
-            self.assertIn("<code>2026-02-01</code>", self.fmt(r))
+            self.assertIn("<code>1.2.2026</code>", self.fmt(r))
         r = run(CUR, b"<html><body><p>Item 7. MD&A</p></body></html>")
         self.assertEqual((r["problem"], r["which"]), ("missing", "2025-02-01"))
-        self.assertIn("לא אותר", self.fmt(r))
+        self.assertIn("לא נמצא הפרק", self.fmt(r))
 
 
 class Parsing(unittest.TestCase):

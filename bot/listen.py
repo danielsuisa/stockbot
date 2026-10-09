@@ -21,31 +21,32 @@ TOKEN = re.compile(r"(?<![A-Za-z0-9$])(\$?)([A-Za-z]{1,5}(?:[.\-][A-Za-z])?)(?![
 # Everyday words that are also tickers: skipped in running text; "$IT" or a message of just "IT" still works
 STOP = set("A AI AM AN AND ARE AT BE BUY BY CAN CEO DO FOR GO HAS HI I IF IN IPO IS IT ME MY NEW NO NOW OF OK ON OR "
            "OUT SEC SO THE TO UP US VS WE YES YOU".split())
-COMMANDS = (("check", "דוח פורנזי לטיקר, למשל /check AAPL"), ("scan", "הרצת הסריקה היומית עכשיו"),
-            ("status", "מצב הסריקה, דופק ושומר ימים חסרים"), ("stats", "תשואות ההתראות מול SPY"),
-            ("journal", "ההתראות האחרונות ביומן, למשל /journal 5"), ("verify", "אימות מחדש מול EDGAR, למשל /verify AAPL"),
-            ("health", "בדיקה חיה של המקורות והריצות"),
-            ("squeeze", "סקוויז ומזנקות: /squeeze, /squeeze now, /squeeze GME, /squeeze stats"), ("help", "רשימת הפקודות"))
-HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, עם דולר, {code('$msft')}, או {code('/check msft')}"
-        f" (עד {code(MAX)} בהודעה), או {code('/help')} לרשימת הפקודות.")
+COMMANDS = (("check", "דוח על מניה, למשל /check AAPL"), ("scan", "סריקת רכישות בעלי עניין עכשיו"),
+            ("status", "מצב הסריקה היומית"), ("stats", "איך ההתראות הצליחו מול SPY"),
+            ("journal", "ההתראות האחרונות, למשל /journal 5"), ("verify", "בדיקה מחדש מול SEC, למשל /verify AAPL"),
+            ("health", "בדיקה שהכול עובד"),
+            ("squeeze", "סקוויז: /squeeze, /squeeze now, /squeeze GME, /squeeze stats"), ("help", "רשימת הפקודות"))
+HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, או עם דולר, {code('$msft')} (עד {code(MAX)} בהודעה)."
+        f" לרשימת הפקודות: {code('/help')}.")
 HELP = "\n".join((
-    "👋 <b>שלום! אני בוט מחקר מניות שעובד רק עם נתוני SEC EDGAR</b>",
-    "הפקודות:",
-    f"• דוח פורנזי לטיקר: {code('/check AAPL')} (עד {code(MAX)} טיקרים)",
-    f"• הרצת הסריקה היומית עכשיו ושליחת ההתראות: {code('/scan')}",
-    f"• מצב הסריקה, הדופק האחרון ושומר הימים החסרים: {code('/status')}",
-    f"• תשואות ההתראות מול {code('SPY')} (30/90/180 יום): {code('/stats')}",
-    f"• ההתראות האחרונות ביומן: {code('/journal 5')} (עד {code(20)})",
-    f"• אימות התראה מחדש מול EDGAR: {code('/verify AAPL')}",
-    f"• בדיקה חיה של SEC, Yahoo, טלגרם והריצות המתוזמנות: {code('/health')}",
-    f"• רשימת סקוויז ומזנקות: {code('/squeeze')}, הרצה עכשיו {code('/squeeze now')},"
-    f" בדיקת מניה {code('/squeeze GME')}, יומן {code('/squeeze stats')}",
-    f"• רשימת הפקודות: {code('/help')}",
-    f"אפשר גם לכתוב טיקר באותיות גדולות, {code('AAPL')}, או עם דולר, {code('$tsla')}.",
-    "📊 הדוח כולל ציון פיוטרוסקי, אלטמן Z, בנייש M, רכישות בעלי עניין ושינויים בגורמי הסיכון בדוח השנתי.",
-    f"🔔 כל בוקר אחרי יום מסחר אסרוק את דיווחי {code('Form 4')} ואתריע כשכמה בעלי עניין קונים מניות"
-    " בשוק הפתוח, או כשיש רכישה גדולה במיוחד.",
-    "⏱️ התשובה מגיעה בדרך כלל תוך שניות; דוח מלא לוקח כדקה."))
+    "👋 <b>מה אפשר לבקש ממני</b>",
+    "",
+    f"📊 דוח על מניה: {code('/check AAPL')}, או פשוט {code('AAPL')} או {code('$aapl')} (עד {code(MAX)} בהודעה).",
+    "",
+    "🔔 התראות על רכישות של בעלי עניין (נשלחות לבד כל בוקר אחרי יום מסחר):",
+    f"• לסרוק עכשיו: {code('/scan')}",
+    f"• מצב הסריקה: {code('/status')}",
+    f"• איך ההתראות הצליחו מול {code('SPY')}: {code('/stats')}",
+    f"• ההתראות האחרונות: {code('/journal 5')}",
+    f"• בדיקה מחדש מול SEC: {code('/verify AAPL')}",
+    "",
+    "🚀 רשימת סקוויז (נשלחת לבד בימי מסחר):",
+    f"• הרשימה האחרונה: {code('/squeeze')}",
+    f"• להריץ עכשיו: {code('/squeeze now')}",
+    f"• לבדוק מניה: {code('/squeeze GME')}",
+    f"• התוצאות עד היום: {code('/squeeze stats')}",
+    "",
+    f"🩺 בדיקה שהכול עובד: {code('/health')}"))
 
 
 def extract(text, loose=False):
@@ -80,7 +81,7 @@ def reports(text, loose=False):
         except Exception as e:  # one failed ticker must not block the others
             failed += 1
             traceback.print_exc()
-            common.send(f"⚠️ הדוח עבור {code(t)} נכשל ({code(type(e).__name__)}): {common.failure(e)}")
+            common.send(f"⚠️ הדוח על {code(t)} נכשל. {common.failure(e)}")
     return failed
 
 
@@ -94,9 +95,9 @@ def run_scan():
             common.send(f"⚠️ לא הצלחתי להפעיל את הסריקה ב־GitHub ({code(err)}). בדקו שבקובץ"
                         f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.")
             return 1
-        common.send("⏳ הפעלתי את הסריקה היומית. ההתראות, או הודעה שאין חדש, יגיעו בעוד כמה דקות.")
+        common.send("⏳ הסריקה התחילה. התוצאה תגיע בעוד כמה דקות.")
     else:
-        common.send("⏳ מריץ את הסריקה היומית, זה עשוי לקחת כמה דקות...")
+        common.send("⏳ הסריקה התחילה. זה עשוי לקחת כמה דקות.")
         scan.main(["--notify"])
     return 0
 
@@ -154,23 +155,24 @@ def squeeze_cmd(rest):
     if not arg:
         last = squeeze_live.load(squeeze_live.LAST, None)
         common.send(last["text"] if last else "עוד אין רשימת סקוויז. היא תישלח בריצה האוטומטית הבאה, או עכשיו עם"
-                    f" {code('/squeeze now')}.")
+                    f" {code('/squeeze now')}.", source=squeeze_live.SOURCE)
         return 0
     if arg == "now":
         return squeeze_now()
     if arg == "stats":
-        common.send(squeeze_live.stats_text(squeeze_live.load(squeeze_live.JOURNAL, {"entries": []})))
+        common.send(squeeze_live.stats_text(squeeze_live.load(squeeze_live.JOURNAL, {"entries": []})),
+                    source=squeeze_live.SOURCE)
         return 0
     known, unknown = extract(rest, loose=True)
     if not known:
         common.send(f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}." if unknown else
-                    f"כתבו טיקר אחרי הפקודה, למשל {code('/squeeze GME')}.")
+                    f"כתבו טיקר אחרי הפקודה, למשל {code('/squeeze GME')}.", source=squeeze_live.SOURCE)
         return 0
     try:
-        common.send(squeeze_live.ticker_report(known[0]), signal=True)
+        common.send(squeeze_live.ticker_report(known[0]), signal=True, source=squeeze_live.SOURCE)
     except Exception as e:  # a failed lookup must be answered, not swallowed
         traceback.print_exc()
-        common.send(f"⚠️ בדיקת הסקוויז עבור {code(known[0])} נכשלה ({code(type(e).__name__)}). נסו שוב מאוחר יותר.")
+        common.send(f"⚠️ בדיקת הסקוויז של {code(known[0])} נכשלה. נסו שוב מאוחר יותר.", source=squeeze_live.SOURCE)
         return 1
     return 0
 
@@ -182,12 +184,12 @@ def squeeze_now():
         err = common.dispatch("squeeze.yml", {"mode": "manual"})
         if err:  # a GitHub permission problem must not look like a data problem
             print(f"workflow dispatch failed: {err}")
-            common.send(f"⚠️ לא הצלחתי להפעיל את סריקת הסקוויז ב־GitHub ({code(err)}). בדקו שבקובץ"
-                        f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.")
+            common.send(f"⚠️ לא הצלחתי להפעיל את רשימת הסקוויז ב־GitHub ({code(err)}). בדקו שבקובץ"
+                        f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.", source=squeeze_live.SOURCE)
             return 1
-        common.send("⏳ הפעלתי את סריקת הסקוויז. הרשימה והמזנקות יגיעו בעוד כ־2–3 דקות.")
+        common.send("⏳ רשימת הסקוויז מתעדכנת. היא תגיע בעוד כ־2–3 דקות.", source=squeeze_live.SOURCE)
         return 0
-    common.send("⏳ מריץ את סריקת הסקוויז...")
+    common.send("⏳ רשימת הסקוויז מתעדכנת.", source=squeeze_live.SOURCE)
     return squeeze_live.main(["--manual"])
 
 
