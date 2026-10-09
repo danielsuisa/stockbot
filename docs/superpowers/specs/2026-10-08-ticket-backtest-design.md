@@ -118,3 +118,20 @@ swing / higher-low confirmation never uses unclosed bars, VWAP, both level defin
 rounding and the 10-share minimum. Simulation: limit / stop-limit fills, stop gap fill, stop-first on a two-sided bar,
 target then breakeven, 60-minute time stop, trailing and VWAP exits, 15:55 / 15:59 exits, costs. Candidates: no
 look-ahead in universe B (an entry before the eligibility minute is impossible). Verdict at its thresholds.
+
+## 10. Second look: the IMPROVED spread gate (pre-registered 2026-10-09, before any run)
+
+Why: in the first run (`docs/backtest/ticket-2026-10-09.md`) the spread gate was IMPROVED's most common NO TICKET
+reason (593 REGULAR, 797 PREMARKET). With a $0.01 tick, "spread ≤ 0.1 × D" needs D ≥ $0.10 (ATR14 ≥ $1), so most
+small caps can never pass it. Owner's go-ahead: 2026-10-09.
+
+- Only the IMPROVED spread gate changes; every other rule, cost and universe stays as in sections 4–7. ORIGINAL is
+  not re-run.
+- Grid (spread always ≤ 1% of the price): **G0** ≤ 0.10 × D (as before) · **G1** ≤ 0.25 × D · **G2** ≤ 0.50 × D ·
+  **G3** no D bound.
+- Selection, per session, on the tuning period (2024) only: the gate with the highest mean net R among gates with
+  ≥ 30 trades in 2024 (basis A ∪ B); if none has 30, G0 stays and the tuning is reported as underpowered.
+- Verdict for the selected gate: section 7's rule unchanged (2025-01-01 → last complete session; ≥ 100 trades, mean
+  > 0 with t ≥ 2, above the random 95th percentile, > 0 in 2025 and in 2026).
+- Caveat, stated in the report: the 2025–2026 results of G0 were already seen, so this verdict is a second look,
+  not a clean out-of-sample test. A GO here is a reason to paper-trade forward, not to trade.
