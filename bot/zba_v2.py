@@ -75,8 +75,9 @@ def qr_top(cands, dv, news, n=tb.Z_TOP):
 
 
 def tod_fn(bars, prior):
-    """#2: minute -> today's volume 09:30 through that minute / the mean of the same window over the prior sessions
-    (each {minute: volume}; a session without bars counts 0); None when the prior mean is 0."""
+    """#2: trigger minute m -> today's volume from 09:30 through the minute before m / the mean of the same window
+    over the prior sessions (each {minute: volume}; a session without bars counts 0); None when the prior mean is 0.
+    The trigger minute itself is not counted: the order fills inside it, before its volume is known (spec 14.11)."""
     today = collections.Counter({b[0]: b[5] for b in bars if b[0] >= "09:30"})
     minutes = [ticket.hhmm(ticket.mins("09:30") + i) for i in range(390)]
 
@@ -89,20 +90,22 @@ def tod_fn(bars, prior):
     mine, base = cum(today), [cum(p) for p in prior]
 
     def f(m):
-        ref = sum(c.get(m, 0.0) for c in base) / len(base) if base else 0.0
-        return mine.get(m, 0.0) / ref if ref else None
+        p = ticket.hhmm(ticket.mins(m) - 1)
+        ref = sum(c.get(p, 0.0) for c in base) / len(base) if base else 0.0
+        return mine.get(p, 0.0) / ref if ref else None
     return f
 
 
 def dq_reason(bars, at, open_="09:30"):
-    """#17 (minutes up to the entry minute only: no look-ahead) -> the first failing reason or None."""
+    """#17 on the minutes before the entry minute only (no look-ahead, spec 14.11) -> the first failing reason or
+    None."""
     have = {b[0]: b for b in bars}
     n = ticket.mins(at)
-    need = [ticket.hhmm(n - i) for i in range(DQ_BEFORE + 1) if ticket.hhmm(n - i) >= open_]
+    need = [ticket.hhmm(n - i) for i in range(1, DQ_BEFORE + 1) if ticket.hhmm(n - i) >= open_]
     if any(m not in have for m in need):
         return "dq: missing bars"
     for m, o, h, l, c, v, vw in bars:
-        if not open_ <= m <= at:
+        if not open_ <= m < at:
             continue
         if vw is not None and v and not l - 1e-9 <= vw <= h + 1e-9:
             return "dq: vwap outside the bar"

@@ -33,7 +33,8 @@ class Lists(unittest.TestCase):
     def test_time_of_day_relative_volume(self):
         bars = run("09:30", [(1, 1, 1, 1)] * 3, v=300)  # 300 a minute today
         f = z.tod_fn(bars, [{"09:30": 100, "09:31": 100, "09:32": 100}, {"09:30": 100}])
-        self.assertAlmostEqual(f("09:31"), 600 / ((200 + 100) / 2))
+        self.assertAlmostEqual(f("09:32"), 600 / ((200 + 100) / 2))  # through 09:31: the trigger minute is not counted
+        self.assertAlmostEqual(f("09:31"), 300 / ((100 + 100) / 2))
         self.assertIsNone(z.tod_fn(bars, [{}])("09:31"))
 
     def test_data_quality_without_look_ahead(self):
@@ -46,6 +47,7 @@ class Lists(unittest.TestCase):
         self.assertEqual(z.dq_reason(vw, "09:40"), "dq: vwap outside the bar")
         zero = good[:3] + [("09:33", 10, 10.1, 9.9, 10, 0, None)] + good[4:]
         self.assertEqual(z.dq_reason(zero, "09:40"), "dq: price moved on zero volume")
+        self.assertIsNone(z.dq_reason(vw, "09:33"))  # the entry minute itself is not looked at (it is still forming)
 
 
 def st(n, mean, t, years):

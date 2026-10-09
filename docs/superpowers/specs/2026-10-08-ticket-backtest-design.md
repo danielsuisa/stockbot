@@ -345,3 +345,18 @@ compares part-day volume with a full day's average; matching it by time of day i
 - **Where it runs.** The keys exist only as GitHub secrets, so both runs happen on GitHub Actions: one workflow run
   per mode, six chained jobs of at most 5½ hours, the request cache carried from job to job. This replaces the
   detached local downloader; the result is the same (resumable, paced, cached).
+
+### 14.11 Correction after the first development run, before the holdout (2026-10-10, owner's decision)
+
+The first development run (run 37921278500, report kept as `docs/backtest/ticket-zba-v2-2026-10-09-superseded.md`)
+selected X5 (N + T2 + DQ: 2,048 tick-level trades, +0.197R, t 2.13). Before the holdout, a look-ahead was found: #2
+counted the trigger minute's own volume, but the order fills inside that minute, before most of its volume exists;
+#17 likewise checked the trigger minute's bar. A live order can only see the minutes before. Owner's decision: fix
+and re-select; the holdout has not been run.
+
+- **#2:** the cumulative volume from 09:30 through the minute **before** the trigger minute / the same window's
+  mean over the 14 previous sessions.
+- **#17:** the bars of the 5 minutes before the entry minute, and the VWAP / zero-volume checks on the minutes from
+  09:30 to the minute before the entry minute.
+- Nothing else changes: the same 22 variants, thresholds, selection rule and holdout gates. The development period
+  is re-run from the cache and the selection is made again; its result, whatever it is, is the one that counts.
