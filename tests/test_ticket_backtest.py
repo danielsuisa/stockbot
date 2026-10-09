@@ -376,6 +376,42 @@ class Verdict(unittest.TestCase):
         self.assertTrue(any(",AAA," in r for r in rows) and any(",BBB," in r for r in rows), rows[:3])
 
 
+class Tune(unittest.TestCase):
+    def test_select_the_best_2024_gate_with_enough_trades(self):
+        st = lambda n, m: {"n": n, "mean": m}
+        self.assertEqual(tb.select({"G0": st(5, 1.0), "G1": st(30, 0.1), "G2": st(40, 0.3), "G3": st(29, 2.0)}),
+                         ("G2", False))
+        self.assertEqual(tb.select({"G0": st(5, 1.0), "G1": st(29, 0.1), "G2": st(0, None), "G3": st(12, 2.0)}),
+                         ("G0", True))  # underpowered: the gate stays
+
+    def test_tune_dry_on_tiny_mocked_data(self):
+        day = "2024-03-01"
+        sessions = sessions_before(day, 80) + [day]
+        dly = [(d, 9.9, 10.4, 9.4, 9.9, 3_000_000) for d in sessions_before(day, 80)]
+        five = [(f"{d} 09:30", 1, 1, 1, 1, 1000, 1) for d in sessions_before(day, 14)] + \
+            [(f"{day} 09:30", 1, 1, 1, 1, 3000, 1)]
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(tb.alpaca, "calendar", return_value={x: ("09:30", "16:00") for x in sessions}), \
+                mock.patch.object(tb.alpaca, "minute_bars", side_effect=lambda syms, _: {s: day_bars() for s in syms}), \
+                mock.patch.object(tb.alpaca, "daily", side_effect=lambda syms, a, b: {s: dly for s in syms}), \
+                mock.patch.object(tb.alpaca, "quote_at", return_value=(10.00, 10.02)), \
+                mock.patch.object(tb.alpaca, "bars", return_value=five), \
+                mock.patch("builtins.print"):
+            picks = os.path.join(d, "picks.csv")
+            with open(picks, "w") as f:
+                f.write(f"date,t\n{day},AAA\n")
+            self.assertEqual(tb.main(["--tune", "--universe", "A", "--start", day, "--end", day, "--out", d,
+                                      "--picks", picks]), 0)
+            md = open(os.path.join(d, f"ticket-tune-{dt.date.today().isoformat()}.md")).read()
+            rows = open(os.path.join(d, f"ticket-tune-{dt.date.today().isoformat()}-trades.csv")).read()
+        for g in tb.GRID:
+            self.assertIn(g, md)
+        self.assertIn("second look", md)
+        self.assertEqual(common.rtl_bad_lines(md.split("## סיכום", 1)[1].split("\n## ", 1)[0]), [])
+        self.assertIn("IMPROVED G3", rows)  # 0.02 passes 1% of 9.80 with no D bound (D = 0.10)
+        self.assertNotIn("ORIGINAL", rows)
+
+
 def day_bars():
     """A day with a pre-market and a regular breakout (BASE-like): enough for tickets in both universes."""
     pre = [mk(ticket.hhmm(n), 9.5, 9.6, 9.4, 9.5, 20_000) for n in range(ticket.mins("04:00"), ticket.mins("09:30"))]

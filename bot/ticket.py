@@ -132,7 +132,8 @@ def signal(rules, session, bars1, ctx, spread):
 
     rules "ORIGINAL" | "IMPROVED"; session "REGULAR" | "PREMARKET"; bars1: the day's 1-minute bars; ctx {"open",
     "close" ("HH:MM", early closes included), "atr" (ATR14 before the day), "open_rel_vol", "from" (the minute the
-    stock entered the list: a check needs that minute closed)}; spread("HH:MM" New York) -> ask - bid or None, asked
+    stock entered the list: a check needs that minute closed), optional "spread_d" (IMPROVED's spread bound as a
+    fraction of D, default I_SPREAD_D; None: no bound)}; spread("HH:MM" New York) -> ask - bid or None, asked
     only when every other entry check has passed.
     -> {"ok": True, "rules", "session", "at", "level", "entry_type" ("LMT" | "STP_LMT"), "entry", "limit", "stop",
     "R", "shares", "legs": [{"qty", "target", "exit_at"}], "valid_until", "spread"} or {"ok": False, "reason", "at"}.
@@ -244,8 +245,9 @@ def _improved_checks(session, price, level, at, until, sess, bars1, t0, ctx, spr
     if halted(bars1, at, ctx["open"], ctx["close"]):
         return _no("halt", at)
     D = _r(I_D_ATR * ctx["atr"])
+    sd = ctx.get("spread_d", I_SPREAD_D)  # the spread's bound as a fraction of D; None: no bound
     sp = spread(at)
-    if sp is None or _r(sp) > _r(I_SPREAD_MID * price) or _r(sp) > _r(I_SPREAD_D * D):
+    if sp is None or _r(sp) > _r(I_SPREAD_MID * price) or (sd is not None and _r(sp) > _r(sd * D)):
         return _no("spread", at)
     shares = _shares(_r(D + sp))
     if shares < MIN_SHARES:

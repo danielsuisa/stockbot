@@ -217,6 +217,14 @@ class Improved(unittest.TestCase):
         self.assertEqual(sig("IMPROVED", "REGULAR", bars, 0.021)["reason"], "spread")
         self.assertEqual(sig("IMPROVED", "REGULAR", bars, None)["reason"], "spread")
 
+    def test_improved_spread_gate_is_a_parameter(self):
+        bars = improved_day()  # trigger at 10.00, atr 2 -> D 0.20
+        self.assertEqual(sig("IMPROVED", "REGULAR", bars, 0.05)["reason"], "spread")  # 0.1 x D = 0.02
+        self.assertTrue(sig("IMPROVED", "REGULAR", bars, 0.05, spread_d=0.25)["ok"])  # 0.25 x D = 0.05
+        self.assertEqual(sig("IMPROVED", "REGULAR", bars, 0.06, spread_d=0.25)["reason"], "spread")
+        self.assertTrue(sig("IMPROVED", "REGULAR", bars, 0.10, spread_d=None)["ok"])  # no D bound: 1% of 10.00 only
+        self.assertEqual(sig("IMPROVED", "REGULAR", bars, 0.11, spread_d=None)["reason"], "spread")
+
     def test_improved_checks_at_the_trigger(self):
         bars = improved_day()
         expensive = [b if b[0] >= "09:35" else b[:6] + (30.0,) for b in bars]  # VWAP far above the price

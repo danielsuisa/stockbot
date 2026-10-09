@@ -443,9 +443,10 @@ def _play(rules, session, bars, ctx, spread, day, t, universe):
                   "cost_r": res["cost_r"], "net_r": res["net_r"], "net_r_short": short["net_r"]}
 
 
-def _day(day, hours, a_tickers, b_rows, daily, sessions, gaps):
-    """Every rule set x session x universe on one session -> (trade rows, Counter of (universe, rules, session,
-    reason))."""
+def _day(day, hours, a_tickers, b_rows, daily, sessions, gaps, variants=None):
+    """Every rule-set variant x session x universe on one session -> (trade rows, Counter of (universe, label,
+    session, reason)). variants: [(label, rules, extra ctx)], by default the two rule sets as they are."""
+    variants = variants or [(r, r, {}) for r in RULES]
     open_, close = hours
     syms = sorted(set(a_tickers) | set(b_rows))
     if not syms:
@@ -468,24 +469,25 @@ def _day(day, hours, a_tickers, b_rows, daily, sessions, gaps):
                     if start is None:
                         reasons[(universe, None, session, "not in the list")] += 1
                         continue
-                for rules in RULES:
-                    ctx = {"day": day, "open": open_, "close": close, "atr": atr, "open_rel_vol": None, "from": start}
+                for label, rules, extra in variants:
+                    ctx = {"day": day, "open": open_, "close": close, "atr": atr, "open_rel_vol": None, "from": start,
+                           **extra}
                     if rules == "IMPROVED" and session == "REGULAR" and atr:
                         if t not in orv:
                             orv[t] = open_rel_vol(t, day, sessions)
                         ctx["open_rel_vol"] = orv[t]
                     reason, trade = _play(rules, session, bars, ctx, spread, day, t, universe)
                     if trade:
-                        rows.append(trade)
+                        rows.append({**trade, "rules": label})
                     else:
-                        reasons[(universe, rules, session, reason)] += 1
+                        reasons[(universe, label, session, reason)] += 1
     return rows, reasons
 
 
-def _results(rows, reasons):
-    """Trade rows + NO TICKET counts -> {(rules, session): {"basis", "checks", "go", "by": {universe: {...}}}}."""
+def _results(rows, reasons, labels=RULES):
+    """Trade rows + NO TICKET counts -> {(label, session): {"basis", "checks", "go", "by": {universe: {...}}}}."""
     out = {}
-    for r in RULES:
+    for r in labels:
         for s in SESSIONS:
             mine = [x for x in rows if x["rules"] == r and x["session"] == s]
             pooled = {(x["day"], x["t"]): x for x in sorted(mine, key=lambda x: x["universe"])}  # B over A
@@ -510,6 +512,62 @@ def _results(rows, reasons):
     return out
 
 
+# ---------- second look: the IMPROVED spread gate (spec section 10) ----------
+GRID = {"G0": 0.10, "G1": 0.25, "G2": 0.50, "G3": None}  # spread bound as a fraction of D (always <= 1% of price)
+TUNE_MIN = 30  # trades in 2024 a gate needs to be selectable
+
+
+def select(tune):
+    """{gate: 2024 stats (A u B)} -> (the gate with the highest mean among those with >= TUNE_MIN trades, False), or
+    ("G0", True) when none has enough trades (underpowered)."""
+    ok = [(st["mean"], g) for g, st in tune.items() if st["n"] >= TUNE_MIN and st["mean"] is not None]
+    return (max(ok)[1], False) if ok else ("G0", True)
+
+
+def render_tune(meta, results):
+    """The second-look report: per session, every gate's 2024 and verdict-period numbers, the pre-registered choice
+    and its verdict."""
+    L = [f"# Order-ticket backtest, second look: the IMPROVED spread gate — {meta['run']}", "", "## סיכום", ""]
+    picks = {}
+    for s in SESSIONS:
+        picks[s] = select({g: results[(f"IMPROVED {g}", s)]["by"]["AB"]["tune"] for g in GRID})
+        g, weak = picks[s]
+        res = results[(f"IMPROVED {g}", s)]
+        st = res["by"][res["basis"]]["verdict"]
+        L.append(f"- {HE_SESSIONS[s]}: נבחר `{g}`{' (כוונון חלש: אין שער עם 30 עסקאות ב־2024)' if weak else ''} — "
+                 f"{'GO ✅' if res['go'] else 'NO-GO ❌'}, עסקאות `{st['n']}`, ממוצע `{_f(st['mean'])}R`, "
+                 f"סטטיסטי t `{_f(st['t'], '{:.2f}')}`")
+    L += ["", "זהו מבט שני: תוצאות 2025–2026 של השער המקורי כבר נראו, ולכן GO כאן הוא סיבה למסחר נייר קדימה, "
+          "לא למסחר אמיתי.", "", "## Method", "",
+          "This is a second look (spec section 10): G0's 2025-2026 results were already seen, so this is not a clean "
+          "out-of-sample test.", "",
+          "Gates (spread always ≤ 1% of the price): " + ", ".join(f"{g} ≤ {v} × D" if v else f"{g} no D bound"
+                                                                 for g, v in GRID.items()) + ".", "",
+          "## Gates", "", "| Session | Gate | 2024 trades | 2024 mean | 2024 t | Verdict trades | Mean net R | t | "
+          "Random p95 | 2025 | 2026 | Verdict |", "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|"]
+    for s in SESSIONS:
+        for g in GRID:
+            res = results[(f"IMPROVED {g}", s)]
+            tu, b = res["by"]["AB"]["tune"], res["by"][res["basis"]]
+            v = b["verdict"]
+            mark = " ← chosen" if picks[s][0] == g else ""
+            L.append(f"| {s} | {g}{mark} | {tu['n']} | {_f(tu['mean'])} | {_f(tu['t'], '{:.2f}')} | {v['n']} | "
+                     f"{_f(v['mean'])} | {_f(v['t'], '{:.2f}')} | {_f(b['p95'])} | "
+                     f"{_f(v['years'].get('2025', {}).get('mean'))} | {_f(v['years'].get('2026', {}).get('mean'))} | "
+                     f"{'GO' if res['go'] else 'NO-GO'} ({res['basis']}) |")
+    L += ["", "## Verdict checks of the chosen gates", "", "| Session | Gate | Check | Pass |", "|---|---|---|---|"]
+    for s in SESSIONS:
+        L += [f"| {s} | {picks[s][0]} | {c} | {'pass' if ok else 'fail'} |"
+              for c, ok in results[(f"IMPROVED {picks[s][0]}", s)]["checks"]]
+    L += ["", "## Assumptions", "", "- Everything else as in the first run's report (`ticket-2026-10-09.md`):"]
+    L += [f"  - {a}" for a in ASSUMPTIONS]
+    L += ["", "## Data", "", f"- Range {meta['start']} … {meta['end']} · universes {meta['universes']} · "
+          f"runtime {meta['runtime']:.0f}s · Alpaca requests {meta['requests']}"]
+    L += [f"- {k}: {v}" for k, v in {**meta["counts"], **meta["gaps"]}.items()]
+    L += ["", "`python -m bot.ticket_backtest --tune`", ""]
+    return "\n".join(L)
+
+
 COLUMNS = ("universe", "day", "t", "rules", "session", "at", "level", "entry_type", "entry", "limit", "stop", "R",
            "shares", "spread", "filled", "fill_at", "fill", "kinds", "gross_r", "cost_r", "net_r", "net_r_short")
 
@@ -521,7 +579,11 @@ def main(argv=None):
     ap.add_argument("--universe", default="AB", choices=("A", "B", "AB"))
     ap.add_argument("--picks", default=PICKS)
     ap.add_argument("--out", default="docs/backtest")
+    ap.add_argument("--tune", action="store_true", help="the IMPROVED spread-gate grid (spec section 10)")
     a = ap.parse_args(argv)
+    variants = [(f"IMPROVED {g}", "IMPROVED", {"spread_d": v}) for g, v in GRID.items()] if a.tune else None
+    labels = [v[0] for v in variants] if variants else RULES
+    name = "ticket-tune" if a.tune else "ticket"
     t0, run = time.time(), dt.date.today().isoformat()
     today = dt.datetime.now(NY).date().isoformat()
     hours = alpaca.calendar(LOOKBACK, a.end or today)
@@ -548,18 +610,18 @@ def main(argv=None):
     for k, day in enumerate(days):
         b_rows = fixed_b(day, reports, shares, primary, daily, counts) if reports is not None else {}
         counts["B ticker-days"] += len(b_rows)
-        got, why = _day(day, hours[day], picks.get(day, []), b_rows, daily, sessions, gaps)
+        got, why = _day(day, hours[day], picks.get(day, []), b_rows, daily, sessions, gaps, variants)
         rows += got
         reasons += why
         if k % 20 == 0 or k == len(days) - 1:
             print(f"{day}: {len(rows)} tickets, {alpaca.REQUESTS[0]} requests ({time.time() - t0:.0f}s)", flush=True)
-    results = _results(rows, reasons)
+    results = _results(rows, reasons, labels)
     meta = {"run": run, "start": a.start, "end": end, "universes": a.universe, "runtime": time.time() - t0,
             "requests": alpaca.REQUESTS[0], "gaps": dict(gaps), "counts": dict(counts)}
     os.makedirs(a.out, exist_ok=True)
-    md, out_csv = os.path.join(a.out, f"ticket-{run}.md"), os.path.join(a.out, f"ticket-{run}-trades.csv")
+    md, out_csv = os.path.join(a.out, f"{name}-{run}.md"), os.path.join(a.out, f"{name}-{run}-trades.csv")
     with open(md, "w") as f:
-        f.write(render(meta, results))
+        f.write(render_tune(meta, results) if a.tune else render(meta, results))
     with open(out_csv, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(COLUMNS)
