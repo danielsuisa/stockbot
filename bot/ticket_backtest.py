@@ -841,7 +841,7 @@ def render_zba(meta, res, grid=None, tuned=None):
     v, r = res["verdict"], res["replication"]
     if grid is not None:
         tv = tuned["all"] if tuned else None
-        line = (f"- גרסה מכוילת (סטופ רחב יותר, נבחרה על 2022–2023): `{tuned['variant']}` — "
+        line = (f"- גרסה מכוילת (נבחרה על 2022–2023 מתוך 8 גרסאות של רוחב סטופ ומסנן מרווח): `{tuned['variant']}` — "
                 f"{'GO ✅' if tuned['go'] else 'NO-GO ❌'} על 2024-02-01 ואילך, עסקאות `{tv['n']}`, ממוצע נטו "
                 f"`{_f(tv['mean'])}R`, סטטיסטי t `{_f(tv['t'], '{:.2f}')}`, תיק: שארפ "
                 f"`{_f(tuned['book']['sharpe'], '{:.2f}')}`") if tuned else \
@@ -859,7 +859,7 @@ def render_zba(meta, res, grid=None, tuned=None):
          f"`{_f(r['all']['mean'])}R`, תיק: תשואה שנתית `{_f(r['book']['cagr'], '{:+.1%}')}`, שארפ "
          f"`{_f(r['book']['sharpe'], '{:.2f}')}`",
          *([line] if grid is not None else []),
-         "", "הפרמטרים קבועים מהמאמר, בלי כוונון; כלל ההכרעה נרשם לפני ההרצה.", "",
+         "", "השורה הראשונה היא האסטרטגיה בפרמטרים של המאמר; כל כללי הבחירה וההכרעה נרשמו לפני ההרצות.", "",
          "## Verdict checks", "", "| Check | Pass |", "|---|---|"]
     L += [f"| {c} | {'pass' if ok else 'fail'} |" for c, ok in res["checks"]]
     L += ["", "## Results (net of costs)", "", "| Period | Side | Trades | Mean net R | t | Win | Median | Random p95 | "
