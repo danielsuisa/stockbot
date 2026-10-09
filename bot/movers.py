@@ -118,8 +118,8 @@ def log(book, found, today, session, manual):
     return book
 
 
-def _pct(x, signed=False):
-    return code(f"{x * 100:+.0f}%" if signed else f"{x * 100:.0f}%")
+def _pct(x):
+    return code(f"{x * 100:.0f}%")
 
 
 def text(found, session, today, ranks=None, failed=0, manual=False):
@@ -127,17 +127,14 @@ def text(found, session, today, ranks=None, failed=0, manual=False):
     ranks = ranks or {}
     if not found and not manual:
         return ""
-    head = f"{ICON[session]} <b>מזנקות {NAME[session]} · {code(today)}</b>" if session else \
-        f"🌙 <b>השוק סגור כרגע · {code(today)}</b>"
-    lines = [("▶️ הרצה ידנית · " if manual else "") + head]
+    day = f"יום {common.weekday(today)} {code(common.il_date(today))}"
+    lines = [f"{ICON[session]} <b>מזנקות {NAME[session]}</b>" if session else "🌙 <b>השוק סגור כרגע</b>", day]
     for m in found:
         rank = f" · מקום {code(ranks[m['t']])} ברשימת הסקוויז" if m["t"] in ranks else ""
-        lines.append(f"מזנקת: {code(m['t'])} {_pct(m['gain'], True)} · מחזור {_pct(m['vol_ratio'])} מיום רגיל · "
-                     f"שורט {_pct(m['si_pct'])} מהמניות · {code(format(m.get('dtc') or 0.0, '.1f'))} ימי כיסוי{rank}")
+        lines.append(f"🔥 עלתה: {code(m['t'])} ב־{_pct(m['gain'])} · מחזור {_pct(m['vol_ratio'])} מיום רגיל"
+                     f"\nשורט {_pct(m['si_pct'])} מהמניות · {code(format(m.get('dtc') or 0.0, '.1f'))} ימים לכיסוי{rank}")
     if not found:
         lines.append(f"🤷 אין כרגע מניה עם שורט גבוה שעלתה {code('10%')} במחזור אמיתי." if session else
                      "אין עכשיו מסחר, גם לא לפני או אחרי השעות הרגילות.")
-    lines.append(f"⚠️ הכלל (עלייה של {code('10%')} לפחות ומחזור של {code('10%')} לפחות מיום רגיל) לא נבדק "
-                 "היסטורית, ולכן לא מאומת."
-                 + (f" · ל־{code(failed)} מניות לא התקבל ציטוט מ־Nasdaq" if failed else ""))
+    lines.append(f"⚠️ הכלל (עלייה של {code('10%')} לפחות, ומחזור של {code('10%')} לפחות מיום רגיל) לא נבדק היסטורית.")
     return "\n".join(lines)

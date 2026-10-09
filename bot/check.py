@@ -5,7 +5,7 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from bot import common, form4, fundamentals, market, tenk
-from bot.common import code, esc, money, price
+from bot.common import code, esc, price
 
 INSIDER_DAYS = common.env("INSIDER_DAYS", 180)
 MAX_FORM4 = 150  # bounds run time for mega-caps with heavy Form 4 traffic
@@ -26,34 +26,32 @@ def insiders(cik, rows):
         own = [b for b in doc["buys"] if b["date"] >= since]
         if own:
             buys.append({**form4.summarize({"buys": own}), **form4.insider(doc)})
-    out = [f"<b>רכישות בעלי עניין בשוק הפתוח ({INSIDER_DAYS} יום)</b>"]
+    out = [f"👥 <b>רכישות של בעלי עניין ב־{code(INSIDER_DAYS)} הימים האחרונים</b>"]
     if len(f4) > MAX_FORM4:
-        out.append(f"נבדקו {code(MAX_FORM4)} מתוך {code(len(f4))} דיווחי Form 4 (האחרונים).")
+        out.append(f"נבדקו רק {code(MAX_FORM4)} הדיווחים האחרונים מתוך {code(len(f4))}.")
     if not buys:
-        return out + [f"לא נמצאו רכישות (קוד {code('P')}) ב־{code(len(urls))} דיווחי Form 4."]
+        return out + ["לא היו רכישות."]
     buys = sorted(form4.joint(buys), key=lambda b: b["last"], reverse=True)  # joint fund/director reports = 1
     op = [b for b in buys if b["kind"] == "open"]
-    out.append(f"סה״כ בשוק הפתוח: {code(len(op))} דיווחי רכישה · {code(len({b['cik'] for b in op}))} רוכשים"
-               f" · {code(money(sum(b['value'] for b in op)))}")
+    if op:
+        out.append(f"{code(len({b['cik'] for b in op}))} בעלי עניין קנו ב־{common.amount(sum(b['value'] for b in op))}"
+                   " בסך הכול.")
     for b in buys[:MAX_LINES]:
-        tag = f" · תוכנית {code('10b5-1')}, לא נספרה" if b["kind"] == "plan" else " · סמלית" if form4.symbolic(b) else ""
-        pct = f" · {code(format(b['pct'], '.1%'))} מהאחזקה" if b.get("pct") is not None else ""
-        out.append(f"• רכש {esc(b['name'])} ({esc(b['role'])}) · {code(b['last'])} · {code(money(b['value']))}"
-                   f" @ {code(price(b['price']))}{pct}{tag}")
+        tag = " · בתוכנית קבועה מראש, לא נספרה" if b["kind"] == "plan" else " · רכישה סמלית" if form4.symbolic(b) else ""
+        pct = f" · {code(format(b['pct'], '.0%'))} מהאחזקה" if b.get("pct") is not None else ""
+        out.append(f"• רכש {esc(b['name'])} ({esc(b['role'])}): {common.amount(b['value'])}, {code(price(b['price']))}"
+                   f" למניה, ב־{code(common.il_date(b['last'], year=False))}{pct}{tag}")
     if len(buys) > MAX_LINES:
-        out.append(f"ועוד {code(len(buys) - MAX_LINES)} דיווחים.")
+        out.append(f"ועוד {code(len(buys) - MAX_LINES)} רכישות.")
     return out
 
 
 def sizing(t):
-    """5.4 + 5.6: 30-day dollar liquidity (flagged under $2M/day) and a fixed, general rule of thumb - informational
-    only, the same for everyone; nothing here places or suggests a trade."""
+    """5.4: 30-day average dollar volume, flagged under $2M a day (informational only; nothing here suggests a trade)."""
     liq = market.liquidity(t)
-    low = liq is not None and liq < market.LOW_LIQUIDITY
-    return [f"💧 נזילות: " + (f"{code(money(liq))} ליום (ממוצע 30 יום)" + (" · ⚠ נזילות נמוכה" if low else "")
-                              if liq is not None else "חסר (נתוני Yahoo לא זמינים)"),
-            "📏 כלל אצבע (מידע כללי, לא המלצה): 2–3% מהתיק, יציאה לפי זמן 12 חודשים"
-            + (" · ⚠ נזילות נמוכה" if low else "")]
+    if liq is None:
+        return []
+    return [f"💧 מחזור יומי ממוצע: {common.amount(liq)}" + (" ⚠️ נמוך" if liq < market.LOW_LIQUIDITY else "")]
 
 
 def report(ticker):
@@ -61,13 +59,15 @@ def report(ticker):
     t = ticker.strip().upper().lstrip("$").replace(".", "-")
     hit = common.tickers().get(t)
     if not hit:
-        return f"לא מצאתי את הטיקר {code(t)} ברשימת החברות של SEC."
+        return f"לא מצאתי את {code(t)} ברשימת החברות של SEC."
     cik, name = hit
     sub = common.submissions(cik) or {}
     rows = common.filings(sub) if sub else []
     sic = int(sub.get("sic") or 0) or None
-    lines = [f"📊 <b>דוח פורנזי</b> · {code(t)} · {esc(name)}",
-             f"ענף: {code(f'SIC {sic}') if sic else 'חסר'} {esc(sub.get('sicDescription') or '')}"] + sizing(t)
+    lines = [f"📊 <b>דוח על {code(t)} · {esc(name)}</b>"]
+    if sub.get("sicDescription"):
+        lines.append(f"ענף: {esc(sub['sicDescription'])}")
+    lines += sizing(t)
     parts = (("דוחות כספיים", lambda: fundamentals.format_he(fundamentals.analyze(cik, t, sic))),
              ("בעלי עניין", lambda: insiders(cik, rows)),
              ("גורמי סיכון", lambda: tenk.format_he(tenk.analyze(cik, rows))))
@@ -77,7 +77,7 @@ def report(ticker):
             lines += build()
         except Exception as e:  # one broken section must not kill the report
             traceback.print_exc()
-            lines.append(f"⚠️ החלק \"{title}\" נכשל ({code(type(e).__name__)}) ולכן הושמט.")
+            lines.append(f"⚠️ לא הצלחתי להביא את החלק \"{title}\".")
     return "\n".join(lines)
 
 
@@ -88,7 +88,7 @@ def main():
     try:
         msg = report(t)
     except (Exception, SystemExit) as e:  # SEC down / SEC_UA missing: say so in Telegram, keep the run red
-        common.send(f"⚠️ הדוח עבור {code(t.strip().upper())} נכשל ({code(type(e).__name__)}): {common.failure(e)}")
+        common.send(f"⚠️ הדוח על {code(t.strip().upper())} נכשל. {common.failure(e)}")
         raise
     common.send(msg, signal=True)
 

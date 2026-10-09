@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from bot import common, form4, fundamentals, journal, market, sessions
-from bot.common import code, esc, money, price
+from bot.common import code, esc, price
 
 MIN_INSIDERS = common.env("MIN_INSIDERS", 3)
 MIN_CLUSTER_USD = common.env("MIN_CLUSTER_USD", 100000.0)
@@ -33,8 +33,8 @@ DEFAULTS = {"days": {}, "buys": [], "alerted": {}, "info": [], "regime": None, "
 RESCAN = 3  # previous trading days re-read every run for late filings and 4/A amendments
 LEGACY = 5  # days per run re-read to upgrade rows saved before schema 2 (no trade signature -> joint filings unmerged)
 INDICES = ("SPY", "IWM", "%5EVIX")
-TITLE = "🔔 <b>רכישות בעלי עניין בשוק הפתוח</b>"
-INTRADAY_TITLE = "🔔 <b>רכישות בעלי עניין בשוק הפתוח — מהיום</b>"
+TITLE = "🔔 <b>רכישות של בעלי עניין</b>"
+INTRADAY_TITLE = "🔔 <b>רכישות של בעלי עניין, מהיום</b>"
 MORNING = "05:30"  # UTC: the listener's clock starts the morning scan then (bot/clock.py)
 
 
@@ -99,35 +99,59 @@ def _iso(day):
     return f"{day[:4]}-{day[4:6]}-{day[6:]}"
 
 
+def _day(day):
+    """'20260924' -> '<code>24.9</code>' (Israeli date for messages)."""
+    return code(common.il_date(_iso(day), year=False))
+
+
+def _days(days):
+    return ", ".join(_day(d) for d in days)
+
+
+def _il_clock(utc_hhmm, today):
+    """A UTC time of day -> the Israel time it is on `today` ('05:30' -> '08:30' in summer)."""
+    t = dt.datetime.combine(today, dt.time.fromisoformat(utc_hhmm), dt.timezone.utc).astimezone(common.IL)
+    return f"{t:%H:%M}"
+
+
+def _when(stamp):
+    """A stored UTC stamp ('2026-09-24 05:41 UTC') -> '<code>24.9 08:41</code>' in Israel time."""
+    try:
+        return code(common.il_when(stamp))
+    except (TypeError, ValueError):
+        return code(stamp or "—")
+
+
 def status(today=None):
     """Hebrew /status: the last scanned trading day and what the rolling state holds."""
     today = today or dt.datetime.now(dt.timezone.utc).date()
     path = Path(common.env("STATE_FILE", str(common.DATA / "state.json")))
     if not path.exists():
-        return f"📋 הסריקה היומית עוד לא רצה (אין קובץ {code('data/state.json')})."
+        return "📋 הסריקה היומית עוד לא רצה."
     st = prune(load(path), today)
     ok = sorted(d for d, v in st["days"].items() if v == "ok")
     wait = [d for d in weekdays(today) if d not in st["days"]]
+    holidays = len(st["days"]) - len(ok)
     return "\n".join((
         "📋 <b>מצב הסריקה היומית</b>",
-        f"יום המסחר האחרון שנסרק: {code(_iso(ok[-1])) if ok else 'עדיין אין'}",
-        f"ב־{code(WINDOW_DAYS)} הימים האחרונים: {code(len(ok))} ימי מסחר נסרקו · {code(len(st['days']) - len(ok))} חגים"
-        + (f" · {code(len(wait))} ממתינים לסריקה (האחרון {code(_iso(wait[-1]))})" if wait else ""),
-        f"דיווחי רכישה בזיכרון: {code(len(st['buys']))} · חברות שכבר קיבלו התראה: {code(len(st['alerted']))}",
-        f"כללי התראה: לפחות {code(MIN_INSIDERS)} נושאי משרה שונים שרכשו בשוק הפתוח יחד {code(money(MIN_CLUSTER_USD))},"
-        f" או רכישה בודדת של {code(money(MIN_SINGLE_USD))} (בלי תוכניות {code('10b5-1')})",
+        "נסרק לאחרונה: " + (f"יום {common.weekday(_iso(ok[-1]))} {_day(ok[-1])}" if ok else "עדיין אף יום"),
+        f"ב־{code(WINDOW_DAYS)} הימים האחרונים: {code(len(ok))} ימי מסחר נסרקו"
+        + (f", {code(len(wait))} ממתינים" if wait else "") + (f", {code(holidays)} חגים" if holidays else ""),
+        f"כבר נשלחה התראה על {code(len(st['alerted']))} חברות.",
+        f"התראה נשלחת כש־{code(MIN_INSIDERS)} בעלי עניין או יותר קונים יחד ב־{common.amount(MIN_CLUSTER_USD)},"
+        f" או כשאחד קונה ב־{common.amount(MIN_SINGLE_USD)} לפחות.",
         heartbeat_line(st.get("heartbeat")), watchdog_line(st, today),
-        f"סריקה אוטומטית בימים ג׳–ש׳ ב־{code('05:30 UTC')}; הפקודה {code('/scan')} מריצה אותה עכשיו."))
+        f"⏰ הסריקה רצה לבד בימים ג׳–ש׳ ב־{code(_il_clock(MORNING, today))}, ו־{code('/scan')} מריץ אותה עכשיו."))
 
 
 def heartbeat_line(hb):
     """/status and /health: what the last scan run reported (state["heartbeat"])."""
     if not hb:
-        return "💓 דופק: עוד אין נתונים מריצה של הגרסה הנוכחית."
-    failed = f" · ימים שנכשלו: {', '.join(code(_iso(d)) for d in hb['failed'])}" if hb.get("failed") else ""
-    return (f"💓 ריצה אחרונה: {code(hb.get('at', '—'))} · {'תקינה ✅' if hb.get('ok') else 'נכשלה ❌'} · "
-            f"{code(hb.get('filings', 0))} הגשות · {code(hb.get('errors', 0))} שגיאות · "
-            f"{code(hb.get('alerts', 0))} התראות{failed}")
+        return "💓 עוד אין נתונים מהריצה האחרונה."
+    failed = f" · לא נסרקו: {_days(hb['failed'])}" if hb.get("failed") else ""
+    return (f"💓 ריצה אחרונה: {_when(hb.get('at'))} · {'הצליחה ✅' if hb.get('ok') else 'נכשלה ❌'} · "
+            f"{code(hb.get('alerts', 0))} התראות" + (f" · {code(hb['errors'])} שגיאות" if hb.get("errors") else "")
+            + failed)
 
 
 def missed(st, today, quick=False):
@@ -141,13 +165,13 @@ def watchdog_line(st, today):
     """/status and /health: the missed-day watchdog's view now, plus its last scheduled run when GitHub answers."""
     prev, _, gap = missed(st, today, quick=True)
     if gap:
-        head = (f"🐕 שומר ימים חסרים: ⚠ עוד לא נסרקו {', '.join(code(_iso(d)) for d in gap)}"
-                f" (הסריקה ב־{code('05:30 UTC')} והשומר ב־{code('14:00 UTC')} משלימים ימים חסרים)")
+        head = f"🐕 ימים חסרים: ⚠️ עוד לא נסרקו {_days(gap)}, הם יושלמו בריצה הבאה"
     else:
-        head = f"🐕 שומר ימים חסרים: תקין, יום המסחר הקודם {code(_iso(prev)) if prev else 'לא ידוע'} נסרק"
+        head = "🐕 ימים חסרים: אין" + (f", יום המסחר הקודם ({_day(prev)}) נסרק" if prev else "")
     r = common.runs("watchdog.yml", completed=True)
     if r:
-        head += f" · ריצה אחרונה {code(r['created_at'][:16].replace('T', ' '))} {code(r['conclusion'] or r['status'])}"
+        verdict = {"success": "הצליחה", "failure": "נכשלה"}.get(r["conclusion"]) or code(r["conclusion"] or r["status"])
+        head += f" · בדיקה אחרונה {_when(r['created_at'])} {verdict}"
     return head
 
 
@@ -402,7 +426,6 @@ def quality(rows, regime):
     return max(0, min(100, sum(parts.values()))), parts
 
 
-PARTS = {"breadth": "רוחב", "seniority": "בכירות", "size": "סכום", "conviction": "שכנוע", "market": "שוק"}
 
 
 def evaluate(bs, regime):
@@ -427,20 +450,20 @@ def links(cik):
 
 
 def row_line(b, seen, urls=None):
-    """One purchase line of an alert, with direct EDGAR links (the Form 4 itself and its filing index)."""
+    """One purchase line of an alert: who (linked to the filing on EDGAR), how much, at what price, when."""
     extra, pct, r = [], b.get("pct"), pay_ratio(b)
     if pct is not None:
-        extra.append(f"{code(f'{pct * 100:.1f}%')} מהאחזקה")
+        extra.append(f"{code(f'{pct * 100:.0f}%')} מהאחזקה")
     if r is not None:
         extra.append(f"{code(f'{r * 100:.0f}%')} מהשכר השנתי")
     if form4.symbolic(b):
-        extra.append("סמלית")
-    doc = (urls or {}).get(b["acc"])
-    name = f'<a href="{esc(doc)}">{esc(b["insider"])}</a>' if doc else esc(b["insider"])
-    index = f' · <a href="{esc(common.doc_url(b["cik"], b["acc"]))}">אינדקס</a>'
-    return (f"• רכש {name} ({esc(b['role'])}) · {code(b['last'])} · {code(money(b['value']))}"
-            f" @ {code(price(b['price']))}" + (f" · {' · '.join(extra)}" if extra else "") + index
-            + (" 🆕" if _new(b, seen) else ""))
+        extra.append("רכישה סמלית")
+    if b.get("kind") == "plan":
+        extra.append("בתוכנית קבועה מראש, לא נספרה")
+    doc = (urls or {}).get(b["acc"]) or common.doc_url(b["cik"], b["acc"])
+    return (f"• רכש <a href=\"{esc(doc)}\">{esc(b['insider'])}</a> ({esc(b['role'])}): {common.amount(b['value'])},"
+            f" {code(price(b['price']))} למניה, ב־{code(common.il_date(b['last'], year=False))}"
+            + (f" · {' · '.join(extra)}" if extra else "") + (" 🆕" if _new(b, seen) else ""))
 
 
 def _new(b, seen):
@@ -468,35 +491,21 @@ def enrich(cik, ticker, j, today):
 def block(ev, seen, regime, info=(), urls=None, context=()):
     """One issuer's Hebrew alert lines."""
     bs, cluster, big = ev["open"], ev["cluster"], ev["big"]
-    b0, total = bs[0], sum(b["value"] or 0 for b in bs)
-    kind = " + ".join(x for x, on in (("אשכול רכישות", cluster), ("רכישה גדולה", big)) if on)
-    why = ([f"{code(cluster[0])} נושאי משרה/דירקטורים שונים רכשו יחד {code(money(cluster[1]))}"] if cluster else []) + \
-          ([f"רכישה בודדת בהיקף {code(money(big))}"] if big else [])
-    parts = " · ".join(f"{PARTS[k]} {code(f'{v:+d}' if k == 'market' else v)}" for k, v in ev["parts"].items())
-    score = f"{ev['score']}/100"
-    lines = [f"🟢 <b>{kind}</b> · {code(b0['ticker'])} · {esc(b0['company'])}", "סיבה: " + " · ".join(why),
-             f"איכות: {code(score)} ({parts})",
-             f"סה״כ בשוק הפתוח ב־{code(WINDOW_DAYS)} יום: {code(len(bs))} דיווחי רכישה · "
-             f"{code(len({b['insider_cik'] or b['insider'] for b in bs}))} רוכשים · {code(money(total))}"]
+    b0 = bs[0]
+    why = ([f"{code(cluster[0])} בעלי עניין קנו יחד ב־{common.amount(cluster[1])}"] if cluster else []) + \
+          ([f"רכישה אחת של {common.amount(big)}"] if big else [])
+    lines = [f"🟢 <b>חברה: {code(b0['ticker'])} · {esc(b0['company'])}</b>",
+             f"סיבה: {' וגם '.join(why)} · ציון {code(ev['score'])} מתוך {code(100)}"]
     for b in sorted(bs, key=lambda b: (_new(b, seen), b["value"] or 0), reverse=True)[:MAX_LINES]:
         lines.append(row_line(b, seen, urls))
     if len(bs) > MAX_LINES:
-        lines.append(f"ועוד {code(len(bs) - MAX_LINES)} דיווחים.")
+        lines.append(f"ועוד {code(len(bs) - MAX_LINES)} רכישות.")
     if ev["plan"]:
-        lines.append(f"ℹ️ לא נספרו: {code(len(ev['plan']))} רכישות בתוכנית {code('10b5-1')} בסך"
-                     f" {code(money(sum(b['plan_value'] or b['value'] or 0 for b in ev['plan'])))}")
-    kinds = defaultdict(int)
-    for i in info:
-        for k, v in i["kinds"].items():
-            kinds[k] += v
-    if kinds:
-        names = {"exercise": "מימוש אופציות", "grant": "הענקות", "other": "אחר"}
-        lines.append("ℹ️ פעולות נוספות ב־Form 4 (לא נספרו): "
-                     + " · ".join(f"{names[k]} {code(f'×{v}')}" for k, v in sorted(kinds.items())))
+        lines.append(f"ℹ️ לא נספרו {code(len(ev['plan']))} רכישות בתוכנית קבועה מראש (לא החלטה של הרגע).")
     lines += list(context)
-    lines.append(market.regime_line(regime or {"tag": "unknown"}))
+    lines += [x for x in [market.regime_line(regime or {})] if x]
     url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={b0['cik']}&type=4&owner=include"
-    lines.append(f'🔗 <a href="{esc(url)}">כל דיווחי Form 4 של החברה ב־EDGAR</a>')
+    lines.append(f'🔗 <a href="{esc(url)}">כל הדיווחים של החברה ב־SEC</a>')
     return "\n".join(lines)
 
 
@@ -561,13 +570,13 @@ def alerts(state, today, j=None, title=TITLE):
             blocks.append((block(ev, seen, state.get("regime"), info[cik], urls, context), {cik: hits[cik]},
                            {cik: snap}, {cik: entry}))
     if fpi:
-        blocks.append((f"ℹ️ רכישות חדשות גם אצל מנפיקים זרים: {', '.join(t for t, _ in fpi)} — לא הוצגו, כי המחיר"
-                       " בדיווח שלהם עשוי להיות במטבע מקומי ולא בדולר (אפשר לשלוח לי את הטיקר לדוח מלא).",
+        blocks.append((f"ℹ️ גם בחברות זרות היו רכישות: {', '.join(t for t, _ in fpi)}. הן לא מוצגות, כי הסכומים שלהן"
+                       " עשויים להיות במטבע מקומי. שלחו לי טיקר לדוח מלא.",
                        {c: hits[c] for _, c in fpi}, {}, {}))
     common.log("alerts", qualifying=qualifying, new=len(hits), foreign=len(fpi))
     print(f"alerts: {qualifying} qualifying issuer(s), {len(hits)} with new filings ({len(fpi)} foreign, names only)")
     msgs = []
-    head = (f"{title} · {code(today.isoformat())}", {}, {}, {})
+    head = (f"{title}\nיום {common.weekday(today)} {code(common.il_date(today))}", {}, {}, {})
     for blk, *extra in [head] + blocks:
         if msgs and len(msgs[-1][0]) + len(blk) < 3500:  # never split one issuer across two messages
             msgs[-1][0] += "\n\n" + blk
@@ -594,11 +603,10 @@ def corrections(state, today):
         snap["acks"] += news
         if abs(total - snap["total"]) <= 0.10 * max(snap["total"], 1) and still == (snap["cluster"] or snap["big"]):
             continue
-        out.append(f"✏️ <b>תיקון להתראה</b> {code(snap['id'])} על {code(snap['ticker'])} (נשלחה {code(snap['date'])})\n"
-                   f"דיווח מתוקן ({code('Form 4/A')}) שינה את סך הרכישות בשוק הפתוח מ־{code(money(snap['total']))}"
-                   f" ל־{code(money(total))}" + ("" if still else " · ההתראה כבר לא עומדת בכללי ההתראה")
-                   + "\nהדיווחים המתוקנים: "
-                   + " · ".join(f'<a href="{esc(common.doc_url(cik, a))}">{code(a)}</a>' for a in news))
+        out.append(f"✏️ <b>תיקון להתראה על {code(snap['ticker'])} מ־{code(common.il_date(snap['date'], year=False))}</b>\n"
+                   f"דיווח מתוקן שינה את סך הרכישות מ־{common.amount(snap['total'])} ל־{common.amount(total)}."
+                   + ("" if still else " ההתראה כבר לא עומדת בכללים.") + "\n"
+                   + " · ".join(f'🔗 <a href="{esc(common.doc_url(cik, a))}">הדיווח המתוקן</a>' for a in news))
         snap.update(total=total, cluster=cluster, big=big)
     return out
 
@@ -638,7 +646,7 @@ def _mark_reported():
 def alarm(reason, state=None, path=None):
     """'❌ הסריקה נכשלה: <reason>' - silence is a failure too, so every failed run says so (best effort)."""
     try:
-        common.send(f"❌ הסריקה נכשלה: {reason}")
+        common.send(f"❌ הסריקה היומית נכשלה: {reason}")
         _mark_reported()
     finally:
         if state is not None and path is not None:
@@ -687,18 +695,18 @@ def verify(ticker, today=None):
             buys[row["acc"]] = row
     st = load(Path(common.env("STATE_FILE", str(common.DATA / "state.json"))))
     errors = sum(d is False for d in docs)
-    out = [f"🔎 <b>אימות מחדש מול EDGAR</b> · {code(t)} · {esc(name)}",
-           f"הורדו עכשיו {code(len(f4))} דיווחי {code('Form 4')} מ־{code(WINDOW_DAYS)} הימים האחרונים"
+    out = [f"🔎 <b>בדיקה מחדש מול SEC: {code(t)} · {esc(name)}</b>",
+           f"הורדו עכשיו {code(len(f4))} דיווחים מ־{code(WINDOW_DAYS)} הימים האחרונים"
            + (f" ({code(errors)} נכשלו)" if errors else "") + "."]
     if not buys:
-        return "\n".join(out + ["לא נמצאו רכישות של בעלי עניין בחלון הזה."])
+        return "\n".join(out + ["לא היו רכישות של בעלי עניין בתקופה הזו."])
     ev = evaluate(list(buys.values()), st.get("regime"))
-    kind = " + ".join(x for x, on in (("אשכול רכישות", ev["cluster"]), ("רכישה גדולה", ev["big"])) if on)
     op = ev["open"]
-    out += [f"תוצאה: {'<b>' + kind + '</b>' if kind else 'לא עומד בכללי ההתראה'} · איכות {code(str(ev['score']) + '/100')}",
-            f"בשוק הפתוח: {code(len(op))} דיווחי רכישה · {code(len({b['insider_cik'] or b['insider'] for b in op}))}"
-            f" רוכשים · {code(money(sum(b['value'] or 0 for b in op)))}"
-            + (f" · {code(len(ev['plan']))} בתוכנית {code('10b5-1')} (לא נספרו)" if ev["plan"] else "")]
+    why = ([f"{code(ev['cluster'][0])} בעלי עניין קנו יחד ב־{common.amount(ev['cluster'][1])}"] if ev["cluster"] else []) \
+        + ([f"רכישה אחת של {common.amount(ev['big'])}"] if ev["big"] else [])
+    out.append(("תוצאה: <b>עומדת בכללי ההתראה</b>, " + " וגם ".join(why) if why else
+                f"תוצאה: לא עומדת בכללי ההתראה ({code(len(op))} רכישות, {common.amount(sum(b['value'] or 0 for b in op))})")
+               + f" · ציון {code(ev['score'])} מתוך {code(100)}")
     seen, urls_ = set(st["alerted"].get(str(cik), [])), links(cik)
     for b in sorted(op + ev["plan"], key=lambda b: b["value"] or 0, reverse=True)[:MAX_LINES]:
         out.append(row_line(b, seen, urls_))
@@ -709,16 +717,15 @@ def verify(ticker, today=None):
     total = lambda rows: sum(b["value"] or 0 for b in rows)
     only_new, only_old = accs(op) - accs(old), accs(old) - accs(op)
     if not old:
-        out.append("השוואה לסריקה: אין לה רכישות בשוק הפתוח של החברה בזיכרון"
-                   + (" (הדיווחים חדשים מדי, או שהסריקה עוד לא הגיעה ליום שלהם)." if op else "."))
+        out.append("השוואה לסריקה: הסריקה עוד לא ראתה את הרכישות האלה" + (" (הן חדשות מדי)." if op else "."))
     elif not (only_new or only_old) and abs(total(op) - total(old)) <= 1:
-        out.append(f"השוואה לסריקה: ✅ תואם ({code(len(old))} דיווחים, {code(money(total(old)))})")
+        out.append("השוואה לסריקה: ✅ זהה")
     else:
-        out.append("השוואה לסריקה: ⚠ יש הבדלים"
-                   + (f" · חדשים שהסריקה עוד לא ראתה: {code(len(only_new))}" if only_new else "")
-                   + (f" · רק בזיכרון הסריקה: {code(len(only_old))}" if only_old else "")
-                   + f" · סכום עכשיו {code(money(total(op)))} מול {code(money(total(old)))} בסריקה")
-    out.append(f"התראה נשלחה על החברה: {'כן' if seen else 'לא'}")
+        out.append("השוואה לסריקה: ⚠️ יש הבדלים"
+                   + (f" · {code(len(only_new))} רכישות שהסריקה עוד לא ראתה" if only_new else "")
+                   + (f" · {code(len(only_old))} רכישות שיש רק בסריקה" if only_old else "")
+                   + f" · עכשיו {common.amount(total(op))} מול {common.amount(total(old))} בסריקה")
+    out.append(f"התראה על החברה: {'כבר נשלחה' if seen else 'לא נשלחה'}")
     return "\n".join(out)
 
 
@@ -745,17 +752,17 @@ def watchdog(today=None):
                    f"- missed: {', '.join(gap) or 'none'}")
     if not gap:
         return print(f"watchdog: ok (last scanned {last}, previous trading day {prev})")
-    days = ", ".join(code(_iso(d)) for d in gap)
+    days = _days(gap)
     if not common.env("GITHUB_ACTIONS"):
-        common.send(f"⚠️ לא סרקתי את {days} — מריץ את הסריקה שוב.")
+        common.send(f"⚠️ לא נסרקו {days}. מריץ את הסריקה שוב.")
         return main([])
     err = common.dispatch("daily-scan.yml", {"notify": "true"})  # first act, then report what actually happened
     if err:
-        common.send(f"⚠️ לא סרקתי את {days}, ולא הצלחתי להפעיל את הסריקה מחדש ({code(err)}). בדקו את ההרשאה"
+        common.send(f"⚠️ לא נסרקו {days}, ולא הצלחתי להפעיל את הסריקה מחדש ({code(err)}). בדקו את ההרשאה"
                     f" {code('actions: write')} בקובץ {code('watchdog.yml')}.")
         _mark_reported()  # the workflow's failure step must not send a second message
         sys.exit(f"watchdog could not dispatch the scan: {err}")
-    common.send(f"⚠️ לא סרקתי את {days} — הפעלתי את הסריקה שוב; הדופק שלה יגיע בסיומה.")
+    common.send(f"⚠️ לא נסרקו {days}. הפעלתי את הסריקה שוב, והתוצאה תגיע בסיומה.")
     _mark_reported()
 
 
@@ -795,7 +802,7 @@ def intraday(now=None, dry=False):
     except Exception as e:  # SEC search down: one warning per session; the morning scan reads the full index anyway
         common.log("efts_unavailable", day=day, error=f"{type(e).__name__}: {e}")
         if sessions.first(state, f"efts:{session}", today.isoformat()):
-            common.send(f"⚠️ חיפוש ההגשות של SEC לא זמין כרגע ({code(type(e).__name__)}); הסריקה של הבוקר תשלים.")
+            common.send("⚠️ החיפוש של SEC לא זמין כרגע. הסריקה של הבוקר תשלים את מה שחסר.")
         if not dry:
             save(path, state)
         _mark_reported()
@@ -894,13 +901,13 @@ def run(a):
                seconds=state["heartbeat"]["seconds"])
     print(f"done: {n} issuer alert(s), {len(state['buys'])} purchase filings in state, {time.time() - t0:.0f}s")
     if failed:  # keep the run red so a persistent problem is visible - and say so
-        alarm(f"לא הצלחתי לסרוק את {', '.join(code(_iso(d)) for d in failed)} ({code(errors)} שגיאות) — אנסה שוב"
+        alarm(f"לא הצלחתי לסרוק את {_days(failed)} ({code(errors)} שגיאות). אנסה שוב"
               " בריצה הבאה.")
         sys.exit(f"days that failed and will be retried: {' '.join(failed)}")
-    via = " · מקור: חיפוש טקסט מלא (האינדקס היומי לא היה זמין)" if "efts" in sources else ""
-    common.send(f"✅ סריקה {code(today.isoformat())}: {code(filings)} הגשות, {code(errors)} שגיאות, "
+    common.send(f"✅ הסריקה של יום {common.weekday(today)} {code(common.il_date(today, year=False))} הסתיימה: "
                 + (f"{code(n)} התראות חדשות" if n else "אין התראות חדשות")
-                + (f" · {code(len(fixes))} תיקונים" if fixes else "") + via)
+                + (f", {code(len(fixes))} תיקונים" if fixes else "")
+                + (f", {code(errors)} שגיאות" if errors else "") + ".")
     _mark_reported()
 
 

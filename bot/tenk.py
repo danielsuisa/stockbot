@@ -12,7 +12,8 @@ from bot import common
 from bot.common import code, esc
 
 MIN_CHARS = 2000  # shorter "sections" are TOC lines or "not required for smaller reporting companies"
-TOP, SNIP, BUDGET = 5, 110, 1600  # changes listed, chars quoted per sentence, visible chars in the whole section
+TOP, SNIP, BUDGET = 5, 110, 1100  # changes ranked, chars quoted per sentence, visible chars in the whole section
+SHOW = 3  # changes shown in the message
 _SEC = r"(?:sec|securities\s+and\s+exchange\s+commission)"
 KEYWORDS = {  # label -> (ranking weight, pattern for inflected forms minus boilerplate that is not a risk signal:
     # "amended and restated certificate", clinical "investigator/investigational", "by default"/"default encryption")
@@ -302,12 +303,12 @@ def _snip(t, span, width):
     return ("…" if lo else "") + t[lo:hi].strip().rstrip(",;:") + ("…" if hi < len(t) else "")
 
 
-KIND = {"hedge": "נוסח הוקשח", "kw": "נוספה מילת סיכון למשפט קיים", "new": "חדש", "removed": "הוסר"}
+KIND = {"hedge": "ניסוח זהיר הפך לקביעה", "kw": "נוספה מילת סיכון", "new": "משפט חדש", "removed": "משפט שהוסר"}
 
 
 def _change(c, width):
     """One ranked change -> label line + 'before' (not for new) and 'after' (not for removed) quotes."""
-    label = ", ".join(c["labels"][:2]) + (f" +{len(c['labels']) - 2}" if len(c["labels"]) > 2 else "")
+    label = ", ".join(c["labels"][:2])
     out = [f"• {KIND[c['kind']]} ({code(label)})" + (f" ועוד {code(c['more'])} כאלה:" if c.get("more") else ":")]
     if c["before"] is not None:
         out.append(f"לפני: <i>{esc(_snip(c['before'], c['sb'], width))}</i>")
@@ -317,30 +318,29 @@ def _change(c, width):
 
 
 def format_he(res):
-    """analyze() result -> Hebrew RTL-safe lines (<= BUDGET visible chars: quotes shrink, then changes drop)."""
-    out, d, p = ["<b>שינויים בגורמי הסיכון (Item 1A)</b>"], res["dates"], res.get("problem")
+    """analyze() result -> short Hebrew lines: how much of last year's text stayed, and the few changes that matter
+    (<= BUDGET visible chars: quotes shrink, then changes drop)."""
+    out, d, p = ["📝 <b>שינויים בגורמי הסיכון בדוח השנתי</b>"], res["dates"], res.get("problem")
     if p == "count":
-        return out + [f"נמצא רק דוח {code('10-K')} אחד (מ־{code(d[0])}); נדרשים שניים להשוואה." if d else
-                      f"לא נמצאו דוחות שנתיים {code('10-K')} (למשל חברה זרה המגישה {code('20-F')} או ישות חדשה)."]
-    out.append(f"השוואת {code('10-K')} מ־{code(d[0])} מול {code(d[1])}")
+        return out + ["אין שני דוחות שנתיים להשוואה" + (" (יש רק אחד)." if d else ".")]
+    day = lambda x: code(common.il_date(x))  # noqa: E731
     if p:
-        return out + [{"src": "בדוח מ־{} נכתב שכחברה מדווחת קטנה (smaller reporting company) היא פטורה מפרק זה.",
-                       "ref": "בדוח מ־{} הפרק מופנה לדוח השנתי לבעלי המניות (נספח {}), ולכן לא הושווה.",
-                       "short": "בדוח מ־{} פרק גורמי הסיכון קצר מדי להשוואה (ייתכן שלא נכלל).",
-                       "missing": "לא אותר פרק גורמי הסיכון בדוח מ־{}."}[p].format(code(res["which"]), code("EX-13"))]
+        return out + [{"src": "בדוח מ־{} החברה פטורה מהפרק הזה (חברה קטנה), אז אין מה להשוות.",
+                       "ref": "בדוח מ־{} הפרק מופיע בנספח נפרד, ולכן לא הושווה.",
+                       "short": "בדוח מ־{} הפרק קצר מדי להשוואה.",
+                       "missing": "לא נמצא הפרק בדוח מ־{}."}[p].format(day(res["which"]))]
     pri, same = res["n_pri"], res["same"]
-    grow, kept = f"{res['words'][0] / res['words'][1] - 1:+.0%}", f"{same / pri:.0%}"
-    out += [f"משפטים: {code(res['n_cur'])} השנה מול {code(pri)} אשתקד · אורך הפרק {code(grow)} (מילים)",
-            f"נשמרו מילה במילה: {code(kept)} ({code(same)} מתוך {code(pri)} משפטי אשתקד)",
-            f"נערכו קלות: {code(res['edited'])} (מתוכם {code(res['boiler'])} שגרתיים: תאריכים, מספרים, ניסוח זעיר)"
-            f" · חדשים לגמרי: {code(res['new'])} · הוסרו: {code(res['removed'])}",
-            "💡 לפי מחקר Lazy Prices, שינוי נרחב בנוסח הדוח הוא סימן אזהרה."]
+    grow = res["words"][0] / res["words"][1] - 1
+    length = ("באותו אורך" if abs(grow) < 0.005 else
+              f"{'התארך' if grow > 0 else 'התקצר'} ב־{code(f'{abs(grow):.0%}')}")
+    out += [f"הדוח מ־{day(d[0])} מול הדוח מ־{day(d[1])}: {code(f'{same / pri:.0%}')} מהמשפטים נשארו זהים,"
+            f" {code(res['new'])} חדשים, {code(res['removed'])} הוסרו, והפרק {length}.",
+            "💡 ככל שהנוסח השתנה יותר, זה סימן אזהרה חזק יותר."]
     if not res["top"]:
         changed = res["edited"] + res["new"] + res["removed"]
-        return out + ([f"לא נמצאו שינויים מהותיים: אין מילות סיכון מהרשימה במשפטים שנוספו, הוסרו או נערכו, ואף"
-                       f" ניסוח זהיר ({code('may/could')}) לא הפך לקביעה."] if changed else [])
-    out.append("השינויים המהותיים ביותר (הקשחת ניסוח, מילות סיכון שנוספו או הוסרו):")
-    for n, width in ((n, w) for n in range(len(res["top"]), 0, -1) for w in (SNIP, 90, 70)):
+        return out + (["לא נמצאו שינויים מהותיים בניסוח הסיכונים."] if changed else [])
+    out.append("השינויים החשובים:")
+    for n, width in ((n, w) for n in range(min(len(res["top"]), SHOW), 0, -1) for w in (SNIP, 90, 70)):
         lines = out + [x for c in res["top"][:n] for x in _change(c, width)]  # widest quotes, then fewer changes
         if common.visible("\n".join(lines)) <= BUDGET:
             break

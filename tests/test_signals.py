@@ -7,6 +7,7 @@ import unittest
 from unittest import mock
 
 from bot import check, common, form4, market, scan
+import msgrules
 from test_bot import NO_ENRICH
 
 
@@ -115,11 +116,11 @@ class Clusters(unittest.TestCase):
             rows = [scan.make_row(acc, d, d["buys"], "ETRA", "2026-09-23") for acc, d in (("880", fund), ("881", gordon))]
             st = {"buys": rows, "alerted": {}, "regime": {"tag": "normal"}}
             (text, marks, snaps, entries), = scan.alerts(st, self.today)
-        self.assertIn("<code>20.0M$</code>", text)
-        self.assertNotIn("40.0M$", text)
+        self.assertIn("<code>20</code> מיליון דולר", text)
+        self.assertNotIn("<code>40</code> מיליון", text)
         self.assertNotIn("אשכול", text)  # one purchase, one buyer
         self.assertEqual(sorted(marks[str(rows[0]["cik"])]), ["880", "881"])  # both filings marked as alerted
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        msgrules.check(self, text)
 
     def test_multi_transaction_filing_is_one_row(self):
         d = doc([tx("P", 100, 10), tx("P", 200, 11), tx("P", 300, 12)])
@@ -145,9 +146,18 @@ class Clusters(unittest.TestCase):
         with mock.patch.object(scan, "pay", return_value={"peo": 1e6, "neo": 5e5, "end": "2025-12-31"}):
             text = scan.block(ev, set(), {"tag": "normal", "spy20": 0.01, "iwm20": 0.02, "vix": 16.0,
                                           "vol_source": "VIX"}, info)
-        for want in ("איכות: <code>", "רוחב", "בכירות", "10b5-1", "מימוש אופציות", "מצב שוק: <b>רגיל</b>", "מהשכר השנתי"):
+        for want in ("חברה: <code>ACME</code>", "סיבה: <code>3</code> בעלי עניין קנו יחד", "מתוך <code>100</code>",
+                     "ℹ️ לא נספרו <code>1</code> רכישות בתוכנית קבועה מראש", "מהשכר השנתי"):
             self.assertIn(want, text)
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        self.assertNotIn("איכות", text)  # the quality breakdown is no longer shown; it stays in the evaluation
+        self.assertNotIn("מצב שוק", text)  # a normal market adds no line
+        self.assertEqual(set(ev["parts"]), {"breadth", "seniority", "size", "conviction", "market"})
+        self.assertEqual(ev["score"], sum(ev["parts"].values()))
+        self.assertEqual((len(ev["plan"]), len(ev["open"])), (1, 3))  # the 10b5-1 buy is set aside, not counted
+        panic = scan.block(ev, set(), {"tag": "panic"}, info)
+        self.assertIn("📉 השוק בירידות חדות", panic)
+        msgrules.check(self, text)
+        msgrules.check(self, panic)
 
     def test_check_report_marks_plan_buys(self):
         plan = doc([tx("P", 100, 10, notes=["F1"])], notes={"F1": "Rule 10b5-1 plan"})
@@ -155,7 +165,8 @@ class Clusters(unittest.TestCase):
         with mock.patch.object(form4, "fetch", return_value=plan):
             lines = check.insiders(12345, subs)
         self.assertTrue(any("לא נספרה" in l for l in lines))
-        self.assertTrue(any("<code>0</code> דיווחי רכישה" in l for l in lines))  # open-market count excludes it
+        self.assertFalse(any("בעלי עניין קנו" in l for l in lines))  # the open-market total excludes it
+        msgrules.check(self, "\n".join(lines))
 
 
 class Schema(unittest.TestCase):

@@ -9,6 +9,7 @@ import urllib.error
 from email.message import Message
 from unittest import mock
 
+import msgrules
 from bot import check, common, form4, fundamentals, listen, market, scan, tenk
 
 # alerts() enriches each alert from EDGAR/Yahoo (block 5); unit tests replace that with an all-missing context
@@ -170,7 +171,7 @@ class Fundamentals(unittest.TestCase):
                 mock.patch.object(common, "cik_tickers", return_value={1: px}), \
                 mock.patch.object(fundamentals, "quote", return_value=quote):
             res = fundamentals.analyze(1, "ACME", sic)
-        self.assertEqual(common.rtl_bad_lines("\n".join(fundamentals.format_he(res))), [])
+        msgrules.check(self, "\n".join(fundamentals.format_he(res)))
         return res
 
     def test_bank(self):
@@ -180,7 +181,9 @@ class Fundamentals(unittest.TestCase):
         self.assertEqual([c["ok"] for c in res["pio"]], [True] * 9)
         self.assertIn("ltd0", res["notes"])  # missing LongTermDebt counted as 0, and said so
         self.assertTrue(res["fin"] and "alt" not in res)
-        self.assertIn("9/9", "\n".join(fundamentals.format_he(res)))
+        text = "\n".join(fundamentals.format_he(res))
+        msgrules.check(self, text)
+        self.assertIn("פיוטרוסקי (איכות): <code>9</code> מתוך <code>9</code>, חזק", text)
 
     def test_altman_beneish(self):
         z = 1.2 * 20 / 125 + 1.4 * 30 / 125 + 3.3 * 18 / 125 + 1.0 * 120 / 125
@@ -384,10 +387,10 @@ class Scan(unittest.TestCase):
         with mock.patch.object(scan, "foreign", return_value=False), mock.patch.object(scan, "links", return_value={}), NO_ENRICH:
             (text, marks, *_), = scan.alerts(st, self.today)
         self.assertEqual(sorted(marks["9"]), ["e1", "e2"])  # both filings are marked as alerted
-        self.assertIn("רכישה גדולה", text)
+        msgrules.check(self, text)
+        self.assertIn("רכישה אחת של <code>15</code> מיליון דולר", text)
         self.assertNotIn("אשכול", text)  # one purchase, so no 2-insider cluster
-        self.assertIn("<code>15.0M$</code>", text)
-        self.assertNotIn("30.0M$", text)  # dollars counted once
+        self.assertNotIn("<code>30</code> מיליון", text)  # dollars counted once
 
     def test_listing_decides_holiday(self):  # SEC answers a missing index with 404, S3 403 or an HTML 503
         listing = {"directory": {"item": [{"name": "form.20260908.idx"}]}}
@@ -450,9 +453,9 @@ class ScanCommands(unittest.TestCase):
                     json.dump({"days": {"20260921": "ok", "20260922": "ok", "20260907": "holiday"},
                                "buys": [buy("a1", 1, "x", 1000)], "alerted": {"1": ["a1"]}}, fh)
                 text = scan.status(self.today)
-        self.assertEqual(common.rtl_bad_lines(text), [])
-        for want in ("<code>2026-09-22</code>", "<code>2</code> ימי מסחר", "<code>1</code> חגים",
-                     "(האחרון <code>2026-09-23</code>)", "בזיכרון: <code>1</code>", "התראה: <code>1</code>"):
+        msgrules.check(self, text)
+        for want in ("נסרק לאחרונה: יום ג׳ <code>22.9</code>", "<code>2</code> ימי מסחר", "<code>1</code> חגים",
+                     "עוד לא נסרקו <code>23.9</code>", "נשלחה התראה על <code>1</code> חברות"):
             self.assertIn(want, text)
 
     def test_heartbeat_every_run(self):  # 4.1: silence is a failure - every run says what it did

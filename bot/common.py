@@ -15,6 +15,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
@@ -80,7 +81,8 @@ STAMPS = {}  # "sec" / "price" -> when this process last got live data (or the c
 
 
 def stamp(kind, value=None):
-    STAMPS[kind] = value or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    """Remember when a source answered (Israel time), for the freshness line."""
+    STAMPS[kind] = value or il_when(dt.datetime.now(dt.timezone.utc))
 
 
 def get_json(url):
@@ -174,8 +176,9 @@ CHECK_PROMPT = "🤔 לפני פעולה: מה חייב להיות נכון בע
 
 
 def freshness():
-    """The data-freshness line every message ends with (before the disclaimer)."""
-    return f"🕒 נתונים נכון ל: SEC {code(STAMPS.get('sec', '—'))}, מחיר {code(STAMPS.get('price', '—'))}"
+    """The data-freshness line every message ends with (before the disclaimer): only the sources this run used."""
+    parts = [f"{name} {code(STAMPS[k])}" for k, name in (("sec", "SEC"), ("price", "מחירים")) if STAMPS.get(k)]
+    return "🕒 נתונים עדכניים ל: " + " · ".join(parts) if parts else ""
 
 
 def send(text, chat_id=None, signal=False, source=None):
@@ -185,7 +188,9 @@ def send(text, chat_id=None, signal=False, source=None):
     chat = chat_id or env("TG_CHAT_ID")
     if not (env("TG_TOKEN") and chat) and env("GITHUB_ACTIONS"):  # a misnamed secret must fail the run loudly
         sys.exit("TG_TOKEN / TG_CHAT_ID secret is missing or misnamed - nothing was sent")
-    tail = "\n".join(([CHECK_PROMPT] if signal else []) + ([source] if source else [freshness(), "", DISCLAIMER]))
+    fresh = freshness()
+    tail = "\n".join(([CHECK_PROMPT] if signal else [])
+                     + ([source] if source else ([fresh, ""] if fresh else []) + [DISCLAIMER]))
     for part in chunks(text.strip(), 4000 - visible(tail)):
         part = f"{part}\n\n{tail}"
         if not (env("TG_TOKEN") and chat):
@@ -278,6 +283,71 @@ def money(x):
 
 def price(p):
     return "חסר" if p is None else f"{p:,.2f}$" if p >= 0.01 else f"{p:.4g}$"
+
+
+# Message style (every Telegram text): Hebrew first, numbers in <code>, Israeli dates, Israel time, and a sign as a
+# word or an arrow - a "-" or "+" next to a number flips in a right-to-left line.
+IL = ZoneInfo("Asia/Jerusalem")
+DAYS = ["ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳", "א׳"]  # date.weekday(): Monday = 0
+
+
+def il_date(day, year=True):
+    """ISO date (or date) -> Israeli "8.10.2026" / "8.10"."""
+    d = day if isinstance(day, dt.date) else dt.date.fromisoformat(str(day)[:10])
+    return f"{d.day}.{d.month}" + (f".{d.year}" if year else "")
+
+
+def weekday(day):
+    """ISO date (or date) -> "ה׳"."""
+    return DAYS[(day if isinstance(day, dt.date) else dt.date.fromisoformat(str(day)[:10])).weekday()]
+
+
+def il_when(t):
+    """Aware datetime (or ISO "YYYY-MM-DD[ T]HH:MM" in UTC) -> Israel "8.10 16:35"."""
+    if isinstance(t, str):
+        t = dt.datetime.fromisoformat(t.strip().replace(" UTC", "").replace("Z", "")[:16].replace(" ", "T"))
+        t = t.replace(tzinfo=dt.timezone.utc)
+    t = t.astimezone(IL)
+    return f"{il_date(t.date(), year=False)} {t:%H:%M}"
+
+
+def amount(x):
+    """Dollars in words: 130000 -> '<code>130</code> אלף דולר', 1.1e6 -> '<code>1.1</code> מיליון דולר' (no sign:
+    callers say "רווח"/"הפסד" themselves); None -> 'חסר'."""
+    if x is None:
+        return "חסר"
+    a = abs(x)
+    for div, unit in ((1e9, "מיליארד"), (1e6, "מיליון"), (1e3, "אלף")):
+        if round(a / div, 1) >= 1:
+            n = f"{a / div:.1f}".rstrip("0").rstrip(".") if a / div < 100 else f"{a / div:,.0f}"
+            return f"{code(n)} {unit} דולר"
+    return f"{code(f'{a:,.0f}')} דולר"
+
+
+def count(x):
+    """Share counts in words: 26000000 -> '<code>26</code> מיליון'."""
+    a = abs(x)
+    for div, unit in ((1e9, "מיליארד"), (1e6, "מיליון"), (1e3, "אלף")):
+        if round(a / div, 1) >= 1:
+            return f"{code(f'{a / div:.1f}'.rstrip('0').rstrip('.'))} {unit}"
+    return code(f"{a:,.0f}")
+
+
+def change(x, digits=1):
+    """A fraction as a Hebrew move: 0.022 -> 'עלייה של <code>2.2%</code>', -0.03 -> 'ירידה של <code>3.0%</code>'."""
+    if x is None:
+        return "חסר"
+    if round(abs(x) * 100, digits) == 0:
+        return "ללא שינוי"
+    return f"{'עלייה' if x > 0 else 'ירידה'} של {code(f'{abs(x) * 100:.{digits}f}%')}"
+
+
+def arrow(x, digits=1):
+    """A fraction as a compact move for lists: 0.022 -> '<code>2.2%▲</code>' (the arrow never flips)."""
+    if x is None:
+        return "חסר"
+    a = f"{abs(x) * 100:.{digits}f}%"
+    return code(a) if float(a[:-1]) == 0 else code(f"{a}{'▲' if x > 0 else '▼'}")
 
 
 def rtl_bad_lines(text):

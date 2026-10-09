@@ -10,6 +10,7 @@ from email.message import Message
 from pathlib import Path
 from unittest import mock
 
+import msgrules
 from bot import common, form4, listen, market, scan
 
 TODAY = dt.date(2026, 9, 24)
@@ -37,15 +38,19 @@ class Messages(unittest.TestCase):
     def test_tail_order_freshness_and_prompt(self):
         common.STAMPS.clear()
         (m,) = self.sent("שלום")
-        self.assertTrue(m.endswith(f"🕒 נתונים נכון ל: SEC <code>—</code>, מחיר <code>—</code>\n\n{common.DISCLAIMER}"))
+        self.assertEqual(common.freshness(), "")  # no source answered -> no freshness line at all
+        self.assertTrue(m.endswith(f"שלום\n\n{common.DISCLAIMER}"))
+        self.assertNotIn("🕒", m)
         self.assertNotIn(common.CHECK_PROMPT, m)
-        common.stamp("sec", "2026-09-24 10:00 UTC")
-        common.stamp("price", "2026-09-23 20:00 (⚠ מטמון)")
+        common.stamp("sec", "24.9 13:00")
+        common.stamp("price", "23.9 23:00 (שמור)")
         (m,) = self.sent("התראה", signal=True)
         tail = m.split("\n")[-4:]
         self.assertEqual(tail[0], common.CHECK_PROMPT)
-        self.assertIn("SEC <code>2026-09-24 10:00 UTC</code>, מחיר <code>2026-09-23 20:00 (⚠ מטמון)</code>", tail[1])
-        self.assertEqual(common.rtl_bad_lines(m), [])
+        self.assertEqual(tail[1], "🕒 נתונים עדכניים ל: SEC <code>24.9 13:00</code> · מחירים <code>23.9 23:00 (שמור)</code>")
+        msgrules.check(self, m)
+        common.STAMPS.pop("price")  # only the sources this run used are listed
+        self.assertEqual(common.freshness(), "🕒 נתונים עדכניים ל: SEC <code>24.9 13:00</code>")
         big = "\n".join(f"• שורה {i} " + "א" * 90 for i in range(90))
         parts = self.sent(big, signal=True)
         self.assertGreater(len(parts), 1)
@@ -60,7 +65,8 @@ class Messages(unittest.TestCase):
             u.return_value.__enter__.return_value.read.return_value = b"{}"
             u.return_value.__enter__.return_value.headers = {}
             common.fetch("https://www.sec.gov/x")
-        self.assertIn("UTC", common.STAMPS["sec"])
+        self.assertRegex(common.STAMPS["sec"], r"^\d{1,2}\.\d{1,2} \d\d:\d\d$")  # Israel time, no UTC
+        self.assertNotIn("UTC", common.STAMPS["sec"])
         common.STAMPS.clear()
 
     def test_log_and_job_summary(self):
@@ -159,9 +165,8 @@ class Corrections(unittest.TestCase):
         self.assertEqual(st["sent"]["7"]["total"], 1_000_000)
         st["buys"][0] = {**st["buys"][0], "value": 40000.0, "amended_by": "a2"}  # a 4/A cut the $400K to $40K
         (msg,) = scan.corrections(st, TODAY)
-        self.assertIn("<code>1.0M$</code>", msg)
-        self.assertIn("<code>640.0K$</code>", msg)
-        self.assertEqual(common.rtl_bad_lines(msg), [])
+        self.assertIn("מ־<code>1</code> מיליון דולר ל־<code>640</code> אלף דולר", msg)
+        msgrules.check(self, msg)
         self.assertEqual(scan.corrections(st, TODAY), [])  # acknowledged: never repeated
 
     def test_small_amendment_is_silent_and_withdrawal_is_reported(self):
@@ -172,7 +177,8 @@ class Corrections(unittest.TestCase):
         st["removed"] = {"b": {"by": "b2", "cik": 7, "date": "2026-09-20"}}
         del st["buys"][1]  # a 4/A withdrew y's purchase -> only 2 insiders left
         (msg,) = scan.corrections(st, TODAY)
-        self.assertIn("כבר לא עומדת בכללי ההתראה", msg)
+        self.assertIn("ההתראה כבר לא עומדת בכללים", msg)
+        msgrules.check(self, msg)
 
 
 class Heartbeat(unittest.TestCase):
@@ -199,16 +205,18 @@ class Heartbeat(unittest.TestCase):
     def test_success_heartbeat(self):
         code, sent, marker, state = self.run_main(["--days", "20260923"], scan_day=mock.Mock(return_value="ok"))
         self.assertEqual(code, 0)
-        self.assertTrue(sent[-1].startswith("✅ סריקה <code>") and "אין התראות חדשות" in sent[-1] and marker)
+        self.assertTrue(sent[-1].startswith("✅ הסריקה של יום ") and "אין התראות חדשות" in sent[-1] and marker)
+        msgrules.check(self, sent[-1])
         self.assertEqual((state["heartbeat"]["ok"], state["heartbeat"]["alerts"]), (True, 0))
 
     def test_failed_day_and_crash_alarm(self):
         code, sent, marker, state = self.run_main(["--days", "20260923"], scan_day=mock.Mock(side_effect=RuntimeError("503")))
-        self.assertTrue(code and sent[-1].startswith("❌ הסריקה נכשלה: לא הצלחתי לסרוק את <code>2026-09-23</code>"))
+        self.assertTrue(code and sent[-1].startswith("❌ הסריקה היומית נכשלה: לא הצלחתי לסרוק את <code>23.9</code>"))
+        msgrules.check(self, sent[-1])
         self.assertEqual((len(sent), marker), (1, True))  # one alarm, no duplicate from main's handler
         code, sent, _, _ = self.run_main(["--days", "20260923"], scan_day=mock.Mock(return_value="ok"),
                                          prune=mock.Mock(side_effect=KeyError("days")))
-        self.assertTrue(sent and sent[-1].startswith("❌ הסריקה נכשלה: <code>KeyError</code>"))
+        self.assertTrue(sent and sent[-1].startswith("❌ הסריקה היומית נכשלה: <code>KeyError</code>"))
         code, sent, _, _ = self.run_main(["--days", "20260923"], scan_day=mock.Mock(side_effect=SystemExit("SEC_UA is not set")))
         self.assertIn("SEC_UA", sent[-1])
 
@@ -218,7 +226,7 @@ class Heartbeat(unittest.TestCase):
             env = {"HEARTBEAT_FILE": hb, "COMMIT_OUTCOME": "success", "RUN_URL": "https://github.com/o/r/actions/runs/1"}
             with mock.patch.dict(os.environ, env), mock.patch.object(common, "send") as snd:
                 scan.alarm_step("step failed")
-                self.assertIn("❌ הסריקה נכשלה: step failed", snd.call_args.args[0])  # nothing reported yet -> alarm
+                self.assertIn("❌ הסריקה היומית נכשלה: step failed", snd.call_args.args[0])  # nothing reported yet -> alarm
                 self.assertIn('href="https://github.com/o/r/actions/runs/1"', snd.call_args.args[0])
                 snd.reset_mock()
                 scan.alarm_step("step failed")  # the marker now exists and the commit succeeded -> no duplicate
@@ -262,16 +270,17 @@ class Watchdog(unittest.TestCase):
         sent, d, m, _ = self.run_wd({"20260923": "ok"}, ["form.20260923.idx"])
         self.assertEqual(sent, [])  # nothing missed -> quiet
         sent, d, m, _ = self.run_wd({"20260922": "ok"}, ["form.20260922.idx", "form.20260923.idx"])
-        self.assertEqual(sent, ["⚠️ לא סרקתי את <code>2026-09-23</code> — מריץ את הסריקה שוב."])
+        self.assertEqual(sent, ["⚠️ לא נסרקו <code>23.9</code>. מריץ את הסריקה שוב."])
         m.assert_called_once_with([])  # local: runs the scan right here
         sent, d, m, _ = self.run_wd({"20260922": "ok"}, ["form.20260922.idx", "form.20260923.idx"], {"GITHUB_ACTIONS": "true"})
         d.assert_called_once_with("daily-scan.yml", {"notify": "true"})
         m.assert_not_called()
-        self.assertEqual(sent, ["⚠️ לא סרקתי את <code>2026-09-23</code> — הפעלתי את הסריקה שוב; הדופק שלה יגיע בסיומה."])
+        self.assertEqual(sent, ["⚠️ לא נסרקו <code>23.9</code>. הפעלתי את הסריקה שוב, והתוצאה תגיע בסיומה."])
         sent, d, m, code = self.run_wd({"20260922": "ok"}, ["form.20260922.idx", "form.20260923.idx"],
                                        {"GITHUB_ACTIONS": "true"}, dispatch="HTTP 403")
         self.assertTrue(code and "HTTP 403" in sent[-1] and "actions: write" in sent[-1])
-        self.assertEqual([common.rtl_bad_lines(s) for s in sent], [[]])  # dispatch first, then one honest message
+        self.assertEqual(len(sent), 1)  # dispatch first, then one honest message
+        msgrules.check(self, sent[0])
 
 
 class Links(unittest.TestCase):
@@ -284,8 +293,8 @@ class Links(unittest.TestCase):
         with mock.patch.object(scan, "pay", return_value={}):
             line = scan.row_line(row("0000-26-1", "Jane Doe", 250000), set(), urls)
         self.assertIn('<a href="https://www.sec.gov/Archives/edgar/data/7/0000261/xslF345X06/form4.xml">Jane Doe</a>', line)
-        self.assertIn('<a href="https://www.sec.gov/Archives/edgar/data/7/0000261/0000-26-1-index.htm">אינדקס</a>', line)
-        self.assertEqual(common.rtl_bad_lines(line), [])
+        self.assertNotIn("אינדקס", line)  # the row shows one link (the filing); no separate index link any more
+        msgrules.check(self, line)
 
 
 class Prices(unittest.TestCase):
@@ -296,7 +305,7 @@ class Prices(unittest.TestCase):
         with mock.patch.object(market, "chart", return_value=None):
             q = market.quote("ACME", "2026-08-01")
         self.assertEqual((q["price"], q["source"], q["asof"]), (12.5, "cache", "2026-09-23 20:00"))
-        self.assertIn("מטמון", common.STAMPS["price"])
+        self.assertEqual(common.STAMPS["price"], "23.9 23:00 (שמור)")  # Israel time of the cached price, marked saved
         with mock.patch.object(market, "chart", return_value=None):
             self.assertEqual(market.quote("NOPE")["price"], None)  # no live and no cached price -> None, never a default
         market.CACHE.clear()
@@ -318,11 +327,13 @@ class Prices(unittest.TestCase):
         with mock.patch.object(common, "get_json", return_value=companyfacts()), \
                 mock.patch.object(common, "cik_tickers", return_value={1: "ACME"}), \
                 mock.patch.object(market, "quote", return_value=cached):
-            text = "\n".join(fundamentals.format_he(fundamentals.analyze(1, "ACME", 3571)))
+            res = fundamentals.analyze(1, "ACME", 3571)
+            text = "\n".join(fundamentals.format_he(res))
         # a saved price never feeds market value (splits since then are unknown): book-equity Z'' and the reason
-        self.assertIn("המחיר השמור מ־<code>2026-09-23 20:00</code> לא משמש לשווי שוק", text)
-        self.assertIn("<b>אלטמן <code>Z''</code>", text)
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        self.assertEqual((res["alt"]["why"], res["alt"]["price_asof"], res["alt"]["kind"]), ("cached", "2026-09-23 20:00", "Z''"))
+        self.assertIsNone(res["alt"]["price"])
+        self.assertIn("אלטמן", text)
+        msgrules.check(self, text)
         with mock.patch.object(market, "chart", return_value={"meta": {"currency": "CAD", "regularMarketPrice": 9.0}}):
             market.CACHE["ACME"] = {"price": 7.0, "asof": "x"}
             self.assertIsNone(market.quote("ACME")["price"])  # Yahoo answered in CAD: no cached USD substitute

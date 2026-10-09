@@ -129,77 +129,68 @@ def _count(x):
 
 
 FMT = {"float": _count, "avg_vol": _count, "short_float": lambda v: f"{v * 100:.1f}%", "short_ratio": "{:.1f}".format,
-       "rel_vol": "{:.1f}".format, "pre_vol": "{:.0%}".format, "price": common.price, "chg": lambda v: f"{v * 100:+.1f}%",
-       "options": lambda v: "יש" if v else "אין"}
-LABEL = {"float": ("מצוף", f"מתחת ל־{code('50M')}"), "short_float": ("שורט מהמצוף", f"מעל {code('20%')}"),
-         "short_ratio": ("ימים לכיסוי", f"מעל {code(5)}"),
-         "avg_vol": ("ממוצע מחזור של 3 חודשים", f"מעל {code('500K')}"), "price": ("מחיר", f"מעל {code('2$')}"),
-         "rel_vol": ("מחזור יחסי", f"מעל {code(2)}"), "options": ("אופציות", "נסחרות")}
+       "rel_vol": "{:.1f}".format, "pre_vol": "{:.0%}".format, "price": common.price, "options": lambda v: "יש" if v else "אין"}
+LABEL = {"float": ("מניות צפות", f"פחות מ־{code(50)} מיליון"), "short_float": ("שורט מהמניות הצפות", f"יותר מ־{code('20%')}"),
+         "short_ratio": ("ימים לכיסוי", f"יותר מ־{code(5)}"),
+         "avg_vol": ("מחזור ממוצע ב־3 חודשים", f"יותר מ־{code(500)} אלף מניות"), "price": ("מחיר", f"יותר מ־{code('2$')}"),
+         "rel_vol": ("מחזור יחסי", f"יותר מפי {code(2)}"), "options": ("אופציות", "שיהיו")}
 UNTESTED = "⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון."
-SHORTABLE = (f"ℹ️ אפשרות לשורט לא נבדקת בנפרד: מניה עם שורט של {code('20%')} ומעלה מהמצוף כבר משורטת בפועל.")
+SOURCE = "⚠️ מידע לצורכי מחקר בלבד ואינו ייעוץ השקעות.\nמקור: FINRA (שורט), SEC (מניות), Yahoo ו־Nasdaq (מחירים), CBOE (אופציות)."
 
 
 def _v(key, v):
-    return "חסר" if v is None else code(FMT[key](v))
+    if v is None:
+        return "חסר"
+    if key in ("float", "avg_vol"):
+        return common.count(v)
+    if key == "options":
+        return FMT[key](v)
+    if key == "rel_vol":
+        return f"פי {code(FMT[key](v))}"
+    return code(FMT[key](v))
 
 
 def line(k, r):
-    """One listed stock, the owner's fields in the owner's order (Hebrew first, RTL); before the open, the
-    pre-market volume against a normal day stands in for the relative volume."""
-    vol = (f"מחזור בפרה־מרקט {_v('pre_vol', r['pre_vol'])} מיום רגיל" if "pre_vol" in r
-           else f"מחזור יחסי {_v('rel_vol', r['rel_vol'])}")
-    return (f"מקום {code(k)}: {code(r['t'])} · מצוף {_v('float', r['float'])} · שורט {_v('short_float', r['short_float'])}"
-            f" מהמצוף · ימים לכיסוי {_v('short_ratio', r['short_ratio'])} · {vol}"
-            f" · מחיר {_v('price', r['price'])} · שינוי {_v('chg', r['chg'])}")
+    """One listed stock in two lines: rank, ticker, price and today's move; then short interest, days to cover and
+    volume against a normal day (before the open, the pre-market volume)."""
+    vol = (f"מחזור לפני הפתיחה {_v('pre_vol', r['pre_vol'])} מיום רגיל" if "pre_vol" in r
+           else f"מחזור {_v('rel_vol', r['rel_vol'])} מהרגיל")
+    return (f"מקום {code(k)}: {code(r['t'])} · {_v('price', r['price'])} {common.arrow(r['chg']) if r.get('chg') is not None else ''}"
+            .rstrip() + f"\nשורט {_v('short_float', r['short_float'])} מהמניות הצפות · {_v('short_ratio', r['short_ratio'])}"
+            f" ימים לכיסוי · {vol}")
 
 
 def _when(scr, at):
-    pre = "לפני הפתיחה " if scr.get("kind") == "pre" else ""
-    return f"{pre}ליום {code(scr['date'])}</b> · מצב ב־{code(f'{at:%H:%M}')} שעון ניו יורק"
+    """'יום ב׳ <code>28.9.2026</code> · מצב ב־<code>19:30</code>' (Israel time)."""
+    il = at.astimezone(common.IL)
+    day = scr.get("date") or f"{at:%Y-%m-%d}"
+    return f"יום {common.weekday(day)} {code(common.il_date(day))} · מצב ב־{code(f'{il:%H:%M}')}"
 
 
-def _gaps(pairs):
-    return [f"ל־{code(n)} {what}" for n, what in pairs if n]
+def _foot(res):
+    return [UNTESTED, f"🗓️ נתוני השורט מדוח FINRA של {code(common.il_date(res['si_date'], year=False))}."]
 
 
 def message(res, scr, at, static=None):
     """The full list (res: build(), scr: screen.screen() or screen.premarket(), at: New York time of the run,
-    static: the pre-market's fixed set with its counts)."""
+    static: the pre-market's fixed set, unused in the text). The criteria are in /squeeze TICKER, not here."""
     pre = scr.get("kind") == "pre"
-    head = [f"{'🌅' if pre else '🚀'} <b>רשימת סקוויז {_when(scr, at)}",
-            f"מצוף מתחת ל־{code('50M')} · שורט מעל {code('20%')} מהמצוף · ימים לכיסוי מעל {code(5)} · ממוצע מחזור של "
-            f"3 חודשים מעל {code('500K')} · "
-            + (f"מחיר בפרה־מרקט מעל {code('2$')} · מחזור בפרה־מרקט {code('10%')} לפחות מיום רגיל" if pre else
-               f"מחיר מעל {code('2$')} · מחזור יחסי מעל {code(2)}")
-            + " · נסחרות אופציות. ממוין לפי השורט מהמצוף."]
-    body = [line(k, r) for k, r in enumerate(scr["rows"], 1)] or ["🤷 אף מניה לא עומדת כרגע בכל התנאים."]
-    if pre:
-        static = static or {}
-        gaps = _gaps(((scr["failed"], "לא התקבל ציטוט מ־Nasdaq"), (static.get("failed"), "לא התקבל מחיר מ־Yahoo"),
-                      (static.get("no_float"), "אין נתון מצוף ב־Yahoo"),
-                      (scr.get("no_options"), "לא התקבל מידע על אופציות מ־CBOE")))  # asked again on a move
-        count = (f"📋 עומדות בתנאים הקבועים {code(scr['checked'])} מניות, מתוך "
-                 f"{code(format(static.get('screened', 0), ','))} עם שורט של יותר מ־{code('2.5M')} מניות")
-        source = "מחיר ומחזור בפרה־מרקט מ־Nasdaq · מצוף וממוצע מחזור מ־Yahoo · אופציות מ־CBOE."
-    else:
-        gaps = _gaps(((scr["failed"], "לא התקבל מחיר מ־Yahoo"), (scr["no_float"], "אין נתון מצוף ב־Yahoo"),
-                      (scr["no_options"], "לא התקבל מידע על אופציות מ־CBOE")))
-        count = (f"📋 נבדקו {code(format(scr['screened'], ','))} מניות עם שורט של יותר מ־{code('2.5M')} מניות")
-        source = "מחירים, מחזורים ומצוף מ־Yahoo · אופציות מ־CBOE."
-    foot = [UNTESTED, f"🗓️ שורט לפי דוח FINRA מ־{code(res['si_date'])} · {source}",
-            count + (f"; {'; '.join(gaps)}" if gaps else "") + ".", SHORTABLE]
-    return "\n".join(head + [""] + body + [""] + foot)
+    head = [f"{'🌅' if pre else '🚀'} <b>רשימת סקוויז{' לפני הפתיחה' if pre else ''}</b>", _when(scr, at)]
+    body = "\n\n".join(line(k, r) for k, r in enumerate(scr["rows"], 1)) or "🤷 אף מניה לא עומדת כרגע בכל התנאים."
+    return "\n".join(head + ["", body, ""] + _foot(res))
 
 
 def change_text(scr, old, at):
-    """Who entered the list (with their line) and who left it since the last list of the same day."""
+    """Who entered the list (with their lines) and who left it since the last list of the same day."""
     was, now = {r["t"] for r in old}, [r["t"] for r in scr["rows"]]
-    lines = [f"🔄 <b>שינוי ברשימת הסקוויז {_when(scr, at)}"]
-    lines += [line(k, r) for k, r in enumerate(scr["rows"], 1) if r["t"] not in was]
+    lines = [f"🔄 <b>שינוי ברשימת הסקוויז</b>", _when(scr, at)]
+    new = [line(k, r) for k, r in enumerate(scr["rows"], 1) if r["t"] not in was]
+    if new:
+        lines += ["", "נכנסו:"] + new
     left = [t for t in sorted(was) if t not in now]
     if left:
-        lines.append("יצאו מהרשימה: " + ", ".join(map(code, left)) + ".")
-    return "\n".join(lines + [UNTESTED])
+        lines += ["", "יצאו: " + ", ".join(map(code, left)) + "."]
+    return "\n".join(lines + ["", UNTESTED])
 
 
 # ---------- journal ----------
@@ -255,14 +246,14 @@ def _summary(entries):
     done = [e["outcome"] for e in entries if e.get("outcome") and e["outcome"].get("trade")]
     waiting = sum(1 for e in entries if not e.get("outcome"))
     if not done:
-        return [f"עוד אין מניות שעברו {code(squeeze.WINDOW)} ימי מסחר מאז שהופיעו ברשימה ({code(waiting)} בהמתנה)."]
+        return [f"עוד אין מניות שעברו {code(squeeze.WINDOW)} ימי מסחר מאז שהופיעו ברשימה ({code(waiting)} ממתינות)."]
     n = len(done)
     small = f" (מדגם קטן, פחות מ־{code(30)})" if n < 30 else ""
-    pct = lambda x: code(f"{x * 100:.1f}%")  # noqa: E731
+    pct = lambda x: code(f"{x * 100:.0f}%")  # noqa: E731
     med = statistics.median(o["r10"] for o in done)
-    return [f"הושלמו {code(n)} מניות{small}, {code(waiting)} בהמתנה: {pct(sum(o['hit'] for o in done) / n)} עלו "
-            f"{code('50%+')} ו־{pct(sum(o['crash'] for o in done) / n)} ירדו {code('33%')} ומעלה.",
-            f"חציון התשואה אחרי {code(squeeze.WINDOW)} ימי מסחר: {code(format(med, '+.0%'))}."]
+    return [f"הושלמו {code(n)} מניות{small}, {code(waiting)} ממתינות: {pct(sum(o['hit'] for o in done) / n)} עלו "
+            f"{code('50%')} ומעלה, ו־{pct(sum(o['crash'] for o in done) / n)} ירדו {code('33%')} ומעלה.",
+            f"חציון אחרי {code(squeeze.WINDOW)} ימי מסחר: {common.change(med, 0)}."]
 
 
 def stats_text(j):
@@ -270,13 +261,13 @@ def stats_text(j):
     new = [e for e in j["entries"] if e.get("variant") == SCREEN]
     pre = [e for e in j["entries"] if e.get("variant") == SCREEN_PRE]
     old = [e for e in j["entries"] if e.get("variant") not in (SCREEN, SCREEN_PRE)]
-    lines = ["📒 <b>יומן רשימת הסקוויז</b>", "🔎 <b>הסינון הנוכחי</b>, לא נבדק היסטורית:"] + _summary(new)
-    lines += ["", "🌅 <b>הסינון לפני הפתיחה</b>, לא נבדק היסטורית:"] + _summary(pre)
+    lines = ["📒 <b>תוצאות רשימת הסקוויז</b>", "🔎 <b>הרשימה הנוכחית</b> (לא נבדקה היסטורית):"] + _summary(new)
+    lines += ["", "🌅 <b>הרשימה לפני הפתיחה</b> (לא נבדקה היסטורית):"] + _summary(pre)
     if old:
-        lines += ["", f"🗂️ <b>השיטה הקודמת</b> ({code(NAME)}, עד {code('2026-10-08')}):"] + _summary(old)
+        lines += ["", f"🗂️ <b>השיטה הקודמת</b> (עד {code(common.il_date('2026-10-08'))}):"] + _summary(old)
         hit, crash = (code(format(BACKTEST[k], ".1%")) for k in ("hit", "crash"))
-        lines.append(f"בבדיקה ההיסטורית שלה ({code(BACKTEST['years'])}): {hit} עלו {code('50%+')} ו־{crash} ירדו "
-                     f"{code('33%')} ומעלה.")
+        lines.append(f"בבדיקה ההיסטורית שלה ({code(BACKTEST['years'])}): {hit} עלו {code('50%')} ומעלה, ו־{crash} ירדו"
+                     f" {code('33%')} ומעלה.")
     return "\n".join(lines)
 
 
@@ -284,10 +275,10 @@ def stats_text(j):
 def ticker_text(t, si, m, rank=None, note=""):
     """/squeeze TICKER reply: every criterion with the stock's value (si: slim FINRA row or None; m: screen.metrics)."""
     lines = [f"🔎 <b>בדיקת סקוויז: {code(t)}</b>",
-             f"שורט: {code(format(si['si'], ','))} מניות בדוח FINRA מ־{code(si['date'])}" if si
-             else "שורט: אין דוח FINRA לטיקר הזה."]
+             f"שורט: {common.count(si['si'])} מניות (דוח FINRA של {code(common.il_date(si['date'], year=False))})" if si
+             else "שורט: אין נתון ב־FINRA."]
     if m.get("chg") is not None:
-        lines.append(f"שינוי היום: {_v('chg', m['chg'])}")
+        lines.append(f"היום: {common.change(m['chg'])}")
     bad = screen.fails(m)
     for key, _, _ in screen.CRITERIA:
         label, need = LABEL[key]
@@ -296,8 +287,8 @@ def ticker_text(t, si, m, rank=None, note=""):
     if bad:
         lines.append(f"❌ לא עומדת ב־{code(len(bad))} מהתנאים.")
     else:
-        lines.append("✅ עומדת בכל התנאים" + (f" · מקום {code(rank)} ברשימה האחרונה." if rank else "."))
-    return "\n".join(lines + ([note] if note else []) + [SHORTABLE, UNTESTED])
+        lines.append("✅ עומדת בכל התנאים" + (f", מקום {code(rank)} ברשימה האחרונה." if rank else "."))
+    return "\n".join(lines + ([note] if note else []) + [UNTESTED])
 
 
 def ticker_report(t):
@@ -332,7 +323,7 @@ def run_movers(res, session, today, state, manual, rows=()):
     failed = sum(q is False for q in qs.values())
     if cands and failed == len(cands):
         warn = manual or sessions.first(state, f"nasdaq:{session}", today)
-        return (f"⚠️ לא התקבלו ציטוטים מ־Nasdaq לאף מניה ({movers.NAME[session]}); אנסה שוב בריצה הבאה."
+        return (f"⚠️ Nasdaq לא החזיר מחירים ({movers.NAME[session]}). אנסה שוב בריצה הבאה."
                 if warn else ""), []
     found = movers.fresh(movers.find(cands, qs, today), state, today, session, manual)
     ranks = {r["t"]: k for k, r in enumerate(rows, 1)}
@@ -363,7 +354,7 @@ def main(argv=None):
         traceback.print_exc()
         if not a.dry:
             if manual or sessions.first(state, f"build:{session}", today):
-                common.send(f"⚠️ סריקת הסקוויז נכשלה ({code(type(e).__name__)}): {common.esc(str(e)[:200])}")
+                common.send(f"⚠️ רשימת הסקוויז לא רצה: {code(common.esc(str(e)[:120]))}", source=SOURCE)
             save(STATE, state)
         return 0  # reported above; exit 1 would add the workflow alarm on every run of an outage
     j = load(JOURNAL, {"v": 1, "entries": []})
@@ -386,20 +377,19 @@ def main(argv=None):
         except Exception as e:
             traceback.print_exc()
             if manual or sessions.first(state, f"screen:{session}", today):
-                list_text = (f"⚠️ סינון השורט לא רץ ({code(type(e).__name__)}: {common.esc(str(e)[:150])}). "
-                             "אנסה שוב בריצה הבאה.")
+                list_text = f"⚠️ רשימת הסקוויז לא רצה: {code(common.esc(str(e)[:120]))}. אנסה שוב בריצה הבאה."
     if scr:
         date = scr["date"] or today
         full, last = message(res, scr, now, static), load(LAST, {})
         old = last.get("rows") if (last.get("date"), last.get("kind")) == (date, kind) else None  # no kind: replaced method
         if manual or old is None:
-            list_text = ("▶️ הרצה ידנית\n" if manual else "") + full
+            list_text = full
         elif {r["t"] for r in scr["rows"]} != {r["t"] for r in old}:
             list_text = change_text(scr, old, now)
         added = record(j, scr, sessions.next_open(now, st), res)
     rows = scr["rows"] if scr else ()
     with_movers = manual or session != "regular"  # the hourly runs are the screen's; movers stay pre/post-market
-    note = (f"📒 הושלם מעקב של {code(squeeze.WINDOW)} ימים ל־{code(filled)} מניות: {code('/squeeze stats')}"
+    note = (f"📒 התעדכנו התוצאות של {code(filled)} מניות מהרשימה. לכל התוצאות: {code('/squeeze stats')}"
             if filled else "")
     if a.dry:
         movers_text = run_movers(res, session, today, state, manual, rows)[0] if with_movers else ""
@@ -407,7 +397,7 @@ def main(argv=None):
         return 0
     # each part is saved right after it goes out, so a failure later in the run (or the twin's retry) never re-sends it
     if list_text:
-        common.send(list_text, signal=bool(scr))
+        common.send(list_text, signal=bool(scr), source=SOURCE)
     if scr:
         save(LAST, {"date": date, "kind": kind, "at": f"{now:%H:%M}", "text": full,
                     "rows": [{k: _round(v) for k, v in r.items()} for r in scr["rows"]]})
@@ -415,12 +405,12 @@ def main(argv=None):
     save(STATE, state)
     movers_text, found = run_movers(res, session, today, state, manual, rows) if with_movers else ("", [])
     if movers_text:
-        common.send(movers_text, signal=True)
+        common.send(movers_text, signal=True, source=SOURCE)
     if found:
         save(MOVERS_LOG, movers.log(load(MOVERS_LOG, {"v": 1, "entries": []}), found, today, session, manual))
     save(STATE, state)
     if note:
-        common.send(note, signal=True)
+        common.send(note, source=SOURCE)
     common.log("squeeze", session=session, manual=manual, rows=len(rows), screened=scr and scr.get("screened", scr.get("checked")),
                movers=len(found), sent=sum(bool(t) for t in (list_text, movers_text, note)), added=added,
                filled=filled)

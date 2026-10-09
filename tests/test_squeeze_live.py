@@ -6,7 +6,8 @@ import tempfile
 import unittest
 from unittest import mock
 
-from bot import common, squeeze_live
+from bot import squeeze_live
+import msgrules
 from test_sessions import day, ny
 
 TODAY = "2026-09-28"  # a Monday
@@ -104,37 +105,34 @@ AT = ny(f"{TODAY}T12:30")
 class Message(unittest.TestCase):
     def test_the_owners_fields_in_order_rtl_clean(self):
         text = squeeze_live.message(RES, SCR, AT)
-        self.assertEqual(common.rtl_bad_lines(text), [])
-        line = next(x for x in text.splitlines() if "<code>AAA</code>" in x)
-        parts = ["<code>AAA</code>", "<code>31.5M</code>", "<code>82.8%</code>", "<code>7.2</code>", "<code>4.7</code>",
-                 "<code>30.42$</code>", "<code>-3.0%</code>"]  # ticker, float, short float, short ratio, rel vol, price, change
-        self.assertEqual([line.index(x) for x in parts], sorted(line.index(x) for x in parts))
+        msgrules.check(self, text)
+        parts = ["<code>AAA</code>", "<code>30.42$</code>", "<code>3.0%▼</code>", "<code>82.8%</code>", "<code>7.2</code>",
+                 "<code>4.7</code>"]  # ticker, price, change, short float, days to cover, rel vol
+        at = [text.index(x) for x in parts]
+        self.assertEqual(at, sorted(at))
         self.assertLess(text.index("<code>AAA</code>"), text.index("<code>BBB</code>"))  # short float, highest first
-        for part in ("<code>12:30</code>", "לא נבדק היסטורית", "<code>2026-09-15</code>", "<code>2,467</code>",
-                     "משורטת"):
+        for part in ("<code>19:30</code>", "יום ב׳ <code>28.9.2026</code>", "לא נבדק היסטורית",
+                     "מדוח FINRA של <code>15.9</code>"):  # Israel time and date, the FINRA report date
             self.assertIn(part, text)
 
-    def test_nothing_matches_and_missing_data_is_counted(self):
+    def test_nothing_matches(self):
         text = squeeze_live.message(RES, {**SCR, "rows": [], "failed": 50, "no_float": 3, "no_options": 2}, AT)
         self.assertIn("אף מניה לא עומדת", text)
-        for part in ("<code>50</code>", "<code>3</code>", "<code>2</code>"):
-            self.assertIn(part, text.split("נבדקו")[1])
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        msgrules.check(self, text)
 
     def test_the_pre_market_list(self):
         text = squeeze_live.message(RES, PRE, ny(f"{TODAY}T07:31"), STATIC)
-        self.assertEqual(common.rtl_bad_lines(text), [])
-        for part in ("לפני הפתיחה", "<code>07:31</code>", "מחזור בפרה־מרקט <code>15%</code> מיום רגיל",
-                     "<code>31.50$</code>", "<code>+5.0%</code>", "<code>70</code>", "Nasdaq", "<code>2</code>",
-                     "<code>2,658</code>", "לא נבדק היסטורית", "ל־<code>3</code> לא התקבל מידע על אופציות"):
+        msgrules.check(self, text)
+        for part in ("לפני הפתיחה", "<code>14:31</code>", "מחזור לפני הפתיחה <code>15%</code> מיום רגיל",
+                     "<code>31.50$</code>", "<code>5.0%▲</code>", "לא נבדק היסטורית"):
             self.assertIn(part, text)
         self.assertNotIn("<code>8</code>", text)
 
     def test_change_lists_who_entered_and_who_left(self):
         text = squeeze_live.change_text({**SCR, "rows": [ROW2]}, [ROW], AT)
-        for part in ("🔄", "<code>BBB</code>", "<code>47.8%</code>", "יצאו מהרשימה: <code>AAA</code>", "<code>12:30</code>"):
+        for part in ("🔄", "<code>BBB</code>", "<code>47.8%</code>", "יצאו: <code>AAA</code>", "<code>19:30</code>"):
             self.assertIn(part, text)
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        msgrules.check(self, text)
 
 
 class Journal(unittest.TestCase):
@@ -182,12 +180,12 @@ class Journal(unittest.TestCase):
                              "outcome": {"trade": True, "hit": True, "crash": True, "r10": 0.1}})
         text = squeeze_live.stats_text(j)
         self.assertIn("לפני הפתיחה", text)
-        screen_part, old_part = text.split(old)
-        self.assertIn("<code>50.0%</code>", screen_part)
+        screen_part, old_part = text.split("השיטה הקודמת")
+        self.assertIn("<code>50%</code>", screen_part)
         self.assertIn("לא נבדק", screen_part)
-        self.assertIn("<code>0.0%</code>", old_part)
+        self.assertIn("<code>0%</code>", old_part)
         self.assertIn("<code>6.8%</code>", old_part)  # the old list's backtest, for its own numbers only
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        msgrules.check(self, text)
         self.assertIn("עוד אין", squeeze_live.stats_text({"entries": [{"variant": new, "outcome": None}]}))
 
 
@@ -203,13 +201,13 @@ class TickerText(unittest.TestCase):
         bad = squeeze_live.ticker_text("AAA", si(26_000_000), {**M_PASS, "float": 60e6, "rel_vol": 1.2,
                                                                "options": False})
         self.assertEqual(bad.count("❌"), 4)  # 3 criteria + the verdict
-        for part in ("<code>60.0M</code>", "<code>1.2</code>", "לא עומדת ב־<code>3</code>"):
+        for part in ("<code>60</code> מיליון", "פי <code>1.2</code>", "לא עומדת ב־<code>3</code>"):
             self.assertIn(part, bad)
         none = squeeze_live.ticker_text("ZZZ", None, squeeze_live.screen.metrics(None, None))
-        self.assertIn("אין דוח FINRA", none)
+        self.assertIn("אין נתון ב־FINRA", none)
         self.assertIn("חסר", none)
         for text in (ok, bad, none):
-            self.assertEqual(common.rtl_bad_lines(text), [])
+            msgrules.check(self, text)
             self.assertIn("לא נבדק היסטורית", text)
 
 
@@ -229,10 +227,10 @@ class TickerReport(unittest.TestCase):
             text = squeeze_live.ticker_report("BRK-B")
         rows.assert_called_once_with("BRKB")
         quotes.assert_called_once_with("GET", ["BRK-B"])
-        self.assertIn("<code>26,000,000</code>", text)  # the 2026-09-22 report is not public yet
+        self.assertIn("<code>26</code> מיליון מניות", text)  # the 2026-09-22 report is not public yet
         self.assertIn("<code>82.5%</code>", text)  # 26M short / 31.5M float
         self.assertIn("מקום <code>2</code>", text)
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        msgrules.check(self, text)
 
     def test_yahoo_down_still_answers(self):
         with mock.patch.object(squeeze_live.sessions, "now_ny", return_value=AT), \
@@ -242,7 +240,7 @@ class TickerReport(unittest.TestCase):
                 mock.patch.object(squeeze_live.screen, "optionable", return_value=None), mock.patch("builtins.print"):
             text = squeeze_live.ticker_report("GME")
         self.assertIn("Yahoo", text)
-        self.assertEqual(common.rtl_bad_lines(text), [])
+        msgrules.check(self, text)
 
 
 UNI = [{"t": "AAA", "si_pct": 0.3, "dtc": 3.0, "adv": 1_000_000.0,
@@ -274,6 +272,7 @@ class Sessions(unittest.TestCase):
                 mock.patch.object(squeeze_live.movers, "quotes", return_value=quotes) as self.quotes, \
                 mock.patch.object(squeeze_live.common, "send", side_effect=send) as sent, mock.patch("builtins.print"):
             code = squeeze_live.main(list(argv))
+        self.sources = [c.kwargs.get("source") for c in sent.call_args_list]
         return code, [c.args[0] for c in sent.call_args_list], build
 
     def file(self, name):
@@ -286,11 +285,14 @@ class Sessions(unittest.TestCase):
         build.assert_called_once_with("2026-09-28")
         self.scr.assert_called_once_with(LIVE["short"], "GET")
         self.assertIn("רשימת סקוויז", sent[0])
+        self.assertEqual(self.sources, [squeeze_live.SOURCE])
+        msgrules.check(self, sent[0])
         self.assertFalse(self.quotes.called)  # movers stay in the extended sessions (and manual runs)
         self.assertEqual(self.run_at("2026-09-28T11:31")[1], [])  # same names: nothing
         sent = self.run_at("2026-09-28T12:31", scr={**SCR, "rows": [ROW2]})[1]
         self.assertEqual(len(sent), 1)
-        self.assertIn("יצאו מהרשימה: <code>AAA</code>", sent[0])
+        self.assertIn("יצאו: <code>AAA</code>", sent[0])
+        msgrules.check(self, sent[0])
         last = self.file(squeeze_live.LAST)
         self.assertEqual((last["date"], [r["t"] for r in last["rows"]]), (TODAY, ["BBB"]))
         self.assertIn("<code>BBB</code>", last["text"])  # /squeeze shows the full current list
@@ -303,9 +305,10 @@ class Sessions(unittest.TestCase):
         self.assertEqual(len(sent), 2)
         self.assertIn("🔄", sent[0])
         self.assertIn("🌙", sent[1])
-        self.assertIn("<code>+15%</code>", sent[1])  # 11.5 against today's 10.0 close
+        self.assertIn("ב־<code>15%</code>", sent[1])  # 11.5 against today's 10.0 close
+        self.assertEqual(self.sources, [squeeze_live.SOURCE] * 2)
         for t in sent:
-            self.assertEqual(common.rtl_bad_lines(t), [])
+            msgrules.check(self, t)
         self.assertEqual(self.file(squeeze_live.MOVERS_LOG)["entries"][0]["t"], "AAA")
         self.assertEqual(self.run_at("2026-09-28T17:30")[1], [])  # the same slot again (daylight-saving twin)
         self.assertEqual(self.run_at("2026-09-28T19:35", scr={**SCR, "rows": [ROW, ROW2, {**ROW, "t": "CCC"}]})[1], [])
@@ -326,7 +329,8 @@ class Sessions(unittest.TestCase):
         self.cands.assert_not_called()  # the fixed set is computed once a day
         sent = self.run_at("2026-09-28T09:16", pre={**PRE, "rows": []})[1]
         self.assertEqual(len(sent), 1)
-        self.assertIn("יצאו מהרשימה: <code>AAA</code>", sent[0])
+        self.assertIn("יצאו: <code>AAA</code>", sent[0])
+        msgrules.check(self, sent[0])
         journal = self.file(squeeze_live.JOURNAL)["entries"]
         self.assertEqual([(e["t"], e["date"], e["variant"]) for e in journal], [("AAA", TODAY, squeeze_live.SCREEN_PRE)])
         sent = self.run_at("2026-09-28T10:31")[1]  # the first regular-session list of the day goes out in full
@@ -342,8 +346,9 @@ class Sessions(unittest.TestCase):
 
     def test_manual_before_the_open_sends_the_pre_market_list(self):
         code, sent, _ = self.run_at("2026-09-28T06:00", argv=["--manual"])
-        self.assertIn("▶️", sent[0])
         self.assertIn("לפני הפתיחה", sent[0])
+        self.assertEqual(self.sources, [squeeze_live.SOURCE] * len(sent))
+        msgrules.check(self, sent[0])
         self.scr.assert_not_called()
 
     def test_the_fixed_set_failing_warns_once_per_session(self):
@@ -357,25 +362,32 @@ class Sessions(unittest.TestCase):
         self.run_at("2026-09-28T16:35", quotes={})
         code, sent, _ = self.run_at("2026-09-28T21:30", argv=["--manual"])
         self.assertEqual((code, len(sent)), (0, 2))
-        self.assertIn("▶️", sent[0])
+        self.assertIn("🚀", sent[0])  # a manual run sends the full list again, not the changes
         self.assertIn("רשימת סקוויז", sent[0])
         self.assertIn("סגור", sent[1])
+        self.assertEqual(self.sources, [squeeze_live.SOURCE] * 2)
+        for t in sent:
+            msgrules.check(self, t)
 
     def test_manual_during_the_session_shows_live_movers(self):
         live = {"AAA": {"price": 10.5, "volume": 2e6, "date": "2026-09-28"}}
         code, sent, build = self.run_at("2026-09-28T11:00", argv=["--manual"], quotes=live)
         build.assert_called_once_with("2026-09-28")
-        self.assertIn("▶️", sent[0])
+        self.assertIn("רשימת סקוויז", sent[0])
         self.assertIn("📈", sent[1])
-        self.assertIn("<code>+17%</code>", sent[1])  # against Friday's 9.0 close
+        self.assertIn("ב־<code>17%</code>", sent[1])  # against Friday's 9.0 close
+        for t in sent:
+            msgrules.check(self, t)
 
     def test_failed_build_warns_once_per_session_and_manual_always(self):
         boom = mock.Mock(side_effect=RuntimeError("FINRA: down"))
         code, sent, _ = self.run_at("2026-09-28T16:35", res=boom)
         self.assertEqual(code, 0)  # reported here; exit 1 would add the workflow alarm on every run of an outage
-        self.assertIn("נכשלה", sent[0])
+        self.assertIn("לא רצה", sent[0])
+        self.assertEqual(self.sources, [squeeze_live.SOURCE])
+        msgrules.check(self, sent[0])
         self.assertEqual(self.run_at("2026-09-28T19:35", res=boom)[1], [])
-        self.assertIn("נכשלה", self.run_at("2026-09-28T19:50", res=boom, argv=["--manual"])[1][0])
+        self.assertIn("לא רצה", self.run_at("2026-09-28T19:50", res=boom, argv=["--manual"])[1][0])
 
     def test_yahoo_down_warns_once_per_session_and_the_movers_still_go_out(self):
         down = mock.Mock(side_effect=RuntimeError("Yahoo: no crumb"))
@@ -383,7 +395,7 @@ class Sessions(unittest.TestCase):
         self.assertEqual(len(sent), 2)
         self.assertIn("Yahoo", sent[0])
         self.assertIn("🌙", sent[1])
-        self.assertEqual(common.rtl_bad_lines(sent[0]), [])
+        msgrules.check(self, sent[0])
         self.assertEqual(self.run_at("2026-09-28T19:35", scr=down, quotes={})[1], [])
         self.assertEqual(self.file(squeeze_live.LAST), {})  # no list was made: nothing saved as one
 
@@ -420,15 +432,18 @@ class Command(unittest.TestCase):
             self.assertIn("עוד אין רשימת סקוויז", empty)
             self.assertIn("<code>/squeeze now</code>", empty)  # the way to get one right away, at any hour
             self.assertNotIn("לפני הפתיחה", empty)  # the list is built after the close since the extended-hours runs
-            self.assertEqual(common.rtl_bad_lines(empty), [])
+            msgrules.check(self, empty)
+            self.assertEqual(send.call_args.kwargs["source"], squeeze_live.SOURCE)
             squeeze_live.save(squeeze_live.LAST, {"date": TODAY, "text": "LIST", "rows": []})
             listen.handle("/squeeze")
             self.assertEqual(send.call_args[0][0], "LIST")
             listen.handle("/squeeze stats")
-            self.assertIn("יומן רשימת הסקוויז", send.call_args[0][0])
+            self.assertIn("תוצאות רשימת הסקוויז", send.call_args[0][0])
+            msgrules.check(self, send.call_args[0][0])
+            self.assertEqual(send.call_args.kwargs["source"], squeeze_live.SOURCE)
             listen.handle("/squeeze gme")
             rep.assert_called_once_with("GME")
-            self.assertEqual(send.call_args, mock.call("REPORT", signal=True))
+            self.assertEqual(send.call_args, mock.call("REPORT", signal=True, source=squeeze_live.SOURCE))
             listen.handle("/squeeze zzzz")
             self.assertIn("לא מצאתי", send.call_args[0][0])
         self.assertIn("/squeeze", listen.HELP)
@@ -442,7 +457,8 @@ class Command(unittest.TestCase):
                 mock.patch.object(listen.common, "dispatch", return_value="") as disp:
             listen.handle("/squeeze now")
         disp.assert_called_once_with("squeeze.yml", {"mode": "manual"})
-        self.assertIn("הפעלתי", send.call_args[0][0])
+        self.assertIn("מתעדכנת", send.call_args[0][0])
+        self.assertEqual(send.call_args.kwargs["source"], squeeze_live.SOURCE)
         with mock.patch.dict(os.environ, env), mock.patch.object(listen.common, "send") as send, \
                 mock.patch.object(listen.common, "dispatch", return_value="HTTP 403"), mock.patch("builtins.print"):
             self.assertEqual(listen.handle("/squeeze now"), 1)

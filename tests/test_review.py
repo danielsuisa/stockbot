@@ -7,6 +7,7 @@ import unittest
 from unittest import mock
 
 from bot import common, form4, health, journal, listen, market, scan
+import msgrules
 from test_bot import NO_ENRICH
 from test_reliability import row
 from test_signals import doc, tx
@@ -81,8 +82,8 @@ class Corrections(unittest.TestCase):
         self.assertEqual(scan.corrections(st, TODAY), [])
         st["buys"][0] = {**rs[1], "value": 30000.0, "amended_by": "m"}  # a real 4/A: $300K -> $30K
         (msg,) = scan.corrections(st, TODAY)
-        self.assertIn("ל־<code>630.0K$</code>", msg)  # 900K - 270K; the aged-out $400K still counts, the new $5M not
-        self.assertEqual(common.rtl_bad_lines(msg), [])
+        self.assertIn("ל־<code>630</code> אלף דולר", msg)  # 900K - 270K; the aged-out $400K still counts, the new $5M not
+        msgrules.check(self, msg)
 
     def test_old_snapshots_without_rows_still_work(self):
         rs = [row("a", "x", 400000), row("b", "y", 300000), row("c", "z", 300000)]
@@ -90,7 +91,8 @@ class Corrections(unittest.TestCase):
         del snap["rows"]
         st = {"buys": [{**rs[0], "value": 40000.0, "amended_by": "a2"}, *rs[1:]], "sent": {"7": snap}, "removed": {}}
         (msg,) = scan.corrections(st, TODAY)
-        self.assertIn("<code>640.0K$</code>", msg)
+        self.assertIn("ל־<code>640</code> אלף דולר", msg)
+        msgrules.check(self, msg)
 
 
 class Signals(unittest.TestCase):
@@ -193,7 +195,7 @@ class Numbers(unittest.TestCase):
             q = market.quote("HALT")
         self.assertEqual(q["source"], "stale")
         line = journal.context_lines({"price": q, "liquidity": None, "scores": journal.scores_of(None), "sic": None}, 0)[0]
-        self.assertIn("⚠ מחיר מ־", line)
+        self.assertIn("(שמור מ־<code>", line)  # the stale last price says since when it is held
         market.CACHE.clear()
 
     def test_realized_vol_fallback_uses_the_vix_scale(self):  # B6
@@ -255,7 +257,7 @@ class Listener(unittest.TestCase):
         with mock.patch.object(common, "fetch", side_effect=fetch), \
                 mock.patch.object(health.dt, "datetime", wraps=dt.datetime) as fake:
             fake.now.return_value = dt.datetime(2026, 10, 1, 6, tzinfo=dt.timezone.utc)
-            self.assertIn("<code>2026-09-30</code>", health._index())
+            self.assertIn("<code>30.9</code>", health._index())
 
 
 if __name__ == "__main__":

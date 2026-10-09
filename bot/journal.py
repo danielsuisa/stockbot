@@ -8,7 +8,7 @@ import statistics
 from pathlib import Path
 
 from bot import common, market
-from bot.common import code, money
+from bot.common import code
 
 HORIZONS = (30, 90, 180)
 OPEN_DAYS = 180
@@ -118,41 +118,46 @@ def stats(j):
     return out
 
 
-def _pct(x):
-    return code(f"{x * 100:+.1f}%") if x is not None else "—"
+def _vs(x):
+    """Excess return over SPY in words: 'יותר ב־<code>2.0%</code> מ־SPY' (no sign glyph next to a number)."""
+    if x is None:
+        return "חסר"
+    if round(abs(x) * 100, 1) == 0:
+        return "כמו SPY"
+    return f"{'יותר' if x > 0 else 'פחות'} ב־{code(f'{abs(x) * 100:.1f}%')} מ־SPY"
 
 
 def stats_text(j, title="📒 <b>יומן ההתראות</b>"):
-    """Hebrew /stats and weekly summary."""
+    """Hebrew /stats and weekly summary: per horizon how many alerts beat SPY and the median excess; by quality score;
+    the best and worst."""
     s = stats(j)
-    lines = [title, f"התראות ביומן: {code(s['count'])}"]
+    lines = [title, f"ביומן: {code(s['count'])} התראות."]
     if not any(v["n"] for v in s["horizons"].values()):
-        return "\n".join(lines + ["עדיין אין התראות בנות 30 יום ומעלה, ולכן אין תשואות למדוד."])
+        return "\n".join(lines + [f"עוד אין התראות בנות {code(HORIZONS[0])} יום, אז אין עדיין תוצאות."])
     for h, v in s["horizons"].items():
         if v["n"]:
-            lines.append(f"אחרי {code(h)} יום: {code(v['n'])} התראות · הצלחה {code(format(v['hit'], '.0%'))}"
-                         f" · עודף תשואה על SPY: חציון {_pct(v['median'])}, ממוצע {_pct(v['mean'])}")
-    names = {"panic": "פאניקה", "normal": "רגיל", "euphoria": "אופוריה", "unknown": "לא ידוע"}
-    lines += [f"לפי מצב שוק (באופק הארוך ביותר שכל התראה הגיעה אליו): " + " · ".join(f"{names.get(k, k)} {code(v['n'])} ({_pct(v['mean'])})" for k, v in s["regime"].items()),
-              f"לפי ציון איכות: " + " · ".join(f"{code(k)} {code(v['n'])} ({_pct(v['mean'])})"
-                                                for k, v in sorted(s["quality"].items()))]
-    for label, rows in (("הטובות", s["best"]), ("החלשות", s["worst"])):
-        lines.append(f"{label}: " + " · ".join(f"{code(e['ticker'])} {_pct(x)} ({code(h)} יום)" for e, h, x in rows))
+            lines.append(f"אחרי {code(h)} יום: {code(v['n'])} התראות, {code(format(v['hit'], '.0%'))} עברו את SPY"
+                         f" · חציון: {_vs(v['median'])}")
+    if s["quality"]:
+        lines.append("לפי ציון: " + " · ".join(f"{code(k)}: {code(v['n'])} התראות, ממוצע {_vs(v['mean'])}"
+                                              for k, v in sorted(s["quality"].items())))
+    for label, rows in (("🏆 הטובות", s["best"]), ("🔻 החלשות", s["worst"])):
+        lines.append(f"{label}: " + " · ".join(f"{code(e['ticker'])} {_vs(x)}" for e, h, x in rows))
     return "\n".join(lines)
 
 
 def journal_text(j, n=5):
-    """Hebrew /journal N: the last N alerts with their context and returns so far."""
+    """Hebrew /journal N: the last N alerts with their returns so far."""
     es = j["alerts"][-max(1, min(n, 20)):][::-1]
     if not es:
         return "📒 היומן ריק: עדיין לא נשלחו התראות."
-    out = [f"📒 <b>ההתראות האחרונות ביומן</b> ({code(len(es))})"]
+    out = [f"📒 <b>ההתראות האחרונות ({code(len(es))})</b>"]
     for e in es:
-        rets = " · ".join(f"{code(h)} יום {_pct(e['returns'][str(h)]['excess'])}" for h in HORIZONS if str(h) in e["returns"])
+        h = max((x for x in HORIZONS if str(x) in e["returns"]), default=None)
         px = e.get("price", {}).get("price")
-        out.append(f"• התראה {code(e['id'])} · {code(e['ticker'])} · איכות {code(e.get('quality'))}"
-                   f" · מחיר {code(common.price(px)) if px else 'חסר'}"
-                   + (f" · עודף על SPY: {rets}" if rets else " · עוד אין תשואה"))
+        out.append(f"• התראה על {code(e['ticker'])} מ־{code(common.il_date(e['date'], year=False))} · ציון {code(e.get('quality'))}"
+                   f" · מחיר אז {code(common.price(px)) if px else 'חסר'}"
+                   + (f" · אחרי {code(h)} יום: {_vs(e['returns'][str(h)]['excess'])}" if h else " · עוד אין תוצאה"))
     return "\n".join(out)
 
 
@@ -179,18 +184,32 @@ def scores_of(res):
             "beneish": round(ben["m"], 2) if "m" in ben else None}
 
 
+def score_words(s):
+    """The journal's compact scores -> plain Hebrew parts (only the ones that exist)."""
+    from bot import fundamentals
+    out = []
+    if s.get("piotroski"):
+        k, n = s["piotroski"].split("/")
+        out.append(f"פיוטרוסקי {code(k)} מתוך {code(n)}")
+    if s.get("altman"):
+        kind, z = s["altman"].split()
+        out.append(f"אלטמן: {fundamentals.altman_zone(kind, float(z))}")
+    if s.get("beneish") is not None:
+        out.append(f"בנייש: {fundamentals.beneish_zone(s['beneish'])}")
+    return out
+
+
 def context_lines(e, conc):
-    """Alert lines for block 5: price at alert, liquidity guard, forensic scores, sector concentration."""
+    """Alert lines: price at alert, daily dollar volume (flagged when low), forensic scores, sector concentration."""
     px, lq, s = e["price"], e["liquidity"], e["scores"]
     price_txt = code(common.price(px["price"])) if px.get("price") else "חסר"
-    if px.get("source") in ("cache", "stale"):  # Yahoo down (last saved price) / not trading lately
-        price_txt += f" (⚠ מחיר מ־{code(px['asof'])})"
-    lines = [f"💵 מחיר בהתראה: {price_txt} · נזילות: "
-             + (f"{code(money(lq))} ליום (ממוצע 30 יום)" + (" · ⚠ נזילות נמוכה" if lq < market.LOW_LIQUIDITY else "")
-                if lq is not None else "חסר")]
-    lines.append(f"🧮 ציונים: פיוטרוסקי {code(s['piotroski']) if s['piotroski'] else 'חסר'} · אלטמן "
-                 f"{code(s['altman']) if s['altman'] else 'חסר'} · בנייש {code(s['beneish']) if s['beneish'] is not None else 'חסר'}")
+    if px.get("source") in ("cache", "stale") and px.get("asof"):  # Yahoo down (last saved price) / not trading lately
+        price_txt += f" (שמור מ־{code(common.il_date(px['asof'], year=False))})"
+    lines = [f"💵 מחיר: {price_txt}" + (f" · מחזור יומי ממוצע: {common.amount(lq)}"
+                                         + (" ⚠️ נמוך" if lq < market.LOW_LIQUIDITY else "") if lq is not None else "")]
+    words = score_words(s)
+    if words:
+        lines.append("🧮 " + " · ".join(words))
     if conc >= 3:
-        group = f"SIC {str(e['sic'])[:2]}xx"
-        lines.append(f"⚠ ריכוז סקטוריאלי: כבר {code(conc)} התראות פתוחות בענף {code(group)}")
+        lines.append(f"⚠️ כבר {code(conc)} התראות פתוחות באותו ענף.")
     return lines

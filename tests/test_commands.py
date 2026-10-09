@@ -8,6 +8,7 @@ import unittest
 from unittest import mock
 
 from bot import check, common, health, journal, listen, market, scan
+import msgrules
 from test_signals import doc, tx
 
 TODAY = dt.date(2026, 9, 24)
@@ -41,12 +42,15 @@ class Status(unittest.TestCase):
     def test_heartbeat_line(self):
         self.assertIn("עוד אין נתונים", scan.heartbeat_line(None))
         ok = scan.heartbeat_line({"at": "2026-09-24 05:41 UTC", "ok": True, "filings": 350, "errors": 0, "alerts": 2})
-        self.assertIn("תקינה ✅ · <code>350</code> הגשות · <code>0</code> שגיאות · <code>2</code> התראות", ok)
-        bad = scan.heartbeat_line({"at": "x", "ok": False, "failed": ["20260923"]})
+        self.assertIn("ריצה אחרונה: <code>24.9 08:41</code> · הצליחה ✅ · <code>2</code> התראות", ok)
+        self.assertNotIn("שגיאות", ok)  # zero errors are not mentioned
+        errs = scan.heartbeat_line({"at": "2026-09-24 05:41 UTC", "ok": True, "filings": 350, "errors": 3, "alerts": 0})
+        self.assertIn("<code>3</code> שגיאות", errs)
+        bad = scan.heartbeat_line({"at": "2026-09-24 05:41 UTC", "ok": False, "failed": ["20260923"]})
         self.assertIn("נכשלה ❌", bad)
-        self.assertIn("<code>2026-09-23</code>", bad)
-        for text in (ok, bad):
-            self.assertEqual(common.rtl_bad_lines(text), [])
+        self.assertIn("לא נסרקו: <code>23.9</code>", bad)
+        for text in (ok, errs, bad):
+            msgrules.check(self, text)
 
     def test_status_watchdog_state(self):
         run = {"created_at": "2026-09-24T14:00:05Z", "conclusion": "success", "event": "schedule", "status": "completed"}
@@ -59,12 +63,13 @@ class Status(unittest.TestCase):
                 with open(p, "w", encoding="utf-8") as fh:
                     json.dump({"days": {"20260922": "ok", "20260923": "ok"}}, fh)
                 fine = scan.status(TODAY)
-        self.assertIn("⚠ עוד לא נסרקו <code>2026-09-23</code>", text)  # the previous trading day is missing
-        self.assertIn("ריצה אחרונה <code>2026-09-24 14:00</code> <code>success</code>", text)
-        self.assertIn("💓 ריצה אחרונה: <code>2026-09-23 05:40 UTC</code>", text)
-        self.assertIn("תקין, יום המסחר הקודם <code>2026-09-23</code> נסרק", fine)
+        self.assertIn("עוד לא נסרקו <code>23.9</code>", text)  # the previous trading day is missing
+        self.assertIn("בדיקה אחרונה <code>24.9 17:00</code> הצליחה", text)
+        self.assertIn("💓 ריצה אחרונה: <code>23.9 08:40</code>", text)
+        self.assertIn("ימים חסרים: אין, יום המסחר הקודם (<code>23.9</code>) נסרק", fine)
+        self.assertNotIn("עוד לא נסרקו", fine)
         for t in (text, fine):
-            self.assertEqual(common.rtl_bad_lines(t), [])
+            msgrules.check(self, t)
 
 
 class Verify(unittest.TestCase):
@@ -76,7 +81,7 @@ class Verify(unittest.TestCase):
                 mock.patch.object(scan, "links", return_value={}), mock.patch.object(scan, "pay", return_value={}), \
                 mock.patch.object(scan, "_get", side_effect=lambda u: docs[u.rsplit("/", 1)[1][:-4]]):
             text = scan.verify("acme", TODAY)
-        self.assertEqual(common.rtl_bad_lines(text), [], text)
+        msgrules.check(self, text)
         return text
 
     def test_unknown_and_empty(self):
@@ -85,7 +90,7 @@ class Verify(unittest.TestCase):
         sell = doc([tx("S", 100, 10, ad="D")])
         text = self.run_verify({"a1": sell, "a2": False}, [("a1", "4", "2026-09-22"), ("a2", "4", "2026-09-22")], {})
         self.assertIn("(<code>1</code> נכשלו)", text)
-        self.assertIn("לא נמצאו רכישות", text)
+        self.assertIn("לא היו רכישות של בעלי עניין", text)
 
     def test_cluster_matches_state(self):
         docs = {f"a{i}": doc([tx("P", 1000, 50 + i)], owner=f"D{i}", ocik=str(100 + i)) for i in range(3)}
@@ -95,16 +100,17 @@ class Verify(unittest.TestCase):
             fresh = {a: scan.make_row(a, docs[a], docs[a]["buys"], "ACME", "2026-09-22") for a in ("a0", "a1", "a2")}
         state = {"buys": list(fresh.values()), "alerted": {"12345": ["a0"]}}
         text = self.run_verify(docs, rows, state)
-        for want in ("<b>אשכול רכישות</b>", "<code>3</code> דיווחי רכישה · <code>3</code> רוכשים",
-                     "השוואה לסריקה: ✅ תואם", "התראה נשלחה על החברה: כן"):
+        for want in ("עומדת בכללי ההתראה", "<code>3</code> בעלי עניין קנו יחד ב־<code>153</code> אלף דולר",
+                     "השוואה לסריקה: ✅ זהה", "התראה על החברה: כבר נשלחה"):
             self.assertIn(want, text)
+        self.assertEqual(text.count("• רכש "), 3)  # one line per purchase; the issuer-as-owner filing "x" is left out
         # the scan missed a filing and holds a different amount for another -> both reported
         changed = {**fresh["a1"], "value": 1.0}
         text = self.run_verify(docs, rows, {"buys": [fresh["a0"], changed], "alerted": {}})
-        self.assertIn("⚠ יש הבדלים · חדשים שהסריקה עוד לא ראתה: <code>1</code>", text)
-        self.assertIn("התראה נשלחה על החברה: לא", text)
+        self.assertIn("השוואה לסריקה: ⚠️ יש הבדלים · <code>1</code> רכישות שהסריקה עוד לא ראתה", text)
+        self.assertIn("התראה על החברה: לא נשלחה", text)
         text = self.run_verify(docs, rows, {})
-        self.assertIn("אין לה רכישות בשוק הפתוח של החברה בזיכרון (הדיווחים חדשים מדי", text)
+        self.assertIn("הסריקה עוד לא ראתה את הרכישות האלה (הן חדשות מדי)", text)
 
     def test_amendment_and_plan(self):
         orig = doc([tx("P", 1000, 1000)], owner="BIG", ocik="7")
@@ -112,9 +118,10 @@ class Verify(unittest.TestCase):
         plan = doc([tx("P", 10, 10, notes=("F1",))], owner="PLAN", ocik="8", notes={"F1": "Rule 10b5-1 plan"})
         text = self.run_verify({"o": orig, "f": fix, "p": plan},
                                [("f", "4/A", "2026-09-23"), ("p", "4", "2026-09-22"), ("o", "4", "2026-09-21")], {})
-        self.assertIn("<b>רכישה גדולה</b>", text)
-        self.assertIn("<code>900.0K$</code>", text)  # the 4/A replaced the original purchase, not added to it
-        self.assertIn("<code>1</code> בתוכנית <code>10b5-1</code> (לא נספרו)", text)
+        self.assertIn("רכישה אחת של <code>900</code> אלף דולר", text)  # the 4/A replaced the original purchase, not added to it
+        self.assertNotIn("<code>1</code> מיליון", text)
+        self.assertEqual(text.count("• רכש "), 2)  # the amended purchase once + the plan purchase
+        self.assertIn("בתוכנית קבועה מראש, לא נספרה", text)
 
 
 class Health(unittest.TestCase):
@@ -141,21 +148,26 @@ class Health(unittest.TestCase):
             os.environ["STATE_FILE"] = os.path.join(tmp, "missing.json")
             with mock.patch.object(market, "chart", return_value=None):
                 bare = health.report(TODAY)
-        for want in ("✅ האינדקס היומי של <code>SEC EDGAR</code>: תקין", "האינדקס האחרון <code>2026-09-23</code>",
-                     "<code>Apple Inc.</code>", "❌ חיפוש טקסט מלא <code>EFTS</code> (גיבוי לאינדקס): נכשל",
-                     "<code>SPY</code> <code>612.50$</code>", "הבוט <code>@Danielsuibot</code>",
-                     "• סריקה יומית: ✅ ריצה אחרונה <code>2026-09-24 05:41</code>",
-                     "• שומר ימים חסרים: אין מידע", "• מאזין טלגרם: ⏳", "💓 דופק", "🐕 שומר ימים חסרים: תקין",
-                     "ימים ממתינים לסריקה: <code>"):
+        for want in ("✅ האינדקס היומי של SEC: תקין · האחרון מ־<code>23.9</code>", "✅ הנתונים של SEC: תקין",
+                     "❌ החיפוש של SEC (גיבוי לאינדקס): נכשל · <code>OSError</code>", "✅ המחירים מ־Yahoo: תקין",
+                     "✅ הבוט בטלגרם: תקין",
+                     "• סריקת בעלי העניין: ריצה אחרונה <code>24.9 08:41</code> ✅ הצליחה",
+                     "• בדיקת ימים חסרים: אין מידע", "• הבוט בטלגרם: ריצה אחרונה <code>24.9 20:10</code> ⏳ רצה עכשיו",
+                     "💓 עוד אין נתונים", "🐕 ימים חסרים: אין, יום המסחר הקודם (<code>23.9</code>) נסרק",
+                     "ממתינים לסריקה: <code>"):
             self.assertIn(want, text)
-        self.assertIn("❌ מחירי <code>Yahoo</code>: נכשל", bare)
-        self.assertIn("עוד אין קובץ", bare)
+        self.assertIn("❌ המחירים מ־Yahoo: נכשל", bare)
+        self.assertIn("הסריקה היומית</b>: עוד לא רצה", bare)
         for t in (text, bare):
-            self.assertEqual(common.rtl_bad_lines(t), [], t)
+            msgrules.check(self, t)
 
     def test_quick_fetch_404(self):
         with mock.patch.object(common, "fetch", return_value=None):
-            self.assertIn("HTTP 404", health.probe("בדיקה", health._index))
+            with self.assertRaisesRegex(RuntimeError, "HTTP 404"):
+                health._index()
+            line = health.probe("בדיקה", health._index)
+        self.assertIn("❌ בדיקה: נכשל", line)  # a failing check is shown with its error type, never raised
+        self.assertIn("<code>RuntimeError</code>", line)
 
 
 class Commands(unittest.TestCase):
@@ -166,7 +178,7 @@ class Commands(unittest.TestCase):
                 mock.patch.object(common, "tg"):
             listen.handle(text)
         for t, _ in sent:
-            self.assertEqual(common.rtl_bad_lines(t), [], t)
+            msgrules.check(self, t)
         return sent
 
     def test_new_commands(self):
@@ -176,10 +188,10 @@ class Commands(unittest.TestCase):
             p = os.path.join(tmp, "journal.json")
             journal.save(j, journal.Path(p))
             with mock.patch.dict(os.environ, {"JOURNAL_FILE": p}):
-                self.assertIn("התראות ביומן: <code>7</code>", self.run_handle("/stats")[0][0])
-                self.assertEqual(self.run_handle("/journal 3")[0][0].count("• התראה"), 3)
-                self.assertEqual(self.run_handle("/journal")[0][0].count("• התראה"), 5)  # default
-                self.assertEqual(self.run_handle("/journal lots")[0][0].count("• התראה"), 5)
+                self.assertIn("ביומן: <code>7</code> התראות", self.run_handle("/stats")[0][0])
+                self.assertEqual(self.run_handle("/journal 3")[0][0].count("• התראה על <code>ACME</code>"), 3)
+                self.assertEqual(self.run_handle("/journal")[0][0].count("• התראה על <code>ACME</code>"), 5)  # default
+                self.assertEqual(self.run_handle("/journal lots")[0][0].count("• התראה על <code>ACME</code>"), 5)
         with mock.patch.object(scan, "verify", return_value="🔎 אימות") as v:
             self.assertEqual(self.run_handle("/verify $acme"), [("🔎 אימות", {"signal": True})])
         v.assert_called_once_with("ACME")
@@ -192,9 +204,10 @@ class Commands(unittest.TestCase):
         names = [c for c, _ in listen.COMMANDS]
         self.assertEqual(names, ["check", "scan", "status", "stats", "journal", "verify", "health", "squeeze", "help"])
         self.assertTrue(all(1 <= len(d) <= 256 for _, d in listen.COMMANDS))
-        for c in names:
-            self.assertIn(f"/{c}", listen.HELP)
-        self.assertEqual(common.rtl_bad_lines(listen.HELP), [])
+        for c in names:  # /help itself is the menu entry and the HELP text's own title, so it is not listed inside
+            if c != "help":
+                self.assertIn(f"/{c}", listen.HELP)
+        msgrules.check(self, listen.HELP)
 
     def test_check_reply_has_prompt(self):
         with mock.patch.object(check, "report", return_value="📊 דוח"):
