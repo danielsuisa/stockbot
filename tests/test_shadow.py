@@ -240,5 +240,31 @@ class Main(unittest.TestCase):
         self.assertFalse(shadow.path().exists())
 
 
+class Command(unittest.TestCase):
+    """/shadow in Telegram: like /squeeze now, the workflow is started on Actions (the only writer of the journal)."""
+
+    def test_shadow_starts_the_workflow(self):
+        from bot import listen
+        env = {"GITHUB_REPOSITORY": "o/r", "GITHUB_TOKEN": "t"}
+        with mock.patch.dict(os.environ, env), mock.patch.object(listen.common, "send") as send, \
+                mock.patch.object(listen.common, "dispatch", return_value="") as disp:
+            self.assertEqual(listen.handle("/shadow"), 0)
+        disp.assert_called_once_with("shadow.yml", {"mode": "manual"})
+        self.assertIn("מעקב הצל", send.call_args[0][0])
+        self.assertEqual(send.call_args.kwargs["source"], shadow.SOURCE)
+        clean(self, send.call_args[0][0])
+        with mock.patch.dict(os.environ, env), mock.patch.object(listen.common, "send") as send, \
+                mock.patch.object(listen.common, "dispatch", return_value="HTTP 403"), mock.patch("builtins.print"):
+            self.assertEqual(listen.handle("/shadow"), 1)
+        self.assertIn("HTTP 403", send.call_args[0][0])
+        clean(self, send.call_args[0][0])
+        with mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "", "GITHUB_TOKEN": ""}), \
+                mock.patch.object(listen.common, "send"), mock.patch.object(listen.shadow, "main", return_value=0) as run:
+            listen.handle("/shadow")
+        run.assert_called_once_with(["--manual"])
+        self.assertIn("/shadow", listen.HELP)
+        self.assertIn("shadow", [c for c, _ in listen.COMMANDS])
+
+
 if __name__ == "__main__":
     unittest.main()

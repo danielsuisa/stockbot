@@ -178,7 +178,7 @@ Accept: application/vnd.github+json
 
 - **כלל ההכרעה (נקבע מראש):** אחרי 100 עסקאות ו־60 ימי מסחר לפחות. ממוצע חיובי עם סטטיסטי t של 2 לפחות, ורווח בכל חודש עם 15 עסקאות ומעלה, מאפשרים לעבור לכרטיסי פקודה. אחרת השיטה נפסלת.
 - **יומן:** <code dir="ltr">data/shadow_journal.json</code>. ימים שהוחמצו (עד 5) מושלמים בריצה הבאה, ואף יום לא נשלח פעמיים.
-- **צריך:** הסודות `ALPACA_KEY_ID` ו־`ALPACA_SECRET_KEY` (חשבון Alpaca חינמי). הרצה ידנית: `K10s shadow tracker` בלשונית `Actions`.
+- **צריך:** הסודות `ALPACA_KEY_ID` ו־`ALPACA_SECRET_KEY` (חשבון Alpaca חינמי). הרצה ידנית: <code dir="ltr">/shadow</code> בטלגרם, או `K10s shadow tracker` בלשונית `Actions`.
 
 ### פקודות בבוט
 
@@ -192,6 +192,7 @@ Accept: application/vnd.github+json
 | <code dir="ltr">/verify AAPL</code> | מוריד מחדש מ־EDGAR את דיווחי בעלי העניין של החברה, מחשב הכול מאפס ומשווה למה שהסריקה שמרה |
 | <code dir="ltr">/health</code> | בדיקה חיה של SEC, חיפוש הטקסט המלא, Yahoo וטלגרם, ומתי רצו לאחרונה הסריקה, השומר וההאזנה |
 | <code dir="ltr">/squeeze</code> | רשימת הסקוויז האחרונה; <code dir="ltr">/squeeze now</code> מריץ עכשיו את הרשימה והמזנקות; <code dir="ltr">/squeeze GME</code> בודק מניה מול כל תנאי הסינון; <code dir="ltr">/squeeze stats</code> תוצאות היומן |
+| <code dir="ltr">/shadow</code> | מריץ עכשיו את מעקב הצל של שיטת הכניסה (יום שכבר נשלח לא נשלח שוב) |
 | <code dir="ltr">/help</code> | רשימת הפקודות (כל פקודה לא מוכרת מקבלת אותה גם כן) |
 
 הודעה בלי פקודה נחשבת לבקשת דוח רק כשיש בה טיקר באותיות גדולות (`AAPL`) או עם `$` (`$aapl`), גם בתוך משפט בעברית. מילים רגילות באותיות קטנות, כמו `all good` או `ok thanks`, לא ייחשבו לטיקרים. הפקודות מופיעות גם בתפריט `/` של טלגרם אחרי ששולחים `/help` פעם אחת.
