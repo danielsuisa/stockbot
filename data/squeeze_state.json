@@ -72,7 +72,8 @@
    "reg4",
    "reg5",
    "reg6",
-   "post1"
+   "post1",
+   "post2"
   ]
  },
  "static": {
