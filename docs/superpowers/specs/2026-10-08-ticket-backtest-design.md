@@ -200,3 +200,131 @@ These are corrections to the fill model, not new variants: nothing is re-selecte
 - **Realistic verdict** for K10s on 2024-02-01 onward, the four checks of section 12 on the corrected trades. If it
   fails, the conclusion is NO-GO for the whole ZBA line (every other variant was already negative on 2024+ under the
   optimistic model).
+
+## 14. ZBA v2: the owner's improvements to K10s, developed on seen data, judged once on unseen 2016–2021 (pre-registered 2026-10-09, before any run)
+
+Why: section 13 failed K10s's realistic verdict (2024 below zero). The owner listed improvements (2026-10-09) and
+decided: apply them to K10s only; develop on the already-seen 2022-01-03 → 2026-10-08; judge with a single run on
+2016-01-04 → 2021-12-31, which nobody has looked at, plus the forward shadow tracker. Both sides (long and short).
+Nothing here sends a ticket; a GO only allows a second shadow line (section 14.8).
+
+### 14.0 Measured before designing (STEP 0, `bot/probe_v2.py` on GitHub Actions, 2026-10-09)
+
+Run 37917832860 (1,416 Alpaca requests), 12 sample sessions (the first on/after March 15 and September 15 of
+2016–2021, 240 top-20 ticker-days computed with section 11's code):
+
+- **a) News:** Alpaca's news API reaches back to 2015-01-01. 89 of the 240 top-20 ticker-days (37.1%) had an item
+  between the previous close (16:00) and 09:35. Per day it ranged 0–13 of 20; two days had none (2017-09-15 and
+  2019-03-15, both quarterly expiration and index-rebalancing Fridays). Enough to test #4.
+- **b) Quote sizes:** historical SIP quotes carry bid and ask sizes in 2016 (AAPL 2016-03-01: bs 4, as 1). The unit
+  (round lots or shares) is checked on a 2016 and a 2025 sample before #3's depth rule is used; the rule is written
+  in round lots of 100 shares.
+- **c) Survivorship — poor, stated plainly:** all 9 known 2016–2018 delistings checked (LinkedIn, Yahoo, Whole Foods,
+  Monsanto, Time Warner, Sears, Staples, Panera, Cabela's) still have daily bars at Alpaca, but **none is in
+  Alpaca's asset list as that company**: 7 are absent, and 2 symbols (SHLD, SPLS) now belong to ETFs, which the fund
+  filter drops. Universe C is built from the asset list, so stocks that later delisted are missing from the holdout.
+  The universe with a bar on the sample day grows from 3,455 (2016-03) to 4,709 (2021-09), +36%, while US listings
+  grew far less. Our estimate: roughly 10–25% of the 2016 names are missing, fewer each later year. The exact
+  share is unknown with free data.
+- **d) Trades:** SIP trades exist for 2016 (5 trades in the 5 seconds probed), so the tick-level fill minute works in
+  the holdout.
+- **e) Sectors:** 205 of the 240 top-20 tickers (85%) are in today's SEC ticker map and 184 (77%) have a SIC code;
+  the missing ones are mostly renamed or delisted. The sector rule is used only in the forward risk layer, not
+  gated in the backtest.
+
+### 14.1 Base: K10s as in sections 11–13
+
+Universe C, top 20 by opening relative volume, the first candle's side, stop order at its high/low, D = 0.10 × ATR14,
+spread at the trigger ≤ 0.25 × D, out at the close, costs of section 6, the tick-level fill minute and Rule 201 of
+section 13, the 20-seed random-side benchmark. Every variant below changes only what it names. A variant that
+changes D also moves the spread gate (0.25 × its D) and the share count ($100 / D, 10-share minimum).
+
+### 14.2 The rules (numbers fixed here)
+
+- **#2 Time-of-day relative volume (T15, T2, T3).** At the trigger minute m: the ticker's volume from 09:30 through
+  m (inclusive) / the mean of the same window over the 14 previous sessions (a session without bars counts 0) ≥
+  1.5 / 2 / 3. The opening-bar relative volume stays the universe ranking.
+- **#3 Liquidity (L10, L25).** The 14-day average dollar volume (mean of close × volume of the 14 daily bars before
+  D) ≥ $10M / $25M. **Q5 (depth):** the top-of-book size on the trigger side (the ask for a long, the bid for a short) at the trigger,
+  from the same SIP quote as the spread, ≥ 5 round lots (500 shares).
+- **#4 Catalyst (N).** Require an Alpaca news item for the ticker between the previous session's close (16:00) and 09:35 of D.
+  Variants: require (N) / ignore (the base).
+- **#5 Breakout confirmation (C15, C2).** Instead of the touch entry: the first minute from 09:35 whose close is
+  beyond the first candle's high (long) / low (short), with that minute's volume ≥ k × the mean minute volume since
+  09:30 (k = 1.5 / 2). Entry at the next minute's open (bar model: that open plus half the spread; tick level: the
+  first round-lot trade of that minute). The stop distance is measured from that fill.
+- **#6 Candle filter (F).** The first 5-minute candle's range / ATR14 in [0.10, 0.60] and its body / range ≥ 0.50.
+- **#7 Volatility stop (V10, V25).** D = max(k × ATR14, the distance from the fill to the far side of the first
+  candle: its low for a long, its high for a short), k = 0.10 / 0.25.
+- **#11 Reward-to-risk (RR).** Skip unless the room from the entry level to (the 09:30 open + 1.0 × ATR14) for a long
+  — (open − 1.0 × ATR14) for a short — is ≥ 2 × D.
+- **#12 Slippage guard (SL).** A stop-limit entry, limit = level ± max(0.25 × D, $0.01). Tick level: the fill trade
+  beyond the limit → no trade (counted). Bar model: a fill minute that opens beyond the limit → no trade.
+- **#16 Quality ranking (QR).** Among the session's candidates (universe C after the open > $5 and relative volume ≥ 1
+  checks), the score = the equal-weight sum of z-scores (across that session's candidates) of opening relative
+  volume, 14-day dollar volume, first-candle body / range and the catalyst (1 with a news item as in #4, else 0). The top 20 by this score are traded instead of
+  the top 20 by relative volume. Weights are fixed at 1; never tuned.
+- **#17 Data quality (DQ).** Skip a ticker-day, counted per reason, when: a minute bar is missing in the 5 minutes
+  before the trigger minute or in the trigger minute itself; the quote used for the spread is older than 60 s at the
+  trigger; any regular-session minute's VWAP is outside that minute's low–high; a regular-session minute has zero
+  volume while its high ≠ its low.
+
+### 14.3 The grid (22 variants, all reported)
+
+K10s itself; the singles T15, T2, T3, L10, L25, Q5, N, C15, C2, F, V10, V25, RR, SL, QR, DQ; and the
+combinations declared now: **X1** = T2 + L10 + DQ · **X2** = C2 + V25 + DQ · **X3** = F + RR + SL + DQ · **X4** = QR + T2
++ V25 + SL + DQ · **X5** = N + T2 + DQ.
+
+### 14.4 Development and selection (2022-01-03 → 2026-10-08, seen data)
+
+1. Screen every variant with the bar model (section 11's fills).
+2. Re-run the 3 variants with the highest bar-model mean net R (among those with ≥ 500 trades) with the tick-level
+   fill minute and Rule 201 (section 13).
+3. Select on the tick-level numbers: the highest mean net R among those 3 with ≥ 500 trades, t ≥ 2, and mean net R > 0
+   in each of 2022, 2023, 2024, 2025 and 2026 separately. The runner-up, if it qualifies too, is the second finalist
+   (at most 2). If none qualifies: **NO-GO** for ZBA v2, stop, report — the holdout is not run.
+4. Freeze: the finalists' parameters are committed (`docs/backtest/zba-v2-frozen.json`) before the holdout runs.
+
+### 14.5 Holdout verdict (2016-01-04 → 2021-12-31, one run of the frozen finalists, both reported)
+
+A finalist is **GO** only if all hold:
+
+1. ≥ 300 trades;
+2. mean net R > 0 with t ≥ 2 — with 2 finalists, t ≥ 2.24 for each (the same 5% split in two);
+3. mean net R above the 95th percentile of the 20 random-side means;
+4. mean net R > 0 in at least 5 of the 6 years;
+5. t ≥ 2 still holds with an extra $0.005 a share of slippage on each side;
+6. mean net R > 0 after removing the top 1% of trades by net R.
+
+Also reported, not gated (#19): win rate, average win, average loss, expectancy, the maximum drawdown of a book that
+risks 1% a trade (section 11's portfolio), trade count, and every skip reason. The holdout is single-shot: once run,
+no rule in this section changes and it is not run again.
+
+### 14.6 Data honesty
+
+- The holdout misses stocks that later delisted (14.0 c). The verdict is reported with that caveat. A GO on a universe
+  without them is weaker evidence, and the forward shadow line remains the deciding test.
+- 2022–2023 was section 12's selection period and 2024–2026 section 13's verdict period: the development period is
+  seen data, which is why the decision rests on 2016–2021.
+- News items, quote sizes and SIC codes are free sources with uneven coverage; a missing value counts as "no news",
+  "fails the depth rule" or "no sector", never as an estimate.
+
+### 14.7 Implementation constraints
+
+The filters are ctx options of `ticket._zba` / `ticket_backtest`; with none set, K10s's results and every existing test
+stay byte-identical. The 2016–2021 download runs detached with the existing disk cache and request pacing. Stdlib
+only; free data only; keys from the environment only.
+
+### 14.8 Forward layer (only if a finalist passes 14.4; built after the holdout, no orders)
+
+A second shadow line next to K10s; a journal of every candidate with the reason it was picked or rejected (#15);
+shorts only when Alpaca flags the asset shortable and easy to borrow (#8, counted); a risk layer with these
+configurable defaults (#9, #10, #20): $100 risk a trade, at most 5 open positions, at most $500 total open risk, at
+most 2 in the same SIC 2-digit sector or in a cluster with 60-day return correlation > 0.7, no new entries after a
+−$300 day, and a kill switch (no entries, a Telegram alert) when SPY's bars are missing or stale; #19 metrics in the
+weekly tally.
+
+### 14.9 Not in this section (follow-ups for the owner)
+
+Live `/ticket` and IBKR orders (only after a holdout GO and the owner's approval). The squeeze list's relative volume
+compares part-day volume with a full day's average; matching it by time of day is a separate change to the live list.
