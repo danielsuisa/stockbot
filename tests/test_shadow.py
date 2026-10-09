@@ -1,6 +1,7 @@
 """Forward shadow tracker of ZBA K10s: one mocked session end to end, day selection, the message and the run."""
 import datetime as dt
 import os
+import pathlib
 import re
 import tempfile
 import unittest
@@ -211,7 +212,8 @@ class Main(unittest.TestCase):
 
     def main(self, *argv, today="2024-03-02"):
         with mock.patch.object(shadow, "run_day", return_value=dict(self.RES)) as rd, \
-                mock.patch.object(shadow.common, "send") as send, mock.patch.object(shadow, "today_ny", return_value=today):
+                mock.patch.object(shadow.common, "send") as send, mock.patch.object(shadow, "today_ny", return_value=today), \
+                mock.patch.object(shadow, "live", return_value="👻 היום") as self.live:
             self.assertEqual(shadow.main(list(argv)), 0)
         self.assertTrue(all(c.kwargs.get("source") == shadow.SOURCE for c in send.call_args_list))  # Alpaca footer
         return [c.args[0] for c in rd.call_args_list], [c.args[0] for c in send.call_args_list]
@@ -222,11 +224,10 @@ class Main(unittest.TestCase):
         j = shadow.load()
         self.assertEqual((j["since"], list(j["days"])), (DAY, [DAY]))
         self.assertEqual(self.main(), ([], []))  # the next scheduled run: silence
-        days, sent = self.main("--manual")
-        self.assertEqual(days, [])
-        self.assertIn("אין יום מסחר חדש", sent[0])
-        self.assertIn("יום ו׳ <code>1.3.2024</code>", sent[0])
-        clean(self, sent[0])
+        days, sent = self.main("--manual")  # /shadow: nothing new to journal, today's live view
+        self.assertEqual((days, sent), ([], ["👻 היום"]))
+        self.assertEqual(list(shadow.load()["days"]), [DAY])  # the live view never touches the journal
+        self.live.assert_called_once()
 
     def test_the_calendar_reaches_back_before_the_last_processed_session(self):
         shadow.save({"v": 1, "since": "2023-11-01", "days": {"2023-11-01": dict(self.RES)}})
@@ -264,6 +265,116 @@ class Command(unittest.TestCase):
         run.assert_called_once_with(["--manual"])
         self.assertIn("/shadow", listen.HELP)
         self.assertIn("shadow", [c for c, _ in listen.COMMANDS])
+
+
+LIVE_DAY = "2026-10-09"  # a Friday, summer time in both cities (+7 h)
+LIVE_SESSIONS = sessions_before(LIVE_DAY, 40) + [LIVE_DAY]
+LIVE_HOURS = {d: ("09:30", "16:00") for d in LIVE_SESSIONS}
+
+
+def ny_at(hhmm, day=LIVE_DAY):
+    return dt.datetime.fromisoformat(f"{day}T{hhmm}").replace(tzinfo=shadow.alpaca.NY)
+
+
+class Live(unittest.TestCase):
+    """/shadow during the day: the pre-market watch list, then today's trades so far; never the journal."""
+
+    def test_no_trading_today_and_too_early(self):
+        text = shadow.live(ny_at("10:00", "2026-10-10"), LIVE_HOURS, LIVE_SESSIONS)  # a Saturday
+        self.assertIn("אין מסחר", text)
+        clean(self, text)
+        text = shadow.live(ny_at("04:10"), LIVE_HOURS, LIVE_SESSIONS)  # pre-market data from 04:15 New York
+        self.assertIn("מ־<code>11:15</code>", text)
+        clean(self, text)
+
+    def test_pre_market_watch_list(self):
+        daily = {"AAA": DAILY, "BBB": DAILY}
+        pre = {"AAA": {"atr": 1.0, "avg_vol": 3_000_000}, "BBB": {"atr": 1.0, "avg_vol": 3_000_000}}
+        with mock.patch.object(shadow.alpaca, "assets", return_value=ASSETS), \
+                mock.patch.object(shadow.alpaca, "daily", side_effect=lambda syms, a, b: {s: daily[s] for s in syms if s in daily}), \
+                mock.patch.object(shadow.tb, "prefilter", return_value=pre), \
+                mock.patch.object(shadow.alpaca, "volume_since", return_value={"AAA": (150_000, 10.4), "BBB": (600_000, 9.4)}) as vol:
+            text = shadow.live(ny_at("08:15"), LIVE_HOURS, LIVE_SESSIONS)
+        vol.assert_called_once_with(["AAA", "BBB"], LIVE_DAY, "04:00", "08:00")  # 15 minutes behind
+        self.assertIn("לפני הפתיחה", text)
+        self.assertIn("נכון ל־<code>15:00</code>", text)  # 08:00 New York in Israel time
+        self.assertIn("ב־<code>16:35</code>", text)  # when the method picks
+        self.assertLess(text.index("<code>BBB</code>"), text.index("<code>AAA</code>"))  # 20% of a day before 5%
+        self.assertIn("<code>5.1%▲</code>", text)  # AAA 10.40 against the 9.90 close
+        self.assertIn("נפח <code>20%</code> מיום רגיל", text)
+        self.assertEqual(shadow.alpaca.CUTOFF, {})
+        clean(self, text)
+
+    def test_during_the_session_open_and_closed_trades(self):
+        closed = dict(PLTR, at="09:40")
+        running = dict(APLD, at="10:05", kinds="eod", gross_r=(23.76 - 23.60) / 0.15, net_r=0.95)
+        res = dict(FIXTURE, trades=[closed, running])
+        seen = {}
+
+        def run_day(day, hours, sessions, until=None):
+            seen["until"] = until
+            return {**res, "trades": [dict(x) for x in res["trades"]]}
+        with mock.patch.object(shadow, "run_day", side_effect=run_day):
+            # the real run_day marks a still-running "eod" trade open; here the mock gets the flag from the wrapper
+            text = shadow.live(ny_at("11:20"), LIVE_HOURS, LIVE_SESSIONS)
+        self.assertEqual(seen["until"], "11:05")
+        self.assertIn("בזמן אמת", text)
+        self.assertIn("לא נשמר ביומן", text)
+        self.assertIn("נסגרת בסוף היום, ב־<code>23:00</code>", text)
+        clean(self, text)
+
+    def test_live_message_open_trade(self):
+        running = dict(APLD, kinds="eod", gross_r=(23.76 - 23.60) / 0.15, net_r=0.95, open=True)
+        text = shadow.live_message(LIVE_DAY, dict(FIXTURE, trades=[dict(PLTR, open=False), running]), "11:05", "16:00")
+        self.assertIn("תוצאה: נעצרה בסטופ", text)  # the closed one as in the daily message
+        self.assertIn("תוצאה: עדיין פתוחה, עכשיו <code>23.60$</code>, רווח של <code>95$</code> עד עכשיו", text)
+        clean(self, text)
+        done = shadow.live_message(LIVE_DAY, dict(FIXTURE, trades=[]), "16:00", "16:00")
+        self.assertIn("יום המסחר הסתיים", done)
+        self.assertIn("עוד לא נפתחה עסקה היום", done)
+        clean(self, done)
+
+
+class LiveData(unittest.TestCase):
+    """alpaca.CUTOFF: a live day's data ends 15 minutes ago and is never cached."""
+
+    def setUp(self):
+        d = tempfile.TemporaryDirectory()
+        self.addCleanup(d.cleanup)
+        p = mock.patch.object(shadow.alpaca, "CACHE", pathlib.Path(d.name))
+        p.start()
+        self.addCleanup(p.stop)
+        self.addCleanup(shadow.alpaca.CUTOFF.clear)
+
+    def test_minute_and_daily_bars_end_at_the_cutoff_uncached(self):
+        bar = {"t": "2026-10-09T13:31:00Z", "o": 1, "h": 1, "l": 1, "c": 1, "v": 10, "vw": 1}
+        shadow.alpaca.CUTOFF[LIVE_DAY] = "11:05"
+        with mock.patch.object(shadow.alpaca, "_bars", return_value={"AAA": [bar]}) as b:
+            shadow.alpaca.minute_bars(["AAA"], LIVE_DAY)
+            shadow.alpaca.daily(["AAA"], "2026-08-10", LIVE_DAY)
+        self.assertEqual(b.call_args_list[0].args[1:], (shadow.alpaca.utc(LIVE_DAY, "04:00"),
+                                                        shadow.alpaca.utc(LIVE_DAY, "11:05"), "1Min"))
+        self.assertEqual(b.call_args_list[1].args[1:], ("2026-08-10", shadow.alpaca.utc(LIVE_DAY, "00:00"), "1Day"))
+        self.assertFalse(any(shadow.alpaca.CACHE.rglob("*.gz")))  # nothing cached
+        shadow.alpaca.CUTOFF.clear()
+        with mock.patch.object(shadow.alpaca, "_bars", return_value={"AAA": [bar]}) as b:
+            shadow.alpaca.minute_bars(["AAA"], LIVE_DAY)  # a completed day: the whole session, cached
+        self.assertEqual(b.call_args.args[2], shadow.alpaca.utc(LIVE_DAY, "20:00"))
+        self.assertTrue(any(shadow.alpaca.CACHE.rglob("*.gz")))
+
+    def test_run_day_live_marks_a_running_trade_open_and_clears_the_cutoff(self):
+        res = dict(FIXTURE, trades=[dict(PLTR), dict(APLD)])  # PLTR stopped, APLD "eod" so far
+        seen = []
+        real = shadow.run_day
+
+        def inner(day, hours, sessions, until=None):  # the completed-day computation, called back by the live wrapper
+            seen.append(dict(shadow.alpaca.CUTOFF))
+            return {**res, "trades": [dict(x) for x in res["trades"]]}
+        with mock.patch.object(shadow, "run_day", side_effect=inner):
+            got = real(LIVE_DAY, LIVE_HOURS, LIVE_SESSIONS, "11:05")
+        self.assertEqual(seen, [{LIVE_DAY: "11:05"}])
+        self.assertEqual(shadow.alpaca.CUTOFF, {})
+        self.assertEqual([x["open"] for x in got["trades"]], [False, True])
 
 
 if __name__ == "__main__":

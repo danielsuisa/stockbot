@@ -72,3 +72,12 @@ and the next run retries the same session. A ticker without minute bars counts a
 One mocked session end to end (a long trade through the realism model, a short dropped by Rule 201); day selection
 (first run, catch-up, cap of 5, idempotence); message RTL-clean with trades, without trades, and the tally; the clock
 starts `shadow.yml` at 07:00 UTC Tuesday–Saturday; the workflow accepts the clock's mode.
+
+## 9. Live view (`/shadow`, added 2026-10-09 at the owner's request)
+
+`/shadow` (a manual run) first journals any completed session as above, then shows today as it unfolds, data 15
+minutes behind (the free plan's limit) and **never journaled**, so sections 5–6 are unaffected:
+
+- before 5 minutes after the open: the stocks that pass section 3's prefilter, ranked by their volume so far today
+  (from 04:00 New York) against a normal day. This is a watch list, not the method's choice;
+- from then on: section 3 on today's data so far; a trade still running is shown as open with its result so far.

@@ -26,7 +26,7 @@ COMMANDS = (("check", "דוח על מניה, למשל /check AAPL"), ("scan", "�
             ("journal", "ההתראות האחרונות, למשל /journal 5"), ("verify", "בדיקה מחדש מול SEC, למשל /verify AAPL"),
             ("health", "בדיקה שהכול עובד"),
             ("squeeze", "סקוויז: /squeeze, /squeeze now, /squeeze GME, /squeeze stats"),
-            ("shadow", "מעקב הצל של שיטת הכניסה, עכשיו"), ("help", "רשימת הפקודות"))
+            ("shadow", "מעקב הצל: מה השיטה עושה היום, מה־pre market"), ("help", "רשימת הפקודות"))
 HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, או עם דולר, {code('$msft')} (עד {code(MAX)} בהודעה)."
         f" לרשימת הפקודות: {code('/help')}.")
 HELP = "\n".join((
@@ -47,7 +47,7 @@ HELP = "\n".join((
     f"• לבדוק מניה: {code('/squeeze GME')}",
     f"• התוצאות עד היום: {code('/squeeze stats')}",
     "",
-    f"👻 מעקב הצל של שיטת הכניסה (נשלח לבד כל בוקר אחרי יום מסחר), להריץ עכשיו: {code('/shadow')}",
+    f"👻 מעקב הצל של שיטת הכניסה (נשלח לבד כל בוקר אחרי יום מסחר). מה היא עושה היום, מה־pre market: {code('/shadow')}",
     "",
     f"🩺 בדיקה שהכול עובד: {code('/health')}"))
 
@@ -208,7 +208,7 @@ def shadow_now():
             common.send(f"⚠️ לא הצלחתי להפעיל את מעקב הצל ב־GitHub ({code(err)}). בדקו שבקובץ"
                         f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.", source=shadow.SOURCE)
             return 1
-        common.send("⏳ מעקב הצל רץ. התוצאה, או הודעה שאין יום מסחר חדש, תגיע בעוד כמה דקות.", source=shadow.SOURCE)
+        common.send("⏳ מעקב הצל רץ. מצב היום (לפני הפתיחה: המניות הפעילות; אחרי: העסקאות עד עכשיו) יגיע בעוד כמה דקות.", source=shadow.SOURCE)
         return 0
     common.send("⏳ מעקב הצל רץ.", source=shadow.SOURCE)
     return shadow.main(["--manual"])

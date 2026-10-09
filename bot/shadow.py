@@ -6,6 +6,7 @@ tally. No order is sent and no money is used; the method has not passed a pre-re
     python -m bot.shadow --dry     # print the messages, write nothing"""
 import argparse
 import collections
+import traceback
 import datetime as dt
 import json
 import os
@@ -69,9 +70,19 @@ def pending(sessions, j, today):
 
 
 # ---------- one session ----------
-def run_day(day, hours, sessions):
+def run_day(day, hours, sessions, until=None):
     """K10s on session `day` with the backtest's functions -> {"top", "reasons", "dropped", "trades" (realistic rows),
-    "optimistic" (bar-model rows), "gaps"}."""
+    "optimistic" (bar-model rows), "gaps"}. until: New York "HH:MM" for a live look at a session still trading (its
+    data ends there; a trade still running is marked "open" - never journaled)."""
+    if until:
+        alpaca.CUTOFF[day] = until
+        try:
+            res = run_day(day, hours, sessions)
+        finally:
+            alpaca.CUTOFF.pop(day, None)
+        for x in res["trades"]:
+            x["open"] = x["kinds"] == "eod" and until < hours[day][1]
+        return res
     k = sessions.index(day)
     if k < tb.Z_DAYS + 1:  # never a short window or sessions[-1]: the caller loads enough calendar
         raise ValueError(f"shadow: {day} has {k} sessions of calendar before it, {tb.Z_DAYS + 1} needed")
@@ -203,21 +214,100 @@ def message(day, res, j):
     return "\n\n".join(blocks)
 
 
-def no_new_day(j):
-    last = max(j["days"]) if j["days"] else None
-    return (f"{TITLE}\nאין יום מסחר חדש למעקב הצל. "
-            + (f"היום האחרון שנבדק: יום {weekday(last)} {code(il_date(last))}." if last else "עוד לא נבדק אף יום."))
+LIVE_LAG = 15  # minutes: the free Alpaca plan gives SIP data only after this
+WATCH = 10  # stocks in the pre-market watch list
+
+
+def _hhmm(t, minutes=0):
+    return (dt.datetime.combine(dt.date(2000, 1, 1), dt.time.fromisoformat(t)) + dt.timedelta(minutes=minutes)).strftime("%H:%M")
+
+
+def _live_head(title, day, until):
+    return (f"👻 <b>מעקב צל: {title}</b>\nיום {weekday(day)} {code(il_date(day))} · נכון ל־{code(il_time(day, until))}"
+            f" (באיחור של {code(LIVE_LAG)} דקות) · לא נשמר ביומן")
+
+
+def live_trade_block(day, x):
+    """trade_block, or for a trade still running: its price now and the result so far."""
+    if not x.get("open"):
+        return trade_block(day, x)
+    lines = trade_block(day, x).split("\n")[:-1]
+    now = x["fill"] + x["side"] * x["gross_r"] * x["R"]
+    return "\n".join(lines + [f"תוצאה: עדיין פתוחה, עכשיו {_px(now)}, {money(x['net_r'])} עד עכשיו"])
+
+
+def live_message(day, res, until, close):
+    """Today's K10s trades so far (from 5 minutes after the open)."""
+    blocks = [_live_head("היום, בזמן אמת", day, until)]
+    blocks += [live_trade_block(day, x) for x in res["trades"]] or ["עוד לא נפתחה עסקה היום."]
+    blocks.append(skips_line(res))
+    blocks.append("✅ יום המסחר הסתיים. התוצאה תיכנס ליומן מחר בבוקר." if until >= close else
+                  f"⏳ עסקה פתוחה נסגרת בסוף היום, ב־{code(il_time(day, close))}. התוצאה הסופית תגיע מחר בבוקר"
+                  " ותיכנס ליומן.")
+    return "\n\n".join(blocks)
+
+
+def premarket(day, hours, sessions, until):
+    """Before the method picks (5 minutes after the open): the stocks that pass its filter, ranked by their volume so
+    far today against a normal day -> [{"t", "price", "gap", "vol"}] (a watch list, not the method's choice)."""
+    k = sessions.index(day)
+    prev, look = sessions[k - 1], (dt.date.fromisoformat(day) - dt.timedelta(LOOK_DAYS)).isoformat()
+    syms = tb.asset_universe(alpaca.assets())
+    alpaca.CUTOFF[day] = until
+    try:
+        daily = {}
+        for i in range(0, len(syms), alpaca.CHUNK):
+            daily.update(alpaca.daily(syms[i:i + alpaca.CHUNK], look, day))
+    finally:
+        alpaca.CUTOFF.pop(day, None)
+    pre = tb.prefilter(day, daily, prev)
+    got = alpaca.volume_since(sorted(pre), day, "04:00", min(until, hours[day][0])) if pre else {}
+    rows = []
+    for t, (vol, px) in got.items():
+        last = [b for b in daily.get(t, []) if b[0] < day][-1]
+        rows.append({"t": t, "price": px, "gap": px / last[4] - 1, "vol": vol / pre[t]["avg_vol"]})
+    return sorted(rows, key=lambda r: -r["vol"])[:WATCH]
+
+
+def premarket_message(day, rows, until, open_):
+    pick = il_time(day, _hhmm(open_, 5))
+    lines = [_live_head("לפני הפתיחה", day, until), "",
+             f"השיטה בוחרת מניות רק אחרי {code(5)} דקות המסחר הראשונות, ב־{code(pick)}. אלה המניות הפעילות ביותר"
+             " לפני הפתיחה, מבין המניות שעוברות את הסינון שלה:"]
+    lines += [f"• פעילה: {code(r['t'])} · {_px(r['price'])} {common.arrow(r['gap'])} · נפח {code(format(r['vol'], '.0%'))}"
+              " מיום רגיל" for r in rows] or ["🤷 עוד אין מסחר לפני הפתיחה במניות האלה."]
+    return "\n".join(lines)
+
+
+def live(now, hours, sessions):
+    """/shadow during the day: the pre-market watch list, or today's trades so far; '' -> nothing to add."""
+    day, until = now.date().isoformat(), (now - dt.timedelta(minutes=LIVE_LAG)).strftime("%H:%M")
+    if day not in hours:
+        return f"👻 <b>מעקב צל</b>\nהיום, יום {weekday(day)} {code(il_date(day))}, אין מסחר בבורסה."
+    open_, close = hours[day]
+    if until < "04:00":
+        return (f"👻 <b>מעקב צל</b>\nהמסחר לפני הפתיחה מתחיל ב־{code(il_time(day, '04:00'))}, והנתונים שלו זמינים"
+                f" מ־{code(il_time(day, _hhmm('04:00', LIVE_LAG)))}.")
+    if until < _hhmm(open_, 5):
+        return premarket_message(day, premarket(day, hours, sessions, until), until, open_)
+    until = min(until, close)
+    return live_message(day, run_day(day, hours, sessions, until), until, close)
 
 
 # ---------- run ----------
+def now_ny():
+    return dt.datetime.now(alpaca.NY)
+
+
 def today_ny():
-    return dt.datetime.now(alpaca.NY).date().isoformat()
+    return now_ny().date().isoformat()
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="ZBA K10s forward shadow tracker -> Telegram and data/shadow_journal.json")
     ap.add_argument("--dry", action="store_true", help="print the messages, write nothing")
-    ap.add_argument("--manual", action="store_true", help="say so when there is no new session (also SHADOW_MODE)")
+    ap.add_argument("--manual", action="store_true", help="/shadow: also today's live view, or say there is no new "
+                    "session (also SHADOW_MODE)")
     a = ap.parse_args(argv)
     manual = a.manual or common.env("SHADOW_MODE") == "manual"
     today = today_ny()
@@ -229,9 +319,6 @@ def main(argv=None):
     days = pending(sessions, j, today)
     if not days:
         print(f"shadow: no new session before {today}")
-        if manual and not a.dry:
-            common.send(no_new_day(j), source=SOURCE)
-        return 0
     for day in days:
         res = run_day(day, hours, sessions)
         j["since"] = j.get("since") or day
@@ -243,6 +330,16 @@ def main(argv=None):
         common.send(text, source=SOURCE)
         save(j)  # right after it went out: a later failure in this run never resends the day
         common.log("shadow", day=day, top=len(res["top"]), trades=len(res["trades"]), dropped=res["dropped"])
+    if manual:  # /shadow: today as it unfolds (never journaled)
+        try:
+            text = live(now_ny(), hours, sessions)
+        except Exception as e:  # the journal part above is done; the live part just says it is unavailable
+            traceback.print_exc()
+            text = f"⚠️ התצוגה החיה של היום לא זמינה כרגע: {code(str(e)[:120])}"
+        if a.dry:
+            print(text)
+        else:
+            common.send(text, source=SOURCE)
     return 0
 
 
