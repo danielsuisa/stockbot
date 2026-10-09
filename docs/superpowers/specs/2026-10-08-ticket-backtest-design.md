@@ -340,3 +340,8 @@ compares part-day volume with a full day's average; matching it by time of day i
 - **News volume.** A session's pre-open window holds 256–530 items (6–11 pages of 50); the news set is fetched once
   per session for all symbols.
 - **#5's mean minute volume** is over the minutes from 09:30 to the minute before the confirming one.
+- **#17 without look-ahead.** The data-quality checks look only at minutes from 09:30 through the entry minute; a
+  bad minute later in the day is not used to skip a trade that would already be open.
+- **Where it runs.** The keys exist only as GitHub secrets, so both runs happen on GitHub Actions: one workflow run
+  per mode, six chained jobs of at most 5½ hours, the request cache carried from job to job. This replaces the
+  detached local downloader; the result is the same (resumable, paced, cached).

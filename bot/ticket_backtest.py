@@ -598,7 +598,7 @@ def _play(rules, session, bars, ctx, spread, day, t, universe):
                   **{k: tk[k] for k in ("at", "level", "entry_type", "entry", "limit", "stop", "R", "shares", "spread")},
                   "filled": res["filled"], "fill_at": res["fill_at"], "fill": res["fill"],
                   "kinds": "/".join(e["kind"] for e in res["exits"]), "gross_r": res["gross_r"],
-                  "cost_r": res["cost_r"], "net_r": res["net_r"], "net_r_short": short["net_r"]}
+                  "cost_r": res["cost_r"], "net_r": res["net_r"], "net_r_short": short["net_r"], "ioc": tk.get("ioc")}
 
 
 def _day(day, hours, a_tickers, b_rows, daily, sessions, gaps, variants=None):
@@ -813,7 +813,8 @@ def _realism(rows, variant, hours, look, end):
                 status["Rule 201"] += 1
                 continue
         tk = {"rules": "ZBA", "session": "REGULAR", "side": side, "at": x["at"], "level": x["level"],
-              "entry_type": "STP", "limit": None, "R": x["R"], "shares": x["shares"], "spread": x["spread"],
+              "entry_type": x.get("entry_type", "STP"), "limit": x.get("limit"), "ioc": x.get("ioc"), "R": x["R"],
+              "shares": x["shares"], "spread": x["spread"],
               "legs": [{"qty": x["shares"], "target": None, "exit_at": None}], "valid_until": close, "touch": True}
         ticks = alpaca.trades(t, d, x["at"])
         ctx = {"open": open_, "close": close}
