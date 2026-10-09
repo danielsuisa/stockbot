@@ -65,7 +65,8 @@
    "pm4",
    "pm5",
    "pm6",
-   "reg1"
+   "reg1",
+   "reg2"
   ]
  },
  "static": {
