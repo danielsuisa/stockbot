@@ -3,6 +3,7 @@ import datetime as dt
 import json
 import os
 import tempfile
+import types
 import unittest
 from unittest import mock
 
@@ -18,6 +19,15 @@ def subs(*rows):
     keys = ("accessionNumber", "form", "filingDate", "primaryDocument")
     return {"filings": {"recent": {k: [r[i] if i < 3 else f"xslF345X05/{r[0]}.xml" for r in rows]
                                    for i, k in enumerate(keys)}}}
+
+
+def frozen_dt(day):
+    """A stand-in for a module's `datetime as dt` whose datetime.now() is `day` at 06:00 (a fixed "today")."""
+    class Fixed(dt.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(day.year, day.month, day.day, 6, 0, tzinfo=tz)
+    return types.SimpleNamespace(**{**{k: getattr(dt, k) for k in dir(dt) if not k.startswith("__")}, "datetime": Fixed})
 
 
 def state_file(tmp, **st):
@@ -210,7 +220,8 @@ class Legacy(unittest.TestCase):
             with mock.patch.dict(os.environ, {"STATE_FILE": p}), mock.patch.object(scan, "scan_day", side_effect=fake), \
                     mock.patch.object(common, "send"), mock.patch.object(scan, "alerts", return_value=[]), \
                     mock.patch.object(market, "regime", return_value={"tag": "normal"}), \
-                    mock.patch.object(scan, "pick", return_value=[]):
+                    mock.patch.object(scan, "pick", return_value=[]), \
+                    mock.patch.object(scan, "dt", frozen_dt(TODAY)):  # the fixture's days are relative to TODAY
                 scan._reported[0] = False
                 scan.main([])
                 first = list(calls)
