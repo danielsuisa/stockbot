@@ -12,7 +12,7 @@ import traceback
 import urllib.error
 from pathlib import Path
 
-from bot import check, clock, common, fundamentals, health, journal, market, scan, squeeze_live
+from bot import check, clock, common, fundamentals, health, journal, market, scan, shadow, squeeze_live
 from bot.common import code
 
 MAX = 3  # reports per message
@@ -25,7 +25,8 @@ COMMANDS = (("check", "דוח על מניה, למשל /check AAPL"), ("scan", "�
             ("status", "מצב הסריקה היומית"), ("stats", "איך ההתראות הצליחו מול SPY"),
             ("journal", "ההתראות האחרונות, למשל /journal 5"), ("verify", "בדיקה מחדש מול SEC, למשל /verify AAPL"),
             ("health", "בדיקה שהכול עובד"),
-            ("squeeze", "סקוויז: /squeeze, /squeeze now, /squeeze GME, /squeeze stats"), ("help", "רשימת הפקודות"))
+            ("squeeze", "סקוויז: /squeeze, /squeeze now, /squeeze GME, /squeeze stats"),
+            ("shadow", "מעקב הצל של שיטת הכניסה, עכשיו"), ("help", "רשימת הפקודות"))
 HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, או עם דולר, {code('$msft')} (עד {code(MAX)} בהודעה)."
         f" לרשימת הפקודות: {code('/help')}.")
 HELP = "\n".join((
@@ -45,6 +46,8 @@ HELP = "\n".join((
     f"• להריץ עכשיו: {code('/squeeze now')}",
     f"• לבדוק מניה: {code('/squeeze GME')}",
     f"• התוצאות עד היום: {code('/squeeze stats')}",
+    "",
+    f"👻 מעקב הצל של שיטת הכניסה (נשלח לבד כל בוקר אחרי יום מסחר), להריץ עכשיו: {code('/shadow')}",
     "",
     f"🩺 בדיקה שהכול עובד: {code('/health')}"))
 
@@ -139,6 +142,8 @@ def handle(text):
         return 0
     if cmd == "squeeze":
         return squeeze_cmd(rest)
+    if cmd == "shadow":
+        return shadow_now()
     common.send(HELP)  # /help, /start and any unknown command
     common.tg("setMyCommands", commands=[{"command": c, "description": d} for c, d in COMMANDS])  # Telegram's "/" menu
     return 0
@@ -191,6 +196,22 @@ def squeeze_now():
         return 0
     common.send("⏳ רשימת הסקוויז מתעדכנת.", source=squeeze_live.SOURCE)
     return squeeze_live.main(["--manual"])
+
+
+def shadow_now():
+    """/shadow: on Actions the shadow workflow is dispatched (the only writer of data/shadow_journal.json); locally the
+    tracker runs in this process. Either way the owner hears back (a day already sent is never sent twice)."""
+    if common.env("GITHUB_REPOSITORY") and common.env("GITHUB_TOKEN"):
+        err = common.dispatch("shadow.yml", {"mode": "manual"})
+        if err:  # a GitHub permission problem must not look like a data problem
+            print(f"workflow dispatch failed: {err}")
+            common.send(f"⚠️ לא הצלחתי להפעיל את מעקב הצל ב־GitHub ({code(err)}). בדקו שבקובץ"
+                        f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.", source=shadow.SOURCE)
+            return 1
+        common.send("⏳ מעקב הצל רץ. התוצאה, או הודעה שאין יום מסחר חדש, תגיע בעוד כמה דקות.", source=shadow.SOURCE)
+        return 0
+    common.send("⏳ מעקב הצל רץ.", source=shadow.SOURCE)
+    return shadow.main(["--manual"])
 
 
 class Conflict(Exception):
