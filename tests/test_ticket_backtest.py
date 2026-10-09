@@ -190,6 +190,7 @@ class Exits(unittest.TestCase):
 
 # ---------- candidate universes ----------
 import datetime as dt  # noqa: E402
+import random  # noqa: E402
 import os  # noqa: E402
 import tempfile  # noqa: E402
 from unittest import mock  # noqa: E402
@@ -376,6 +377,45 @@ class Verdict(unittest.TestCase):
         self.assertTrue(any(",AAA," in r for r in rows) and any(",BBB," in r for r in rows), rows[:3])
 
 
+class ZbaRun(unittest.TestCase):
+    def test_zba_dry_on_tiny_mocked_data(self):
+        day = "2024-03-01"
+        sessions = sessions_before(day, 40) + [day]
+        dly = [(d, 9.9, 10.4, 9.4, 9.9, 3_000_000) for d in sessions_before(day, 40)]
+        opening = lambda syms, d: {s: (10.0, 10.5, 9.9, 10.4, 3000 if d == day else 1000) for s in syms}
+        bars = zba_bars()
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(tb.alpaca, "calendar", return_value={x: ("09:30", "16:00") for x in sessions}), \
+                mock.patch.object(tb.alpaca, "assets", return_value=[
+                    {"symbol": "AAA", "exchange": "NYSE", "name": "A Corp"},
+                    {"symbol": "BBB", "exchange": "NASDAQ", "name": "B Inc"},
+                    {"symbol": "SPY", "exchange": "ARCA", "name": "SPDR S&P 500 ETF Trust"}]), \
+                mock.patch.object(tb.alpaca, "daily", side_effect=lambda syms, a, b: {s: dly for s in syms}), \
+                mock.patch.object(tb.alpaca, "opening_bars", side_effect=opening), \
+                mock.patch.object(tb.alpaca, "minute_bars", side_effect=lambda syms, _: {s: bars for s in syms}), \
+                mock.patch.object(tb.alpaca, "quote_at", return_value=(10.00, 10.02)), \
+                mock.patch("builtins.print"):
+            self.assertEqual(tb.main(["--zba", "--start", day, "--end", day, "--out", d]), 0)
+            run = dt.date.today().isoformat()
+            md = open(os.path.join(d, f"ticket-zba-{run}.md")).read()
+            rows = open(os.path.join(d, f"ticket-zba-{run}-trades.csv")).read().splitlines()
+        self.assertEqual(len(rows), 3, rows)  # header + AAA + BBB (K10; no variant qualifies without 2022-2023 trades)
+        self.assertTrue(all(r.startswith("K10,") for r in rows[1:]))
+        self.assertIn("NO-GO", md)
+        for v in tb.ZBA_GRID:
+            self.assertIn(v, md)
+        self.assertEqual(common.rtl_bad_lines(md.split("## סיכום", 1)[1].split("\n## ", 1)[0]), [])
+        for a in tb.ZBA_ASSUMPTIONS:
+            self.assertIn(a, md)
+
+
+def zba_bars():
+    """A rising first candle (10.00 -> 10.40, high 10.50), the high taken out at 09:40, then a drift up."""
+    first = run("09:30", [(10.0, 10.5, 9.9, 10.1), (10.1, 10.2, 10.0, 10.2), (10.2, 10.3, 10.1, 10.3),
+                          (10.3, 10.35, 10.2, 10.3), (10.3, 10.4, 10.25, 10.4)])
+    return first + flat("09:35", "09:40", 10.4) + run("09:40", [(10.4, 10.6, 10.4, 10.55)]) + flat("09:41", "16:00", 10.8)
+
+
 class Tune(unittest.TestCase):
     def test_select_the_best_2024_gate_with_enough_trades(self):
         st = lambda n, m: {"n": n, "mean": m}
@@ -410,6 +450,108 @@ class Tune(unittest.TestCase):
         self.assertEqual(common.rtl_bad_lines(md.split("## סיכום", 1)[1].split("\n## ", 1)[0]), [])
         self.assertIn("IMPROVED G3", rows)  # 0.02 passes 1% of 9.80 with no D bound (D = 0.10)
         self.assertNotIn("ORIGINAL", rows)
+
+
+ZBA_LONG = {"ok": True, "rules": "ZBA", "session": "REGULAR", "side": 1, "at": "09:35", "level": 10.5,
+            "entry_type": "STP", "entry": 10.5, "limit": None, "stop": 10.3, "R": 0.20, "shares": 500,
+            "legs": [{"qty": 500, "target": None, "exit_at": None}], "valid_until": "16:00", "spread": 0.02,
+            "touch": True}
+ZBA_SHORT = {**ZBA_LONG, "side": -1, "level": 9.5, "entry": 9.5, "stop": 9.7}
+
+
+class Zba(unittest.TestCase):
+    def test_zba_long_holds_to_the_close(self):
+        bars = flat("09:30", "09:35", 10.2) + run("09:35", [(10.3, 10.5, 10.3, 10.45)]) + flat("09:36", "16:00", 11.0)
+        r = tb.simulate(ZBA_LONG, bars, CTX)
+        self.assertEqual((r["fill_at"], r["fill"]), ("09:35", 10.5))  # a touch of the high fills
+        self.assertEqual(r["exits"], [{"qty": 500, "price": 11.0, "at": "15:59", "kind": "eod"}])
+        self.assertAlmostEqual(r["gross_r"], 0.5 / 0.2)
+
+    def test_zba_short_fill_stop_and_mirror(self):
+        bars = flat("09:30", "09:35", 9.8) + run("09:35", [(9.6, 9.6, 9.45, 9.5), (9.5, 9.75, 9.5, 9.7)]) + \
+            flat("09:37", "16:00", 9.7)
+        r = tb.simulate(ZBA_SHORT, bars, CTX)
+        self.assertEqual((r["fill_at"], r["fill"]), ("09:35", 9.5))
+        self.assertEqual(r["exits"], [{"qty": 500, "price": 9.7, "at": "09:36", "kind": "stop"}])  # 9.50 + D
+        self.assertAlmostEqual(r["gross_r"], -1)
+        flip = tb.simulate(ZBA_SHORT, bars, CTX, -1)  # the random benchmark: a long at the same fill
+        self.assertEqual((flip["fill"], flip["exits"][0]["kind"], flip["exits"][0]["price"]), (9.5, "eod", 9.7))
+        self.assertAlmostEqual(flip["gross_r"], 1.0)
+        gap = flat("09:30", "09:35", 9.8) + run("09:35", [(9.3, 9.35, 9.2, 9.3)]) + flat("09:36", "16:00", 9.3)
+        self.assertEqual(tb.simulate(ZBA_SHORT, gap, CTX)["fill"], 9.3)  # gapped through the stop: the open
+
+    def test_prefilter_volume_atr_and_splits(self):
+        days = sessions_before(DAY, 20)
+        rows = lambda vol, rng, jump=False: [(d, 10, 10 + rng / 2, 10 - rng / 2, 25 if jump and k == 18 else 10, vol)
+                                             for k, d in enumerate(days)]
+        got = tb.prefilter(DAY, {"AAA": rows(1_000_000, 0.6), "BBB": rows(999_999, 0.6), "CCC": rows(2e6, 0.5),
+                                 "DDD": rows(2e6, 0.6, True), "EEE": rows(2e6, 0.6)[:14]})
+        self.assertEqual(sorted(got), ["AAA"])
+        self.assertAlmostEqual(got["AAA"]["atr"], 0.6)
+
+    def test_fast_prefilter_matches_the_rule(self):
+        rnd = random.Random(7)
+        days = sessions_before("2024-08-01", 120)
+        bars, c = [], 10.0
+        for k, d in enumerate(days):
+            if k in (40, 41, 42):  # a gap: no trades for three sessions
+                continue
+            c = c * (2.3 if k == 70 else rnd.uniform(0.9, 1.1))
+            rng = rnd.uniform(0.2, 1.5)
+            bars.append((d, c, c + rng / 2, c - rng / 2, c, rnd.choice((600_000, 1_200_000, 3_000_000))))
+        prev = {d: days[k - 1] for k, d in enumerate(days) if k}
+        fast = tb.prefilter_days(days[1:], prev, bars)
+        for d in days[1:]:
+            with self.subTest(d):
+                slow = tb.prefilter(d, {"X": bars}, prev[d]).get("X")
+                self.assertEqual(fast.get(d) is None, slow is None)
+                if slow:
+                    self.assertAlmostEqual(fast[d]["atr"], slow["atr"])
+                    self.assertAlmostEqual(fast[d]["avg_vol"], slow["avg_vol"])
+        self.assertTrue(fast)  # some days pass
+
+    def test_stocks_in_play_rank_and_filters(self):
+        today = {"AAA": (6, 6, 6, 6, 3000), "BBB": (6, 6, 6, 6, 1500), "CCC": (5, 5, 5, 5, 9000), "DDD": (6, 6, 6, 6, 900),
+                 "EEE": None, "FFF": (7, 7, 7, 7, 100)}
+        prior = [{"AAA": (6, 6, 6, 6, 1000), "BBB": (6, 6, 6, 6, 1000), "CCC": (5, 5, 5, 5, 1000),
+                  "DDD": (6, 6, 6, 6, 1000), "FFF": None}] * 13 + [{"AAA": None, "BBB": (6, 6, 6, 6, 1000)}]
+        got = tb.stocks_in_play(today, prior, n=2)
+        self.assertEqual([x[0] for x in got], ["AAA", "BBB"])  # CCC opens at 5 (not over), DDD 0.9x, FFF no history
+        self.assertAlmostEqual(got[0][1], 3000 / (13 * 1000 / 14))  # a missing prior bar counts as 0
+        self.assertEqual(len(tb.stocks_in_play(today, prior[:13], n=2)), 0)  # fewer than 14 prior sessions
+
+    def test_select_zba_variant_on_the_tuning_period(self):
+        st = lambda n, m: {"n": n, "mean": m}
+        self.assertEqual(tb.select_zba({"K10": st(900, -0.5), "K25": st(400, 0.1), "K50": st(299, 0.5),
+                                        "K100": st(300, 0.05)}), "K25")
+        self.assertIsNone(tb.select_zba({"K10": st(299, 0.5), "K25": st(0, None)}))
+
+    def test_asset_universe(self):
+        a = [{"symbol": "AAPL", "exchange": "NASDAQ", "name": "Apple Inc. Common Stock"},
+             {"symbol": "O", "exchange": "NYSE", "name": "Realty Income Corporation"},
+             {"symbol": "QQQ", "exchange": "NASDAQ", "name": "Invesco QQQ Trust, Series 1"},
+             {"symbol": "TQQQ", "exchange": "NASDAQ", "name": "ProShares UltraPro QQQ"},
+             {"symbol": "SPY", "exchange": "ARCA", "name": "SPDR S&P 500 ETF Trust"},
+             {"symbol": "BRK.B", "exchange": "NYSE", "name": "Berkshire Hathaway Inc. Class B"},
+             {"symbol": "ABCDEF", "exchange": "NASDAQ", "name": "Six Letters Corp"},
+             {"symbol": "SOXL", "exchange": "NYSE", "name": "Direxion Daily Semiconductor Bull 3x Shares"}]
+        self.assertEqual(tb.asset_universe(a), ["AAPL", "O"])
+
+    def test_portfolio_scales_to_4x_and_reports_sharpe(self):
+        tr = [{"day": "2024-01-02", "net_r": 1.0, "fill": 10.0, "R": 0.5},  # notional 0.01 x 10 / 0.5 = 0.2
+              {"day": "2024-01-03", "net_r": -1.0, "fill": 50.0, "R": 0.05}]  # 10x: scaled to 4x
+        p = tb.portfolio(tr, ["2024-01-02", "2024-01-03", "2024-01-04"])
+        self.assertAlmostEqual(p["daily"][0], 0.01)
+        self.assertAlmostEqual(p["daily"][1], -0.01 * 0.4)
+        self.assertEqual(p["daily"][2], 0.0)
+        self.assertAlmostEqual(p["max_dd"], 0.004)
+        self.assertIsNotNone(p["sharpe"])
+
+    def test_verdict_years_are_a_parameter(self):
+        good = trades(spread_t(5.0, n=120), years=("2024", "2025", "2026"))
+        self.assertTrue(tb.verdict(good, [0.0] * 20, years=("2024", "2025", "2026"))[1])
+        bad24 = [dict(x, net_r=-1.0) if x["day"] < "2025" else x for x in good]
+        self.assertFalse(tb.verdict(bad24, [-99.0] * 20, years=("2024", "2025", "2026"))[1])
 
 
 def day_bars():

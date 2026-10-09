@@ -145,6 +145,27 @@ class Other(Base):
         alpaca.calendar("2026-11-25", "2026-11-27")
         self.assertEqual(f.call_count, 1)
 
+    def test_opening_bars_fetch_only_missing_symbols(self):
+        f = self.fetch({"bars": {"AAA": [bar("2024-03-01T14:30:00Z", 5.0, 900)]}})
+        got = alpaca.opening_bars(["AAA", "BBB"], "2024-03-01")
+        self.assertEqual(got, {"AAA": (5.0, 5.0, 5.0, 5.0, 900), "BBB": None})
+        p = params(f.call_args.args[0])
+        self.assertEqual((p["timeframe"], p["start"], p["end"]), ("5Min", "2024-03-01T14:30:00Z", "2024-03-01T14:30:00Z"))
+        f = self.fetch({"bars": {"CCC": [bar("2024-03-01T14:30:00Z", 7.0, 50)]}})
+        got = alpaca.opening_bars(["AAA", "BBB", "CCC"], "2024-03-01")
+        self.assertEqual(params(f.call_args.args[0])["symbols"], "CCC")
+        self.assertEqual((got["AAA"][4], got["BBB"], got["CCC"][0]), (900, None, 7.0))
+        self.fetch()  # nothing left to ask
+        self.assertEqual(alpaca.opening_bars(["CCC"], "2024-03-01"), {"CCC": (7.0, 7.0, 7.0, 7.0, 50)})
+
+    def test_assets_active_and_inactive_cached(self):
+        f = self.fetch([{"symbol": "AAA", "exchange": "NYSE", "name": "A Corp", "status": "active"}],
+                       [{"symbol": "OLD", "exchange": "NASDAQ", "name": "Old Inc", "status": "inactive"}])
+        self.assertEqual([a["symbol"] for a in alpaca.assets()], ["AAA", "OLD"])
+        self.assertIn("status=inactive", f.call_args.args[0])
+        self.assertEqual(len(alpaca.assets()), 2)
+        self.assertEqual(f.call_count, 2)
+
     def test_utc_in_summer_and_winter(self):
         self.assertEqual(alpaca.utc("2026-12-01", "09:30"), "2026-12-01T14:30:00Z")
         self.assertEqual(alpaca.utc("2026-10-08", "09:30"), "2026-10-08T13:30:00Z")

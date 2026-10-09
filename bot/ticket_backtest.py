@@ -13,6 +13,7 @@ import csv
 import datetime as dt
 import os
 import random
+import re
 import statistics
 import time
 from zoneinfo import ZoneInfo
@@ -36,15 +37,16 @@ def _after(o, h, l, c, at_open, down):
 
 def _fill(t, bars):
     """-> (index into bars, price, (low after, high after)) of the entry fill, or None."""
-    at, until, limit = t["at"], t["valid_until"], t["limit"]
+    at, until = t["at"], t["valid_until"]
+    limit = float("inf") if t["limit"] is None else t["limit"]  # a plain stop: no limit
     triggered = t["entry_type"] == "LMT"
     for i, (m, o, h, l, c, v, vw) in enumerate(bars):
         if m < at:
             continue
         if m >= until:
             return None
-        if not triggered:  # a stop-limit: the first minute whose high is above the level triggers it
-            if not h > t["level"]:
+        if not triggered:  # a stop(-limit): the first minute whose high is above the level (or at it: "touch")
+            if not (h >= t["level"] if t.get("touch") else h > t["level"]):
                 continue
             triggered = True
             px = max(o, t["level"])
@@ -62,9 +64,14 @@ def _mirror(bars):
 def simulate(t, bars1, ctx, direction=1):
     """A ticket (ticket.signal) played on the day's 1-minute bars -> {"filled", "fill_at", "fill", "exits": [{"qty",
     "price", "at", "kind"}], "gross_r", "cost_r", "net_r"}. direction -1: the same entry moment and price as a short
-    (stops and targets mirrored around the fill, same costs) - the random-direction benchmark."""
+    (stops and targets mirrored around the fill, same costs) - the random-direction benchmark. A ticket with "side" -1
+    (ZBA) is a short: it is played as a long on mirrored prices; direction stays relative to the ticket's side."""
     t0 = ctx["open"] if t["session"] == "REGULAR" else ticket.PRE_OPEN
     bars = [b for b in bars1 if t0 <= b[0] < ctx["close"]]
+    side = t.get("side", 1)
+    if side == -1:  # a short in long space
+        bars = _mirror(bars)
+        t = {**t, "level": -t["level"], "limit": None if t["limit"] is None else -t["limit"]}
     got = _fill(t, bars)
     if got is None:
         return {"filled": False, "fill_at": None, "fill": None, "exits": [], "gross_r": 0, "cost_r": 0, "net_r": 0}
@@ -79,9 +86,9 @@ def simulate(t, bars1, ctx, direction=1):
     commission = sum(max(MIN_ORDER, q * COMMISSION) for q in orders + [e["qty"] for e in exits])
     cost = (commission + t["shares"] * t["spread"]) / risk  # half the spread in, half out
     for e in exits:
-        e["price"] = round(e["price"] * direction, 4)
-    return {"filled": True, "fill_at": bars[i][0], "fill": fill, "exits": exits, "gross_r": gross, "cost_r": cost,
-            "net_r": gross - cost}
+        e["price"] = round(e["price"] * direction * side, 4)
+    return {"filled": True, "fill_at": bars[i][0], "fill": round(fill * side, 4), "exits": exits, "gross_r": gross,
+            "cost_r": cost, "net_r": gross - cost}
 
 
 def _stop_px(o, l, stop):
@@ -286,17 +293,18 @@ def pctl(xs, q):
     return xs[lo] if lo + 1 >= len(xs) else xs[lo] + (xs[lo + 1] - xs[lo]) * (pos - lo)
 
 
-def verdict(real, random_means):
-    """The pre-registered verdict on the verdict period's trades -> ([(check, passed)], GO?)."""
+def verdict(real, random_means, years=("2025", "2026")):
+    """The pre-registered verdict on the verdict period's trades -> ([(check, passed)], GO?); `years`: each must have
+    a positive mean."""
     st = stats(real)
     p95 = pctl(random_means, PCTL) if random_means else None
     m = st["mean"]
-    years = [st["years"].get(y, {}).get("mean") for y in ("2025", "2026")]
+    names, years = " and in ".join(years), [st["years"].get(y, {}).get("mean") for y in years]
     checks = [(f"at least {MIN_TRADES} trades ({st['n']})", st["n"] >= MIN_TRADES),
               (f"mean net R > 0 with t >= {MIN_T:g}", m is not None and m > 0 and (st["t"] or 0) >= MIN_T),
               (f"mean net R above the 95th percentile of {SEEDS} random-direction means",
                m is not None and p95 is not None and m > p95),
-              ("mean net R > 0 in 2025 and in 2026", all(y is not None and y > 0 for y in years))]
+              (f"mean net R > 0 in {names}", all(y is not None and y > 0 for y in years))]
     return checks, all(ok for _, ok in checks)
 
 
@@ -309,6 +317,106 @@ def random_means(trades, seeds=SEEDS):
               for x in trades]
         out.append(_mean(xs) if xs else 0.0)
     return out
+
+
+# ---------- universe C: ZBA "Stocks in Play" (spec section 11) ----------
+Z_TOP, Z_PRICE, Z_AVG_VOL, Z_ATR, Z_REL_VOL, Z_DAYS = 20, 5.0, 1_000_000, 0.50, 1.0, 14
+Z_EXCHANGES = ("NYSE", "NASDAQ")
+FUND = re.compile(r"\bETF\b|\bETN\b|\bFund\b|iShares|ProShares|Direxion|SPDR|Invesco QQQ|VanEck|WisdomTree|"
+                  r"Global X|GraniteShares|Leveraged|\b\d(\.\d)?[xX]\b|\bTrust, Series\b")
+
+
+def asset_universe(assets):
+    """Alpaca assets -> the stock symbols ZBA's universe draws from: NYSE / NASDAQ, 1-5 capital letters, names
+    without fund / ETF markers (sorted, unique)."""
+    return sorted({a["symbol"] for a in assets if a.get("exchange") in Z_EXCHANGES
+                   and re.fullmatch(r"[A-Z]{1,5}", a.get("symbol") or "") and not FUND.search(a.get("name") or "")})
+
+
+def prefilter(day, daily, prev=None):
+    """Raw daily bars before `day` -> {ticker: {"atr", "avg_vol"}} with 14-day average volume >= 1M, ATR14 > $0.50,
+    no close jump over 2x in the 15-bar window, 15 bars of history and (when `prev` is given) a bar on `prev`, the
+    session before."""
+    out = {}
+    for t, bars in daily.items():
+        k = bisect.bisect_left([b[0] for b in bars], day)
+        win = bars[max(0, k - Z_DAYS - 1):k]
+        if len(win) < Z_DAYS + 1 or (prev and win[-1][0] != prev):
+            continue
+        avg = sum(b[5] for b in win[1:]) / Z_DAYS
+        if avg < Z_AVG_VOL or any(not 1 / SPLIT_RATIO <= b[4] / a[4] <= SPLIT_RATIO for a, b in zip(win, win[1:]) if a[4]):
+            continue
+        atr = ticket.atr14(win, day)
+        if atr and atr > Z_ATR:
+            out[t] = {"atr": atr, "avg_vol": avg}
+    return out
+
+
+def prefilter_days(days, prev, bars):
+    """prefilter() for one ticker over many sessions in one pass (prefix sums) -> {day: {"atr", "avg_vol"}}."""
+    if len(bars) < Z_DAYS + 1:
+        return {}
+    dates, vol, trs, bad = [b[0] for b in bars], [0.0], [0.0], [0]
+    for k, b in enumerate(bars):
+        pc = bars[k - 1][4] if k else None
+        vol.append(vol[-1] + b[5])
+        trs.append(trs[-1] + (b[2] - b[3] if pc is None else max(b[2] - b[3], abs(b[2] - pc), abs(b[3] - pc))))
+        bad.append(bad[-1] + (1 if pc and not 1 / SPLIT_RATIO <= b[4] / pc <= SPLIT_RATIO else 0))
+    out = {}
+    for d in days:
+        k = bisect.bisect_left(dates, d)  # bars[:k] are before d; the window is bars[k - 15:k]
+        if k < Z_DAYS + 1 or dates[k - 1] != prev.get(d):
+            continue
+        lo = k - Z_DAYS  # the 14 bars after the window's first
+        avg = (vol[k] - vol[lo]) / Z_DAYS
+        if avg < Z_AVG_VOL or bad[k] - bad[lo]:
+            continue
+        atr = (trs[k] - trs[lo]) / Z_DAYS
+        if atr > Z_ATR:
+            out[d] = {"atr": atr, "avg_vol": avg}
+    return out
+
+
+def stocks_in_play(today, prior, n=Z_TOP):
+    """Opening 5-minute bars of the day {ticker: (o, h, l, c, v) or None} and of the 14 sessions before (dicts; a
+    missing bar counts 0) -> the top n [(ticker, relative volume, bar)] with an open over $5 and relative volume >= 1,
+    highest first; [] with fewer than 14 prior sessions."""
+    if len(prior) < Z_DAYS:
+        return []
+    prior = prior[-Z_DAYS:]
+    out = []
+    for t, b in today.items():
+        if not b or not b[0] > Z_PRICE:
+            continue
+        base = sum((p.get(t) or (0, 0, 0, 0, 0))[4] for p in prior) / Z_DAYS
+        if base and b[4] / base >= Z_REL_VOL:
+            out.append((t, b[4] / base, b))
+    out.sort(key=lambda x: (-x[1], x[0]))
+    return out[:n]
+
+
+def portfolio(trades, days, risk=0.01, cap=4.0):
+    """ZBA-style book: each trade risks `risk` of capital; a day's positions are scaled down together to at most
+    `cap` x gross exposure (as if all were open at once) -> {"daily", "total", "cagr", "sharpe", "max_dd", "days"}."""
+    by = collections.defaultdict(list)
+    for x in trades:
+        by[x["day"]].append(x)
+    daily = []
+    for d in days:
+        xs = by.get(d, [])
+        gross = sum(risk * x["fill"] / x["R"] for x in xs)
+        scale = min(1.0, cap / gross) if gross else 1.0
+        daily.append(scale * sum(risk * x["net_r"] for x in xs))
+    eq = peak = 1.0
+    dd = 0.0
+    for r in daily:
+        eq *= 1 + r
+        peak = max(peak, eq)
+        dd = max(dd, 1 - eq / peak)
+    n = len(daily)
+    sd = statistics.stdev(daily) if n > 1 else 0.0
+    return {"daily": daily, "total": eq - 1, "cagr": eq ** (252 / n) - 1 if n else None,
+            "sharpe": _mean(daily) / sd * 252 ** 0.5 if sd else None, "max_dd": dd, "days": n}
 
 
 # ---------- report ----------
@@ -436,7 +544,7 @@ def _play(rules, session, bars, ctx, spread, day, t, universe):
         return tk["reason"], None
     res = simulate(tk, bars, ctx)
     short = simulate(tk, bars, ctx, -1) if res["filled"] else res
-    return None, {"universe": universe, "day": day, "t": t, "rules": rules, "session": session,
+    return None, {"universe": universe, "day": day, "t": t, "rules": rules, "session": session, "side": tk.get("side", 1),
                   **{k: tk[k] for k in ("at", "level", "entry_type", "entry", "limit", "stop", "R", "shares", "spread")},
                   "filled": res["filled"], "fill_at": res["fill_at"], "fill": res["fill"],
                   "kinds": "/".join(e["kind"] for e in res["exits"]), "gross_r": res["gross_r"],
@@ -572,15 +680,238 @@ COLUMNS = ("universe", "day", "t", "rules", "session", "at", "level", "entry_typ
            "shares", "spread", "filled", "fill_at", "fill", "kinds", "gross_r", "cost_r", "net_r", "net_r_short")
 
 
+# ---------- the ZBA run (spec section 11) ----------
+ZBA_START, ZBA_VERDICT, ZBA_YEARS = "2022-01-03", "2024-01-02", ("2024", "2025", "2026")
+ZBA_GRID = {"K10": (0.10, None), "K25": (0.25, None), "K50": (0.50, None), "K100": (1.00, None),
+            "K10s": (0.10, 0.25), "K25s": (0.25, 0.25), "K50s": (0.50, 0.25), "K100s": (1.00, 0.25)}  # spec section 12
+ZBA_BASE, ZBA_TUNE_MIN, ZBA_TUNED_START = "K10", 300, "2024-02-01"
+ZBA_COLUMNS = ("variant", "day", "t", "rank", "rel_vol", "side", "at", "level", "R", "shares", "spread", "filled", "fill_at",
+               "fill", "kinds", "gross_r", "cost_r", "net_r", "net_r_short")
+ZBA_ASSUMPTIONS = (
+    "Universe: Alpaca assets on NYSE / NASDAQ, active and inactive (delisted names count), symbols of 1-5 capital "
+    "letters, names without fund / ETF markers.",
+    "Each session: 14-day average volume >= 1,000,000 and ATR14 > $0.50 from raw daily bars before the day, a bar on "
+    "the session before, no close jump over 2x in the 15-bar window; open of the 09:30-09:35 bar > $5.",
+    "Relative volume = the 09:30-09:35 volume / its mean over the 14 previous sessions (a missing bar counts 0); "
+    ">= 1.0; the top 20 are traded.",
+    "Side from the first 5-minute candle (close over open: buy stop at its high; under: sell stop at its low; equal: "
+    "none); the stop order stays until the close and fills when a minute trades at it (at the stop, or the open if "
+    "it gapped through).",
+    "Stop loss 10% of ATR14 from the fill; no target; out at the last minute's close. One trade per ticker-day.",
+    "Costs: $0.0035 a share, $0.35 minimum per order, each side; half the SIP spread at the trigger in and out (a "
+    "locked quote counts $0.01; no quote: no trade). Stops fill at the stop or the gapped open; on the fill minute a "
+    "stop counts only when its side of the minute comes after the fill (bar path).",
+    "Random benchmark: the same fills with a coin-flip side (20 seeds).",
+    "Verdict (pre-registered, 2024-01-02 onward, never seen for this universe): >= 100 trades, mean net R > 0 with "
+    "t >= 2, above the random 95th percentile, mean net R > 0 in 2024, in 2025 and in 2026.",
+    "Replication 2022-2023 (inside the paper's 2016-2023 sample): reported, not gated.",
+    "Portfolio: each trade risks 1% of capital; a day's positions are scaled down together to at most 4x gross "
+    "exposure, as if all were open at once.",
+    "Section 12 grid: stop k x ATR14 (k 0.10 / 0.25 / 0.50 / 1.00), each with and without a spread gate (spread <= "
+    "0.25 x the stop distance); chosen on 2022-2023 (>= 300 trades, highest mean); verdict on 2024-02-01 onward.",
+)
+
+
+def select_zba(tuning):
+    """{variant: stats on 2022-2023} -> the variant with the highest mean among those with >= 300 trades, or None."""
+    ok = [(st["mean"], v) for v, st in tuning.items() if st["n"] >= ZBA_TUNE_MIN and st["mean"] is not None]
+    return max(ok)[1] if ok else None
+
+
+def _tuned(rows, variant, days):
+    """The selected variant's verdict on 2024-02-01 onward (spec section 12)."""
+    xs = [x for x in rows if x["variant"] == variant and x["filled"] and x["day"] >= ZBA_TUNED_START]
+    rm = random_means(xs)
+    checks, go = verdict(xs, rm, years=ZBA_YEARS)
+    return {"variant": variant, "all": stats(xs), "long": stats([x for x in xs if x["side"] == 1]),
+            "short": stats([x for x in xs if x["side"] == -1]), "p95": pctl(rm, PCTL) if xs else None,
+            "book": portfolio(xs, [d for d in days if d >= ZBA_TUNED_START]), "checks": checks, "go": go}
+
+
+def _zba_results(rows, days):
+    """Trade rows -> {"replication" | "verdict": {"all", "long", "short", "random", "p95", "book"}} + the verdict."""
+    filled = [x for x in rows if x["filled"]]
+    out = {}
+    for name, pick in (("replication", lambda d: d < ZBA_VERDICT), ("verdict", lambda d: d >= ZBA_VERDICT)):
+        xs = [x for x in filled if pick(x["day"])]
+        rm = random_means(xs)
+        out[name] = {"all": stats(xs), "long": stats([x for x in xs if x["side"] == 1]),
+                     "short": stats([x for x in xs if x["side"] == -1]), "random": rm,
+                     "p95": pctl(rm, PCTL) if xs else None, "book": portfolio(xs, [d for d in days if pick(d)]),
+                     "tickets": sum(1 for x in rows if pick(x["day"])), "_xs": xs}
+    out["checks"], out["go"] = verdict(out["verdict"]["_xs"], out["verdict"]["random"], years=ZBA_YEARS)
+    for name in ("replication", "verdict"):
+        del out[name]["_xs"]
+    return out
+
+
+def render_zba(meta, res, grid=None, tuned=None):
+    """The ZBA report: a Hebrew summary, the verdict checks, both periods by side, the book, the section-12 grid and
+    the tuned variant's verdict, the assumptions."""
+    v, r = res["verdict"], res["replication"]
+    if grid is not None:
+        tv = tuned["all"] if tuned else None
+        line = (f"- גרסה מכוילת (סטופ רחב יותר, נבחרה על 2022–2023): `{tuned['variant']}` — "
+                f"{'GO ✅' if tuned['go'] else 'NO-GO ❌'} על 2024-02-01 ואילך, עסקאות `{tv['n']}`, ממוצע נטו "
+                f"`{_f(tv['mean'])}R`, סטטיסטי t `{_f(tv['t'], '{:.2f}')}`, תיק: שארפ "
+                f"`{_f(tuned['book']['sharpe'], '{:.2f}')}`") if tuned else \
+            "- גרסה מכוילת: אף גרסה לא הגיעה ל־300 עסקאות ב־2022–2023, ולכן אין בחירה (NO-GO)."
+    L = [f"# ZBA 2024 \"Stocks in Play\" 5-minute ORB on 2024-2026 — {meta['run']}", "", "## סיכום", "",
+         f"- הכרעה על {meta['verdict_range']}: {'GO ✅' if res['go'] else 'NO-GO ❌'} — עסקאות `{v['all']['n']}`, "
+         f"ממוצע נטו `{_f(v['all']['mean'])}R`, סטטיסטי t `{_f(v['all']['t'], '{:.2f}')}`, תיק: תשואה שנתית "
+         f"`{_f(v['book']['cagr'], '{:+.1%}')}`, שארפ `{_f(v['book']['sharpe'], '{:.2f}')}`",
+         f"- שחזור על {meta['replication_range']} (בתוך תקופת המחקר): עסקאות `{r['all']['n']}`, ממוצע נטו "
+         f"`{_f(r['all']['mean'])}R`, תיק: תשואה שנתית `{_f(r['book']['cagr'], '{:+.1%}')}`, שארפ "
+         f"`{_f(r['book']['sharpe'], '{:.2f}')}`",
+         *([line] if grid is not None else []),
+         "", "הפרמטרים קבועים מהמאמר, בלי כוונון; כלל ההכרעה נרשם לפני ההרצה.", "",
+         "## Verdict checks", "", "| Check | Pass |", "|---|---|"]
+    L += [f"| {c} | {'pass' if ok else 'fail'} |" for c, ok in res["checks"]]
+    L += ["", "## Results (net of costs)", "", "| Period | Side | Trades | Mean net R | t | Win | Median | Random p95 | "
+          "2022 | 2023 | 2024 | 2025 | 2026 | <$5 | ≥$5 |", "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for name, b in (("replication", r), ("verdict", v)):
+        for side in ("all", "long", "short"):
+            st = b[side]
+            y = {k: _f(st["years"].get(k, {}).get("mean")) for k in ("2022", "2023", "2024", "2025", "2026")}
+            bk = {k: _f(st["buckets"].get(k, {}).get("mean")) for k in ("<5", ">=5")}
+            L.append(f"| {name} | {side} | {st['n']} | {_f(st['mean'])} | {_f(st['t'], '{:.2f}')} | "
+                     f"{_f(st['win'], '{:.0%}')} | {_f(st['median'])} | {_f(b['p95']) if side == 'all' else ''} | "
+                     f"{y['2022']} | {y['2023']} | {y['2024']} | {y['2025']} | {y['2026']} | {bk['<5']} | {bk['>=5']} |")
+    L += ["", "## Portfolio (1% risk a trade, at most 4x gross, after costs)", "",
+          "| Period | Sessions | Total | Annual | Sharpe | Worst drawdown |", "|---|---:|---:|---:|---:|---:|"]
+    for name, b in (("replication", r), ("verdict", v)):
+        k = b["book"]
+        L.append(f"| {name} | {k['days']} | {_f(k['total'], '{:+.1%}')} | {_f(k['cagr'], '{:+.1%}')} | "
+                 f"{_f(k['sharpe'], '{:.2f}')} | {_f(k['max_dd'], '{:.1%}')} |")
+    L += ["", "Paper (2016-2023, no spread or slippage): total 1,637%, IRR 41.6%, Sharpe 2.81, hit ratio 48.4%, "
+          "max drawdown 12%.", ""]
+    if grid is not None:
+        L += ["## Cost-aware grid (spec section 12)", "", "Selected on 2022-2023 (≥ 300 trades, highest mean); "
+              "verdict on 2024-02-01 onward (January 2024 was seen in a probe).", "",
+              "| Variant | Stop × ATR | Spread gate | 2022-23 trades | 2022-23 mean | 2024+ trades | 2024+ mean | "
+              "2024+ t | Cost R |", "|---|---:|---|---:|---:|---:|---:|---:|---:|"]
+        for name, g in grid.items():
+            k, sd = ZBA_GRID[name]
+            rp, vp = g["replication"]["all"], g["verdict"]["all"]
+            mark = " ← chosen" if tuned and tuned["variant"] == name else ""
+            L.append(f"| {name}{mark} | {k:g} | {'≤ ' + format(sd, 'g') + ' × stop' if sd else '—'} | {rp['n']} | "
+                     f"{_f(rp['mean'])} | {vp['n']} | {_f(vp['mean'])} | {_f(vp['t'], '{:.2f}')} | "
+                     f"{_f(g['cost'], '{:.3f}')} |")
+        if tuned:
+            L += ["", f"### {tuned['variant']} verdict (2024-02-01 onward)", "", "| Check | Pass |", "|---|---|"]
+            L += [f"| {c} | {'pass' if ok else 'fail'} |" for c, ok in tuned["checks"]]
+            k = tuned["book"]
+            L += ["", f"Long {tuned['long']['n']} trades {_f(tuned['long']['mean'])}R · short {tuned['short']['n']} "
+                  f"trades {_f(tuned['short']['mean'])}R · random p95 {_f(tuned['p95'])} · book: total "
+                  f"{_f(k['total'], '{:+.1%}')}, annual {_f(k['cagr'], '{:+.1%}')}, Sharpe {_f(k['sharpe'], '{:.2f}')}, "
+                  f"worst drawdown {_f(k['max_dd'], '{:.1%}')}", ""]
+    L += ["## Exits and NO TICKET reasons", "",
+          f"- Exits (verdict period): {', '.join(f'{k} {n}' for k, n in sorted(v['all']['exits'].items()))}",
+          f"- NO TICKET: {', '.join(f'{k} {n}' for k, n in sorted(meta['reasons'].items(), key=lambda kv: -kv[1]))}",
+          "", "## Assumptions", ""] + [f"- {a}" for a in ZBA_ASSUMPTIONS]
+    L += ["", "## Data", "", f"- Range {meta['start']} … {meta['end']} · runtime {meta['runtime']:.0f}s · Alpaca "
+          f"requests {meta['requests']}"]
+    L += [f"- {k}: {n}" for k, n in {**meta["counts"], **meta["gaps"]}.items()]
+    L += ["", "`python -m bot.ticket_backtest --zba` · data: Alpaca SIP (Basic plan)", ""]
+    return "\n".join(L)
+
+
+def _zba_main(a, t0, run):
+    today = dt.datetime.now(NY).date().isoformat()
+    start = a.start or ZBA_START
+    look = (dt.date.fromisoformat(start) - dt.timedelta(60)).isoformat()
+    hours = alpaca.calendar(look, a.end or today)
+    sessions = sorted(hours)
+    end = a.end or max(d for d in sessions if d < today)
+    days = [d for d in sessions if start <= d <= end]
+    prev = {d: sessions[k - 1] for k, d in enumerate(sessions) if k}
+    syms = asset_universe(alpaca.assets())
+    gaps, counts, reasons = collections.Counter(), collections.Counter(), collections.Counter()
+    pre = collections.defaultdict(dict)  # day -> {ticker: {"atr", "avg_vol"}}
+    for i in range(0, len(syms), 100):
+        for t, bars in alpaca.daily(syms[i:i + 100], look, end).items():
+            for d, info in prefilter_days(days, prev, bars).items():
+                pre[d][t] = info
+        if i % 2000 == 0:
+            print(f"daily bars {i}/{len(syms)}, {alpaca.REQUESTS[0]} requests ({time.time() - t0:.0f}s)", flush=True)
+    counts["symbols"] = len(syms)
+    counts["mean prefiltered a session"] = round(_mean([len(pre[d]) for d in days]) or 0)
+    k0 = sessions.index(days[0])
+    span = sessions[max(0, k0 - Z_DAYS):sessions.index(days[-1]) + 1]
+    need = collections.defaultdict(set)
+    for k, d in enumerate(span):
+        if d >= days[0]:
+            for s_ in span[max(0, k - Z_DAYS):k + 1]:
+                need[s_] |= set(pre[d])
+    window, rows = collections.deque(maxlen=Z_DAYS), []
+    for k, d in enumerate(span):
+        ob = alpaca.opening_bars(sorted(need[d]), d) if need[d] else {}
+        if d >= days[0] and len(window) == Z_DAYS:
+            top = stocks_in_play({t: ob.get(t) for t in pre[d]}, list(window))
+            counts["top ticker-days"] += len(top)
+            mb = alpaca.minute_bars([t for t, _, _ in top], d) if top else {}
+            for rank, (t, rv, _) in enumerate(top, 1):
+                bars = mb.get(t) or []
+                if not bars:
+                    gaps["ticker-days without minute bars"] += 1
+                    continue
+                spread = _spread(t, d)
+                for variant, (k_atr, sd) in ZBA_GRID.items():
+                    ctx = {"day": d, "open": hours[d][0], "close": hours[d][1], "atr": pre[d][t]["atr"],
+                           "open_rel_vol": rv, "from": hours[d][0], "stop_atr": k_atr, "spread_d": sd}
+                    reason, trade = _play("ZBA", "REGULAR", bars, ctx, spread, d, t, "C")
+                    if trade:
+                        rows.append({**trade, "rank": rank, "rel_vol": rv, "variant": variant})
+                    elif variant == ZBA_BASE:
+                        reasons[reason] += 1
+        window.append(ob)
+        if k % 20 == 0 or k == len(span) - 1:
+            print(f"{d}: {len(rows)} tickets, {alpaca.REQUESTS[0]} requests ({time.time() - t0:.0f}s)", flush=True)
+    grid = {}
+    for variant in ZBA_GRID:
+        mine = [x for x in rows if x["variant"] == variant]
+        grid[variant] = {**_zba_results(mine, days),
+                         "cost": _mean([x["cost_r"] for x in mine if x["filled"] and x["day"] >= ZBA_VERDICT])}
+    res = grid[ZBA_BASE]
+    pick = select_zba({v: g["replication"]["all"] for v, g in grid.items()})
+    tuned = _tuned(rows, pick, days) if pick else None
+    meta = {"run": run, "start": start, "end": end, "runtime": time.time() - t0, "requests": alpaca.REQUESTS[0],
+            "gaps": dict(gaps), "counts": dict(counts), "reasons": dict(reasons),
+            "verdict_range": f"{max(start, ZBA_VERDICT)} → {end}", "replication_range": f"{start} → 2023-12-29"}
+    os.makedirs(a.out, exist_ok=True)
+    md, out_csv = os.path.join(a.out, f"ticket-zba-{run}.md"), os.path.join(a.out, f"ticket-zba-{run}-trades.csv")
+    with open(md, "w") as f:
+        f.write(render_zba(meta, res, grid, tuned))
+    keep = [x for x in rows if (x["variant"] == ZBA_BASE and x["day"] >= ZBA_VERDICT)
+            or (tuned and x["variant"] == pick != ZBA_BASE and x["day"] >= ZBA_TUNED_START)]
+    with open(out_csv, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(ZBA_COLUMNS)
+        for x in keep:
+            w.writerow([round(x[c], 4) if isinstance(x[c], float) else x[c] for c in ZBA_COLUMNS])
+    st = res["verdict"]["all"]
+    print(f"ZBA K10: {'GO' if res['go'] else 'NO-GO'} ({st['n']} trades, mean {_f(st['mean'])}R, "
+          f"t {_f(st['t'], '{:.2f}')})")
+    if tuned:
+        print(f"ZBA {pick}: {'GO' if tuned['go'] else 'NO-GO'} ({tuned['all']['n']} trades, "
+              f"mean {_f(tuned['all']['mean'])}R, t {_f(tuned['all']['t'], '{:.2f}')})")
+    print(f"wrote {md} and {out_csv} ({time.time() - t0:.0f}s)")
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Order-ticket backtest -> docs/backtest/ticket-<date>.md")
-    ap.add_argument("--start", default="2024-01-02")
+    ap.add_argument("--start", help="first session (default 2024-01-02; --zba: 2022-01-03)")
     ap.add_argument("--end", help="last session (default: the last complete one)")
     ap.add_argument("--universe", default="AB", choices=("A", "B", "AB"))
     ap.add_argument("--picks", default=PICKS)
     ap.add_argument("--out", default="docs/backtest")
     ap.add_argument("--tune", action="store_true", help="the IMPROVED spread-gate grid (spec section 10)")
+    ap.add_argument("--zba", action="store_true", help='ZBA "Stocks in Play" replication (spec section 11)')
     a = ap.parse_args(argv)
+    if a.zba:
+        return _zba_main(a, time.time(), dt.date.today().isoformat())
+    a.start = a.start or "2024-01-02"
     variants = [(f"IMPROVED {g}", "IMPROVED", {"spread_d": v}) for g, v in GRID.items()] if a.tune else None
     labels = [v[0] for v in variants] if variants else RULES
     name = "ticket-tune" if a.tune else "ticket"

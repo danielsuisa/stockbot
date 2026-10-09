@@ -246,5 +246,51 @@ class Improved(unittest.TestCase):
                          ("05:00", 5.00, 5.10, 4.90, 909, "09:25"))
 
 
+def zba_day(first, later):
+    """Minute bars: the 09:30-09:34 candle from `first` (o, h, l, c) and quiet minutes, then `later` rows from 09:35."""
+    o, h, l, c = first
+    rows = [("09:30", o, h, l, o), ("09:31", o, o, o, o), ("09:32", o, o, o, o), ("09:33", o, o, o, o),
+            ("09:34", o, max(o, c), min(o, c), c)]
+    rows += [(ticket.hhmm(ticket.mins("09:35") + i), *r) for i, r in enumerate(later)]
+    return [(t, a, b, d, e, 1000, e) for t, a, b, d, e in rows]
+
+
+class Zba(unittest.TestCase):
+    def test_zba_long_on_a_rising_first_candle(self):
+        bars = zba_day((10.0, 10.5, 9.9, 10.4), [(10.4, 10.45, 10.3, 10.4), (10.4, 10.5, 10.35, 10.45)])
+        t = ticket.signal("ZBA", "REGULAR", bars, ctx(atr=2.0), lambda at: 0.02)
+        self.assertTrue(t["ok"], t)
+        self.assertEqual((t["side"], t["at"], t["level"], t["entry_type"], t["limit"], t["R"], t["shares"]),
+                         (1, "09:36", 10.5, "STP", None, 0.20, 500))  # 10.50 touched at 09:36
+        self.assertEqual(t["legs"], [{"qty": 500, "target": None, "exit_at": None}])
+        self.assertEqual((t["valid_until"], t["spread"]), ("16:00", 0.02))
+
+    def test_zba_short_on_a_falling_first_candle(self):
+        bars = zba_day((10.0, 10.1, 9.5, 9.6), [(9.6, 9.7, 9.55, 9.6), (9.55, 9.6, 9.4, 9.45)])
+        t = ticket.signal("ZBA", "REGULAR", bars, ctx(atr=1.0), lambda at: 0.01)
+        self.assertEqual((t["side"], t["at"], t["level"], t["R"], t["shares"]), (-1, "09:36", 9.5, 0.10, 1000))
+
+    def test_zba_stop_width_and_spread_gate(self):
+        hit = zba_day((10.0, 10.5, 9.9, 10.4), [(10.6, 10.7, 10.55, 10.6)])
+        t = ticket.signal("ZBA", "REGULAR", hit, ctx(atr=2.0, stop_atr=0.5), lambda at: 0.25)
+        self.assertEqual((t["R"], t["shares"]), (1.0, 100))
+        self.assertEqual(ticket.signal("ZBA", "REGULAR", hit, ctx(atr=2.0, stop_atr=0.5, spread_d=0.25),
+                                       lambda at: 0.26)["reason"], "spread")  # 0.25 x 1.00
+        self.assertTrue(ticket.signal("ZBA", "REGULAR", hit, ctx(atr=2.0, stop_atr=0.5, spread_d=0.25),
+                                      lambda at: 0.25)["ok"])
+
+    def test_zba_no_trade_cases(self):
+        rising = zba_day((10.0, 10.5, 9.9, 10.4), [(10.4, 10.45, 10.3, 10.4)])
+        self.assertEqual(ticket.signal("ZBA", "REGULAR", zba_day((10.0, 10.5, 9.9, 10.0), []), ctx(),
+                                       lambda at: 0.01)["reason"], "doji")
+        self.assertEqual(ticket.signal("ZBA", "REGULAR", rising, ctx(atr=None), lambda at: 0.01)["reason"], "no atr")
+        self.assertEqual(ticket.signal("ZBA", "REGULAR", rising, ctx(), lambda at: 0.01)["reason"], "trigger")
+        hit = zba_day((10.0, 10.5, 9.9, 10.4), [(10.6, 10.7, 10.55, 10.6)])
+        self.assertEqual(ticket.signal("ZBA", "REGULAR", hit, ctx(), lambda at: None)["reason"], "spread")
+        self.assertEqual(ticket.signal("ZBA", "REGULAR", hit, ctx(atr=2000.0), lambda at: 0.01)["reason"],
+                         "size below minimum")
+        self.assertEqual(ticket.signal("ZBA", "REGULAR", hit[5:], ctx(), lambda at: 0.01)["reason"], "no signal")
+
+
 if __name__ == "__main__":
     unittest.main()

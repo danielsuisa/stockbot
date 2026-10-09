@@ -15,6 +15,8 @@ from bot import common
 
 DATA = "https://data.alpaca.markets/v2/stocks"
 CALENDAR = "https://paper-api.alpaca.markets/v2/calendar"
+ASSETS = "https://paper-api.alpaca.markets/v2/assets"
+OPEN_CHUNK = 800  # symbols per opening-bar request (keeps the URL near 6 KB)
 CACHE = common.ROOT / ".cache" / "alpaca"
 NY = ZoneInfo("America/New_York")
 LIMIT, CHUNK = 10_000, 100  # bars per page (Alpaca's maximum); symbols per multi-symbol request
@@ -146,3 +148,35 @@ def calendar(start, end):
         rows = _get(CALENDAR, {"start": start, "end": end})
         _write(path, rows)
     return {r["date"]: (r["open"], r["close"]) for r in rows}
+
+
+def assets():
+    """Every US-equity asset Alpaca knows, active and inactive (delisted names included): [{"symbol", "exchange",
+    "name", "status"}], cached."""
+    path = CACHE / "assets.json.gz"
+    rows = _read(path)
+    if rows is None:
+        rows = []
+        for status in ("active", "inactive"):
+            rows += [{k: a.get(k) for k in ("symbol", "exchange", "name", "status")}
+                     for a in _get(ASSETS, {"status": status, "asset_class": "us_equity"})]
+        _write(path, rows)
+    return rows
+
+
+def opening_bars(symbols, day):
+    """The 09:30-09:35 five-minute SIP bar of New York `day` -> {symbol: (o, h, l, c, v) or None (no trades)}; one
+    cache file per day, extended with the symbols a later call asks for."""
+    path = CACHE / "open5" / f"{day}.json.gz"
+    have = _read(path) or {}
+    todo = [s for s in dict.fromkeys(symbols) if s not in have]
+    if todo:
+        at = utc(day, "09:30")
+        for i in range(0, len(todo), OPEN_CHUNK):
+            part = todo[i:i + OPEN_CHUNK]
+            got = _bars(part, at, at, "5Min")
+            for s in part:
+                b = (got.get(s) or [None])[0]
+                have[s] = None if b is None else [b["o"], b["h"], b["l"], b["c"], b["v"]]
+        _write(path, have)
+    return {s: None if have[s] is None else tuple(have[s]) for s in dict.fromkeys(symbols)}

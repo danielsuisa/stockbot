@@ -137,10 +137,11 @@ def signal(rules, session, bars1, ctx, spread):
     only when every other entry check has passed.
     -> {"ok": True, "rules", "session", "at", "level", "entry_type" ("LMT" | "STP_LMT"), "entry", "limit", "stop",
     "R", "shares", "legs": [{"qty", "target", "exit_at"}], "valid_until", "spread"} or {"ok": False, "reason", "at"}.
-    IMPROVED: entry / stop / target are set off the trigger price `level`; the simulation re-bases them on the fill."""
+    IMPROVED: entry / stop / target are set off the trigger price `level`; the simulation re-bases them on the fill.
+    ZBA (REGULAR only): also "side" (+1 long, -1 short) and "touch" (a stop fills when a minute trades at it)."""
     lo, hi = (ctx["open"], ctx["close"]) if session == "REGULAR" else (PRE_OPEN, ctx["open"])
     sess = [b for b in bars1 if lo <= b[0] < hi]
-    run = _original if rules == "ORIGINAL" else _improved
+    run = {"ORIGINAL": _original, "IMPROVED": _improved, "ZBA": _zba}[rules]
     return run(session, sess, bars1, ctx, spread)
 
 
@@ -256,3 +257,40 @@ def _improved_checks(session, price, level, at, until, sess, bars1, t0, ctx, spr
     return {"ok": True, "rules": "IMPROVED", "session": session, "at": at, "level": level, "entry_type": "STP_LMT",
             "entry": level, "limit": _r(level + D), "stop": _r(level - D), "R": D, "shares": shares,
             "legs": _legs(shares, _r(level + 2 * D), flat), "valid_until": until, "spread": sp}
+
+
+
+# ---------- ZBA 2024: the published "Stocks in Play" 5-minute opening-range breakout (spec section 11) ----------
+Z_OR_END, Z_D_ATR = "09:35", 0.10
+
+
+def _zba(session, sess, bars1, ctx, spread):
+    """The first 5-minute candle sets the side (close over open: buy stop at its high; under: sell stop at its low;
+    equal: no trade); the stop order stays until the close; stop loss 10% of ATR14 from the fill (ctx "stop_atr"
+    overrides the 10%; ctx "spread_d" adds a spread gate as a fraction of the stop distance); out at the close."""
+    if not ctx.get("atr"):
+        return _no("no atr")
+    first = [b for b in sess if b[0] < Z_OR_END]
+    if not first:
+        return _no("no signal")
+    o, c = first[0][1], first[-1][4]
+    if c == o:
+        return _no("doji")
+    side = 1 if c > o else -1
+    level = max(b[2] for b in first) if side == 1 else min(b[3] for b in first)
+    for m, bo, bh, bl, bc, v, vw in sess:
+        if m < Z_OR_END or not (bh >= level if side == 1 else bl <= level):
+            continue
+        D = _r(ctx.get("stop_atr", Z_D_ATR) * ctx["atr"])
+        sd = ctx.get("spread_d")  # optional gate: spread <= sd x the stop distance
+        sp = spread(m)
+        if sp is None or (sd is not None and _r(sp) > _r(sd * D)):
+            return _no("spread", m)
+        shares = _shares(D)
+        if shares < MIN_SHARES:
+            return _no("size below minimum", m)
+        return {"ok": True, "rules": "ZBA", "session": session, "side": side, "at": m, "level": level,
+                "entry_type": "STP", "entry": level, "limit": None, "stop": _r(level - side * D), "R": D,
+                "shares": shares, "legs": [{"qty": shares, "target": None, "exit_at": None}],
+                "valid_until": ctx["close"], "spread": sp, "touch": True}
+    return _no("trigger")
