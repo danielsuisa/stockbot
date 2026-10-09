@@ -1,5 +1,7 @@
 """Forward shadow tracker of ZBA K10s: one mocked session end to end, day selection, the message and the run."""
+import datetime as dt
 import os
+import re
 import tempfile
 import unittest
 from unittest import mock
@@ -58,33 +60,119 @@ class Session(unittest.TestCase):
         self.assertAlmostEqual(x["gross_r"], (10.8 - 10.52) / 0.1, places=3)
         self.assertAlmostEqual(x["net_r"], x["gross_r"] - (2 * 3.5 + 1000 * 0.02) / 100, places=3)
 
-    def test_the_message(self):
+    def test_the_message_of_a_computed_session(self):
         res, _ = self.run_day()
-        j = {"v": 1, "since": DAY, "days": {DAY: res}}
-        text = shadow.message(DAY, res, j)
+        text = shadow.message(DAY, res, {"v": 1, "since": DAY, "days": {DAY: res}})
         self.assertEqual(common.rtl_bad_lines(text), [], text)
-        for part in ("קנייה: <code>AAA</code>", "פקודת עצירה ב־<code>10.50</code>", "<code>09:40</code>",
-                     "מילוי <code>10.52</code>", "סטופ <code>10.42</code>", "<code>1000</code> מניות",
-                     "יציאה <code>10.80</code> (סגירה)", "שורט חסום בכלל 201 <code>1</code>", "מדגם קטן",
-                     "לא כרטיס פקודה", "לא נשלחה שום פקודה"):
+        for part in ("🟢 <b>קנייה: <code>AAA</code></b>", "כניסה בפריצה: <code>10.52$</code> בשעה <code>16:40</code>",
+                     "סטופ: <code>10.42$</code> · כמות: <code>1000</code> מניות", "נסגרה בסוף היום ב־<code>10.80$</code>",
+                     "חסימת מכירה בחסר אחרי ירידה של <code>10%</code>", "מדגם קטן מדי למסקנה"):
             self.assertIn(part, text)
-        empty = {"top": ["AAA"], "reasons": {"trigger": 1}, "dropped": {}, "trades": [], "optimistic": [], "gaps": 0}
-        text = shadow.message(DAY, empty, {"v": 1, "since": DAY, "days": {DAY: empty}})
-        self.assertIn("היום לא הייתה עסקה", text)
-        self.assertIn("עוד אין עסקאות", text)
-        self.assertEqual(common.rtl_bad_lines(text), [], text)
-
-    def test_a_short_line(self):
-        x = {"t": "BBB", "side": -1, "at": "09:40", "level": 9.5, "fill": 9.48, "R": 0.1, "shares": 1000,
-             "kinds": "eod", "gross_r": 2.8, "net_r": 2.53}
-        line = shadow.trade_line(x)
-        for part in ("מכירה בחסר: <code>BBB</code>", "סטופ <code>9.58</code>", "יציאה <code>9.20</code> (סגירה)",
-                     "<code>+2.53R</code>"):
-            self.assertIn(part, line)
 
     def test_a_session_without_15_sessions_before_it_is_an_error(self):
         with self.assertRaises(ValueError):
             shadow.run_day(SESSIONS[14], HOURS, SESSIONS)
+
+
+D8 = "2026-10-08"  # a Thursday; New York and Israel both on summer time (+7 h)
+PLTR = {"t": "PLTR", "rank": 1, "side": 1, "at": "09:35", "level": 203.4, "R": 0.55, "shares": 181, "spread": 0.02,
+        "fill": 203.47, "kinds": "stop", "gross_r": (202.90 - 203.47) / 0.55, "cost_r": 0.17, "net_r": -1.21}
+APLD = {"t": "APLD", "rank": 2, "side": -1, "at": "09:36", "level": 23.77, "R": 0.15, "shares": 647, "spread": 0.01,
+        "fill": 23.76, "kinds": "eod", "gross_r": (23.76 - 23.50) / 0.15, "cost_r": 0.07, "net_r": 1.66}
+FIXTURE = {"top": ["T%d" % i for i in range(20)], "reasons": {"spread": 15, "trigger": 3}, "dropped": {},
+           "trades": [PLTR, APLD], "optimistic": [PLTR, APLD], "gaps": 0}
+EXPECTED = """👻 <b>מעקב צל: פריצת הפתיחה</b>
+יום ה׳ <code>8.10.2026</code> · מעקב בלבד, לא נשלחה פקודה
+
+🟢 <b>קנייה: <code>PLTR</code></b>
+כניסה בפריצה: <code>203.47$</code> בשעה <code>16:35</code>
+סטופ: <code>202.92$</code> · כמות: <code>181</code> מניות
+תוצאה: נעצרה בסטופ ב־<code>202.90$</code>, הפסד של <code>121$</code>
+
+🔴 <b>מכירה בחסר: <code>APLD</code></b>
+כניסה בשבירה: <code>23.76$</code> בשעה <code>16:36</code>
+סטופ: <code>23.91$</code> · כמות: <code>647</code> מניות
+תוצאה: נסגרה בסוף היום ב־<code>23.50$</code>, רווח של <code>166$</code>
+
+📋 מתוך <code>20</code> המניות הפעילות בפתיחה, <code>15</code> נפסלו בגלל מרווח רחב, וב־<code>3</code> לא הייתה פריצה.
+
+📒 <b>מצטבר מאז <code>8.10</code>:</b> <code>2</code> עסקאות · רווח כולל של <code>45$</code> · <code>1</code> מוצלחות
+מדגם קטן מדי למסקנה. ההכרעה תהיה אחרי <code>100</code> עסקאות ו־<code>60</code> ימי מסחר.
+
+⚠️ מעקב בלבד, לא כרטיס פקודה ולא ייעוץ השקעות.
+מקור: נתוני <code>Alpaca</code> (מושהים ב־<code>15</code> דקות)"""
+
+
+def clean(test, text):
+    """The owner's rules for every shadow message."""
+    test.assertEqual(common.rtl_bad_lines(text), [], text)
+    test.assertIsNone(re.search(r"\d[\d.,]*\$?-", text), text)  # no minus flipped behind a number
+    test.assertIsNone(re.search(r"\d(\.\d+)?R\b", text), text)  # money, never R
+    test.assertIsNone(re.search(r"\d{4}-\d{2}-\d{2}", text), text)  # Israeli dates, never ISO
+    test.assertNotIn("SEC", text)
+    test.assertNotIn("EDGAR", text)
+
+
+def sent(text, **kw):
+    with mock.patch.dict(os.environ, {"TG_TOKEN": "", "TG_CHAT_ID": "", "GITHUB_ACTIONS": ""}), \
+            mock.patch("builtins.print") as out:
+        common.send(text, **kw)
+    return [c.args[0].rstrip("\n") for c in out.call_args_list]
+
+
+class Message(unittest.TestCase):
+    def test_the_approved_template_line_by_line(self):
+        (m,) = sent(shadow.message(D8, FIXTURE, {"v": 1, "since": D8, "days": {D8: FIXTURE}}), source=shadow.SOURCE)
+        self.assertEqual(m.split("\n"), EXPECTED.split("\n"))
+        clean(self, m)
+
+    def test_a_day_without_trades(self):
+        day = dict(FIXTURE, trades=[], reasons={"trigger": 12, "doji": 2, "no atr": 1, "size below minimum": 1,
+                                                 "weird": 2}, dropped={"Rule 201": 2})
+        text = shadow.message(D8, day, {"v": 1, "since": D8, "days": {D8: day}})
+        clean(self, text)
+        self.assertIn("אף עסקה לא נפתחה היום.", text)
+        for part in ("ב־<code>12</code> לא הייתה פריצה, ", "ב־<code>2</code> הייתה חסימת מכירה בחסר אחרי ירידה של "
+                     "<code>10%</code>", "נר הפתיחה היה ניטרלי", "חסרה היסטוריה",
+                     ", וב־<code>1</code> הפוזיציה יצאה קטנה מדי.", "ב־<code>2</code>: <code>weird</code>",
+                     "עוד אין עסקאות"):
+            self.assertIn(part, text)
+        self.assertNotIn("🟢", text)
+
+    def test_the_tally_hides_t_below_30_trades(self):
+        def journal(n):
+            days = {}
+            for i in range(n):
+                d = (dt.date(2026, 10, 8) + dt.timedelta(i)).isoformat()
+                days[d] = dict(FIXTURE, trades=[dict(PLTR, net_r=(1.5 if i % 3 else -1.0) + i / 100)])
+            return {"v": 1, "since": D8, "days": days}
+        few = shadow.message(D8, FIXTURE, journal(29))
+        self.assertNotIn("t=", few)
+        self.assertNotIn("ממוצע", few)
+        self.assertIn("מדגם קטן מדי למסקנה", few)
+        many = shadow.message(D8, FIXTURE, journal(30))
+        self.assertRegex(many, r"מובהקות t=<code>-?\d+\.\d\d</code>")
+        self.assertIn("ממוצע לעסקה", many)
+        self.assertNotIn("מדגם קטן מדי", many)
+        self.assertIn("ההכרעה תהיה אחרי <code>100</code> עסקאות", many)
+        clean(self, few)
+        clean(self, many)
+
+    def test_israel_time_in_summer_winter_and_the_gap_weeks(self):
+        self.assertEqual(shadow.il_time("2026-07-15", "09:35"), "16:35")
+        self.assertEqual(shadow.il_time("2026-12-15", "09:35"), "16:35")
+        self.assertEqual(shadow.il_time("2026-10-26", "09:35"), "15:35")  # Israel back on winter time, New York not yet
+
+    def test_israeli_dates(self):
+        self.assertEqual(shadow.il_date("2026-10-08"), "8.10.2026")
+        self.assertEqual(shadow.il_date("2026-10-08", year=False), "8.10")
+        self.assertEqual([shadow.weekday(f"2026-10-{d:02d}") for d in range(4, 11)],
+                         ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"])
+
+    def test_other_messages_keep_the_sec_footer(self):
+        (m,) = sent("🚀 סקוויז")
+        self.assertTrue(m.endswith(f"\n\n{common.freshness()}\n\n{common.DISCLAIMER}"))
+        self.assertIn("SEC EDGAR", m)
 
 
 class Pending(unittest.TestCase):
@@ -118,6 +206,7 @@ class Main(unittest.TestCase):
         with mock.patch.object(shadow, "run_day", return_value=dict(self.RES)) as rd, \
                 mock.patch.object(shadow.common, "send") as send, mock.patch.object(shadow, "today_ny", return_value=today):
             self.assertEqual(shadow.main(list(argv)), 0)
+        self.assertTrue(all(c.kwargs.get("source") == shadow.SOURCE for c in send.call_args_list))  # Alpaca footer
         return [c.args[0] for c in rd.call_args_list], [c.args[0] for c in send.call_args_list]
 
     def test_a_day_is_sent_once_and_recorded(self):
@@ -129,7 +218,8 @@ class Main(unittest.TestCase):
         days, sent = self.main("--manual")
         self.assertEqual(days, [])
         self.assertIn("אין יום מסחר חדש", sent[0])
-        self.assertEqual(common.rtl_bad_lines(sent[0]), [])
+        self.assertIn("יום ו׳ <code>1.3.2024</code>", sent[0])
+        clean(self, sent[0])
 
     def test_the_calendar_reaches_back_before_the_last_processed_session(self):
         shadow.save({"v": 1, "since": "2023-11-01", "days": {"2023-11-01": dict(self.RES)}})
