@@ -135,3 +135,30 @@ small caps can never pass it. Owner's go-ahead: 2026-10-09.
   > 0 with t ≥ 2, above the random 95th percentile, > 0 in 2025 and in 2026).
 - Caveat, stated in the report: the 2025–2026 results of G0 were already seen, so this verdict is a second look,
   not a clean out-of-sample test. A GO here is a reason to paper-trade forward, not to trade.
+
+## 11. Clean test of the published strategy: ZBA "Stocks in Play" 5-minute ORB (pre-registered 2026-10-09, before any run)
+
+Why: the owner asked for the best achievable result. Searching more variants on the already-seen 2024–2026 squeeze
+data would only overfit. The one strategy with published evidence (ZBA 2024: Sharpe 2.81 on 2016–2023) has never
+been tested on 2024 onward, and our data for its universe is unseen. It is tested exactly as published; nothing is
+tuned.
+
+- **Universe C, each session D:** Alpaca assets (active and inactive, so delisted names count) on NYSE or NASDAQ,
+  symbols of 1–5 capital letters, names without fund/ETF markers. From raw daily bars before D: 14-day average volume
+  ≥ 1,000,000 and ATR14 > $0.50 (ticker-days with a close jump > 2x in the window are skipped). From the 09:30–09:35
+  5-minute bar of D: open > $5; relative volume = its volume / the mean of the same bar over the 14 previous
+  sessions (a missing bar counts 0) ≥ 1.0. The top 20 by relative volume are traded.
+- **Rules ZBA:** the 09:30–09:35 candle sets the side: close > open → buy stop at its high; close < open → sell stop
+  at its low; close = open → no trade. Valid until the close. Fill when a minute trades at the stop (at the stop, or
+  the open if it gapped through). Stop loss 10% of ATR14 from the fill (D = 0.1 × ATR14); everything exits at the
+  last minute's close. One trade per ticker-day.
+- **Costs and fills:** as in section 6 (commission $0.0035/share, $0.35 minimum; half the SIP spread at the trigger,
+  in and out; a locked quote counts $0.01; no quote → NO TICKET; stop at the stop or the gapped open; on the fill
+  minute the bar-path rule). R = D; results in R.
+- **Random benchmark:** the same fills with a coin-flip side (20 seeds).
+- **Verdict (2024-01-02 → 2026-10-07):** GO iff ≥ 100 trades, mean net R > 0 with t ≥ 2, above the random 95th
+  percentile, and mean net R > 0 in 2024, in 2025 and in 2026 separately.
+- **Replication check (not gated):** the same run on 2022-01-03 → 2023-12-29, inside the paper's sample, to show
+  whether this engine with real spreads reproduces the paper's edge.
+- **Also reported:** a ZBA-style portfolio (each trade risks 1% of capital; the day's positions are scaled down
+  together to at most 4x gross exposure): annual return, Sharpe, worst drawdown — after costs.
