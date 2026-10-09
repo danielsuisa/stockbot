@@ -1,0 +1,100 @@
+{
+ "v": 1,
+ "since": "2026-10-08",
+ "days": {
+  "2026-10-08": {
+   "top": [
+    "WOLF",
+    "LEVI",
+    "RBA",
+    "HIMX",
+    "PLTR",
+    "MBGL",
+    "GFS",
+    "GDS",
+    "INGM",
+    "XNCR",
+    "RCUS",
+    "CRSP",
+    "BIAF",
+    "QXO",
+    "APLD",
+    "YPF",
+    "RRX",
+    "MMED",
+    "ESAB",
+    "NEOG"
+   ],
+   "reasons": {
+    "spread": 15,
+    "trigger": 3
+   },
+   "dropped": {},
+   "trades": [
+    {
+     "t": "PLTR",
+     "rank": 5,
+     "side": 1,
+     "at": "09:35",
+     "level": 203.47,
+     "R": 0.5502,
+     "shares": 181,
+     "spread": 0.09,
+     "fill": 203.47,
+     "kinds": "stop",
+     "gross_r": -1.036,
+     "cost_r": 0.1763,
+     "net_r": -1.2123
+    },
+    {
+     "t": "APLD",
+     "rank": 15,
+     "side": -1,
+     "at": "09:36",
+     "level": 23.76,
+     "R": 0.1545,
+     "shares": 647,
+     "spread": 0.03,
+     "fill": 23.76,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2395,
+     "net_r": -1.2395
+    }
+   ],
+   "optimistic": [
+    {
+     "t": "PLTR",
+     "rank": 5,
+     "side": 1,
+     "at": "09:35",
+     "level": 203.47,
+     "R": 0.5502,
+     "shares": 181,
+     "spread": 0.09,
+     "fill": 203.47,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1763,
+     "net_r": -1.1763
+    },
+    {
+     "t": "APLD",
+     "rank": 15,
+     "side": -1,
+     "at": "09:36",
+     "level": 23.76,
+     "R": 0.1545,
+     "shares": 647,
+     "spread": 0.03,
+     "fill": 23.76,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2395,
+     "net_r": -1.2395
+    }
+   ],
+   "gaps": 0
+  }
+ }
+}
