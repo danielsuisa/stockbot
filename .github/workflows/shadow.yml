@@ -1,0 +1,65 @@
+name: K10s shadow tracker
+
+on:
+  # No GitHub schedule: it starts this repo's runs hours late. The Telegram listener's clock (bot/clock.py) dispatches
+  # mode=slot at 07:00 UTC Tuesday-Saturday, for the session before (docs/superpowers/specs/2026-10-09-shadow-tracker-design.md).
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "manual = run now and say so when there is no new session; slot = behave like the clock's run"
+        type: choice
+        options: [manual, slot]
+        default: manual
+
+permissions:
+  contents: write  # commit data/shadow_journal.json
+
+concurrency:
+  group: shadow
+  cancel-in-progress: false
+
+jobs:
+  shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}  # branch tip: the journal committed by the last run
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Shadow trades of the completed sessions (no orders)
+        timeout-minutes: 20  # a step timeout fails the step, so the alarm below runs
+        run: python -m bot.shadow
+        env:
+          SHADOW_MODE: ${{ inputs.mode || 'slot' }}
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+      - name: Commit the journal
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -f data/shadow_journal.json ]; then git add data/shadow_journal.json; fi
+          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          git commit -m "Update shadow journal"
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            sleep $((i * 5))
+            git pull --rebase || git rebase --abort || true
+          done
+          exit 1
+      - name: Report a failure the run could not report itself
+        if: failure() || cancelled()
+        run: |
+          text="$(printf '❌ מעקב הצל של K10s נכשל ב־GitHub Actions: %s\n\n%s' "$RUN_URL" "$DISCLAIMER")"
+          curl -fsS --retry 3 -o /dev/null "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" --data-urlencode "text=${text}"
+        env:
+          DISCLAIMER: "⚠️ מידע לצורכי מחקר בלבד ואינו ייעוץ השקעות."
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

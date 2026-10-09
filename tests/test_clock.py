@@ -45,7 +45,7 @@ class Due(unittest.TestCase):
     def test_a_winter_tuesday_and_the_after_midnight_1930_run(self):
         got = {(t, k) for t, k, _, _ in ticks("2026-12-01T00:00", "2026-12-02T01:00")}
         want = {("12-01 00:30", "squeeze:post2:2026-11-30"), ("12-01 00:30", "insider:post2:2026-11-30"),
-                ("12-01 05:30", "scan:morning:2026-12-01"),
+                ("12-01 05:30", "scan:morning:2026-12-01"), ("12-01 07:00", "shadow:morning:2026-12-01"),
                 ("12-01 12:30", "insider:pre1:2026-12-01"), ("12-01 14:15", "insider:pre2:2026-12-01")}
         want |= {(f"12-01 {9 + h:02}:15", f"squeeze:pm{h + 1}:2026-12-01") for h in range(6)}  # 04:15-09:15 EST
         for utc_t, slot in (("12-01 21:30", "post1"), ("12-02 00:30", "post2")):
@@ -61,6 +61,9 @@ class Due(unittest.TestCase):
                 if key.startswith("scan:"):
                     self.assertEqual((wf, mode), ("daily-scan.yml", "morning"))
                     continue
+                if key.startswith("shadow:"):  # 07:00 UTC Tuesday-Saturday: the session before
+                    self.assertEqual((wf, mode), ("shadow.yml", "slot"))
+                    continue
                 name, slot, _ = key.split(":")
                 now = utc(f"{end[:4]}-{t[:5]}T{t[6:]}").astimezone(sessions.NY)
                 self.assertEqual(sessions.slot(now, st, {"squeeze": sessions.SQUEEZE,
@@ -68,10 +71,10 @@ class Due(unittest.TestCase):
                 self.assertEqual((wf, mode), {"squeeze": ("squeeze.yml", "slot"),
                                               "insider": ("daily-scan.yml", "intraday")}[name])
 
-    def test_weekends_only_the_saturday_morning_scan(self):
+    def test_weekends_only_the_saturday_morning_runs(self):
         # from Saturday 01:00 UTC: Friday's 19:30 New York run (23:30 UTC) is over an hour old by then
         self.assertEqual([k for _, k, _, _ in ticks("2026-10-03T01:00", "2026-10-05T00:00")],
-                         ["scan:morning:2026-10-03"])
+                         ["scan:morning:2026-10-03", "shadow:morning:2026-10-03"])
 
     def test_a_late_listener_catches_up_within_the_hour_and_never_twice(self):
         self.assertEqual([k for k, _, _ in clock.due(utc("2026-09-28T09:14"), set())], ["squeeze:pm1:2026-09-28"])

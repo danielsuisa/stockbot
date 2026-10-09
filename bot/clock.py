@@ -16,7 +16,8 @@ JOBS = ([(f"squeeze:{s}", sessions.NY, t, WEEKDAYS, "squeeze.yml", {"mode": "slo
          for s, (t, _) in sessions.SLOTS.items() if s in sessions.SQUEEZE]
         + [(f"insider:{s}", sessions.NY, t, WEEKDAYS, "daily-scan.yml", {"mode": "intraday"})
            for s, (t, _) in sessions.SLOTS.items() if s in sessions.INSIDER]
-        + [("scan:morning", UTC, dt.time(5, 30), TUE_SAT, "daily-scan.yml", {"mode": "morning"})])
+        + [("scan:morning", UTC, dt.time(5, 30), TUE_SAT, "daily-scan.yml", {"mode": "morning"})]
+        + [("shadow:morning", UTC, dt.time(7, 0), TUE_SAT, "shadow.yml", {"mode": "slot"})])  # the session before
 
 
 def due(now, done):
