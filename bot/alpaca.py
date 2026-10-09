@@ -199,6 +199,67 @@ def opening_bars(symbols, day):
     return {s: None if have[s] is None else tuple(have[s]) for s in dict.fromkeys(symbols)}
 
 
+NEWS = "https://data.alpaca.markets/v1beta1/news"
+SHARE_SIZES_FROM = "2025-11-03"  # SIP quote sizes: round lots of 100 before this session, shares from it (probed)
+
+
+def minute_volumes(symbols, day):
+    """Each symbol's 1-minute volume in New York `day`'s regular session -> {symbol: {"HH:MM": volume}} (minutes
+    without trades absent); one cache file per day, extended with the symbols a later call asks for."""
+    path = CACHE / "vol1m" / f"{day}.json.gz"
+    have = _read(path) or {}
+    todo = [s for s in dict.fromkeys(symbols) if s not in have]
+    for i in range(0, len(todo), CHUNK):
+        part = todo[i:i + CHUNK]
+        got = _bars(part, utc(day, "09:30"), utc(day, "15:59"), "1Min")
+        for s in part:
+            have[s] = [[_ny(b["t"]).strftime("%H:%M"), b["v"]] for b in got.get(s, [])]
+    if todo:
+        _write(path, have)
+    return {s: dict(map(tuple, have[s])) for s in dict.fromkeys(symbols)}
+
+
+def news_symbols(prev, day):
+    """Every symbol with an Alpaca news item from the previous session's close (16:00) to 09:35 of `day` -> set;
+    one cache file per day."""
+    path = CACHE / "news" / f"{day}.json.gz"
+    got = _read(path)
+    if got is None:
+        got, token = set(), None
+        while True:
+            js = _get(NEWS, {"start": utc(prev, "16:00"), "end": utc(day, "09:35"), "limit": 50, "sort": "asc",
+                             **({"page_token": token} if token else {})})
+            for x in js.get("news") or []:
+                got |= set(x.get("symbols") or [])
+            token = js.get("next_page_token")
+            if not token:
+                break
+        got = sorted(got)
+        _write(path, got)
+    return set(got)
+
+
+def quote_full(symbol, at):
+    """The last SIP quote in the 60 seconds up to UTC ISO `at` -> (bid, ask, bid size, ask size in shares, age in
+    seconds) or None when there is none; cached per symbol and second."""
+    path = CACHE / "q2" / at[:10] / f"{symbol}_{at[11:19].replace(':', '')}.json.gz"
+    q = _read(path)
+    if q is None:
+        t = dt.datetime.fromisoformat(at.replace("Z", "+00:00"))
+        js = _get(f"{DATA}/{symbol}/quotes", {"start": (t - QUOTE_WINDOW).strftime("%Y-%m-%dT%H:%M:%SZ"), "end": at,
+                                              "feed": "sip", "sort": "desc", "limit": 1})
+        got = js.get("quotes") or []
+        q = [got[0].get("t"), got[0].get("bp") or 0, got[0].get("ap") or 0, got[0].get("bs") or 0,
+             got[0].get("as") or 0] if got else []
+        _write(path, q)
+    if not q:
+        return None
+    unit = 1 if at[:10] >= SHARE_SIZES_FROM else 100
+    age = (dt.datetime.fromisoformat(at.replace("Z", "+00:00"))
+           - dt.datetime.fromisoformat(q[0].replace("Z", "+00:00"))).total_seconds()
+    return q[1], q[2], q[3] * unit, q[4] * unit, round(age, 3)
+
+
 NOT_LAST_SALE = set("I4BWZTUMQCGHNPRV79")  # odd lots and trade conditions that do not set the last sale
 
 

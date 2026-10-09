@@ -1,7 +1,10 @@
 """ZBA v2 (spec section 14): the improvement rules as ticket._zba options and their simulation."""
+import pathlib
+import tempfile
 import unittest
+from unittest import mock
 
-from bot import ticket, ticket_backtest as tb
+from bot import alpaca, ticket, ticket_backtest as tb
 from test_ticket import ctx, zba_day
 
 RISING = (10.0, 10.5, 9.9, 10.4)  # range 0.60, body 0.40: a long, buy stop at 10.50
@@ -113,6 +116,52 @@ class Ticks(unittest.TestCase):
         self.assertEqual((r["filled"], r["status"]), (False, "limit"))
         r = tb.simulate_ticks(t, bars, ctx(), [("a", 10.50), ("b", 10.55)])
         self.assertEqual((r["filled"], r["fill"]), (True, 10.55))
+
+
+
+class Data(unittest.TestCase):
+    """The new cached Alpaca helpers (spec 14.7 / plan task 2)."""
+
+    def setUp(self):
+        d = tempfile.TemporaryDirectory()
+        self.addCleanup(d.cleanup)
+        for p_ in (mock.patch.object(alpaca, "CACHE", pathlib.Path(d.name)),):
+            p_.start()
+            self.addCleanup(p_.stop)
+
+    def test_minute_volumes_one_file_a_day_extended_on_demand(self):
+        bar = lambda t, v: {"t": t, "o": 1, "h": 1, "l": 1, "c": 1, "v": v}  # noqa: E731
+        got = {"AAA": [bar("2024-03-01T14:30:00Z", 500), bar("2024-03-01T14:31:00Z", 700)], "BBB": []}
+        with mock.patch.object(alpaca, "_bars", return_value=got) as b:
+            v = alpaca.minute_volumes(["AAA", "BBB"], "2024-03-01")
+            self.assertEqual(v, {"AAA": {"09:30": 500, "09:31": 700}, "BBB": {}})
+            self.assertEqual(b.call_args.args[1:], (alpaca.utc("2024-03-01", "09:30"), alpaca.utc("2024-03-01", "15:59"),
+                                                    "1Min"))
+            alpaca.minute_volumes(["AAA"], "2024-03-01")  # cached: no new request
+            self.assertEqual(b.call_count, 1)
+        with mock.patch.object(alpaca, "_bars", return_value={"CCC": [bar("2024-03-01T14:30:00Z", 9)]}) as b:
+            self.assertEqual(alpaca.minute_volumes(["AAA", "CCC"], "2024-03-01")["CCC"], {"09:30": 9})
+            self.assertEqual(b.call_args.args[0], ["CCC"])  # only the missing symbol
+
+    def test_news_symbols_pages_through_the_pre_open_window(self):
+        pages = [{"news": [{"symbols": ["AAA", "BBB"]}], "next_page_token": "x"}, {"news": [{"symbols": ["CCC"]}]}]
+        with mock.patch.object(alpaca, "_get", side_effect=pages) as g:
+            self.assertEqual(alpaca.news_symbols("2024-02-29", "2024-03-01"), {"AAA", "BBB", "CCC"})
+            q = g.call_args_list[0].args[1]
+            self.assertEqual((q["start"], q["end"]), (alpaca.utc("2024-02-29", "16:00"), alpaca.utc("2024-03-01", "09:35")))
+            self.assertEqual(alpaca.news_symbols("2024-02-29", "2024-03-01"), {"AAA", "BBB", "CCC"})  # cached
+            self.assertEqual(g.call_count, 2)
+
+    def test_quote_full_sizes_in_shares_and_age(self):
+        at = "2024-03-01T14:40:00Z"
+        q = {"quotes": [{"t": "2024-03-01T14:39:30.5Z", "bp": 10.0, "ap": 10.02, "bs": 3, "as": 7}]}
+        with mock.patch.object(alpaca, "_get", return_value=q):
+            self.assertEqual(alpaca.quote_full("AAA", at), (10.0, 10.02, 300, 700, 29.5))  # round lots until 2025-11-03
+        q = {"quotes": [{"t": "2025-11-04T14:39:59Z", "bp": 10.0, "ap": 10.02, "bs": 300, "as": 700}]}
+        with mock.patch.object(alpaca, "_get", return_value=q):
+            self.assertEqual(alpaca.quote_full("AAA", "2025-11-04T14:40:00Z"), (10.0, 10.02, 300, 700, 1.0))
+        with mock.patch.object(alpaca, "_get", return_value={"quotes": []}):
+            self.assertIsNone(alpaca.quote_full("BBB", at))
 
 
 if __name__ == "__main__":
