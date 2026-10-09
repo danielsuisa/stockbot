@@ -249,7 +249,8 @@ def live_message(day, res, until, close):
 
 def premarket(day, hours, sessions, until):
     """Before the method picks (5 minutes after the open): the stocks that pass its filter, ranked by their volume so
-    far today against a normal day -> [{"t", "price", "gap", "vol"}] (a watch list, not the method's choice)."""
+    far today against a normal day -> [{"t", "price", "gap", "vol", "D", "shares", "spread_max"}] (a watch list, not
+    the method's choice; D, shares and the spread bound are what K10s would use, known from ATR14 before the open)."""
     k = sessions.index(day)
     prev, look = sessions[k - 1], (dt.date.fromisoformat(day) - dt.timedelta(LOOK_DAYS)).isoformat()
     syms = tb.asset_universe(alpaca.assets())
@@ -265,17 +266,34 @@ def premarket(day, hours, sessions, until):
     rows = []
     for t, (vol, px) in got.items():
         last = [b for b in daily.get(t, []) if b[0] < day][-1]
-        rows.append({"t": t, "price": px, "gap": px / last[4] - 1, "vol": vol / pre[t]["avg_vol"]})
+        D = round(STOP_ATR * pre[t]["atr"], 4)  # ticket._zba's stop distance and size
+        rows.append({"t": t, "price": px, "gap": px / last[4] - 1, "vol": vol / pre[t]["avg_vol"], "D": D,
+                     "shares": ticket._shares(D), "spread_max": round(SPREAD_D * D, 4)})
     return sorted(rows, key=lambda r: -r["vol"])[:WATCH]
+
+
+def _cents(x):
+    """0.025 -> '0.025$', 0.1 -> '0.10$' (the spread bound keeps its third decimal: the gate is exact)."""
+    t = f"{x:.3f}"
+    return (t[:-1] if t.endswith("0") else t) + "$"
 
 
 def premarket_message(day, rows, until, open_):
     pick = il_time(day, _hhmm(open_, 5))
     lines = [_live_head("לפני הפתיחה", day, until), "",
              f"השיטה בוחרת מניות רק אחרי {code(5)} דקות המסחר הראשונות, ב־{code(pick)}. אלה המניות הפעילות ביותר"
-             " לפני הפתיחה, מבין המניות שעוברות את הסינון שלה:"]
-    lines += [f"• פעילה: {code(r['t'])} · {_px(r['price'])} {common.arrow(r['gap'])} · נפח {code(format(r['vol'], '.0%'))}"
-              " מיום רגיל" for r in rows] or ["🤷 עוד אין מסחר לפני הפתיחה במניות האלה."]
+             " לפני הפתיחה, מבין המניות שעוברות את הסינון שלה, עם הפקודה שהשיטה תשים אם תבחר בהן:",
+             f"📐 הכניסה נקבעת לפי נר {code(5)} הדקות הראשון: ירוק, קנייה בפריצת השיא שלו; אדום, מכירה בחסר בשבירת"
+             " השפל שלו; בלי כיוון, אין עסקה. הסטופ והכמות כבר ידועים:"]
+    for r in rows:
+        lines += ["", f"• פעילה: {code(r['t'])} · {_px(r['price'])} {common.arrow(r['gap'])} · נפח"
+                      f" {code(format(r['vol'], '.0%'))} מיום רגיל",
+                  (f"פקודה: סטופ במרחק {_px(r['D'])} מהכניסה · {code(r['shares'])} מניות (סיכון {code(f'{ticket.RISK}$')})"
+                   f" · רק אם המרווח עד {code(_cents(r['spread_max']))}") if r["shares"] >= ticket.MIN_SHARES else
+                  f"פקודה: אין, הסטופ רחוק מדי ({_px(r['D'])}) ויוצא פחות מ־{code(ticket.MIN_SHARES)} מניות"]
+    if not rows:
+        lines.append("🤷 עוד אין מסחר לפני הפתיחה במניות האלה.")
+    lines += ["", "⚠️ השיטה לא עברה בדיקה שנקבעה מראש: אלה פקודות למעקב בלבד, לא כרטיס פקודה."]
     return "\n".join(lines)
 
 

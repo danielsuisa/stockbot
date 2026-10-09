@@ -302,6 +302,12 @@ class Live(unittest.TestCase):
         self.assertLess(text.index("<code>BBB</code>"), text.index("<code>AAA</code>"))  # 20% of a day before 5%
         self.assertIn("<code>5.1%▲</code>", text)  # AAA 10.40 against the 9.90 close
         self.assertIn("נפח <code>20%</code> מיום רגיל", text)
+        # the order K10s would place: D = 0.10 x ATR 1.00, $100 risk -> 1000 shares, spread up to 0.25 x D
+        self.assertIn("פקודה: סטופ במרחק <code>0.10$</code> מהכניסה · <code>1000</code> מניות (סיכון <code>100$</code>)"
+                      " · רק אם המרווח עד <code>0.025$</code>", text)
+        self.assertEqual(text.count("פקודה: סטופ"), 2)
+        self.assertIn("ירוק, קנייה בפריצת השיא", text)
+        self.assertIn("לא כרטיס פקודה", text)
         self.assertEqual(shadow.alpaca.CUTOFF, {})
         clean(self, text)
 
