@@ -526,6 +526,15 @@ class Zba(unittest.TestCase):
                                         "K100": st(300, 0.05)}), "K25")
         self.assertIsNone(tb.select_zba({"K10": st(299, 0.5), "K25": st(0, None)}))
 
+    def test_robustness_drops_winners_adds_slippage_and_splits_quarters(self):
+        xs = [{"day": f"2024-0{1 + k % 6}-02", "net_r": v, "R": 0.10} for k, v in enumerate([-1.0] * 99 + [150.0])]
+        rb = tb.robustness(xs)
+        self.assertAlmostEqual(rb["drop top 1%"][0], -1.0)
+        self.assertAlmostEqual(rb["+$0.01 a share each side"][0], 0.51 - 0.2)
+        self.assertAlmostEqual(rb["+$0.02 a share each side"][0], 0.51 - 0.4)
+        self.assertEqual(sorted(rb["quarters"]), ["2024Q1", "2024Q2"])
+        self.assertEqual(rb["quarters"]["2024Q1"][1], 51)
+
     def test_asset_universe(self):
         a = [{"symbol": "AAPL", "exchange": "NASDAQ", "name": "Apple Inc. Common Stock"},
              {"symbol": "O", "exchange": "NYSE", "name": "Realty Income Corporation"},

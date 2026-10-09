@@ -718,6 +718,22 @@ def select_zba(tuning):
     return max(ok)[1] if ok else None
 
 
+def robustness(xs):
+    """Not gated: the mean net R and t without the biggest 1% of trades, with extra slippage of $0.01 / $0.02 a share
+    on each side, and the mean and count by quarter."""
+    def mt(v):
+        sd = statistics.stdev(v) if len(v) > 1 else 0.0
+        return _mean(v), (_mean(v) / (sd / len(v) ** 0.5) if sd else None)
+    net = sorted(x["net_r"] for x in xs)
+    k = max(1, len(net) // 100)
+    q = collections.defaultdict(list)
+    for x in xs:
+        q[f"{x['day'][:4]}Q{(int(x['day'][5:7]) - 1) // 3 + 1}"].append(x["net_r"])
+    return {"drop top 1%": mt(net[:-k]),
+            **{f"+${c:.2f} a share each side": mt([x["net_r"] - 2 * c / x["R"] for x in xs]) for c in (0.01, 0.02)},
+            "quarters": {k_: (_mean(v), len(v)) for k_, v in sorted(q.items())}}
+
+
 def _tuned(rows, variant, days):
     """The selected variant's verdict on 2024-02-01 onward (spec section 12)."""
     xs = [x for x in rows if x["variant"] == variant and x["filled"] and x["day"] >= ZBA_TUNED_START]
@@ -725,7 +741,8 @@ def _tuned(rows, variant, days):
     checks, go = verdict(xs, rm, years=ZBA_YEARS)
     return {"variant": variant, "all": stats(xs), "long": stats([x for x in xs if x["side"] == 1]),
             "short": stats([x for x in xs if x["side"] == -1]), "p95": pctl(rm, PCTL) if xs else None,
-            "book": portfolio(xs, [d for d in days if d >= ZBA_TUNED_START]), "checks": checks, "go": go}
+            "book": portfolio(xs, [d for d in days if d >= ZBA_TUNED_START]), "checks": checks, "go": go,
+            "robust": robustness(xs) if len(xs) > 1 else None}
 
 
 def _zba_results(rows, days):
@@ -805,6 +822,11 @@ def render_zba(meta, res, grid=None, tuned=None):
                   f"trades {_f(tuned['short']['mean'])}R · random p95 {_f(tuned['p95'])} · book: total "
                   f"{_f(k['total'], '{:+.1%}')}, annual {_f(k['cagr'], '{:+.1%}')}, Sharpe {_f(k['sharpe'], '{:.2f}')}, "
                   f"worst drawdown {_f(k['max_dd'], '{:.1%}')}", ""]
+            rb = tuned["robust"]
+            if rb:
+                L += ["Robustness (not gated):", "", "| Test | Mean net R | t |", "|---|---:|---:|"]
+                L += [f"| {name} | {_f(m)} | {_f(t, '{:.2f}')} |" for name, (m, t) in rb.items() if name != "quarters"]
+                L += ["", "By quarter: " + " · ".join(f"{q} {_f(m)} ({n})" for q, (m, n) in rb["quarters"].items()), ""]
     L += ["## Exits and NO TICKET reasons", "",
           f"- Exits (verdict period): {', '.join(f'{k} {n}' for k, n in sorted(v['all']['exits'].items()))}",
           f"- NO TICKET: {', '.join(f'{k} {n}' for k, n in sorted(meta['reasons'].items(), key=lambda kv: -kv[1]))}",
