@@ -535,6 +535,66 @@ class Zba(unittest.TestCase):
         self.assertEqual(sorted(rb["quarters"]), ["2024Q1", "2024Q2"])
         self.assertEqual(rb["quarters"]["2024Q1"][1], 51)
 
+    def test_tick_fill_minute(self):
+        bars = flat("09:30", "09:35", 10.2) + run("09:35", [(10.3, 10.6, 10.2, 10.5)]) + flat("09:36", "16:00", 11.0)
+        ticks = [("a", 10.30), ("b", 10.21), ("c", 10.50), ("d", 10.52), ("e", 10.55)]  # the low came first
+        r = tb.simulate_ticks(ZBA_LONG, bars, CTX, ticks)
+        self.assertEqual((r["status"], r["fill"], r["exits"][0]["kind"], r["exits"][0]["price"]), ("ok", 10.52, "eod", 11.0))
+        self.assertAlmostEqual(r["gross_r"], (11.0 - 10.52) / 0.2)
+        late_low = [("a", 10.30), ("c", 10.50), ("d", 10.51), ("e", 10.40), ("f", 10.29), ("g", 10.28)]
+        r = tb.simulate_ticks(ZBA_LONG, bars, CTX, late_low)  # stop 10.51 - 0.20 = 10.31: hit at 10.29, out at 10.28
+        self.assertEqual((r["fill"], r["exits"]), (10.51, [{"qty": 500, "price": 10.28, "at": "09:35", "kind": "stop"}]))
+        self.assertEqual(tb.simulate_ticks(ZBA_LONG, bars, CTX, [("a", 10.3), ("b", 10.49)])["status"], "no trigger")
+        short = flat("09:30", "09:35", 9.8) + run("09:35", [(9.6, 9.6, 9.4, 9.5)]) + flat("09:36", "16:00", 9.0)
+        r = tb.simulate_ticks(ZBA_SHORT, short, CTX, [("a", 9.6), ("b", 9.5), ("c", 9.48), ("d", 9.7)])
+        self.assertEqual((r["fill"], r["exits"][0]["price"], r["exits"][0]["kind"]), (9.48, 9.7, "stop"))  # 9.68 stop
+        self.assertAlmostEqual(r["gross_r"], -(9.7 - 9.48) / 0.2)
+
+    def test_realism_replays_fills_and_drops_restricted_shorts(self):
+        long_bars = flat("09:30", "09:35", 10.2) + run("09:35", [(10.3, 10.6, 10.2, 10.5)]) + flat("09:36", "16:00", 11.0)
+        short_bars = flat("09:30", "09:35", 9.8) + run("09:35", [(9.6, 9.6, 9.4, 9.5)]) + flat("09:36", "16:00", 9.0)
+        row = {"variant": "K10s", "day": "2024-03-01", "rank": 1, "rel_vol": 3.0, "filled": True, "at": "09:35",
+               "R": 0.2, "shares": 500, "spread": 0.02, "fill_at": "09:35"}
+        rows = [{**row, "t": "AAA", "side": 1, "level": 10.5}, {**row, "t": "BBB", "side": -1, "level": 9.5},
+                {**row, "t": "CCC", "side": 1, "level": 10.5, "variant": "K10"}]
+        dly = {"AAA": [("2024-02-28", 0, 0, 9.9, 10.0, 0), ("2024-02-29", 0, 0, 9.9, 10.0, 0)],
+               "BBB": [("2024-02-28", 0, 0, 9.9, 11.0, 0), ("2024-02-29", 0, 0, 9.8, 10.5, 0)]}  # BBB fell 10.9%
+        with mock.patch.object(tb.alpaca, "minute_bars",
+                               side_effect=lambda syms, d: {s_: long_bars if s_ == "AAA" else short_bars for s_ in syms}), \
+                mock.patch.object(tb.alpaca, "trades", return_value=[("a", 10.3), ("c", 10.5), ("d", 10.52)]), \
+                mock.patch.object(tb.alpaca, "daily", side_effect=lambda syms, a, b: {s_: dly[s_] for s_ in syms}):
+            xs, status = tb._realism(rows, "K10s", {"2024-03-01": ("09:30", "16:00")}, "2023-12-01", "2024-03-01")
+        self.assertEqual(status, {"ok": 1, "Rule 201": 1})
+        self.assertEqual([x["t"] for x in xs], ["AAA"])
+        self.assertAlmostEqual(xs[0]["gross_r"], (11.0 - 10.52) / 0.2)
+        self.assertIn("net_r_short", xs[0])
+
+    def test_rule_201(self):
+        self.assertTrue(tb.ssr(prev_low=8.9, close_before_prev=10.0, prev_close=9.5, low_before_fill=9.4))  # yesterday
+        self.assertTrue(tb.ssr(prev_low=9.2, close_before_prev=10.0, prev_close=10.0, low_before_fill=9.0))  # today
+        self.assertFalse(tb.ssr(prev_low=9.2, close_before_prev=10.0, prev_close=10.0, low_before_fill=9.01))
+
+    def test_robustness_renders_any_number_of_quarters(self):
+        xs = [{"day": f"2024-{m:02d}-02", "net_r": v, "R": 0.1, "side": 1, "fill": 10.0, "kinds": "eod"}
+              for m, v in ((2, 1.0), (5, -1.0), (8, 2.0))]
+        tuned = {"variant": "K10s", "all": tb.stats(xs), "long": tb.stats(xs), "short": tb.stats([]), "p95": 0.0,
+                 "book": tb.portfolio(xs, ["2024-02-02", "2024-05-02", "2024-08-02"]), "checks": [("x", True)],
+                 "go": True, "robust": tb.robustness(xs), "real": None}
+        empty = {"all": tb.stats([]), "long": tb.stats([]), "short": tb.stats([]), "p95": None,
+                 "book": tb.portfolio([], ["2024-02-02"])}
+        res = {"verdict": empty, "replication": empty, "checks": [("x", False)], "go": False}
+        meta = {"run": "r", "verdict_range": "a", "replication_range": "b", "start": "s", "end": "e", "runtime": 1,
+                "requests": 0, "counts": {}, "gaps": {}, "reasons": {}}
+        grid = {v: {"replication": empty, "verdict": empty, "cost": None} for v in tb.ZBA_GRID}
+        self.assertIn("2024Q3", tb.render_zba(meta, res, grid, tuned))
+        tuned["real"] = {"status": {"ok": 3}, "verdict": tb.stats(xs), "checks": [("x", False)], "go": False,
+                         "replication": tb.stats([]), "long": tb.stats(xs), "short": tb.stats([]), "p95": 0.1,
+                         "book": tuned["book"], "robust": tb.robustness(xs, (0.005, 0.01))}
+        md = tb.render_zba(meta, res, grid, tuned)
+        self.assertIn("Realism check of K10s", md)
+        self.assertIn("+$0.005 a share each side", md)
+        self.assertEqual(common.rtl_bad_lines(md.split("## סיכום", 1)[1].split("\n## ", 1)[0]), [])
+
     def test_asset_universe(self):
         a = [{"symbol": "AAPL", "exchange": "NASDAQ", "name": "Apple Inc. Common Stock"},
              {"symbol": "O", "exchange": "NYSE", "name": "Realty Income Corporation"},

@@ -91,6 +91,48 @@ def simulate(t, bars1, ctx, direction=1):
             "cost_r": cost, "net_r": gross - cost}
 
 
+def ssr(prev_low, close_before_prev, prev_close, low_before_fill):
+    """Rule 201 in force: a 10% drop from the previous close, yesterday (it lasts through today) or today before the
+    fill."""
+    return prev_low <= 0.9 * close_before_prev or low_before_fill <= 0.9 * prev_close
+
+
+def simulate_ticks(t, bars1, ctx, ticks, direction=1):
+    """simulate() for a ZBA ticket with the fill minute replayed on its trades (spec section 13): the stop triggers on
+    the first trade at or through the level and fills at the next trade (the trigger trade when none follows); the
+    stop loss is checked on the rest of that minute's trades and fills at the trade after the one that hits it; from
+    the next minute on, the bar model. ticks: [(time, price)] of the trigger minute. -> simulate()'s dict + "status"
+    ("ok" | "no trigger")."""
+    side = t.get("side", 1)
+    bars = [b for b in bars1 if ctx["open"] <= b[0] < ctx["close"]]
+    level = t["level"] * side
+    if side == -1:
+        bars, ticks = _mirror(bars), [(a, -p) for a, p in ticks]
+    k = next((j for j, b in enumerate(bars) if b[0] == t["at"]), None)
+    trig = next((j for j, (_, p) in enumerate(ticks) if p >= level), None)
+    if k is None or trig is None:
+        return {"filled": False, "fill_at": None, "fill": None, "exits": [], "gross_r": 0, "cost_r": 0, "net_r": 0,
+                "status": "no trigger"}
+    fi = min(trig + 1, len(ticks) - 1)
+    fill = ticks[fi][1]
+    play, rest = (bars, ticks[fi + 1:]) if direction == 1 else (_mirror(bars), [(a, -p) for a, p in ticks[fi + 1:]])
+    entry, D, qty = fill * direction, t["R"], t["shares"]
+    stop = round(entry - D, 4)
+    hit = next((j for j, (_, p) in enumerate(rest) if p <= stop), None)
+    if hit is not None:
+        exits = [{"qty": qty, "price": rest[min(hit + 1, len(rest) - 1)][1], "at": t["at"], "kind": "stop"}]
+    else:
+        exits = _improved({**t, "level": level, "limit": None}, play, k, entry, ctx["open"], first=False)
+    risk = D * qty
+    gross = sum((e["price"] - entry) * e["qty"] for e in exits) / risk
+    commission = sum(max(MIN_ORDER, q * COMMISSION) for q in [qty] + [e["qty"] for e in exits])
+    cost = (commission + qty * t["spread"]) / risk
+    for e in exits:
+        e["price"] = round(e["price"] * direction * side, 4)
+    return {"filled": True, "fill_at": t["at"], "fill": round(fill * side, 4), "exits": exits, "gross_r": gross,
+            "cost_r": cost, "net_r": gross - cost, "status": "ok"}
+
+
 def _stop_px(o, l, stop):
     """The fill of a sell stop in a minute, or None: at the open when it opened at or below the stop."""
     return o if o <= stop else stop if l <= stop else None
@@ -707,6 +749,9 @@ ZBA_ASSUMPTIONS = (
     "Replication 2022-2023 (inside the paper's 2016-2023 sample): reported, not gated.",
     "Portfolio: each trade risks 1% of capital; a day's positions are scaled down together to at most 4x gross "
     "exposure, as if all were open at once.",
+    "Section 13 realism check of the selected variant: the fill minute replayed on SIP trades (round lots that set "
+    "the last sale; fill at the trade after the trigger; stop loss on the rest of the minute, out at the trade after "
+    "the hit), Rule 201 shorts dropped; its verdict decides.",
     "Section 12 grid: stop k x ATR14 (k 0.10 / 0.25 / 0.50 / 1.00), each with and without a spread gate (spread <= "
     "0.25 x the stop distance); chosen on 2022-2023 (>= 300 trades, highest mean); verdict on 2024-02-01 onward.",
 )
@@ -718,9 +763,9 @@ def select_zba(tuning):
     return max(ok)[1] if ok else None
 
 
-def robustness(xs):
-    """Not gated: the mean net R and t without the biggest 1% of trades, with extra slippage of $0.01 / $0.02 a share
-    on each side, and the mean and count by quarter."""
+def robustness(xs, cents=(0.01, 0.02)):
+    """Not gated: the mean net R and t without the biggest 1% of trades, with extra slippage of `cents` dollars a
+    share on each side, and the mean and count by quarter."""
     def mt(v):
         sd = statistics.stdev(v) if len(v) > 1 else 0.0
         return _mean(v), (_mean(v) / (sd / len(v) ** 0.5) if sd else None)
@@ -730,7 +775,7 @@ def robustness(xs):
     for x in xs:
         q[f"{x['day'][:4]}Q{(int(x['day'][5:7]) - 1) // 3 + 1}"].append(x["net_r"])
     return {"drop top 1%": mt(net[:-k]),
-            **{f"+${c:.2f} a share each side": mt([x["net_r"] - 2 * c / x["R"] for x in xs]) for c in (0.01, 0.02)},
+            **{f"+${c:g} a share each side": mt([x["net_r"] - 2 * c / x["R"] for x in xs]) for c in cents},
             "quarters": {k_: (_mean(v), len(v)) for k_, v in sorted(q.items())}}
 
 
@@ -743,6 +788,34 @@ def _tuned(rows, variant, days):
             "short": stats([x for x in xs if x["side"] == -1]), "p95": pctl(rm, PCTL) if xs else None,
             "book": portfolio(xs, [d for d in days if d >= ZBA_TUNED_START]), "checks": checks, "go": go,
             "robust": robustness(xs) if len(xs) > 1 else None}
+
+
+def _realism(rows, variant, hours, look, end):
+    """Spec section 13: the variant's filled trades replayed with the tick-level fill minute, Rule 201 shorts dropped
+    -> (corrected trade rows, Counter of statuses)."""
+    out, status = [], collections.Counter()
+    for x in [x for x in rows if x["variant"] == variant and x["filled"]]:
+        d, t, side = x["day"], x["t"], x["side"]
+        open_, close = hours[d]
+        bars1 = alpaca.minute_bars([t], d).get(t) or []
+        if side == -1:
+            prior = [b for b in alpaca.daily([t], look, end).get(t, []) if b[0] < d][-2:]
+            low = min((b[3] for b in bars1 if open_ <= b[0] < x["fill_at"]), default=float("inf"))
+            if len(prior) == 2 and ssr(prior[1][3], prior[0][4], prior[1][4], low):
+                status["Rule 201"] += 1
+                continue
+        tk = {"rules": "ZBA", "session": "REGULAR", "side": side, "at": x["at"], "level": x["level"],
+              "entry_type": "STP", "limit": None, "R": x["R"], "shares": x["shares"], "spread": x["spread"],
+              "legs": [{"qty": x["shares"], "target": None, "exit_at": None}], "valid_until": close, "touch": True}
+        ticks = alpaca.trades(t, d, x["at"])
+        ctx = {"open": open_, "close": close}
+        r = simulate_ticks(tk, bars1, ctx, ticks)
+        status[r["status"]] += 1
+        if r["filled"]:
+            flip = simulate_ticks(tk, bars1, ctx, ticks, -1)
+            out.append({**x, "fill": r["fill"], "gross_r": r["gross_r"], "cost_r": r["cost_r"], "net_r": r["net_r"],
+                        "net_r_short": flip["net_r"], "kinds": "/".join(e["kind"] for e in r["exits"])})
+    return out, status
 
 
 def _zba_results(rows, days):
@@ -773,6 +846,11 @@ def render_zba(meta, res, grid=None, tuned=None):
                 f"`{_f(tv['mean'])}R`, סטטיסטי t `{_f(tv['t'], '{:.2f}')}`, תיק: שארפ "
                 f"`{_f(tuned['book']['sharpe'], '{:.2f}')}`") if tuned else \
             "- גרסה מכוילת: אף גרסה לא הגיעה ל־300 עסקאות ב־2022–2023, ולכן אין בחירה (NO-GO)."
+        rv = (tuned or {}).get("real")
+        if rv:
+            line += (f"\n- בדיקת מציאותיות (מילוי לפי עסקאות בודדות, כלל 201): "
+                     f"{'GO ✅' if rv['go'] else 'NO-GO ❌'} — עסקאות `{rv['verdict']['n']}`, ממוצע נטו "
+                     f"`{_f(rv['verdict']['mean'])}R`, סטטיסטי t `{_f(rv['verdict']['t'], '{:.2f}')}`. זו ההכרעה הקובעת.")
     L = [f"# ZBA 2024 \"Stocks in Play\" 5-minute ORB on 2024-2026 — {meta['run']}", "", "## סיכום", "",
          f"- הכרעה על {meta['verdict_range']}: {'GO ✅' if res['go'] else 'NO-GO ❌'} — עסקאות `{v['all']['n']}`, "
          f"ממוצע נטו `{_f(v['all']['mean'])}R`, סטטיסטי t `{_f(v['all']['t'], '{:.2f}')}`, תיק: תשואה שנתית "
@@ -825,8 +903,29 @@ def render_zba(meta, res, grid=None, tuned=None):
             rb = tuned["robust"]
             if rb:
                 L += ["Robustness (not gated):", "", "| Test | Mean net R | t |", "|---|---:|---:|"]
-                L += [f"| {name} | {_f(m)} | {_f(t, '{:.2f}')} |" for name, (m, t) in rb.items() if name != "quarters"]
+                L += [f"| {name} | {_f(v[0])} | {_f(v[1], '{:.2f}')} |" for name, v in rb.items() if name != "quarters"]
                 L += ["", "By quarter: " + " · ".join(f"{q} {_f(m)} ({n})" for q, (m, n) in rb["quarters"].items()), ""]
+            rv = tuned.get("real")
+            if rv:
+                st = rv["verdict"]
+                L += [f"### Realism check of {tuned['variant']} (spec section 13) — the deciding verdict", "",
+                      "Fill minute replayed on SIP trades (round lots); Rule 201 shorts dropped. Trades: "
+                      + ", ".join(f"{k} {n}" for k, n in rv["status"].items()) + ".", "",
+                      "| Check | Pass |", "|---|---|"]
+                L += [f"| {c} | {'pass' if ok else 'fail'} |" for c, ok in rv["checks"]]
+                k = rv["book"]
+                L += ["", f"2024-02-01 onward: {st['n']} trades, mean {_f(st['mean'])}R, t {_f(st['t'], '{:.2f}')}, "
+                      f"median {_f(st['median'])}, win {_f(st['win'], '{:.0%}')} · long {rv['long']['n']} "
+                      f"{_f(rv['long']['mean'])}R · short {rv['short']['n']} {_f(rv['short']['mean'])}R · random p95 "
+                      f"{_f(rv['p95'])} · 2022-2023: {rv['replication']['n']} trades, mean "
+                      f"{_f(rv['replication']['mean'])}R · book: annual {_f(k['cagr'], '{:+.1%}')}, Sharpe "
+                      f"{_f(k['sharpe'], '{:.2f}')}, worst drawdown {_f(k['max_dd'], '{:.1%}')}", ""]
+                if rv["robust"]:
+                    L += ["| Stress (not gated) | Mean net R | t |", "|---|---:|---:|"]
+                    L += [f"| {n} | {_f(v[0])} | {_f(v[1], '{:.2f}')} |" for n, v in rv["robust"].items()
+                          if n != "quarters"]
+                    L += ["", "By quarter: " + " · ".join(f"{q} {_f(m)} ({n})" for q, (m, n)
+                                                         in rv["robust"]["quarters"].items()), ""]
     L += ["## Exits and NO TICKET reasons", "",
           f"- Exits (verdict period): {', '.join(f'{k} {n}' for k, n in sorted(v['all']['exits'].items()))}",
           f"- NO TICKET: {', '.join(f'{k} {n}' for k, n in sorted(meta['reasons'].items(), key=lambda kv: -kv[1]))}",
@@ -897,6 +996,18 @@ def _zba_main(a, t0, run):
     res = grid[ZBA_BASE]
     pick = select_zba({v: g["replication"]["all"] for v, g in grid.items()})
     tuned = _tuned(rows, pick, days) if pick else None
+    real_rows = []
+    if tuned:  # spec section 13: the realism check of the selected variant
+        real_rows, status = _realism(rows, pick, hours, look, end)
+        ver = [x for x in real_rows if x["day"] >= ZBA_TUNED_START]
+        rm = random_means(ver)
+        checks, go = verdict(ver, rm, years=ZBA_YEARS)
+        tuned["real"] = {"status": dict(status), "verdict": stats(ver), "checks": checks, "go": go,
+                         "replication": stats([x for x in real_rows if x["day"] < ZBA_VERDICT]),
+                         "long": stats([x for x in ver if x["side"] == 1]),
+                         "short": stats([x for x in ver if x["side"] == -1]), "p95": pctl(rm, PCTL) if ver else None,
+                         "book": portfolio(ver, [d for d in days if d >= ZBA_TUNED_START]),
+                         "robust": robustness(ver, (0.005, 0.01)) if len(ver) > 1 else None}
     meta = {"run": run, "start": start, "end": end, "runtime": time.time() - t0, "requests": alpaca.REQUESTS[0],
             "gaps": dict(gaps), "counts": dict(counts), "reasons": dict(reasons),
             "verdict_range": f"{max(start, ZBA_VERDICT)} → {end}", "replication_range": f"{start} → 2023-12-29"}
@@ -911,6 +1022,16 @@ def _zba_main(a, t0, run):
         w.writerow(ZBA_COLUMNS)
         for x in keep:
             w.writerow([round(x[c], 4) if isinstance(x[c], float) else x[c] for c in ZBA_COLUMNS])
+    if real_rows:
+        with open(os.path.join(a.out, f"ticket-zba-{run}-realistic.csv"), "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(ZBA_COLUMNS)
+            for x in real_rows:
+                if x["day"] >= ZBA_TUNED_START:
+                    w.writerow([round(x[c], 4) if isinstance(x[c], float) else x[c] for c in ZBA_COLUMNS])
+        rv = tuned["real"]
+        print(f"ZBA {pick} realistic: {'GO' if rv['go'] else 'NO-GO'} ({rv['verdict']['n']} trades, "
+              f"mean {_f(rv['verdict']['mean'])}R, t {_f(rv['verdict']['t'], '{:.2f}')}), {rv['status']}")
     st = res["verdict"]["all"]
     print(f"ZBA K10: {'GO' if res['go'] else 'NO-GO'} ({st['n']} trades, mean {_f(st['mean'])}R, "
           f"t {_f(st['t'], '{:.2f}')})")

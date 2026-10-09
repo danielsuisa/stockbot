@@ -166,6 +166,20 @@ class Other(Base):
         self.assertEqual(len(alpaca.assets()), 2)
         self.assertEqual(f.call_count, 2)
 
+    def test_trades_keep_last_sale_round_lots_and_cache(self):
+        f = self.fetch({"trades": [{"t": "2024-11-13T15:24:02.1Z", "p": 27.17, "s": 10, "c": [" ", "I"]},
+                                   {"t": "2024-11-13T15:24:02.4Z", "p": 27.16, "s": 100, "c": [" "]},
+                                   {"t": "2024-11-13T15:24:03.0Z", "p": 27.15, "s": 200, "c": [" ", "F"]},
+                                   {"t": "2024-11-13T15:24:04.0Z", "p": 27.00, "s": 300, "c": [" ", "4"]}],
+                        "next_page_token": None})
+        got = alpaca.trades("ZETA", "2024-11-13", "10:24")
+        self.assertEqual(got, [("2024-11-13T15:24:02.4Z", 27.16), ("2024-11-13T15:24:03.0Z", 27.15)])
+        p = params(f.call_args.args[0])
+        self.assertEqual((p["start"], p["end"], p["feed"]), ("2024-11-13T15:24:00Z", "2024-11-13T15:25:00Z", "sip"))
+        self.assertIn("/ZETA/trades", f.call_args.args[0])
+        alpaca.trades("ZETA", "2024-11-13", "10:24")
+        self.assertEqual(f.call_count, 1)
+
     def test_utc_in_summer_and_winter(self):
         self.assertEqual(alpaca.utc("2026-12-01", "09:30"), "2026-12-01T14:30:00Z")
         self.assertEqual(alpaca.utc("2026-10-08", "09:30"), "2026-10-08T13:30:00Z")

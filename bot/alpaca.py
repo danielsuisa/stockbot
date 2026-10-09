@@ -180,3 +180,27 @@ def opening_bars(symbols, day):
                 have[s] = None if b is None else [b["o"], b["h"], b["l"], b["c"], b["v"]]
         _write(path, have)
     return {s: None if have[s] is None else tuple(have[s]) for s in dict.fromkeys(symbols)}
+
+
+NOT_LAST_SALE = set("I4BWZTUMQCGHNPRV79")  # odd lots and trade conditions that do not set the last sale
+
+
+def trades(symbol, day, hhmm):
+    """SIP trades of one New York minute that set the last sale (round lots, regular conditions) -> [(time UTC ISO,
+    price)] in order; cached per symbol and minute."""
+    path = CACHE / "trades" / day / f"{symbol}_{hhmm.replace(':', '')}.json.gz"
+    rows = _read(path)
+    if rows is None:
+        start = utc(day, hhmm)
+        end = (dt.datetime.fromisoformat(start.replace("Z", "+00:00")) + dt.timedelta(minutes=1)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
+        rows, token = [], None
+        while True:
+            js = _get(f"{DATA}/{symbol}/trades", {"start": start, "end": end, "feed": "sip", "limit": LIMIT,
+                                                  **({"page_token": token} if token else {})})
+            rows += [[x["t"], x["p"]] for x in js.get("trades") or [] if not set(x.get("c") or []) & NOT_LAST_SALE]
+            token = js.get("next_page_token")
+            if not token:
+                break
+        _write(path, rows)
+    return [tuple(r) for r in rows]
