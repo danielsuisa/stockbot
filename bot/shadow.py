@@ -18,7 +18,7 @@ VARIANT = "K10s"
 STOP_ATR, SPREAD_D = tb.ZBA_GRID[VARIANT]  # 0.10 x ATR14, spread <= 0.25 x the stop distance
 JOURNAL = "shadow_journal.json"
 CATCH_UP = 5  # sessions processed in one run at most
-LOOK_DAYS = 40  # calendar days of daily bars before a session: 15 bars for ATR14 and the 14-day average volume
+LOOK_DAYS = 60  # calendar days of daily bars before a session: 15 bars for ATR14 and the 14-day average volume
 BACKTEST_R = 0.277  # the realistic K10s mean on 2024-02 onward (docs/backtest/ticket-zba-2026-10-09.md)
 VERDICT_TRADES, VERDICT_SESSIONS = 100, 60  # spec section 6
 REASONS = {"trigger": "בלי פריצה", "doji": "נר פתיחה בלי כיוון", "spread": "מרווח רחב",
@@ -63,12 +63,14 @@ def run_day(day, hours, sessions):
     """K10s on session `day` with the backtest's functions -> {"top", "reasons", "dropped", "trades" (realistic rows),
     "optimistic" (bar-model rows), "gaps"}."""
     k = sessions.index(day)
+    if k < tb.Z_DAYS + 1:  # never a short window or sessions[-1]: the caller loads enough calendar
+        raise ValueError(f"shadow: {day} has {k} sessions of calendar before it, {tb.Z_DAYS + 1} needed")
     prev = sessions[k - 1]
     look = (dt.date.fromisoformat(day) - dt.timedelta(LOOK_DAYS)).isoformat()
-    syms = tb.asset_universe([a for a in alpaca.assets() if a.get("status") == "active"])
+    syms = tb.asset_universe(alpaca.assets())  # active and inactive, like the backtest: D's last-day names too
     daily = {}
     for i in range(0, len(syms), alpaca.CHUNK):
-        daily.update(alpaca.daily(syms[i:i + alpaca.CHUNK], look, prev))
+        daily.update(alpaca.daily(syms[i:i + alpaca.CHUNK], look, day))  # D is complete; only bars before D are used
     pre = tb.prefilter(day, daily, prev)
     window = sessions[max(0, k - tb.Z_DAYS):k]
     names = sorted(pre)
@@ -90,7 +92,7 @@ def run_day(day, hours, sessions):
         else:
             reasons[reason] += 1
     reasons["no fill"] += sum(1 for x in rows if not x["filled"])
-    real, dropped = tb._realism(rows, VARIANT, {day: hours[day]}, look, prev)
+    real, dropped = tb._realism(rows, VARIANT, {day: hours[day]}, look, day)
     dropped.pop("ok", None)
     keep = ("t", "rank", "side", "at", "level", "R", "shares", "spread", "fill", "kinds", "gross_r", "cost_r", "net_r")
     trim = lambda x: {c: round(x[c], 4) if isinstance(x[c], float) else x[c] for c in keep}  # noqa: E731
@@ -164,10 +166,11 @@ def main(argv=None):
     a = ap.parse_args(argv)
     manual = a.manual or common.env("SHADOW_MODE") == "manual"
     today = today_ny()
-    start = (dt.date.fromisoformat(today) - dt.timedelta(LOOK_DAYS + 30)).isoformat()
+    j = load()
+    first = min(today, max(j["days"], default=today))  # after a long stop the catch-up days still have 15 sessions before them
+    start = (dt.date.fromisoformat(first) - dt.timedelta(LOOK_DAYS + 30)).isoformat()
     hours = alpaca.calendar(start, today)
     sessions = sorted(hours)
-    j = load()
     days = pending(sessions, j, today)
     if not days:
         print(f"shadow: no new session before {today}")

@@ -35,7 +35,8 @@ class Session(unittest.TestCase):
         minutes = {"AAA": zba_bars(), "BBB": bbb_bars()}
         daily = {"AAA": DAILY, "BBB": FELL}
         with mock.patch.object(shadow.alpaca, "assets", return_value=ASSETS), \
-                mock.patch.object(shadow.alpaca, "daily", side_effect=lambda syms, a, b: {s: daily[s] for s in syms}) as d, \
+                mock.patch.object(shadow.alpaca, "daily", side_effect=lambda syms, a, b: {
+                    s: [x for x in daily[s] if a <= x[0] <= b] for s in syms if s in daily}) as d, \
                 mock.patch.object(shadow.alpaca, "opening_bars", side_effect=opening), \
                 mock.patch.object(shadow.alpaca, "minute_bars", side_effect=lambda syms, _: {s: minutes[s] for s in syms}), \
                 mock.patch.object(shadow.alpaca, "quote_at", return_value=(10.00, 10.02)), \
@@ -45,9 +46,9 @@ class Session(unittest.TestCase):
 
     def test_the_backtests_code_end_to_end(self):
         res, daily = self.run_day()
-        self.assertEqual(res["top"], ["AAA", "BBB"])  # the inactive symbol and the fund never enter
-        self.assertEqual(sorted(daily.call_args_list[0].args[0]), ["AAA", "BBB"])
-        self.assertEqual(daily.call_args_list[0].args[2], SESSIONS[-2])  # bars end at the session before: no recent SIP
+        self.assertEqual(res["top"], ["AAA", "BBB"])
+        self.assertEqual(sorted(daily.call_args_list[0].args[0]), ["AAA", "BBB", "OLD"])  # inactive too, like the backtest
+        self.assertEqual(daily.call_args_list[0].args[2], DAY)  # D is complete: no recent SIP, only bars before D are used
         self.assertEqual(len(res["optimistic"]), 2)  # both filled under the bar model ...
         self.assertEqual(res["dropped"], {"Rule 201": 1})  # ... the short is blocked once Rule 201 is applied
         (x,) = res["trades"]
@@ -72,6 +73,18 @@ class Session(unittest.TestCase):
         self.assertIn("היום לא הייתה עסקה", text)
         self.assertIn("עוד אין עסקאות", text)
         self.assertEqual(common.rtl_bad_lines(text), [], text)
+
+    def test_a_short_line(self):
+        x = {"t": "BBB", "side": -1, "at": "09:40", "level": 9.5, "fill": 9.48, "R": 0.1, "shares": 1000,
+             "kinds": "eod", "gross_r": 2.8, "net_r": 2.53}
+        line = shadow.trade_line(x)
+        for part in ("מכירה בחסר: <code>BBB</code>", "סטופ <code>9.58</code>", "יציאה <code>9.20</code> (סגירה)",
+                     "<code>+2.53R</code>"):
+            self.assertIn(part, line)
+
+    def test_a_session_without_15_sessions_before_it_is_an_error(self):
+        with self.assertRaises(ValueError):
+            shadow.run_day(SESSIONS[14], HOURS, SESSIONS)
 
 
 class Pending(unittest.TestCase):
@@ -117,6 +130,12 @@ class Main(unittest.TestCase):
         self.assertEqual(days, [])
         self.assertIn("אין יום מסחר חדש", sent[0])
         self.assertEqual(common.rtl_bad_lines(sent[0]), [])
+
+    def test_the_calendar_reaches_back_before_the_last_processed_session(self):
+        shadow.save({"v": 1, "since": "2023-11-01", "days": {"2023-11-01": dict(self.RES)}})
+        with mock.patch.object(shadow.alpaca, "calendar", return_value=HOURS) as cal:
+            self.main()
+        self.assertEqual(cal.call_args.args, ("2023-08-03", "2024-03-02"))  # 90 days before the last one, up to today
 
     def test_dry_run_writes_nothing(self):
         days, sent = self.main("--dry")

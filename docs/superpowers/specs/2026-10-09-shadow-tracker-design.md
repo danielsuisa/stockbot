@@ -24,11 +24,13 @@ sent, no money is used, and every message says so. Real tickets (stage 2) come o
 
 ## 3. One session D — exactly the backtest's code
 
-1. Calendar and the session before D from `alpaca.calendar`.
-2. Universe: `ticket_backtest.asset_universe` on Alpaca's **active** assets (an inactive symbol cannot trade on D, so
-   the set equals the backtest's for D).
-3. `ticket_backtest.prefilter(D, daily, prev)` on raw daily bars of the 40 calendar days before D (ending at the
-   session before D).
+1. Calendar and the session before D from `alpaca.calendar`, loaded far enough back that D always has 15 sessions
+   before it (a session without them is an error, never a short window).
+2. Universe: `ticket_backtest.asset_universe` on all of Alpaca's assets, active and inactive, as in the backtest (a
+   name whose last trading day was D can already be inactive the next morning).
+3. `ticket_backtest.prefilter(D, daily, prev)` on raw daily bars of the 60 calendar days up to D (D is complete;
+   `prefilter` and the Rule 201 check use only the bars before D).
+   (Section 3 revised after review on 2026-10-09, before any shadow data.)
 4. `alpaca.opening_bars` for the prefiltered tickers on D and on the 14 sessions before it, then
    `ticket_backtest.stocks_in_play` → the top 20.
 5. Per ticker: `ticket_backtest._play("ZBA", "REGULAR", …)` with ctx `stop_atr` 0.10, `spread_d` 0.25 (the K10s row of
