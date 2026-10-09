@@ -45,6 +45,8 @@ def _fill(t, bars):
             continue
         if m >= until:
             return None
+        if t["entry_type"] == "MKT":  # spec 14 #5: at the first minute's open
+            return i, o, _after(o, h, l, c, True, False)
         if not triggered:  # a stop(-limit): the first minute whose high is above the level (or at it: "touch")
             if not (h >= t["level"] if t.get("touch") else h > t["level"]):
                 continue
@@ -52,6 +54,8 @@ def _fill(t, bars):
             px = max(o, t["level"])
             if px <= limit:
                 return i, px, _after(o, h, l, c, o >= t["level"], False)
+            if t.get("ioc"):  # spec 14 #12: no fill beyond the limit -> no trade
+                return None
         if l <= limit:
             return i, limit, _after(o, h, l, c, o <= limit, True)
     return None
@@ -109,12 +113,16 @@ def simulate_ticks(t, bars1, ctx, ticks, direction=1):
     if side == -1:
         bars, ticks = _mirror(bars), [(a, -p) for a, p in ticks]
     k = next((j for j, b in enumerate(bars) if b[0] == t["at"]), None)
-    trig = next((j for j, (_, p) in enumerate(ticks) if p >= level), None)
+    mkt = t.get("entry_type") == "MKT"  # spec 14 #5: the first round-lot trade of the entry minute
+    trig = (0 if ticks else None) if mkt else next((j for j, (_, p) in enumerate(ticks) if p >= level), None)
     if k is None or trig is None:
         return {"filled": False, "fill_at": None, "fill": None, "exits": [], "gross_r": 0, "cost_r": 0, "net_r": 0,
                 "status": "no trigger"}
-    fi = min(trig + 1, len(ticks) - 1)
+    fi = trig if mkt else min(trig + 1, len(ticks) - 1)
     fill = ticks[fi][1]
+    if t.get("ioc") and fill > t["limit"] * side:  # spec 14 #12: a fill beyond the limit is cancelled
+        return {"filled": False, "fill_at": None, "fill": None, "exits": [], "gross_r": 0, "cost_r": 0, "net_r": 0,
+                "status": "limit"}
     play, rest = (bars, ticks[fi + 1:]) if direction == 1 else (_mirror(bars), [(a, -p) for a, p in ticks[fi + 1:]])
     entry, D, qty = fill * direction, t["R"], t["shares"]
     stop = round(entry - D, 4)

@@ -267,7 +267,16 @@ Z_OR_END, Z_D_ATR = "09:35", 0.10
 def _zba(session, sess, bars1, ctx, spread):
     """The first 5-minute candle sets the side (close over open: buy stop at its high; under: sell stop at its low;
     equal: no trade); the stop order stays until the close; stop loss 10% of ATR14 from the fill (ctx "stop_atr"
-    overrides the 10%; ctx "spread_d" adds a spread gate as a fraction of the stop distance); out at the close."""
+    overrides the 10%; ctx "spread_d" adds a spread gate as a fraction of the stop distance); out at the close.
+
+    Spec section 14 options (each absent by default): "candle" (lo, hi, body): the candle's range / ATR in [lo, hi]
+    and body / range >= body · "confirm" k: instead of the touch, the first minute from 09:35 closing beyond the level
+    on volume >= k x the mean minute volume since 09:30, entry at the next minute's open ("MKT") · "vstop" k: D =
+    max(k x ATR, the planned entry's distance to the candle's far side) · "rr" (atr_mult, ratio): the room from the
+    planned entry to the open +- atr_mult x ATR >= ratio x D · "limit_d" f: a stop-limit at the level +- max(f x D,
+    0.01), cancelled when it would fill beyond ("ioc") · "tod" callable(minute) -> time-of-day relative volume, with
+    "tod_min" · "depth" callable(minute) -> (bid size, ask size) in shares or None, with "depth_min" (the trigger
+    side). The planned entry is the level, or the confirming minute's close (the order is sized before it fills)."""
     if not ctx.get("atr"):
         return _no("no atr")
     first = [b for b in sess if b[0] < Z_OR_END]
@@ -277,20 +286,56 @@ def _zba(session, sess, bars1, ctx, spread):
     if c == o:
         return _no("doji")
     side = 1 if c > o else -1
-    level = max(b[2] for b in first) if side == 1 else min(b[3] for b in first)
-    for m, bo, bh, bl, bc, v, vw in sess:
-        if m < Z_OR_END or not (bh >= level if side == 1 else bl <= level):
+    hi, lo = max(b[2] for b in first), min(b[3] for b in first)
+    level = hi if side == 1 else lo
+    cnd = ctx.get("candle")
+    if cnd and not (cnd[0] <= (hi - lo) / ctx["atr"] <= cnd[1] and abs(c - o) >= cnd[2] * (hi - lo)):
+        return _no("candle")
+    k = ctx.get("confirm")
+    vols = [b[5] for b in sess if b[0] < Z_OR_END]
+    for j, (m, bo, bh, bl, bc, v, vw) in enumerate(sess):
+        if m < Z_OR_END:
             continue
+        if k is None:
+            if not (bh >= level if side == 1 else bl <= level):
+                continue
+            entry, at = level, m
+        else:
+            beyond = bc > level if side == 1 else bc < level
+            if not (beyond and vols and v >= k * (sum(vols) / len(vols))):
+                vols.append(v)
+                continue
+            if j + 1 >= len(sess):
+                return _no("trigger")
+            entry, at = bc, sess[j + 1][0]
+        if ctx.get("tod") and not (ctx["tod"](m) or 0) >= ctx["tod_min"]:
+            return _no("tod", m)
         D = _r(ctx.get("stop_atr", Z_D_ATR) * ctx["atr"])
+        if ctx.get("vstop") is not None:
+            D = _r(max(ctx["vstop"] * ctx["atr"], abs(entry - (lo if side == 1 else hi))))
+        if ctx.get("rr"):
+            mult, ratio = ctx["rr"]
+            room = (o + mult * ctx["atr"] - entry) if side == 1 else (entry - (o - mult * ctx["atr"]))
+            if room < ratio * D:
+                return _no("reward", m)
         sd = ctx.get("spread_d")  # optional gate: spread <= sd x the stop distance
         sp = spread(m)
         if sp is None or (sd is not None and _r(sp) > _r(sd * D)):
             return _no("spread", m)
+        if ctx.get("depth"):
+            sz = ctx["depth"](m)
+            if not sz or (sz[1] if side == 1 else sz[0]) < ctx["depth_min"]:
+                return _no("depth", m)
         shares = _shares(D)
         if shares < MIN_SHARES:
             return _no("size below minimum", m)
-        return {"ok": True, "rules": "ZBA", "session": session, "side": side, "at": m, "level": level,
-                "entry_type": "STP", "entry": level, "limit": None, "stop": _r(level - side * D), "R": D,
-                "shares": shares, "legs": [{"qty": shares, "target": None, "exit_at": None}],
-                "valid_until": ctx["close"], "spread": sp, "touch": True}
+        t = {"ok": True, "rules": "ZBA", "session": session, "side": side, "at": m, "level": level,
+             "entry_type": "STP", "entry": level, "limit": None, "stop": _r(entry - side * D), "R": D,
+             "shares": shares, "legs": [{"qty": shares, "target": None, "exit_at": None}],
+             "valid_until": ctx["close"], "spread": sp, "touch": True}
+        if k is not None:
+            t.update(at=at, entry_type="MKT", entry=entry)
+        elif ctx.get("limit_d") is not None:
+            t.update(entry_type="STP_LMT", limit=_r(level + side * max(ctx["limit_d"] * D, 0.01)), ioc=True)
+        return t
     return _no("trigger")
