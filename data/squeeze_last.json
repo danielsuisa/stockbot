@@ -1,15 +1,15 @@
 {
  "date": "2026-10-09",
  "kind": "day",
- "at": "13:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>9.10.2026</code> · מצב ב־<code>20:30</code>\n\nמקום <code>1</code>: <code>PCRX</code> · <code>36.31$</code> <code>0.2%▼</code>\nשורט <code>20.9%</code> מהמניות הצפות · <code>7.3</code> ימים לכיסוי · מחזור פי <code>3.4</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.9</code>.",
+ "at": "14:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>9.10.2026</code> · מצב ב־<code>21:30</code>\n\nמקום <code>1</code>: <code>PCRX</code> · <code>36.31$</code> <code>0.2%▼</code>\nשורט <code>20.9%</code> מהמניות הצפות · <code>7.3</code> ימים לכיסוי · מחזור פי <code>3.6</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.9</code>.",
  "rows": [
   {
    "t": "PCRX",
    "price": 36.315,
    "chg": -0.0021,
    "avg_vol": 1030570,
-   "rel_vol": 3.4296,
+   "rel_vol": 3.567,
    "short_ratio": 7.3369,
    "float": 36193397,
    "short_float": 0.2089,
