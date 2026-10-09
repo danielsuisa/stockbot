@@ -162,3 +162,20 @@ tuned.
   whether this engine with real spreads reproduces the paper's edge.
 - **Also reported:** a ZBA-style portfolio (each trade risks 1% of capital; the day's positions are scaled down
   together to at most 4x gross exposure): annual return, Sharpe, worst drawdown — after costs.
+
+## 12. Cost-aware ZBA: stop width and a spread gate (pre-registered 2026-10-09, before the full run)
+
+Why: a one-month probe of section 11 (January 2024, run to check the code and the speed) showed a positive edge
+before costs (+0.26R a trade) and costs of 0.77R a trade: with the stop at 10% of ATR14 the stop distance is about
+twice the opening spread. Costs in R shrink as the stop widens. That probe looked at January 2024 only, and also at
+the four stop widths below on that month (all negative net); January 2024 is therefore left out of this section's
+verdict.
+
+- Section 11 stays exactly as registered (its verdict is the K10 row below on 2024-01-02 onward).
+- Grid, everything else as in section 11: stop distance k × ATR14 with k ∈ {0.10, 0.25, 0.50, 1.00} (K10, K25,
+  K50, K100), each without and with a spread gate (spread ≤ 0.25 × the stop distance; suffix "s"): 8 variants.
+- Selection on 2022-01-03 → 2023-12-29 only (unseen by us for this universe): the highest mean net R among variants
+  with ≥ 300 trades there.
+- Verdict for the selected variant on 2024-02-01 → the last complete session: ≥ 100 trades, mean net R > 0 with
+  t ≥ 2, above the 95th percentile of 20 random-side means, and mean net R > 0 in 2024, 2025 and 2026 separately.
+- A GO is a reason to paper-trade it forward in the bot, not to trade it.
