@@ -10,8 +10,9 @@ import datetime as dt
 import json
 import os
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
-from bot import alpaca, common, ticket_backtest as tb
+from bot import alpaca, common, ticket, ticket_backtest as tb
 from bot.common import code
 
 VARIANT = "K10s"
@@ -19,12 +20,21 @@ STOP_ATR, SPREAD_D = tb.ZBA_GRID[VARIANT]  # 0.10 x ATR14, spread <= 0.25 x the 
 JOURNAL = "shadow_journal.json"
 CATCH_UP = 5  # sessions processed in one run at most
 LOOK_DAYS = 60  # calendar days of daily bars before a session: 15 bars for ATR14 and the 14-day average volume
-BACKTEST_R = 0.277  # the realistic K10s mean on 2024-02 onward (docs/backtest/ticket-zba-2026-10-09.md)
 VERDICT_TRADES, VERDICT_SESSIONS = 100, 60  # spec section 6
-REASONS = {"trigger": "בלי פריצה", "doji": "נר פתיחה בלי כיוון", "spread": "מרווח רחב",
-           "size below minimum": "פחות מ־10 מניות", "no atr": "בלי ATR", "no signal": "בלי נתונים",
-           "no fill": "הפקודה לא התמלאה"}
-DROPPED = {"Rule 201": "שורט חסום בכלל 201", "no trigger": "בלי עסקה ברמה בדקת ההפעלה"}
+SHOW_T = 30  # trades before the tally shows the average and t
+IL = ZoneInfo("Asia/Jerusalem")
+TITLE = "👻 <b>מעקב צל: פריצת הפתיחה</b>"
+SOURCE = ("⚠️ מעקב בלבד, לא כרטיס פקודה ולא ייעוץ השקעות.\n"
+          f"מקור: נתוני {code('Alpaca')} (מושהים ב־{code(15)} דקות)")  # replaces common.send's SEC footer
+DAYS = ["ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳", "א׳"]  # date.weekday(): Monday = 0
+# why a stock in the opening top did not trade: "{n}" -> the count; "ב־" phrases take "וב־" as the last item
+SKIPS = {"spread": "{n} נפסלו בגלל מרווח רחב", "trigger": "ב־{n} לא הייתה פריצה",
+         "doji": "ב־{n} נר הפתיחה היה ניטרלי", "no atr": "ב־{n} חסרה היסטוריה",
+         "size below minimum": "ב־{n} הפוזיציה יצאה קטנה מדי", "no signal": "ב־{n} חסרו נתונים",
+         "no fill": "ב־{n} הפקודה לא התמלאה",
+         "Rule 201": "ב־{n} הייתה חסימת מכירה בחסר אחרי ירידה של " + code("10%"),
+         "no trigger": "ב־{n} לא הייתה עסקה ברמת הכניסה", "gaps": "ב־{n} חסרו נתוני דקה"}
+EXITS = {"stop": "נעצרה בסטופ", "eod": "נסגרה בסוף היום", "target": "נסגרה ביעד"}
 
 
 # ---------- files ----------
@@ -103,22 +113,58 @@ def run_day(day, hours, sessions):
 
 # ---------- message ----------
 def _px(x):
-    return code(f"{x:.2f}")
+    return code(f"{x:.2f}$")
 
 
-def _r(x):
-    return code(f"{x:+.2f}R")
+def il_date(day, year=True):
+    """ISO date -> Israeli "8.10.2026" (or "8.10")."""
+    d = dt.date.fromisoformat(day)
+    return f"{d.day}.{d.month}" + (f".{d.year}" if year else "")
 
 
-def trade_line(x):
-    """One shadow trade (Hebrew first): side, ticker, stop-order level and trigger time, fill, stop, shares, exit."""
+def weekday(day):
+    return DAYS[dt.date.fromisoformat(day).weekday()]
+
+
+def il_time(day, hhmm):
+    """New York "HH:MM" on `day` -> Israel "HH:MM" (both daylight-saving calendars)."""
+    ny = dt.datetime.combine(dt.date.fromisoformat(day), dt.time.fromisoformat(hhmm), tzinfo=alpaca.NY)
+    return ny.astimezone(IL).strftime("%H:%M")
+
+
+def money(r, word=""):
+    """R -> dollars at the tracker's risk per trade, the sign as a word: "רווח של X$" / "הפסד של X$"."""
+    usd = round(abs(r) * ticket.RISK)
+    if not usd:
+        return "ללא רווח והפסד"
+    return f"{'רווח' if r > 0 else 'הפסד'}{word} של {code(f'{usd}$')}"
+
+
+def trade_block(day, x):
+    """One shadow trade: side and ticker, entry price and Israel time, stop and shares, how it ended in dollars."""
     side = x["side"]
     stop = x["fill"] - side * x["R"]
     exit_ = x["fill"] + side * x["gross_r"] * x["R"]
-    how = "סטופ" if x["kinds"] == "stop" else "סגירה"
-    return (f"{'קנייה' if side == 1 else 'מכירה בחסר'}: {code(x['t'])} · פקודת עצירה ב־{_px(x['level'])}, הופעלה ב־"
-            f"{code(x['at'])} · מילוי {_px(x['fill'])} · סטופ {_px(stop)} · {code(x['shares'])} מניות · יציאה "
-            f"{_px(exit_)} ({how}) · {_r(x['net_r'])} נטו")
+    head = f"🟢 <b>קנייה: {code(x['t'])}</b>" if side == 1 else f"🔴 <b>מכירה בחסר: {code(x['t'])}</b>"
+    return "\n".join([head, f"{'כניסה בפריצה' if side == 1 else 'כניסה בשבירה'}: {_px(x['fill'])} בשעה "
+                            f"{code(il_time(day, x['at']))}",
+                      f"סטופ: {_px(stop)} · כמות: {code(x['shares'])} מניות",
+                      f"תוצאה: {EXITS.get(x['kinds'], 'נסגרה')} ב־{_px(exit_)}, {money(x['net_r'])}"])
+
+
+def skips_line(res):
+    """📋 One sentence: how many stocks were in the opening top and why the others did not trade."""
+    if not res["top"]:
+        return "📋 אף מניה לא נכנסה היום לרשימת המניות הפעילות בפתיחה."
+    counts = collections.Counter({**res["reasons"], **res["dropped"]})
+    counts["gaps"] = res.get("gaps", 0)
+    items = [SKIPS[r].format(n=code(n)) if r in SKIPS else f"ב־{code(n)}: {code(r)}"
+             for r, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])) if n > 0]
+    if not items:
+        return f"📋 מתוך {code(len(res['top']))} המניות הפעילות בפתיחה, אף אחת לא נפסלה."
+    if len(items) > 1:
+        items[-1] = "ו" + items[-1] if items[-1].startswith("ב־") else "ו־" + items[-1]
+    return f"📋 מתוך {code(len(res['top']))} המניות הפעילות בפתיחה, " + ", ".join(items) + "."
 
 
 def tally(j):
@@ -126,32 +172,41 @@ def tally(j):
     xs = [{"day": d, "net_r": x["net_r"], "fill": x["fill"], "kinds": x["kinds"]}
           for d, v in sorted(j["days"].items()) for x in v["trades"]]
     st = tb.stats(xs)
-    return {**st, "total": sum(x["net_r"] for x in xs), "sessions": len(j["days"]), "since": j.get("since")}
+    return {**st, "total": sum(x["net_r"] for x in xs), "wins": sum(x["net_r"] > 0 for x in xs),
+            "sessions": len(j["days"]), "since": j.get("since")}
+
+
+def tally_block(j):
+    """📒 The running record in dollars; the average and t only from SHOW_T trades on."""
+    t = tally(j)
+    head = f"📒 <b>מצטבר מאז {code(il_date(t['since'], year=False))}:</b> "
+    if not t["n"]:
+        head += f"עוד אין עסקאות ({code(t['sessions'])} ימי מסחר)."
+    else:
+        head += f"{code(t['n'])} עסקאות · {money(t['total'], ' כולל')} · {code(t['wins'])} מוצלחות"
+        if t["n"] >= SHOW_T:
+            head += f" · ממוצע לעסקה: {money(t['mean'])}"
+            head += f" · מובהקות t={code(format(t['t'], '.2f'))}" if t["t"] is not None else ""
+    verdict = f"ההכרעה תהיה אחרי {code(VERDICT_TRADES)} עסקאות ו־{code(VERDICT_SESSIONS)} ימי מסחר."
+    if t["n"] < SHOW_T:
+        verdict = "מדגם קטן מדי למסקנה. " + verdict
+    elif t["n"] >= VERDICT_TRADES and t["sessions"] >= VERDICT_SESSIONS:
+        verdict = "יש מספיק עסקאות וימי מסחר להכרעה שנקבעה מראש."
+    return head + "\n" + verdict
 
 
 def message(day, res, j):
-    """The Hebrew shadow message for one session (the journal already holds it)."""
-    lines = [f"👻 <b>מעקב צל {code(VARIANT)} · {code(day)}</b>",
-             "אלה העסקאות שהשיטה הייתה עושה במסחר הרגיל. לא נשלחה שום פקודה ולא הושקע כסף."]
-    lines += [trade_line(x) for x in res["trades"]] or ["🤷 היום לא הייתה עסקה."]
-    skipped = [f"{REASONS.get(r, r)} {code(n)}" for r, n in sorted(res["reasons"].items())]
-    skipped += [f"{DROPPED.get(s, s)} {code(n)}" for s, n in sorted(res["dropped"].items())]
-    if res.get("gaps"):
-        skipped.append(f"בלי נתוני דקה {code(res['gaps'])}")
-    lines.append(f"ℹ️ מתוך {code(len(res['top']))} המניות עם נפח הפתיחה החריג ביותר, לא נסחרו: "
-                 + (" · ".join(skipped) if skipped else "אף אחת") + ".")
-    t = tally(j)
-    if t["n"]:
-        small = f" (מדגם קטן, פחות מ־{code(VERDICT_TRADES)})" if t["n"] < VERDICT_TRADES else ""
-        lines.append(f"📒 מצטבר מאז {code(t['since'])}: {code(t['n'])} עסקאות ב־{code(t['sessions'])} ימי מסחר{small} · "
-                     f"ממוצע {_r(t['mean'])} · סה״כ {_r(t['total'])} · הצלחה {code(format(t['win'], '.0%'))}"
-                     + (f" · סטטיסטי t {code(format(t['t'], '.2f'))}" if t["t"] is not None else ""))
-    else:
-        lines.append(f"📒 מצטבר מאז {code(t['since'])}: עוד אין עסקאות ({code(t['sessions'])} ימי מסחר).")
-    lines.append(f"📊 בבדיקה ההיסטורית: {_r(BACKTEST_R)} לעסקה מפברואר 2024, אבל 2024 עצמה הייתה שלילית. ההכרעה"
-                 f" תהיה אחרי {code(VERDICT_TRADES)} עסקאות ו־{code(VERDICT_SESSIONS)} ימי מסחר לפחות.")
-    lines.append("⚠️ השיטה לא עברה בדיקה שנקבעה מראש, ולכן זה מעקב בלבד ולא כרטיס פקודה.")
-    return "\n".join(lines)
+    """The Hebrew shadow message for one session (the journal already holds it); common.send adds SOURCE."""
+    blocks = [f"{TITLE}\nיום {weekday(day)} {code(il_date(day))} · מעקב בלבד, לא נשלחה פקודה"]
+    blocks += [trade_block(day, x) for x in res["trades"]] or ["אף עסקה לא נפתחה היום."]
+    blocks += [skips_line(res), tally_block(j)]
+    return "\n\n".join(blocks)
+
+
+def no_new_day(j):
+    last = max(j["days"]) if j["days"] else None
+    return (f"{TITLE}\nאין יום מסחר חדש למעקב הצל. "
+            + (f"היום האחרון שנבדק: יום {weekday(last)} {code(il_date(last))}." if last else "עוד לא נבדק אף יום."))
 
 
 # ---------- run ----------
@@ -175,8 +230,7 @@ def main(argv=None):
     if not days:
         print(f"shadow: no new session before {today}")
         if manual and not a.dry:
-            common.send("👻 אין יום מסחר חדש למעקב הצל. היום האחרון שעובד: "
-                        f"{code(max(j['days']) if j['days'] else '—')}.")
+            common.send(no_new_day(j), source=SOURCE)
         return 0
     for day in days:
         res = run_day(day, hours, sessions)
@@ -186,7 +240,7 @@ def main(argv=None):
         if a.dry:
             print(text, end="\n\n")
             continue
-        common.send(text)
+        common.send(text, source=SOURCE)
         save(j)  # right after it went out: a later failure in this run never resends the day
         common.log("shadow", day=day, top=len(res["top"]), trades=len(res["trades"]), dropped=res["dropped"])
     return 0

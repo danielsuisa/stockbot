@@ -178,13 +178,14 @@ def freshness():
     return f"🕒 נתונים נכון ל: SEC {code(STAMPS.get('sec', '—'))}, מחיר {code(STAMPS.get('price', '—'))}"
 
 
-def send(text, chat_id=None, signal=False):
+def send(text, chat_id=None, signal=False, source=None):
     """Send HTML text to Telegram, split on lines; every message ends with [the manual-check prompt when it carries
-    a signal], the data-freshness line and the disclaimer. Prints instead when TG_TOKEN is unset (dry run)."""
+    a signal], the data-freshness line and the disclaimer, or with `source` (its own disclaimer and data source) for
+    messages whose data is not SEC's. Prints instead when TG_TOKEN is unset (dry run)."""
     chat = chat_id or env("TG_CHAT_ID")
     if not (env("TG_TOKEN") and chat) and env("GITHUB_ACTIONS"):  # a misnamed secret must fail the run loudly
         sys.exit("TG_TOKEN / TG_CHAT_ID secret is missing or misnamed - nothing was sent")
-    tail = "\n".join(([CHECK_PROMPT] if signal else []) + [freshness(), "", DISCLAIMER])
+    tail = "\n".join(([CHECK_PROMPT] if signal else []) + ([source] if source else [freshness(), "", DISCLAIMER]))
     for part in chunks(text.strip(), 4000 - visible(tail)):
         part = f"{part}\n\n{tail}"
         if not (env("TG_TOKEN") and chat):
