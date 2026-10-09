@@ -3131,6 +3131,45 @@
     "0001817646-26-000032"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-09-PRTA",
+   "date": "2026-10-09",
+   "ticker": "PRTA",
+   "cik": 1559053,
+   "company": "PROTHENA CORP PUBLIC LTD CO",
+   "sic": 2834,
+   "kind": "big",
+   "quality": 18,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 18,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 8.84,
+    "asof": "2026-10-09 20:00",
+    "source": "live"
+   },
+   "total": 5817300.3,
+   "insiders": 1,
+   "liquidity": 4584248.077375239,
+   "scores": {
+    "piotroski": "5/8",
+    "altman": "Z 11.88",
+    "beneish": null
+   },
+   "accs": [
+    "0001045463-26-000016",
+    "0001045463-26-000017",
+    "0001045463-26-000018",
+    "0001045463-26-000019",
+    "0001045463-26-000020"
+   ],
+   "returns": {}
   }
  ]
 }
