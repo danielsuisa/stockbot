@@ -115,6 +115,10 @@ class Message(unittest.TestCase):
                      "מדוח FINRA של <code>15.9</code>"):  # Israel time and date, the FINRA report date
             self.assertIn(part, text)
 
+    def test_the_evening_list_shows_the_israel_date_of_the_israel_time(self):
+        late = AT.replace(hour=19, minute=30)  # 19:30 New York = 02:30 the next day in Israel
+        self.assertIn("יום ג׳ <code>29.9.2026</code> · מצב ב־<code>02:30</code>", squeeze_live.message(RES, SCR, late))
+
     def test_nothing_matches(self):
         text = squeeze_live.message(RES, {**SCR, "rows": [], "failed": 50, "no_float": 3, "no_options": 2}, AT)
         self.assertIn("אף מניה לא עומדת", text)

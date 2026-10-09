@@ -404,17 +404,22 @@ def format_he(res):
     if res.get("error"):
         return out + ["ℹ️ " + ERR[res["error"]]]
     ttm = res.get("ttm")
-    v = ttm["v"] if ttm else res["v"]
     when = (f"ב־4 הרבעונים עד {code(common.il_date(ttm['end']))}" if ttm else
             f"בשנת הכספים שהסתיימה ב־{code(common.il_date(res['fy'][0]))}")
-    out.append(f"{when}: " + " · ".join((_flow("הכנסות", v["rev"][0]), _flow("רווח נקי", v["ni"][0], "הפסד נקי"),
-                                         _flow("תזרים מפעילות", v["cfo"][0]))))
+
+    def fig(f, name, neg=None):  # the 4-quarter figure, else the yearly one (said so)
+        x = ttm["v"][f][0] if ttm else None
+        if x is None and ttm and res["v"][f][0] is not None:
+            return _flow(name, res["v"][f][0], neg) + " (שנתי)"
+        return _flow(name, x if ttm else res["v"][f][0], neg)
+    out.append(f"{when}: " + " · ".join((fig("rev", "הכנסות"), fig("ni", "רווח נקי", "הפסד נקי"),
+                                         fig("cfo", "תזרים מפעילות"))))
     if res.get("stale"):
         out.append(f"⚠️ הדוח האחרון ישן: הוגש ב־{code(common.il_date(res['newest']))}.")
     p = res["pio"]
     n, k = sum(x["ok"] is not None for x in p), sum(x["ok"] is True for x in p)
-    level = "חזק" if k >= 7 else "חלש" if k <= 3 else "בינוני"
-    out.append(f"פיוטרוסקי (איכות): {code(k)} מתוך {code(n)}, {level}" + (f" ({code(9 - n)} לא חושבו)" if n < 9 else ""))
+    level = ", " + ("חזק" if k >= 7 else "חלש" if k <= 3 else "בינוני") if n == 9 else ""  # no verdict on part of it
+    out.append(f"פיוטרוסקי (איכות): {code(k)} מתוך {code(n)}{level}" + (f" ({code(9 - n)} לא חושבו)" if n < 9 else ""))
     bad = [LABEL[x["id"]] for x in p if x["ok"] is False]
     if bad:
         out.append("❌ לא עמדה ב: " + ", ".join(bad) + ".")

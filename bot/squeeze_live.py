@@ -162,9 +162,8 @@ def line(k, r):
 
 def _when(scr, at):
     """'יום ב׳ <code>28.9.2026</code> · מצב ב־<code>19:30</code>' (Israel time)."""
-    il = at.astimezone(common.IL)
-    day = scr.get("date") or f"{at:%Y-%m-%d}"
-    return f"יום {common.weekday(day)} {code(common.il_date(day))} · מצב ב־{code(f'{il:%H:%M}')}"
+    il = at.astimezone(common.IL)  # the Israel date of the Israel time (19:30 New York is the next day in Israel)
+    return f"יום {common.weekday(il.date())} {code(common.il_date(il.date()))} · מצב ב־{code(f'{il:%H:%M}')}"
 
 
 def _foot(res):
@@ -323,7 +322,7 @@ def run_movers(res, session, today, state, manual, rows=()):
     failed = sum(q is False for q in qs.values())
     if cands and failed == len(cands):
         warn = manual or sessions.first(state, f"nasdaq:{session}", today)
-        return (f"⚠️ Nasdaq לא החזיר מחירים ({movers.NAME[session]}). אנסה שוב בריצה הבאה."
+        return (f"⚠️ לא התקבלו מחירים מ־Nasdaq ({movers.NAME[session]}). אנסה שוב בריצה הבאה."
                 if warn else ""), []
     found = movers.fresh(movers.find(cands, qs, today), state, today, session, manual)
     ranks = {r["t"]: k for k, r in enumerate(rows, 1)}
@@ -354,7 +353,7 @@ def main(argv=None):
         traceback.print_exc()
         if not a.dry:
             if manual or sessions.first(state, f"build:{session}", today):
-                common.send(f"⚠️ רשימת הסקוויז לא רצה: {code(common.esc(str(e)[:120]))}", source=SOURCE)
+                common.send(f"⚠️ רשימת הסקוויז לא רצה: {code(str(e)[:120])}", source=SOURCE)
             save(STATE, state)
         return 0  # reported above; exit 1 would add the workflow alarm on every run of an outage
     j = load(JOURNAL, {"v": 1, "entries": []})
@@ -377,7 +376,7 @@ def main(argv=None):
         except Exception as e:
             traceback.print_exc()
             if manual or sessions.first(state, f"screen:{session}", today):
-                list_text = f"⚠️ רשימת הסקוויז לא רצה: {code(common.esc(str(e)[:120]))}. אנסה שוב בריצה הבאה."
+                list_text = f"⚠️ רשימת הסקוויז לא רצה: {code(str(e)[:120])}. אנסה שוב בריצה הבאה."
     if scr:
         date = scr["date"] or today
         full, last = message(res, scr, now, static), load(LAST, {})

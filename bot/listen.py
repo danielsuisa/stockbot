@@ -166,7 +166,7 @@ def squeeze_cmd(rest):
     known, unknown = extract(rest, loose=True)
     if not known:
         common.send(f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}." if unknown else
-                    f"כתבו טיקר אחרי הפקודה, למשל {code('/squeeze GME')}.")
+                    f"כתבו טיקר אחרי הפקודה, למשל {code('/squeeze GME')}.", source=squeeze_live.SOURCE)
         return 0
     try:
         common.send(squeeze_live.ticker_report(known[0]), signal=True, source=squeeze_live.SOURCE)
@@ -185,7 +185,7 @@ def squeeze_now():
         if err:  # a GitHub permission problem must not look like a data problem
             print(f"workflow dispatch failed: {err}")
             common.send(f"⚠️ לא הצלחתי להפעיל את רשימת הסקוויז ב־GitHub ({code(err)}). בדקו שבקובץ"
-                        f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.")
+                        f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.", source=squeeze_live.SOURCE)
             return 1
         common.send("⏳ רשימת הסקוויז מתעדכנת. היא תגיע בעוד כ־2–3 דקות.", source=squeeze_live.SOURCE)
         return 0

@@ -118,7 +118,7 @@ def _when(stamp):
     """A stored UTC stamp ('2026-09-24 05:41 UTC') -> '<code>24.9 08:41</code>' in Israel time."""
     try:
         return code(common.il_when(stamp))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, AttributeError):
         return code(stamp or "—")
 
 
@@ -453,7 +453,7 @@ def row_line(b, seen, urls=None):
     """One purchase line of an alert: who (linked to the filing on EDGAR), how much, at what price, when."""
     extra, pct, r = [], b.get("pct"), pay_ratio(b)
     if pct is not None:
-        extra.append(f"{code(f'{pct * 100:.0f}%')} מהאחזקה")
+        extra.append(f"{code(f'{pct * 100:.0f}%' if pct >= 0.01 else f'{pct * 100:.1f}%')} מהאחזקה")
     if r is not None:
         extra.append(f"{code(f'{r * 100:.0f}%')} מהשכר השנתי")
     if form4.symbolic(b):

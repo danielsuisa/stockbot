@@ -45,26 +45,26 @@ def _index():
 
 
 def _data():
-    _json("https://data.sec.gov/api/xbrl/companyconcept/CIK0000320193/dei/EntityCommonStockSharesOutstanding.json")
+    _json("https://data.sec.gov/api/xbrl/companyconcept/CIK0000320193/dei/EntityCommonStockSharesOutstanding.json")["entityName"]
     return ""
 
 
 def _efts():
     d = scan.previous_trading_day(dt.datetime.now(dt.timezone.utc).date(), quick=True) or ""
     day = scan._iso(d) if d else dt.date.today().isoformat()
-    _json(f"https://efts.sec.gov/LATEST/search-index?forms=4&dateRange=custom&startdt={day}&enddt={day}")
+    _json(f"https://efts.sec.gov/LATEST/search-index?forms=4&dateRange=custom&startdt={day}&enddt={day}")["hits"]["total"]
     return ""
 
 
 def _yahoo():
     r = market.chart("SPY", range="5d", interval="1d")
-    if not r:
+    if not r or not r["meta"]["regularMarketPrice"]:
         raise RuntimeError("no data from query1/query2")
     return ""
 
 
 def _telegram():
-    common.tg("getMe")
+    common.tg("getMe")["username"]
     return ""
 
 
@@ -74,7 +74,7 @@ def _run_line(wf, label):
         return f"• {label}: אין מידע"
     mark = {"success": "✅ הצליחה", "failure": "❌ נכשלה", "cancelled": "⚪ בוטלה", None: "⏳ רצה עכשיו"}.get(
         r["conclusion"], "⚠️")
-    return f"• {label}: ריצה אחרונה {code(common.il_when(r['created_at']))} {mark}"
+    return f"• {label}: ריצה אחרונה {scan._when(r['created_at'])} {mark}"
 
 
 def report(today=None):

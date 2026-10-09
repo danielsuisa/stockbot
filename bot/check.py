@@ -38,7 +38,8 @@ def insiders(cik, rows):
                    " בסך הכול.")
     for b in buys[:MAX_LINES]:
         tag = " · בתוכנית קבועה מראש, לא נספרה" if b["kind"] == "plan" else " · רכישה סמלית" if form4.symbolic(b) else ""
-        pct = f" · {code(format(b['pct'], '.0%'))} מהאחזקה" if b.get("pct") is not None else ""
+        pct = (f" · {code(format(b['pct'], '.0%' if b['pct'] >= 0.01 else '.1%'))} מהאחזקה"
+               if b.get("pct") is not None else "")
         out.append(f"• רכש {esc(b['name'])} ({esc(b['role'])}): {common.amount(b['value'])}, {code(price(b['price']))}"
                    f" למניה, ב־{code(common.il_date(b['last'], year=False))}{pct}{tag}")
     if len(buys) > MAX_LINES:

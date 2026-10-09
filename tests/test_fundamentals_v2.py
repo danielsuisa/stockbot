@@ -131,7 +131,7 @@ class Ttm(Base):
         self.assertEqual(res["pio"][0]["vals"], [112 / 365])  # FY: NI 2025 / assets at the FY 2024 end
         self.assertEqual(res["basis"]["pio"], {"kind": "FY", "end": "2025-09-27", "form": "10-K", "filed": "2025-10-31"})
         self.assertIn("פיוטרוסקי (איכות): <code>8</code> מתוך <code>9</code>, חזק", text)
-        self.assertIn("תזרים מפעילות: חסר", text)  # the TTM headline has no cash flow
+        self.assertIn("תזרים מפעילות: <code>111</code> דולר (שנתי)", text)  # no TTM cash flow: the yearly one, said so
 
     def test_altman_falls_back_to_fy_when_a_ttm_input_is_missing(self):
         drop = lambda r: r[0] == "OperatingIncomeLoss" and r[4] == "10-Q"
@@ -253,6 +253,9 @@ class Formatting(Base):
         self.assertEqual({k: b["kind"] for k, b in res["basis"].items()}, {"pio": "FY", "alt": "FY", "ben": "FY"})
         self.assertIn("אלטמן (סיכון פשיטת רגל): לא חושב, חסרים נתונים", text)
         self.assertIn("בנייש (תמרון רווחים): לא חושב, חסרים נתונים", text)
+        line = next(x for x in text.split("\n") if x.startswith("פיוטרוסקי"))
+        self.assertIn("לא חושבו", line)  # part of the test only: no strong / weak verdict on it
+        self.assertFalse(any(w in line for w in ("חזק", "חלש", "בינוני")), line)
 
     def test_zero_denominators(self):
         zero = [("AccountsReceivableNetCurrent", 0, None, "2024-09-28", "10-K", "2025-10-31"),
