@@ -23,6 +23,8 @@ LIMIT, CHUNK = 10_000, 100  # bars per page (Alpaca's maximum); symbols per mult
 QUOTE_WINDOW = dt.timedelta(seconds=60)
 GAP = 60 / 190  # seconds between requests: under Alpaca's 200 a minute
 REQUESTS = [0]  # requests sent this run (the report's metadata)
+CUTOFF = {}  # {New York day: "HH:MM"} for a live look at a session still trading: its data ends there (the free plan
+# refuses SIP data newer than 15 minutes) and is never cached (a later call must see the whole day)
 _lock, _next = threading.Lock(), [0.0]
 
 
@@ -87,14 +89,16 @@ def minute_bars(symbols, day):
     """1-minute SIP bars of New York `day`, 04:00-20:00 -> {symbol: [(minute "HH:MM", o, h, l, c, v, vw)]}
     ascending; [] for a symbol without trades."""
     path = lambda s: CACHE / "1m" / day / f"{s}.json.gz"
-    out = {s: _read(path(s)) for s in dict.fromkeys(symbols)}
+    live = CUTOFF.get(day)
+    out = {s: None if live else _read(path(s)) for s in dict.fromkeys(symbols)}
     todo = [s for s, v in out.items() if v is None]
     for i in range(0, len(todo), CHUNK):
         part = todo[i:i + CHUNK]
-        got = _bars(part, utc(day, "04:00"), utc(day, "20:00"), "1Min")
+        got = _bars(part, utc(day, "04:00"), utc(day, live or "20:00"), "1Min")
         for s in part:
             out[s] = [_row(b, "%H:%M") for b in got.get(s, [])]
-            _write(path(s), out[s])
+            if not live:
+                _write(path(s), out[s])
     return {s: [tuple(b) for b in v] for s, v in out.items()}
 
 
@@ -112,14 +116,16 @@ def bars(symbol, start, end, timeframe):
 def daily(symbols, start, end):
     """Raw daily bars over [start, end] -> {symbol: [(date ISO New York, o, h, l, c, v)]} ascending."""
     path = lambda s: CACHE / "1d" / f"{start}_{end}" / f"{s}.json.gz"
-    out = {s: _read(path(s)) for s in dict.fromkeys(symbols)}
+    live = end in CUTOFF  # a live day's own bar is still forming: end before it, never cache
+    out = {s: None if live else _read(path(s)) for s in dict.fromkeys(symbols)}
     todo = [s for s, v in out.items() if v is None]
     for i in range(0, len(todo), CHUNK):
         part = todo[i:i + CHUNK]
-        got = _bars(part, start, end, "1Day")
+        got = _bars(part, start, utc(end, "00:00") if live else end, "1Day")
         for s in part:
             out[s] = [_row(b, "%Y-%m-%d")[:6] for b in got.get(s, [])]
-            _write(path(s), out[s])
+            if not live:
+                _write(path(s), out[s])
     return {s: [tuple(b) for b in v] for s, v in out.items()}
 
 
@@ -162,6 +168,17 @@ def assets():
                      for a in _get(ASSETS, {"status": status, "asset_class": "us_equity"})]
         _write(path, rows)
     return rows
+
+
+def volume_since(symbols, day, start, end):
+    """Each symbol's volume and last price between New York `start` and `end` ("HH:MM") of `day`, from 15-minute
+    bars -> {symbol: (volume, last close)}; symbols without trades are left out. Never cached (a live look)."""
+    out = {}
+    for i in range(0, len(symbols), CHUNK):
+        for s, items in _bars(symbols[i:i + CHUNK], utc(day, start), utc(day, end), "15Min").items():
+            if items:
+                out[s] = (sum(b["v"] for b in items), items[-1]["c"])
+    return out
 
 
 def opening_bars(symbols, day):
