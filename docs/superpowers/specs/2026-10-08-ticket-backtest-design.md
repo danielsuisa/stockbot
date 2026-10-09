@@ -360,3 +360,14 @@ and re-select; the holdout has not been run.
   09:30 to the minute before the entry minute.
 - Nothing else changes: the same 22 variants, thresholds, selection rule and holdout gates. The development period
   is re-run from the cache and the selection is made again; its result, whatever it is, is the one that counts.
+
+### 14.12 Before the holdout (2026-10-10): what the code will see, recorded before the run
+
+- Alpaca has no bars of any kind before 2016-01-04 (probed: AAPL and F, daily and 5-minute, November–December 2015).
+  The prefilter needs 15 daily bars, so the holdout's first possible trade is on its 16th session, 2016-01-26; the
+  14-session means are then built from real sessions only. The 2016 year gate uses 2016-01-26 → 2016-12-30.
+- Caveats for the report (not changed): news symbols are as tagged at the time, the universe uses today's symbols
+  (a renamed ticker fails N; a reused one could match old news); Rule 201 uses regular-session lows only; a quote
+  older than 60 s shows as "spread", not "dq".
+- A pre-holdout review (fresh reviewer, most capable model) found no blocking defect and no look-ahead in X5's
+  path.
