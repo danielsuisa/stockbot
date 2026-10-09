@@ -154,7 +154,8 @@ class Clusters(unittest.TestCase):
         self.assertEqual(set(ev["parts"]), {"breadth", "seniority", "size", "conviction", "market"})
         self.assertEqual(ev["score"], sum(ev["parts"].values()))
         self.assertEqual((len(ev["plan"]), len(ev["open"])), (1, 3))  # the 10b5-1 buy is set aside, not counted
-        panic = scan.block(ev, set(), {"tag": "panic"}, info)
+        with mock.patch.object(scan, "pay", return_value={}):  # offline: no proxy lookup
+            panic = scan.block(ev, set(), {"tag": "panic"}, info)
         self.assertIn("📉 השוק בירידות חדות", panic)
         msgrules.check(self, text)
         msgrules.check(self, panic)
