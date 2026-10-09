@@ -328,3 +328,15 @@ weekly tally.
 
 Live `/ticket` and IBKR orders (only after a holdout GO and the owner's approval). The squeeze list's relative volume
 compares part-day volume with a full day's average; matching it by time of day is a separate change to the live list.
+
+### 14.10 Clarifications recorded before any run (2026-10-09, from STEP 0 and the implementation)
+
+- **Planned entry.** #7's distance, #11's room, the share count and the stop are measured from the planned entry:
+  the level for the touch entry, the confirming minute's close for #5. A live order needs its size before it
+  fills; the simulation then places the stop at the fill ∓ D, as in sections 11–13.
+- **Quote sizes.** Alpaca's historical SIP sizes are in round lots (100 shares) up to 2025-10-31 and in shares from
+  2025-11-03 (probed: AAPL 1–4 on 2025-10-31, 100–400 on 2025-11-04). #3's depth rule converts to shares by that
+  date and needs ≥ 500 shares on the trigger side.
+- **News volume.** A session's pre-open window holds 256–530 items (6–11 pages of 50); the news set is fetched once
+  per session for all symbols.
+- **#5's mean minute volume** is over the minutes from 09:30 to the minute before the confirming one.
