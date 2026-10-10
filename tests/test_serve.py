@@ -81,6 +81,14 @@ class Serve(unittest.TestCase):
         self.assertIn("timeout-minutes: 340", wf)
         self.assertLess(listen.SERVE_SECONDS + listen.POLL + 540, 330 * 60)  # step timeout: ~9 min for a last reply
 
+    def test_listener_step_has_the_alpaca_keys(self):
+        # /ticket reads Alpaca bars and quotes inside the listener: its step needs the keys, as shadow.yml has them
+        wf = (Path(__file__).resolve().parent.parent / ".github/workflows/telegram-listen.yml").read_text("utf-8")
+        step = wf[wf.index("run: python -m bot.listen --serve"):]
+        step = step[:step.index("\n      - ") if "\n      - " in step else len(step)]
+        for line in ("ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}", "ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}"):
+            self.assertIn(line, step)
+
     def test_stop_file_ends_the_loop_before_the_next_poll(self):
         with tempfile.TemporaryDirectory() as d:
             stop = Path(d, "listen.stop")
