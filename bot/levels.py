@@ -5,7 +5,7 @@ revision 7, sections 3 and 5): pure functions, no I/O. One code path for the bac
 Bars are `alpaca.daily` rows (date, o, h, l, c, v), ascending; rows after the signal day D are never read."""
 import datetime as dt
 
-from bot import ticket
+from bot import alpaca, ticket
 
 MODES = ("open", "breakout")
 DEFAULT_MODE, DEFAULT_H = "breakout", 21
@@ -84,3 +84,64 @@ def universe_mark(bars, day):
     if len(upto) - 1 < UNIVERSE_HISTORY:
         out.append("fewer than 252 sessions")
     return out
+
+
+# ---------- costs (spec section 5) ----------
+COMMISSION, MIN_ORDER, TICK, QUOTE_AGE, COST_GUARD, STRESS = 0.0035, 0.35, 0.01, 60, 0.10, 1.5
+QUOTE_OFFSET_MIN = 5  # owner 2026-10-11: 5 minutes before D's close / after the entry session's open
+
+
+def _shift(hhmm, minutes):
+    h, m = map(int, hhmm.split(":")[:2])
+    t = h * 60 + m + minutes
+    return f"{t // 60:02d}:{t % 60:02d}"
+
+
+def guard_time(day, cal):
+    """The guard quote's time: 5 minutes before `day`'s close in the exchange calendar ({date: (open, close)}),
+    as UTC ISO (15:55 ET on a full session, 12:55 on a 13:00 close)."""
+    return alpaca.utc(day, _shift(cal[day][1], -QUOTE_OFFSET_MIN))
+
+
+def entry_time(day, cal):
+    """The entry-session quote's time: 5 minutes after `day`'s open (09:35 ET on a full session), as UTC ISO."""
+    return alpaca.utc(day, _shift(cal[day][0], QUOTE_OFFSET_MIN))
+
+
+def spread(quote):
+    """`alpaca.quote_full`'s (bid, ask, bid size, ask size, age s) -> the spread in dollars, or None when unusable
+    (missing, a side <= 0, older than 60 s); a locked or crossed quote counts $0.01."""
+    if quote is None:
+        return None
+    bid, ask, _, _, age = quote
+    if bid is None or ask is None or bid <= 0 or ask <= 0 or (age is not None and age > QUOTE_AGE):
+        return None
+    return max(ask - bid, TICK)
+
+
+def commission(legs):
+    """4 orders (two entries, two exits) at $0.0035 a share, minimum $0.35 an order."""
+    a, b = legs
+    return sum(max(MIN_ORDER, q * COMMISSION) for q in (a, b, a, b))
+
+
+def cost(t, spr, stress=False):
+    """Section 5's dollars for a filled ticket: commissions + the full spread on every share."""
+    return commission(t["legs"]) + spr * (STRESS if stress else 1.0) * t["shares"]
+
+
+def cost_r(t, spr, stress=False):
+    return cost(t, spr, stress) / (t["shares"] * t["R"])
+
+
+def guard(t, quote):
+    """The quote-based refusals of section 3 -> the ticket with "guard_spread" and "cost_r", or a refusal."""
+    if not t.get("ok"):
+        return t
+    spr = spread(quote)
+    if spr is None:
+        return {"ok": False, "reason": "no usable quote"}
+    c = cost_r(t, spr)
+    if c > COST_GUARD + EPS:
+        return {"ok": False, "reason": "cost above 10% of risk"}
+    return {**t, "guard_spread": spr, "cost_r": c}

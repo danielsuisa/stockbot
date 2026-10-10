@@ -73,6 +73,49 @@ class Levels(unittest.TestCase):
         self.assertEqual(levels.px(1234.5649), 1234.56)
 
 
+class Costs(unittest.TestCase):
+    """Section 5: commission over 4 orders, the usable quote, cost in R, the stress case, the cost guard."""
+
+    def ticket(self):
+        bars = daily(20)
+        return levels.plan("AAPL", bars, bars[-1][0])  # 50 shares, R = 2, legs (25, 25)
+
+    def test_spread(self):
+        self.assertAlmostEqual(levels.spread((10.00, 10.02, 1, 1, 5)), 0.02)
+        self.assertEqual(levels.spread((10.00, 10.00, 1, 1, 5)), 0.01)  # locked
+        self.assertEqual(levels.spread((10.02, 10.00, 1, 1, 5)), 0.01)  # crossed
+        self.assertIsNone(levels.spread(None))
+        self.assertIsNone(levels.spread((0.0, 10.0, 1, 1, 5)))
+        self.assertIsNone(levels.spread((10.0, 10.02, 1, 1, 61)))  # older than 60 s
+        self.assertAlmostEqual(levels.spread((10.0, 10.02, 1, 1, 60)), 0.02)
+
+    def test_commission(self):
+        self.assertAlmostEqual(levels.commission((25, 25)), 1.40)  # 25 x 0.0035 is below the $0.35 minimum
+        self.assertAlmostEqual(levels.commission((500, 500)), 7.00)
+
+    def test_cost_and_stress(self):
+        t = self.ticket()
+        self.assertAlmostEqual(levels.cost_r(t, 0.02), (1.40 + 1.00) / 100)
+        self.assertAlmostEqual(levels.cost_r(t, 0.02, stress=True), (1.40 + 1.50) / 100)
+
+    def test_cost_guard_edge(self):
+        t = self.ticket()
+        g = levels.guard(t, (50.0, 50.172, 1, 1, 1))  # (1.40 + 50 x 0.172) / 100 = 0.10: a ticket
+        self.assertTrue(g["ok"])
+        self.assertAlmostEqual(g["cost_r"], 0.10)
+        self.assertAlmostEqual(g["guard_spread"], 0.172)
+        self.assertEqual(levels.guard(t, (50.0, 50.1721, 1, 1, 1)), {"ok": False, "reason": "cost above 10% of risk"})
+        self.assertEqual(levels.guard(t, None), {"ok": False, "reason": "no usable quote"})
+        self.assertEqual(levels.guard({"ok": False, "reason": "shares below 2"}, None)["reason"], "shares below 2")
+
+    def test_quote_times(self):
+        cal = {"2026-11-25": ("09:30", "16:00"), "2026-11-27": ("09:30", "13:00")}
+        from bot import alpaca
+        self.assertEqual(levels.guard_time("2026-11-25", cal), alpaca.utc("2026-11-25", "15:55"))
+        self.assertEqual(levels.guard_time("2026-11-27", cal), alpaca.utc("2026-11-27", "12:55"))  # half day
+        self.assertEqual(levels.entry_time("2026-11-27", cal), alpaca.utc("2026-11-27", "09:35"))
+
+
 class UniverseMark(unittest.TestCase):
     """The partial universe mark of phase B (owner 2026-10-11): price, dollar volume, history; never a refusal."""
 
