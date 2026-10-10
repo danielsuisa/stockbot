@@ -110,9 +110,12 @@ def message(t):
 
 
 def main(argv=None):
-    """A dry run: the message for each symbol, through common.send (printed when TG_TOKEN is not set)."""
+    """A dry run: prints the message for each symbol and the source line (never sends: common.send refuses to run
+    in Actions without a Telegram token)."""
     for s in (argv if argv is not None else sys.argv[1:]):
-        common.send(message(build(s.upper())), source=SOURCE)
+        print(message(build(s.upper())))
+        print(SOURCE)
+        print()
     return 0
 
 

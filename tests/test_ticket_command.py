@@ -137,12 +137,15 @@ class Message(unittest.TestCase):
             self.assertIn(tc.REASONS[reason], text)
 
     def test_main_dry_run(self):
-        with mock.patch.object(tc, "build", side_effect=lambda s: {"ok": False, "reason": "no usable quote", "symbol": s,
-                                                                    "day": "2026-10-09"}) as build,                 mock.patch.object(common, "send") as send:
+        refusal = {"ok": False, "reason": "no usable quote", "day": "2026-10-09"}
+        with (mock.patch.object(tc, "build", side_effect=lambda s: {**refusal, "symbol": s}) as build,
+              mock.patch.object(common, "send") as send, mock.patch("builtins.print") as out):
             self.assertEqual(tc.main(["aapl", "brk.b"]), 0)
         self.assertEqual([c.args[0] for c in build.call_args_list], ["AAPL", "BRK.B"])
-        self.assertEqual(send.call_count, 2)
-        self.assertEqual(send.call_args.kwargs, {"source": tc.SOURCE})
+        send.assert_not_called()  # a dry run prints; common.send refuses to run without a Telegram token in Actions
+        printed = "\n".join(str(c.args[0]) for c in out.call_args_list)
+        self.assertEqual(printed.count("אין כרטיס"), 2)
+        self.assertIn(tc.SOURCE, printed)
 
     def test_no_simulation_on_market_data(self):
         import inspect
