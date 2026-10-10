@@ -204,16 +204,20 @@ def s4_state(day, series, u, releases, sessions):
 
 
 def transitions(states, min_outside):
-    """[(day, {symbols in the state})] in session order -> [(day, symbol)] where a symbol enters the state after at
-    least `min_outside` sessions outside it (sessions before the first one count as outside)."""
-    last_in, out = {}, []
+    """[(day, {symbols in the state})] in session order, from the first session the state can be observed ->
+    ([(day, symbol)] where a symbol enters the state after at least `min_outside` observed sessions outside it,
+    the number of entries not counted in the warm-up). Sessions before the first one are unknown, not outside: the
+    first `min_outside` sessions are the warm-up, and a first entry there cannot be shown to be a transition."""
+    last_in, out, warm_up = {}, [], 0
     for k, (day, inside) in enumerate(states):
         for sym in sorted(inside):
             j = last_in.get(sym)
-            if j is None or k - j - 1 >= min_outside:
+            if j is None and k < min_outside:
+                warm_up += 1
+            elif k - (-1 if j is None else j) - 1 >= min_outside:
                 out.append((day, sym))
             last_in[sym] = k
-    return out
+    return out, warm_up
 
 
 # ---------- coverage, the run, the report ----------
@@ -223,7 +227,7 @@ TZ_SAMPLE = ("320193", "19617", "789019")  # Apple and Microsoft (after the clos
 TZ_YEARS = tuple(range(2017, 2027))  # one item 2.02 8-K per issuer and year
 TZ_RULES = ("America/New_York", "UTC", "double")
 REPORT_KEYS = ("acceptance_tz_check", "item_202_coverage", "fallback", "universe_per_year",
-               "firings_per_signal_per_year", "data_gaps", "requests_and_runtime")
+               "firings_per_signal_per_year", "warm_up", "data_gaps", "requests_and_runtime")
 CHECK_KEYS = ("acceptance_tz_check", "cik_mapping_check", "price_rules_check", "look_ahead_check",
               "item_202_coverage_sample", "index_pages", "requests_and_runtime")
 
@@ -299,6 +303,9 @@ def run(checks, sample=400, seed=7):
     sizes, distinct, stock_years = collections.defaultdict(list), collections.defaultdict(set), collections.defaultdict(set)
     s2 = {k: collections.Counter() for k in ("8-K, in universe", "8-K, all", "fallback, in universe", "fallback, all")}
     s3_states, s4_states, members = [], [], {}
+    # S3/S4 states are observed from the first session the universe can hold a symbol (MIN_HISTORY earlier bars from
+    # BARS_FROM) and not before SIGNAL_START; earlier sessions are unknown (the warm-up in transitions())
+    observed_from = max(SIGNAL_START, days[min(MIN_HISTORY, len(days) - 1)])
     for d in days:
         u = universe(d, series, filed)
         members[d] = set(u)
@@ -313,26 +320,30 @@ def run(checks, sample=400, seed=7):
                 tag = "8-K" if use_8k else "fallback"
                 s2[f"{tag}, all"][y] += len(fired)
                 s2[f"{tag}, in universe"][y] += len(fired & set(u))
-        s3_states.append((d, s3_state(d, series, u)))
-        s4_states.append((d, s4_state(d, series, u, reactions, sessions)))
+        if d >= observed_from:
+            s3_states.append((d, s3_state(d, series, u)))
+            s4_states.append((d, s4_state(d, series, u, reactions, sessions)))
     cov = item_202_coverage(stock_years, {s: reactions.filing_dates(s) for s in stock_years})
     tz["index pages read"], tz["index pages missing"] = len(reactions.times), reactions.missing
     keep = cov["overall"]["share"] is not None and cov["overall"]["share"] >= COVERAGE_MIN
     s1 = [(d, s) for d, s in s1_firings(buys, sessions) if SIGNAL_START <= d <= SIGNAL_END]
     s1_in = sum(1 for d, s in s1 if s in members.get(sessions[min(bisect.bisect_left(sessions, d), len(sessions) - 1)], ()))
     per_year = lambda xs: dict(sorted(collections.Counter(d[:4] for d, _ in xs).items()))  # noqa: E731
-    in_period = lambda xs: [x for x in xs if x[0] >= SIGNAL_START]  # noqa: E731
+    s3, s3_warm = transitions(s3_states, S3_OUTSIDE)
+    s4, s4_warm = transitions(s4_states, 1)
+    warm = lambda n, k: {"sessions": n, "from": s3_states[0][0], "to": s3_states[n - 1][0],  # noqa: E731
+                         "entries not counted": k}
     firings = {"S1 insider cluster (all)": per_year(s1), "S1 in universe on its session": s1_in,
                "S2 earnings drift (decided rule, in universe)": dict(sorted(s2["8-K, in universe" if keep else
                                                                             "fallback, in universe"].items())),
                "S2 for information": {k: dict(sorted(v.items())) for k, v in s2.items()},
-               "S3 momentum near the high": per_year(in_period(transitions(s3_states, S3_OUTSIDE))),
-               "S4 short-term reversal": per_year(in_period(transitions(s4_states, 1)))}
+               "S3 momentum near the high": per_year(s3), "S4 short-term reversal": per_year(s4)}
     return {"acceptance_tz_check": tz, "item_202_coverage": cov,
             "fallback": "8-K kept" if keep else "8-K dropped",
             "universe_per_year": {y: {"average daily size": round(sum(v) / len(v), 1), "distinct symbols": len(distinct[y]),
                                       "sessions": len(v)} for y, v in sorted(sizes.items())},
             "firings_per_signal_per_year": firings,
+            "warm_up": {"states observed from": observed_from, "S3": warm(S3_OUTSIDE, s3_warm), "S4": warm(1, s4_warm)},
             "data_gaps": {"insider quarters": f"{quarters[0]}..{quarters[-1]} ({len(quarters)})",
                           "symbols as filed": len(filed), "symbols with bars": len(series),
                           "symbols without bars": len(filed) - len(series),

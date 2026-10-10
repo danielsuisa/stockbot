@@ -40,6 +40,16 @@ methodology and phase A only, section 1.1).
   sessions and the D−147→D−21 return in the top 20% of D's universe.
 - S4: first session in the state; state = 5-session return in the bottom 5% of D's universe and ≤ −10%, in the top
   half of the universe by liquidity, no S2 reaction session in the last 5 sessions.
+- S3/S4 warm-up (owner's decision 2026-10-10): states are observed from the first session the universe can hold a
+  symbol (2017-01-03, after 252 sessions of bars from 2016-01-04); earlier sessions are unknown, not outside. An entry
+  counts only after `min_outside` observed sessions (S3: 21, so 2017-01-03..2017-02-01 is the warm-up; S4: 1, so
+  2017-01-03); the report states the warm-up sessions and the entries not counted.
+- Interpretations approved by the owner (2026-10-10): S2's volume average is the 20 sessions before D (D excluded);
+  S4's "S2 reaction session" is any item 2.02 reaction session, whether or not S2 fired; S3/S4 lags count the symbol's
+  own sessions; coverage years are filing-date years; the universe's 20-session dollar volume includes D. S2's
+  coverage threshold is 90% overall, fixed before the run; the yearly shares are reported too.
+- Run outputs: counts and coverage only. No return of a ticket or stock is computed, logged or written (the backward
+  signal inputs of S2/S3/S4 are ranked in memory and dropped); files written are raw-data caches only.
 - Artifacts in English; the reply to the owner in Hebrew (RTL).
 
 ## Review Focus

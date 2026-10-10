@@ -330,12 +330,19 @@ class S3S4(unittest.TestCase):
 
     def test_transitions(self):
         S = self.S
+        # warm-up: an entry needs `min_outside` observed sessions outside the state before it; sessions before the
+        # first observed one are unknown, so entries in the first `min_outside` sessions are not counted
         states = [(S[i], {"A"} if i in (0, 22) else set()) for i in range(23)]
-        self.assertEqual(pe.transitions(states, 21), [(S[0], "A"), (S[22], "A")])  # 21 sessions outside before S[22]
+        self.assertEqual(pe.transitions(states, 21), ([(S[22], "A")], 1))  # S[0]: warm-up; 21 outside before S[22]
         states = [(S[i], {"A"} if i in (0, 21) else set()) for i in range(22)]
-        self.assertEqual(pe.transitions(states, 21), [(S[0], "A")])  # only 20 outside
+        self.assertEqual(pe.transitions(states, 21), ([], 1))  # only 20 outside before S[21]
+        states = [(S[i], {"B"} if i in (20, 21) else {"C"} if i == 21 else set()) for i in range(22)]
+        states[21] = (S[21], {"B", "C"})
+        self.assertEqual(pe.transitions(states, 21), ([(S[21], "C")], 1))  # B entered in the warm-up; C after 21
         states = [(S[i], {"A"} if i in (1, 2, 4) else set()) for i in range(5)]
-        self.assertEqual(pe.transitions(states, 1), [(S[1], "A"), (S[4], "A")])
+        self.assertEqual(pe.transitions(states, 1), ([(S[1], "A"), (S[4], "A")], 0))
+        states = [(S[i], {"A"} if i in (0, 2) else set()) for i in range(3)]
+        self.assertEqual(pe.transitions(states, 1), ([(S[2], "A")], 1))  # S4: the first session is the warm-up
 
     def test_s4_state(self):
         S, D = self.S, self.S[299]
@@ -429,6 +436,11 @@ class Report(unittest.TestCase):
         text = json.dumps(out, default=sorted)
         self.assertIsNone(re.search(r"(?i)(return|mean|median|win)", text), text)
         self.assertIn(out["fallback"], ("8-K kept", "8-K dropped"))
+        w = out["warm_up"]
+        self.assertEqual(w["states observed from"], S[260])  # SIGNAL_START, after the 252 sessions of history
+        self.assertEqual((w["S3"]["sessions"], w["S3"]["from"], w["S3"]["to"]), (21, S[260], S[280]))
+        self.assertEqual((w["S4"]["sessions"], w["S4"]["from"], w["S4"]["to"]), (1, S[260], S[260]))
+        self.assertIn("entries not counted", w["S3"])
 
 
 if __name__ == "__main__":
