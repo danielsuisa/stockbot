@@ -6,6 +6,7 @@ here computes a return of a ticket or a stock.
   and S1's open-market purchases.
 - EDGAR submissions.zip: 8-K item 2.02 acceptance times and the reaction session.
 - Alpaca daily bars, raw and split-adjusted, cut into segments by the spec's bad-price rule."""
+import array
 import bisect
 import collections
 import datetime as dt
@@ -19,6 +20,7 @@ import zipfile
 from bot import alpaca, common, form4, probe_insider as pi
 
 FORMS = {"3", "4", "5", "3/A", "4/A", "5/A"}
+SUBMISSIONS = "https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip"
 _SYMBOL = re.compile(r"[A-Z]{1,5}(\.[A-Z])?")
 
 
@@ -31,9 +33,9 @@ def normalise_symbol(raw):
     return s if _SYMBOL.fullmatch(s) and s not in ("NONE", "NA", "N.A") else None
 
 
-def symbol_filings(z):
+def symbol_filings(z, stats=None):
     """Every Form 3/4/5 (and amendment) of a quarter's zip -> [(filing date ISO, issuer CIK, symbol)]; filings whose
-    symbol is unusable are left out (counted by the caller from the difference)."""
+    symbol is unusable are left out and counted in stats["unusable symbol"] when a dict is given."""
     _, rows = pi.table(z, "SUBMISSION")
     out = []
     for r in rows:
@@ -42,6 +44,8 @@ def symbol_filings(z):
         sym, filed = normalise_symbol(r.get("ISSUERTRADINGSYMBOL")), pi.day(r.get("FILING_DATE"))
         if sym and filed:
             out.append((filed, (r.get("ISSUERCIK") or "").strip(), sym))
+        elif stats is not None:
+            stats["unusable symbol"] = stats.get("unusable symbol", 0) + 1
     return out
 
 
@@ -102,6 +106,47 @@ def earnings_releases(zip_path, ciks, tz):
                 if form in ("8-K", "8-K/A") and "2.02" in re.split(r"[,\s]+", items or "") and acc:
                     out[_cik(m.group(1))].append(_to_ny(acc, tz))
     return {c: sorted(v) for c, v in out.items()}
+
+
+def release_symbols(releases, filings, days=365):
+    """Point-in-time CIK -> symbol: each item 2.02 release (New York time) of a CIK goes to the symbols that CIK filed a
+    Form 3/4/5 under in the `days` before it (a symbol can pass from one issuer to another) -> {symbol: [times]}.
+    filings: symbol_filings rows."""
+    by_cik = collections.defaultdict(list)
+    for filed, cik, sym in filings:
+        by_cik[_cik(cik)].append((filed, sym))
+    for v in by_cik.values():
+        v.sort()
+    out = collections.defaultdict(list)
+    for cik, times in releases.items():
+        rows = by_cik.get(_cik(cik), [])
+        dates = [d for d, _ in rows]
+        for t in times:
+            lo = (dt.date.fromisoformat(t[:10]) - dt.timedelta(days)).isoformat()
+            for _, sym in rows[bisect.bisect_left(dates, lo):bisect.bisect_right(dates, t[:10])]:
+                if t not in out[sym]:
+                    out[sym].append(t)
+    return {s: sorted(v) for s, v in out.items()}
+
+
+def accepted_pairs(zip_path, cik, n):
+    """The time-zone check's input: a CIK's last n item 2.02 8-Ks in submissions.zip -> [(accession number, the raw
+    acceptanceDateTime field)]."""
+    with zipfile.ZipFile(zip_path) as z:
+        d = json.loads(z.read(f"CIK{int(cik):010d}.json"))
+    r = (d.get("filings") or {}).get("recent") or {}
+    rows = [(a, t) for f, i, a, t in zip(r.get("form", []), r.get("items", []), r.get("accessionNumber", []),
+                                         r.get("acceptanceDateTime", []))
+            if f == "8-K" and "2.02" in re.split(r"[,\s]+", i or "")]
+    return rows[:n]
+
+
+def index_accepted(cik, accession):
+    """EDGAR's filing index page -> its "Accepted" time as printed there ("YYYY-MM-DDTHH:MM", Eastern time)."""
+    url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession.replace('-', '')}/{accession}-index.htm"
+    page = (common.fetch(url, tries=3) or b"").decode("utf-8", "replace")
+    m = re.search(r"Accepted</div>\s*<div class=\"info\">(\d{4}-\d\d-\d\d) (\d\d:\d\d)", page)
+    return f"{m.group(1)}T{m.group(2)}" if m else None
 
 
 def reaction_session(accepted, sessions):
@@ -177,11 +222,14 @@ def load_series(symbols, start, end, sessions):
         rows = [(b, a[b[0]]) for b in raw.get(s) or [] if b[0] in a]
         if not rows:
             continue
-        x = {"dates": [b[0] for b, _ in rows], "raw_high": [b[2] for b, _ in rows], "raw_low": [b[3] for b, _ in rows],
-             "raw_close": [b[4] for b, _ in rows], "raw_volume": [b[5] for b, _ in rows],
-             "close": [c for _, (o, c, v) in rows], "volume": [v for _, (o, c, v) in rows]}
-        x["segment"] = segments(x["dates"], x["close"], sessions)
+        f = lambda vals: array.array("d", vals)  # noqa: E731  (compact: ~15k symbols x ~2,600 days)
+        x = {"dates": [b[0] for b, _ in rows], "raw_high": f(b[2] for b, _ in rows), "raw_low": f(b[3] for b, _ in rows),
+             "raw_close": f(b[4] for b, _ in rows), "raw_volume": f(b[5] for b, _ in rows),
+             "close": f(c for _, (o, c, v) in rows), "volume": f(v for _, (o, c, v) in rows)}
+        x["segment"] = array.array("i", segments(x["dates"], x["close"], sessions))
         out[s] = x
+        raw.pop(s, None)
+        adj.pop(s, None)
     return out
 
 

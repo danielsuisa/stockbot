@@ -161,8 +161,9 @@ class Bars(unittest.TestCase):
         with mock.patch.object(pd.alpaca, "daily", return_value=raw), mock.patch.object(pd, "split_bars", return_value=adj):
             s = pd.load_series(["AAA"], d[0], d[2], self.S)["AAA"]
         self.assertEqual(s["dates"], [d[0], d[2]])
-        self.assertEqual((s["raw_close"], s["close"], s["volume"], s["raw_volume"]), ([10, 10], [1.0, 1.0], [1000, 1000], [100, 100]))
-        self.assertEqual((s["raw_high"], s["raw_low"], s["segment"]), ([2, 2], [0.5, 0.5], [0, 0]))
+        got = {k: list(s[k]) for k in ("raw_close", "close", "volume", "raw_volume", "raw_high", "raw_low", "segment")}
+        self.assertEqual(got, {"raw_close": [10, 10], "close": [1.0, 1.0], "volume": [1000, 1000], "raw_volume": [100, 100],
+                               "raw_high": [2, 2], "raw_low": [0.5, 0.5], "segment": [0, 0]})
 
 
     def test_split_cache_is_keyed_by_symbols(self):
@@ -360,6 +361,43 @@ class Ranks(unittest.TestCase):
                     s[k][300:] = [float("nan")] * 30
             self.assertEqual(f(ser), full)
             self.assertEqual(f(pe.through(ser, D)), full)
+
+
+
+class PointInTime(unittest.TestCase):
+    def test_release_symbols_follow_the_issuer_over_time(self):
+        filings = [("2017-03-01", "100", "OLD"), ("2019-05-01", "100", "NEW"), ("2019-06-01", "200", "OLD")]
+        rel = {"100": ["2017-10-25T16:30", "2019-10-25T16:30"], "0000000200": ["2019-11-01T07:00"]}
+        got = pd.release_symbols(rel, filings)
+        self.assertEqual(got, {"OLD": ["2017-10-25T16:30", "2019-11-01T07:00"], "NEW": ["2019-10-25T16:30"]})
+        # issuer 100's 2019 release is not OLD's: OLD belongs to issuer 200 by then
+
+    def test_index_accepted_parses_edgar_index(self):
+        from unittest import mock
+        page = b'<div class="infoHead">Accepted</div>\n<div class="info">2024-02-01 16:30:43</div>'
+        with mock.patch.object(pd.common, "fetch", return_value=page) as f:
+            self.assertEqual(pd.index_accepted("320193", "0000320193-24-000006"), "2024-02-01T16:30")
+        self.assertIn("/320193/000032019324000006/0000320193-24-000006-index.htm", f.call_args.args[0])
+
+
+
+class Report(unittest.TestCase):
+    """The report holds the whitelisted keys only and no word of a return statistic."""
+
+    def test_report_keys_only(self):
+        import json
+        import re
+        from unittest import mock
+        S = Bars.S[:330]
+        ser = {sym: bars_for(330, [10 + k * 0.01 * (j + 1) for k in range(330)], 2_000_000) for j, sym in enumerate("ABCDE")}
+        rows = [(S[100], "100", sym) for sym in ser]
+        buys = [buy(o, S[300], 40_000 + int(o)) for o in "123"]
+        with mock.patch.object(pe, "_calendar", return_value=S),                 mock.patch.object(pe, "load_insider", return_value=(rows, buys, {}, ["2015Q4", "2026Q1"])),                 mock.patch.object(pd, "download", return_value="x.zip"),                 mock.patch.object(pe, "tz_check", return_value={"pairs": [], "tz": "America/New_York"}),                 mock.patch.object(pd, "earnings_releases", return_value={"100": [S[310] + "T07:00"]}),                 mock.patch.object(pd, "load_series", return_value=ser),                 mock.patch.object(pe, "SIGNAL_START", S[260]), mock.patch.object(pe, "SIGNAL_END", S[-1]):
+            out = pe.run(False)
+        self.assertEqual(tuple(out), pe.REPORT_KEYS)
+        text = json.dumps(out, default=sorted)
+        self.assertIsNone(re.search(r"(?i)(return|mean|median|win)", text), text)
+        self.assertIn(out["fallback"], ("8-K kept", "8-K dropped"))
 
 
 if __name__ == "__main__":

@@ -4,11 +4,16 @@ the four signals as firing counters, item 2.02 coverage and the report.
 
 Measurement only. No return of a ticket or a stock is computed: the signals' own inputs (S3's D-147 -> D-21 return
 rank, S4's 5-session return, S2's close / previous close) use bars through D only, and no bar after D is read."""
+import argparse
 import bisect
+import collections
 import datetime as dt
+import json
 import math
+import random
+import time
 
-from bot import probe_ensemble_data as pd
+from bot import alpaca, common, probe_ensemble_data as pd, probe_insider as pi
 
 MIN_PRICE, MIN_DOLLAR_VOLUME, MIN_HISTORY, DV_SESSIONS, FILED_DAYS = 5.0, 10_000_000.0, 252, 20, 365
 
@@ -203,3 +208,184 @@ def transitions(states, min_outside):
                 out.append((day, sym))
             last_in[sym] = k
     return out
+
+
+# ---------- coverage, the run, the report ----------
+SIGNAL_START, SIGNAL_END, BARS_FROM = "2017-01-03", "2026-03-31", "2016-01-04"
+COVERAGE_MIN = 0.90  # spec section 2: below it, S2 drops the 8-K condition
+TZ_SAMPLE = (("320193", 3), ("19617", 2))  # Apple (after the close), JPMorgan Chase (before the open)
+REPORT_KEYS = ("acceptance_tz_check", "item_202_coverage", "fallback", "universe_per_year",
+               "firings_per_signal_per_year", "data_gaps", "requests_and_runtime")
+CHECK_KEYS = ("acceptance_tz_check", "cik_mapping_check", "price_rules_check", "look_ahead_check",
+              "item_202_coverage_sample", "requests_and_runtime")
+
+
+def item_202_coverage(stock_years, releases):
+    """Universe stock-years {symbol: {years}} covered when the symbol has an item 2.02 release (point in time) in that
+    year -> {"per_year": {year: {"stock_years", "covered", "share"}}, "overall": {...}}."""
+    per = collections.defaultdict(lambda: [0, 0])
+    for sym, years in stock_years.items():
+        have = {t[:4] for t in releases.get(sym, ())}
+        for y in years:
+            per[y][0] += 1
+            per[y][1] += y in have
+    tot = [sum(a for a, _ in per.values()), sum(b for _, b in per.values())]
+    cell = lambda a, b: {"stock_years": a, "covered": b, "share": round(b / a, 4) if a else None}  # noqa: E731
+    return {"per_year": {y: cell(*per[y]) for y in sorted(per)}, "overall": cell(*tot)}
+
+
+def tz_check(zip_path):
+    """Compare submissions.zip's acceptanceDateTime with EDGAR's index page for a few item 2.02 8-Ks -> {"pairs",
+    "tz"}: "America/New_York" when the field's digits are the index's Eastern time, "UTC" when the field read as UTC
+    gives it, None when the pairs disagree (the run stops)."""
+    pairs = []
+    for cik, n in TZ_SAMPLE:
+        for acc, field in pd.accepted_pairs(zip_path, cik, n):
+            pairs.append({"cik": cik, "accession": acc, "field": field, "index": pd.index_accepted(cik, acc)})
+    verdicts = set()
+    for p in pairs:
+        ny, utc = pd._to_ny(p["field"], "America/New_York"), pd._to_ny(p["field"], "UTC")
+        verdicts.add("America/New_York" if p["index"] == ny else "UTC" if p["index"] == utc else None)
+    return {"pairs": pairs, "tz": verdicts.pop() if len(verdicts) == 1 else None}
+
+
+def load_insider(today):
+    """Every Form 3/4/5 symbol row (2015 onward) and S1's purchase lines (2015Q4 onward, for the 30-day window)."""
+    rows, buys, stats, quarters = [], [], {}, []
+    for y in range(2015, today.year + 1):
+        for q in range(1, 5):
+            z = pi.quarter_zip(y, q)
+            if z is None:
+                continue
+            quarters.append(f"{y}Q{q}")
+            rows += pd.symbol_filings(z, stats)
+            if (y, q) >= (2015, 4):
+                buys += pd.purchases(z)
+    return rows, buys, stats, quarters
+
+
+def _calendar():
+    cal = alpaca.calendar("2015-12-01", SIGNAL_END)
+    return sorted(d for d in cal if BARS_FROM <= d <= SIGNAL_END)
+
+
+def run(checks, sample=400, seed=7):
+    t0, today = time.time(), dt.date.today()
+    sessions = _calendar()
+    rows, buys, stats, quarters = load_insider(today)
+    filed, ciks = pd.index(rows)
+    zip_path = pd.download(pd.SUBMISSIONS, common.ROOT / ".cache" / "sec" / "submissions.zip")
+    tz = tz_check(zip_path)
+    if tz["tz"] is None:
+        return {"acceptance_tz_check": tz, "stopped": "the acceptance time zone could not be established"}
+    releases = pd.release_symbols(pd.earnings_releases(zip_path, {c for v in ciks.values() for c in v}, tz["tz"]),
+                                  rows)
+    reactions = {s: {r for r in (pd.reaction_session(t, sessions) for t in v) if r} for s, v in releases.items()}
+    symbols = sorted(filed)
+    if checks:
+        rng = random.Random(seed)
+        symbols = sorted(set(rng.sample(symbols, min(sample, len(symbols)))) | {"AAPL", "GE"})
+    series = pd.load_series(symbols, BARS_FROM, SIGNAL_END, sessions)
+    days = [d for d in sessions if d <= SIGNAL_END]
+    if checks:
+        return checks_report(t0, tz, ciks, series, filed, releases, reactions, sessions)
+    sizes, distinct, stock_years = collections.defaultdict(list), collections.defaultdict(set), collections.defaultdict(set)
+    s2 = {k: collections.Counter() for k in ("8-K, in universe", "8-K, all", "fallback, in universe", "fallback, all")}
+    s3_states, s4_states, members = [], [], {}
+    for d in days:
+        u = universe(d, series, filed)
+        members[d] = set(u)
+        if d >= SIGNAL_START:
+            y = d[:4]
+            sizes[y].append(len(u))
+            distinct[y] |= set(u)
+            for sym in u:
+                stock_years[sym].add(y)
+            for use_8k in (True, False):
+                fired = s2_firings(d, series, reactions, use_8k)
+                tag = "8-K" if use_8k else "fallback"
+                s2[f"{tag}, all"][y] += len(fired)
+                s2[f"{tag}, in universe"][y] += len(fired & set(u))
+        s3_states.append((d, s3_state(d, series, u)))
+        s4_states.append((d, s4_state(d, series, u, reactions, sessions)))
+    cov = item_202_coverage(stock_years, releases)
+    keep = cov["overall"]["share"] is not None and cov["overall"]["share"] >= COVERAGE_MIN
+    s1 = [(d, s) for d, s in s1_firings(buys, sessions) if SIGNAL_START <= d <= SIGNAL_END]
+    s1_in = sum(1 for d, s in s1 if s in members.get(sessions[min(bisect.bisect_left(sessions, d), len(sessions) - 1)], ()))
+    per_year = lambda xs: dict(sorted(collections.Counter(d[:4] for d, _ in xs).items()))  # noqa: E731
+    in_period = lambda xs: [x for x in xs if x[0] >= SIGNAL_START]  # noqa: E731
+    firings = {"S1 insider cluster (all)": per_year(s1), "S1 in universe on its session": s1_in,
+               "S2 earnings drift (decided rule, in universe)": dict(sorted(s2["8-K, in universe" if keep else
+                                                                            "fallback, in universe"].items())),
+               "S2 for information": {k: dict(sorted(v.items())) for k, v in s2.items()},
+               "S3 momentum near the high": per_year(in_period(transitions(s3_states, S3_OUTSIDE))),
+               "S4 short-term reversal": per_year(in_period(transitions(s4_states, 1)))}
+    return {"acceptance_tz_check": tz, "item_202_coverage": cov,
+            "fallback": "8-K kept" if keep else "8-K dropped",
+            "universe_per_year": {y: {"average daily size": round(sum(v) / len(v), 1), "distinct symbols": len(distinct[y]),
+                                      "sessions": len(v)} for y, v in sorted(sizes.items())},
+            "firings_per_signal_per_year": firings,
+            "data_gaps": {"insider quarters": f"{quarters[0]}..{quarters[-1]} ({len(quarters)})",
+                          "symbols as filed": len(filed), "symbols with bars": len(series),
+                          "symbols without bars": len(filed) - len(series),
+                          "series broken by the bad-price rule": sum(1 for s in series.values() if s["segment"][-1]),
+                          "filings with an unusable symbol": stats.get("unusable symbol", 0),
+                          "S1 purchase lines": len(buys)},
+            "requests_and_runtime": {"alpaca": alpaca.REQUESTS[0], "sec zips": pi.SEC_REQUESTS[0],
+                                     "runtime_s": round(time.time() - t0)}}
+
+
+def checks_report(t0, tz, ciks, series, filed, releases, reactions, sessions):
+    """The pre-run checks (booleans and counts only; no price ratio is output)."""
+    multi = sum(1 for v in ciks.values() if len(v) > 1)
+    known = {"AAPL -> 320193": "320193" in ciks.get("AAPL", set()),
+             "FB and META -> 1326801": "1326801" in ciks.get("FB", set()) and "1326801" in ciks.get("META", set())}
+    rules = {}
+    for sym, day in (("AAPL", "2020-08-31"), ("GE", "2021-08-02")):  # a 4:1 split, a 1:8 reverse split
+        s = series.get(sym)
+        i = s["dates"].index(day) if s and day in s["dates"] else None
+        if i is None:
+            rules[sym] = "no bars"
+            continue
+        raw_jump = s["raw_close"][i] / s["raw_close"][i - 1]
+        adj = s["close"][i] / s["close"][i - 1]
+        rules[sym] = {"raw close moved by the split factor": raw_jump < 0.3 or raw_jump > 3.5,
+                      "split-adjusted close continuous (within a factor of 1.5)": 1 / 1.5 < adj < 1.5,
+                      "same segment across the split": s["segment"][i] == s["segment"][i - 1]}
+    breaks = sum(1 for s in series.values() if s["segment"][-1])
+    days = [sessions[i] for i in (300, 900, 1500) if i < len(sessions)]
+    look = True
+    for d in days:
+        u = universe(d, series, filed)
+        cut = through(series, d)
+        look &= (u == universe(d, cut, filed) and s2_firings(d, series, reactions, True) == s2_firings(d, cut, reactions, True)
+                 and s3_state(d, series, u) == s3_state(d, cut, u)
+                 and s4_state(d, series, u, reactions, sessions) == s4_state(d, cut, u, reactions, sessions))
+    stock_years = collections.defaultdict(set)
+    for d in sessions:
+        if d >= SIGNAL_START:
+            for sym in universe(d, series, filed):
+                stock_years[sym].add(d[:4])
+    return {"acceptance_tz_check": tz,
+            "cik_mapping_check": {"symbols": len(ciks), "symbols filed under more than one CIK": multi, **known},
+            "price_rules_check": {**rules, "sample series broken by the bad-price rule": breaks,
+                                  "sample symbols with bars": len(series)},
+            "look_ahead_check": {"days compared": days, "identical with every bar after D removed": look},
+            "item_202_coverage_sample": item_202_coverage(stock_years, releases),
+            "requests_and_runtime": {"alpaca": alpaca.REQUESTS[0], "sec zips": pi.SEC_REQUESTS[0],
+                                     "runtime_s": round(time.time() - t0)}}
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Recommendation algorithm phase A (no returns)")
+    ap.add_argument("--checks", action="store_true", help="the pre-run checks on a sample")
+    a = ap.parse_args(argv)
+    out = run(a.checks)
+    text = json.dumps(out, indent=1, default=sorted)
+    print(text)
+    common.summary(f"### Phase A {'checks' if a.checks else 'report'}\n\n```json\n{text}\n```")
+    return 0 if "stopped" not in out else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
