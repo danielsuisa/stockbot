@@ -335,3 +335,22 @@ def purchases(z):
                 out.append({"filed": f["filed"], "issuer": _cik(f["issuer"]), "symbol": sym, "owner": who,
                             "trade_date": x["date"], "shares": x["shares"], "price": x["price"], "value": x["value"]})
     return out
+
+
+def transaction_prices(z):
+    """A quarter's Form 4 / Form 5 non-derivative transaction prices (phase A.1: the price P of a universe-like
+    stock-month) -> [(filed, symbol, trade date, accession, price)]: any transaction code, price > 0 only (grants and
+    gifts carry $0, not a price), original forms only (amendments are ignored, as for S1), a usable symbol."""
+    lines = collections.defaultdict(list)
+    for r in pi.table(z, "NONDERIV_TRANS")[1]:
+        px = pi.num(r.get("TRANS_PRICEPERSHARE"))
+        if px and px > 0:
+            lines[r["ACCESSION_NUMBER"]].append((pi.day(r.get("TRANS_DATE")), px))
+    out = []
+    for r in pi.table(z, "SUBMISSION")[1]:
+        acc = r["ACCESSION_NUMBER"]
+        sym = normalise_symbol(r.get("ISSUERTRADINGSYMBOL"))
+        filed = pi.day(r.get("FILING_DATE"))
+        if acc in lines and (r.get("DOCUMENT_TYPE") or "").strip() in ("4", "5") and sym and filed:
+            out += [(filed, sym, d, acc, px) for d, px in lines[acc]]
+    return out
