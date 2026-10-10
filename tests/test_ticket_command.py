@@ -143,7 +143,7 @@ class Message(unittest.TestCase):
             self.assertEqual(tc.main(["aapl", "brk.b"]), 0)
         self.assertEqual([c.args[0] for c in build.call_args_list], ["AAPL", "BRK.B"])
         send.assert_not_called()  # a dry run prints; common.send refuses to run without a Telegram token in Actions
-        printed = "\n".join(str(c.args[0]) for c in out.call_args_list)
+        printed = "\n".join(str(c.args[0]) for c in out.call_args_list if c.args)  # print() alone: a blank line
         self.assertEqual(printed.count("אין כרטיס"), 2)
         self.assertIn(tc.SOURCE, printed)
 
