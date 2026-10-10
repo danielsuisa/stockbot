@@ -337,14 +337,18 @@ def purchases(z):
     return out
 
 
+MARKET_CODES = ("P", "S", "F")  # open-market purchase, sale, tax withholding: lines that carry a market price
+
+
 def transaction_prices(z):
     """A quarter's Form 4 / Form 5 non-derivative transaction prices (phase A.1: the price P of a universe-like
-    stock-month) -> [(filed, symbol, trade date, accession, price)]: any transaction code, price > 0 only (grants and
-    gifts carry $0, not a price), original forms only (amendments are ignored, as for S1), a usable symbol."""
+    stock-month) -> [(filed, symbol, trade date, accession, price)]: market-price codes only (P, S, F; exercises and
+    conversions report the strike; owner's decision 2026-10-10), price > 0, original forms only (amendments are
+    ignored, as for S1), a usable symbol."""
     lines = collections.defaultdict(list)
     for r in pi.table(z, "NONDERIV_TRANS")[1]:
         px = pi.num(r.get("TRANS_PRICEPERSHARE"))
-        if px and px > 0:
+        if (r.get("TRANS_CODE") or "").strip() in MARKET_CODES and px and px > 0:
             lines[r["ACCESSION_NUMBER"]].append((pi.day(r.get("TRANS_DATE")), px))
     out = []
     for r in pi.table(z, "SUBMISSION")[1]:

@@ -12,15 +12,25 @@ class Readers(unittest.TestCase):
         z = make_zip({
             "SUBMISSION": [sub("a", "4"), sub("b", "5", filed="06-JAN-2017"), sub("c", "4/A"), sub("d", "3"),
                            sub("e", "4", symbol="NONE")],
-            "NONDERIV_TRANS": [tx("a", code="S", ad="D", price="12"), tx("a", code="A", price="0"),
-                               tx("b", code="G", ad="D", price="7", date="04-JAN-2017"), tx("c", price="30"),
+            "NONDERIV_TRANS": [tx("a", code="S", ad="D", price="12"), tx("a", code="P", price="0"),
+                               tx("b", code="P", price="7", date="04-JAN-2017"), tx("c", price="30"),
                                tx("d", price="31"), tx("e", price="32")]})
         self.assertEqual(sorted(pd.transaction_prices(z)),
-                         [("2017-01-05", "ACME", "2017-01-03", "a", 12.0),  # the $0 grant is not a price
+                         [("2017-01-05", "ACME", "2017-01-03", "a", 12.0),  # a $0 line is not a price
                           ("2017-01-06", "ACME", "2017-01-04", "b", 7.0)])  # 4/A, Form 3 and NONE dropped
+
+    def test_transaction_prices_market_codes_only(self):
+        # owner's decision 3: P, S and F carry a market price; M, X, C report the strike; any other code is ignored
+        z = make_zip({"SUBMISSION": [sub("a", "4")],
+                      "NONDERIV_TRANS": [tx("a", code="M", price="10"), tx("a", code="S", ad="D", price="50"),
+                                         tx("a", code="X", price="11"), tx("a", code="C", price="12"),
+                                         tx("a", code="F", ad="D", price="49"), tx("a", code="P", price="48"),
+                                         tx("a", code="J", price="47")]})
+        self.assertEqual(sorted(p[4] for p in pd.transaction_prices(z)), [48.0, 49.0, 50.0])
 
     def test_finra_spellings_and_row(self):
         self.assertEqual(ps.finra_spellings("BRK.B"), ("BRK-B", "BRKB"))
+        self.assertEqual(ps.finra_spellings("A"), ("A", "A"))
         self.assertEqual(ps.finra_spellings("AAPL"), ("AAPL", "AAPL"))
         r = {"adv": 1}
         self.assertIs(ps.finra_row({"BRKB": r}, "BRK.B"), r)
@@ -109,8 +119,9 @@ class StockMonths(unittest.TestCase):
                                                  "recovered by the rename rule": 1,
                                                  "recovered, duplicating a stock-month with bars": 1})
         self.assertEqual(c["overall"]["universe-like"], 4)
-        cell = lambda w, r: {"universe-like": 100, "with bars": 100 - w, "without bars": w,  # noqa: E731
-                             "recovered by the rename rule": r}
+        cell = lambda w, r, dup=0: {"universe-like": 100, "with bars": 100 - w, "without bars": w,  # noqa: E731
+                                    "recovered by the rename rule": r,
+                                    "recovered, duplicating a stock-month with bars": dup}
         d = ps.decide(cell(20, 5))  # 5 < 20 / 3: the rule is not used, nothing counts as recovered
         self.assertEqual((d["rename rule used"], d["f (rule as decided)"], d["f (literal, recovered always subtracted)"],
                           d["b_R"], d["b within 0.03 R"]), (False, 0.20, 0.15, 0.20, False))
@@ -120,6 +131,10 @@ class StockMonths(unittest.TestCase):
         d = ps.decide(cell(3, 0))
         self.assertEqual((d["b_R"], d["b within 0.03 R"]), (0.03, True))  # b at the limit
         self.assertEqual(ps.B_MAX, 0.03)
+        # owner's decision 4: 10 duplicates leave both sides: 90 stock-months, 10 without bars, 0 recovered
+        d = ps.decide(cell(20, 10, dup=10))
+        self.assertEqual((d["rename rule used"], d["f (rule as decided)"], d["f (literal, recovered always subtracted)"]),
+                         (False, 10 / 90, 10 / 90))
 
 
 class Run(unittest.TestCase):
@@ -127,19 +142,39 @@ class Run(unittest.TestCase):
     has none and nothing to recover it. Months 2017-03 .. 2017-05."""
     S = Bars.S
 
-    def run_mocked(self, checks=False, adv=1_000_000):
+    def run_mocked(self, checks=False, adv=1_000_000, new_like=False, raw_extra=None):
         S = self.S
         ser = {"A": bars_for(400, 10.0, 2_000_000), "NEW": bars_for(400, 10.0, 2_000_000)}
+        raw = {s: [(d, 10.0, 10.1, 9.9, 10.0, 2_000_000) for d in S] for s in ser}  # raw Alpaca bars (decision 5)
+        raw.update(raw_extra or {})
         rows = [("2017-02-01", "100", "A"), ("2017-02-01", "1", "OLD"), ("2016-06-01", "1", "NEW"),
                 ("2017-02-01", "200", "B")]
-        prices = {s: [("2017-02-01", "2017-01-31", "a", 20.0)] for s in ("A", "OLD", "B")}
+        like = ("A", "OLD", "B") + (("NEW",) if new_like else ())
+        prices = {s: [("2017-02-01", "2017-01-31", "a", 20.0)] for s in like}
         settles = ["2017-02-28", "2017-03-31", "2017-04-28", "2017-05-31"]
-        reports = {d: {s: {"adv": adv} for s in ("A", "OLD", "B")} for d in settles}
+        reports = {d: {s: {"adv": adv} for s in like} for d in settles}
+
+        def daily(symbols, start, end):
+            return {s: raw.get(s) for s in symbols}
 
         def releases(zip_path, ciks, start, end, forms=("8-K",)):
             return {"100": [("x", "2017-03-01")]} if "8-K/A" in forms else {}  # the only release is an 8-K/A
-        with mock.patch.object(pe, "_calendar", return_value=S),                 mock.patch.object(ps, "load_filings", return_value=(rows, prices, {}, ["2015Q1", "2026Q1"])),                 mock.patch.object(shorts, "settlement_dates", return_value=settles),                 mock.patch.object(ps, "finra_report", side_effect=lambda d: reports[d]),                 mock.patch.object(pd, "download", return_value="x.zip"),                 mock.patch.object(pd, "earnings_releases", side_effect=releases),                 mock.patch.object(pd, "load_series", return_value=ser),                 mock.patch.object(ps, "MONTHS", ("2017-03", "2017-05")),                 mock.patch.object(pe, "SIGNAL_START", S[261]), mock.patch.object(pe, "SIGNAL_END", S[-1]):
+        with (mock.patch.object(pe, "_calendar", return_value=S),
+              mock.patch.object(ps, "load_filings", return_value=(rows, prices, {}, ["2015Q1", "2026Q1"])),
+              mock.patch.object(shorts, "settlement_dates", return_value=settles),
+              mock.patch.object(ps, "finra_report", side_effect=lambda d: reports[d]),
+              mock.patch.object(pd, "download", return_value="x.zip"),
+              mock.patch.object(pd, "earnings_releases", side_effect=releases),
+              mock.patch.object(pd, "load_series", return_value=ser),
+              mock.patch.object(ps.alpaca, "daily", side_effect=daily),
+              mock.patch.object(ps, "MONTHS", ("2017-03", "2017-05")),
+              mock.patch.object(pe, "SIGNAL_START", S[261]), mock.patch.object(pe, "SIGNAL_END", S[-1])):
             return ps.run(checks)
+
+    def test_bars_come_from_raw_alpaca(self):
+        # decision 5: a stock-month has bars when the raw Alpaca bars hold a session in the month (B: April only)
+        out = self.run_mocked(raw_extra={"B": [("2017-04-03", 10.0, 10.1, 9.9, 10.0, 1)]})
+        self.assertEqual(out["stock_months"]["per_year"]["2017"]["with bars"], 4)
 
     def test_report_keys_only(self):
         import json
@@ -153,6 +188,16 @@ class Run(unittest.TestCase):
         self.assertEqual(out["rename_rule"]["rename rule used"], True)  # 3 of 6: at least a third
         self.assertAlmostEqual(out["allowance"]["b_R"], 3 / 9)
         self.assertFalse(out["allowance"]["b within 0.03 R"])
+
+    def test_rename_year_with_both_symbols_filed(self):
+        # OLD (no bars) and NEW (bars) both filed and universe-like: OLD is NEW counted twice, not a missing company
+        out = self.run_mocked(new_like=True)
+        o = out["stock_months"]["overall"]
+        self.assertEqual((o["universe-like"], o["with bars"], o["without bars"], o["recovered by the rename rule"],
+                          o["recovered, duplicating a stock-month with bars"]), (12, 6, 6, 3, 3))
+        self.assertEqual(out["stock_months"]["per_year"]["2017"]["recovered, duplicating a stock-month with bars"], 3)
+        a = out["allowance"]  # without duplicates: 9 stock-months, 3 without bars (B), none recovered
+        self.assertEqual((a["f (rule as decided)"], a["f (literal, recovered always subtracted)"]), (3 / 9, 3 / 9))
 
     def test_coverage_with_8k_a_differs_by_the_amendment_only(self):
         out = self.run_mocked()

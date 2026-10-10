@@ -40,16 +40,22 @@
 
 ## Decisions this plan makes where the spec is silent
 
-Owner (2026-10-10): decisions 1, 2 and the price rule of 3 approved; 6 settled as (a) and written into spec section 7
-A.1 item 3. The rest of 3, and 4 and 5, are listed in the pre-run report for confirmation before the full run.
+Owner (2026-10-10): decisions 1, 2, 5 and 6 confirmed as written (6 as (a), written into spec section 7 A.1 item 3);
+3 and 4 changed as recorded in them below. Both changes affect counts only.
 
 1. **The 365-day window** is `month_end − 365 days ≤ filed ≤ month_end`, where month_end is the month's last calendar day. The same window applies to the Form 3/4/5 symbol and to the latest price.
 2. **"Latest FINRA report before the month's end"** is the report with the latest settlement date ≤ month_end. FINRA's publication lag is not applied, because this is a count of listed stocks and not a trading decision.
-3. **"Latest Form 4/5 transaction price"** is the latest by filing date, then trade date, then accession. Form types are `4` and `5`; amendments are ignored, as for S1. Only lines with a price > 0 count, because grants and gifts carry $0 and are not prices. Any transaction code counts.
+3. **"Latest Form 4/5 transaction price"** (owner's change 2026-10-10: market prices only). Only lines with
+   transaction code P, S or F count. Exercises and conversions (M, X, C) report the strike, not the market price,
+   and every other code is ignored too. Among those lines, P is the latest by filing date, then trade date, then
+   accession. Form types are `4` and `5`; amendments are ignored, as for S1. Only lines with a price > 0 count.
 4. **"Its CIK"** for the rename rule is the CIK of the symbol's latest Form 3/4/5 filing in the window.
    - The "other filed symbol" is any symbol that CIK filed under, at any time in the insider data.
    - A stock-month is recovered only if that other symbol has a bar in the same month.
-   - A recovered stock-month whose other symbol is itself universe-like with bars in that month is also counted as "a duplicate of a stock-month with bars".
+   - A recovered stock-month whose other symbol is itself universe-like with bars in that month is a duplicate of a
+     company already counted, not a missing company (owner's change 2026-10-10). Duplicates leave both the numerator
+     and the denominator of f, under readings (a) and (b), and the rename rule's one-third test; their count is
+     reported per year.
 5. **A stock-month "with an Alpaca bar in the month"**: the symbol's raw Alpaca bars (`alpaca.daily`, SIP) include at least one session in that calendar month.
 6. **Settled (owner, 2026-10-10; spec section 7 A.1 item 3): (a).** What f is when the rename rule is not used (it recovers less than a third). Two readings:
    - (a) f = without bars / all, because a rule that is not used recovers nothing.

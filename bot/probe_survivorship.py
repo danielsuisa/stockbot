@@ -145,8 +145,12 @@ def survivorship_counts(per_month):
 
 def decide(overall):
     """The rename rule's one-third condition, f under both readings and b = f x 1 R against 0.03 R. b uses the rule as
-    decided: when the rule is not used nothing counts as recovered (spec section 7 A.1 item 3)."""
-    n, without, rec = overall["universe-like"], overall["without bars"], overall["recovered by the rename rule"]
+    decided: when the rule is not used nothing counts as recovered (spec section 7 A.1 item 3). A stock-month
+    recovered as a symbol that is itself universe-like with bars that month is the same company counted twice: it
+    leaves the numerator and the denominator (owner's decision 2026-10-10)."""
+    dup = overall.get("recovered, duplicating a stock-month with bars", 0)
+    n, without = overall["universe-like"] - dup, overall["without bars"] - dup
+    rec = overall["recovered by the rename rule"] - dup
     used = 3 * rec >= without
     f = (without - (rec if used else 0)) / n if n else None
     return {"rename rule used": used, "f (rule as decided)": f,
@@ -217,7 +221,12 @@ def run(checks, sample=300, seed=7):
         counted = sorted(set(rng.sample(counted, min(sample, len(counted)))) | (set(CHECK_SYMBOLS) & set(filed)))
     siblings = {o for s in counted for c in ciks.get(s, ()) for o in of_cik.get(pd._cik(c), ())}
     series = pd.load_series(sorted(set(counted) | siblings), pe.BARS_FROM, pe.SIGNAL_END, sessions)
-    bar_months = {s: {d[:7] for d in x["dates"]} for s, x in series.items()}
+    bar_months = {}  # decision 5: a session in the raw Alpaca bars (read from the cache load_series just filled)
+    wanted_bars = sorted(set(counted) | siblings)
+    for i in range(0, len(wanted_bars), alpaca.CHUNK):
+        for sym, bars in alpaca.daily(wanted_bars[i:i + alpaca.CHUNK], pe.BARS_FROM, pe.SIGNAL_END).items():
+            if bars:
+                bar_months[sym] = {b[0][:7] for b in bars}
 
     # items 2-3: universe-like stock-months, bars, the rename rule
     filed_counted = {s: filed[s] for s in counted}
@@ -273,11 +282,12 @@ def run(checks, sample=300, seed=7):
             "stock_months": counts,
             "rename_rule": {"rename rule used": decision["rename rule used"],
                             "recovered": counts["overall"]["recovered by the rename rule"],
-                            "without bars": counts["overall"]["without bars"]},
+                            "without bars": counts["overall"]["without bars"],
+                            "duplicates (left out of f)": counts["overall"]["recovered, duplicating a stock-month with bars"]},
             "allowance": allowance,
             "data_gaps": {"months with no or a stale FINRA report": stale, **fstats,
                           "insider quarters": f"{quarters[0]}..{quarters[-1]} ({len(quarters)})",
-                          "symbols as filed": len(filed), "symbols with bars": len(series),
+                          "symbols as filed": len(filed), "symbols with raw bars": len(bar_months),
                           "filings with an unusable symbol": stats.get("unusable symbol", 0)},
             "requests_and_runtime": requests}
 
