@@ -5,12 +5,16 @@ the latest Form 4/5 transaction price), how many the rename rule recovers, f and
 
 Counts and coverage only. No return of a ticket or a stock is computed; the only files written are caches of raw
 data (FINRA reports, Alpaca bars, SEC zips)."""
+import argparse
 import bisect
 import calendar
 import collections
 import datetime as dt
+import json
+import random
+import time
 
-from bot import alpaca, common, shorts
+from bot import alpaca, common, probe_ensemble as pe, probe_ensemble_data as pd, probe_insider as pi, shorts
 
 CACHE = common.ROOT / ".cache" / "finra"
 MONTHS = ("2018-01", "2026-03")
@@ -19,6 +23,9 @@ RENAME_SHARE, B_MAX = 1 / 3, 0.03  # spec section 2 (the rename rule) and sectio
 
 
 # ---------- FINRA ----------
+FINRA_FETCHED = [0]
+
+
 def finra_report(date):
     """FINRA's consolidated short-interest report settled on `date` (exchange-listed classes) -> {FINRA symbol: slim
     row}, cached as gzip JSON."""
@@ -26,6 +33,7 @@ def finra_report(date):
     got = alpaca._read(path)
     if got is None:
         got = shorts.report(date)
+        FINRA_FETCHED[0] += 1
         alpaca._write(path, got)
     return got
 
@@ -144,3 +152,146 @@ def decide(overall):
     return {"rename rule used": used, "f (rule as decided)": f,
             "f (literal, recovered always subtracted)": (without - rec) / n if n else None,
             "b_R": f, "b within 0.03 R": f is not None and f <= B_MAX}
+
+
+# ---------- the run and its report ----------
+REPORT_KEYS = ("finra_volume_check", "item_202_coverage_8k_only", "item_202_coverage_with_8k_a", "s2_decision",
+               "stock_months", "rename_rule", "allowance", "data_gaps", "requests_and_runtime")
+CHECK_KEYS = ("finra_volume_check", "spelling_check", "rename_check", "sample_stock_months", "item_202_coverage_sample",
+              "requests_and_runtime")
+CHECK_SYMBOLS = ("BRK.B", "META", "FB", "AAPL")
+STALE_DAYS = 31  # a month whose chosen FINRA report settled longer ago than this is listed as a gap
+
+
+def load_filings(today):
+    """Every Form 3/4/5 symbol row (filed, cik, symbol) from 2015Q1 and, per symbol, the Form 4/5 transaction prices
+    reduced to the latest one per filing month (enough for a month-end query) -> (rows, {symbol: sorted [(filed,
+    trade date, accession, price)]}, stats, quarters)."""
+    rows, best, stats, quarters = [], {}, {}, []
+    for y in range(2015, today.year + 1):
+        for q in range(1, 5):
+            z = pi.quarter_zip(y, q)
+            if z is None:
+                continue
+            quarters.append(f"{y}Q{q}")
+            rows += pd.symbol_filings(z, stats)
+            for filed, sym, trade, acc, px in pd.transaction_prices(z):
+                key, val = (sym, filed[:7]), (filed, trade or "", acc, px)
+                if key not in best or val > best[key]:
+                    best[key] = val
+    prices = collections.defaultdict(list)
+    for (sym, _), val in best.items():
+        prices[sym].append(val)
+    return rows, {s: sorted(v) for s, v in prices.items()}, stats, quarters
+
+
+def _rename_check(sym, filed, by_sym, of_cik, bar_months, month="2021-06", end="2021-06-30"):
+    cik = cik_at(by_sym, sym, end)
+    has = month in bar_months.get(sym, ())
+    return {"filed": sym in filed, f"bar in {month}": has, f"CIK at {month}": cik,
+            "recovered as": None if has else recovered(sym, month, cik, of_cik, bar_months)}
+
+
+def run(checks, sample=300, seed=7):
+    t0 = time.time()
+    sessions = pe._calendar()
+    rows, prices, stats, quarters = load_filings(dt.date.today())
+    filed, ciks = pd.index(rows)
+    by_sym, of_cik = collections.defaultdict(list), collections.defaultdict(set)
+    for f, c, sym in rows:
+        by_sym[sym].append((f, pd._cik(c)))
+        of_cik[pd._cik(c)].add(sym)
+    for v in by_sym.values():
+        v.sort()
+    months = month_ends(*MONTHS)
+    settles = [(d,) for d in sorted(shorts.settlement_dates())]
+    chosen = {m: (latest_before(settles, end) or (None,))[0] for m, end in months}
+    reports = {d: finra_report(d) for d in sorted({d for d in chosen.values() if d})}
+    vc = volume_check(reports)
+    if not reports or vc["reports without any volume"]:
+        return {"finra_volume_check": vc, "stopped": "FINRA's reports carry no volume field"}
+
+    counted = sorted(filed)
+    if checks:
+        rng = random.Random(seed)
+        counted = sorted(set(rng.sample(counted, min(sample, len(counted)))) | (set(CHECK_SYMBOLS) & set(filed)))
+    siblings = {o for s in counted for c in ciks.get(s, ()) for o in of_cik.get(pd._cik(c), ())}
+    series = pd.load_series(sorted(set(counted) | siblings), pe.BARS_FROM, pe.SIGNAL_END, sessions)
+    bar_months = {s: {d[:7] for d in x["dates"]} for s, x in series.items()}
+
+    # items 2-3: universe-like stock-months, bars, the rename rule
+    filed_counted = {s: filed[s] for s in counted}
+    per_month, fstats = {}, {}
+    for m, end in months:
+        like = universe_like(end, filed_counted, prices, reports.get(chosen[m]), fstats)
+        with_bars = {s for s in like if m in bar_months.get(s, ())}
+        rec = {}
+        for s in sorted(set(like) - with_bars):
+            other = recovered(s, m, cik_at(by_sym, s, end), of_cik, bar_months)
+            if other:
+                rec[s] = other
+        per_month[m] = {"like": set(like), "with bars": with_bars, "recovered": rec,
+                        "duplicates": sum(1 for o in rec.values() if o in with_bars)}
+    counts = survivorship_counts(per_month)
+    decision = decide(counts["overall"])
+
+    # item 1: item 2.02 coverage of universe stock-years (phase A's universe), 8-K only and with 8-K/A
+    universe_series = {s: series[s] for s in counted if s in series}
+    stock_years = collections.defaultdict(set)
+    for d in sessions:
+        if pe.SIGNAL_START <= d <= pe.SIGNAL_END:
+            for sym in pe.universe(d, universe_series, filed):
+                stock_years[sym].add(d[:4])
+    zip_path = pd.download(pd.SUBMISSIONS, common.ROOT / ".cache" / "sec" / "submissions.zip")
+    wanted = {c for s in stock_years for c in ciks.get(s, ())}
+    cov = {}
+    for key, forms in (("8-K", ("8-K",)), ("8-K/A", ("8-K", "8-K/A"))):
+        rel = pd.Releases(pd.earnings_releases(zip_path, wanted, "2016-12-01", pe.SIGNAL_END, forms=forms), rows)
+        cov[key] = pe.item_202_coverage(stock_years, {s: rel.filing_dates(s) for s in stock_years})
+    requests = {"alpaca": alpaca.REQUESTS[0], "sec zips": pi.SEC_REQUESTS[0], "finra reports fetched": FINRA_FETCHED[0],
+                "runtime_s": round(time.time() - t0)}
+
+    if checks:
+        rep = reports.get(chosen.get("2024-06"))
+        return {"finra_volume_check": vc,
+                "spelling_check": {"BRK.B in the FINRA report for 2024-06": rep is not None
+                                   and finra_row(rep, "BRK.B") is not None},
+                "rename_check": {s: _rename_check(s, filed, by_sym, of_cik, bar_months) for s in ("FB", "META")},
+                "sample_stock_months": {"symbols counted": len(counted), **counts, "decision": decision},
+                "item_202_coverage_sample": {"8-K only": cov["8-K"], "with 8-K/A": cov["8-K/A"]},
+                "requests_and_runtime": requests}
+    keep = pe.keeps_8k(cov["8-K"])
+    stale = [m for m, end in months if chosen[m] is None
+             or (dt.date.fromisoformat(end) - dt.date.fromisoformat(chosen[m])).days > STALE_DAYS]
+    allowance = {k: decision[k] for k in ("f (rule as decided)", "f (literal, recovered always subtracted)", "b_R",
+                                          "b within 0.03 R")}
+    allowance["limit_R"] = B_MAX
+    return {"finra_volume_check": vc, "item_202_coverage_8k_only": cov["8-K"],
+            "item_202_coverage_with_8k_a": cov["8-K/A"],
+            "s2_decision": {"threshold": pe.COVERAGE_MIN, "overall share, 8-K only": cov["8-K"]["overall"]["share"],
+                            "decision": "8-K kept" if keep else "8-K dropped"},
+            "stock_months": counts,
+            "rename_rule": {"rename rule used": decision["rename rule used"],
+                            "recovered": counts["overall"]["recovered by the rename rule"],
+                            "without bars": counts["overall"]["without bars"]},
+            "allowance": allowance,
+            "data_gaps": {"months with no or a stale FINRA report": stale, **fstats,
+                          "insider quarters": f"{quarters[0]}..{quarters[-1]} ({len(quarters)})",
+                          "symbols as filed": len(filed), "symbols with bars": len(series),
+                          "filings with an unusable symbol": stats.get("unusable symbol", 0)},
+            "requests_and_runtime": requests}
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Recommendation algorithm phase A.1 (counts only, no returns)")
+    ap.add_argument("--checks", action="store_true", help="the pre-run checks on a sample")
+    a = ap.parse_args(argv)
+    out = run(a.checks)
+    text = json.dumps(out, indent=1, default=sorted)
+    print(text)
+    common.summary(f"### Phase A.1 {'checks' if a.checks else 'report'}\n\n```json\n{text}\n```")
+    return 0 if "stopped" not in out else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

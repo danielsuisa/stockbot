@@ -3,8 +3,8 @@ the rename rule, f and b. Counts only: no return of any ticket or stock is compu
 import unittest
 from unittest import mock
 
-from bot import probe_ensemble_data as pd, probe_survivorship as ps, shorts
-from tests.test_probe_ensemble import make_zip, sub, tx
+from bot import probe_ensemble as pe, probe_ensemble_data as pd, probe_survivorship as ps, shorts
+from tests.test_probe_ensemble import Bars, bars_for, make_zip, sub, tx
 
 
 class Readers(unittest.TestCase):
@@ -120,6 +120,58 @@ class StockMonths(unittest.TestCase):
         d = ps.decide(cell(3, 0))
         self.assertEqual((d["b_R"], d["b within 0.03 R"]), (0.03, True))  # b at the limit
         self.assertEqual(ps.B_MAX, 0.03)
+
+
+class Run(unittest.TestCase):
+    """The run on a mocked data set: A has bars; OLD has none and its CIK's other symbol NEW has bars (recovered); B
+    has none and nothing to recover it. Months 2017-03 .. 2017-05."""
+    S = Bars.S
+
+    def run_mocked(self, checks=False, adv=1_000_000):
+        S = self.S
+        ser = {"A": bars_for(400, 10.0, 2_000_000), "NEW": bars_for(400, 10.0, 2_000_000)}
+        rows = [("2017-02-01", "100", "A"), ("2017-02-01", "1", "OLD"), ("2016-06-01", "1", "NEW"),
+                ("2017-02-01", "200", "B")]
+        prices = {s: [("2017-02-01", "2017-01-31", "a", 20.0)] for s in ("A", "OLD", "B")}
+        settles = ["2017-02-28", "2017-03-31", "2017-04-28", "2017-05-31"]
+        reports = {d: {s: {"adv": adv} for s in ("A", "OLD", "B")} for d in settles}
+
+        def releases(zip_path, ciks, start, end, forms=("8-K",)):
+            return {"100": [("x", "2017-03-01")]} if "8-K/A" in forms else {}  # the only release is an 8-K/A
+        with mock.patch.object(pe, "_calendar", return_value=S),                 mock.patch.object(ps, "load_filings", return_value=(rows, prices, {}, ["2015Q1", "2026Q1"])),                 mock.patch.object(shorts, "settlement_dates", return_value=settles),                 mock.patch.object(ps, "finra_report", side_effect=lambda d: reports[d]),                 mock.patch.object(pd, "download", return_value="x.zip"),                 mock.patch.object(pd, "earnings_releases", side_effect=releases),                 mock.patch.object(pd, "load_series", return_value=ser),                 mock.patch.object(ps, "MONTHS", ("2017-03", "2017-05")),                 mock.patch.object(pe, "SIGNAL_START", S[261]), mock.patch.object(pe, "SIGNAL_END", S[-1]):
+            return ps.run(checks)
+
+    def test_report_keys_only(self):
+        import json
+        import re
+        out = self.run_mocked()
+        self.assertEqual(tuple(out), ps.REPORT_KEYS)
+        self.assertIsNone(re.search(r"(?i)(return|returns|mean|median|win)", json.dumps(out)), out)
+        o = out["stock_months"]["overall"]
+        self.assertEqual((o["universe-like"], o["with bars"], o["without bars"], o["recovered by the rename rule"]),
+                         (9, 3, 6, 3))
+        self.assertEqual(out["rename_rule"]["rename rule used"], True)  # 3 of 6: at least a third
+        self.assertAlmostEqual(out["allowance"]["b_R"], 3 / 9)
+        self.assertFalse(out["allowance"]["b within 0.03 R"])
+
+    def test_coverage_with_8k_a_differs_by_the_amendment_only(self):
+        out = self.run_mocked()
+        # stock-years: A and NEW in 2017 (both filed with bars); the only release (CIK 100 -> A) is an 8-K/A
+        self.assertEqual(out["item_202_coverage_8k_only"]["overall"], {"stock_years": 2, "covered": 0, "share": 0.0})
+        self.assertEqual(out["item_202_coverage_with_8k_a"]["overall"], {"stock_years": 2, "covered": 1, "share": 0.5})
+        self.assertEqual(out["s2_decision"]["decision"], "8-K dropped")  # decided on 8-K only
+
+    def test_stops_without_volume(self):
+        out = self.run_mocked(adv=None)
+        self.assertEqual(out["stopped"], "FINRA's reports carry no volume field")
+        self.assertEqual(set(out), {"finra_volume_check", "stopped"})
+        with mock.patch.object(ps, "run", return_value=out):
+            self.assertEqual(ps.main([]), 1)
+
+    def test_checks_keys(self):
+        out = self.run_mocked(checks=True)
+        self.assertEqual(tuple(out), ps.CHECK_KEYS)
+        self.assertIsNone(out["rename_check"]["FB"]["recovered as"])  # FB is not in the mocked data: no crash
 
 
 if __name__ == "__main__":
