@@ -3208,6 +3208,49 @@
     "0001460471-26-000008"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-10-BPRE",
+   "date": "2026-10-10",
+   "ticker": "BPRE",
+   "cik": 1551047,
+   "company": "Bluerock Private Real Estate Fund",
+   "sic": null,
+   "kind": "cluster+big",
+   "quality": 68,
+   "parts": {
+    "breadth": 20,
+    "seniority": 13,
+    "size": 20,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 13.08,
+    "asof": "2026-10-09 20:00",
+    "source": "live"
+   },
+   "total": 23680139.69,
+   "insiders": 3,
+   "liquidity": 11940698.79726063,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001398344-26-017226",
+    "0001398344-26-017349",
+    "0001398344-26-017538",
+    "0001398344-26-017550",
+    "0001398344-26-017659",
+    "0001398344-26-017661",
+    "0001398344-26-017904",
+    "0001398344-26-017906",
+    "0001398344-26-018110"
+   ],
+   "returns": {}
   }
  ]
 }
