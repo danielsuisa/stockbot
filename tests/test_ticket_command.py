@@ -136,6 +136,14 @@ class Message(unittest.TestCase):
             self.assertTrue(text.startswith("אין כרטיס"), text)
             self.assertIn(tc.REASONS[reason], text)
 
+    def test_main_dry_run(self):
+        with mock.patch.object(tc, "build", side_effect=lambda s: {"ok": False, "reason": "no usable quote", "symbol": s,
+                                                                    "day": "2026-10-09"}) as build,                 mock.patch.object(common, "send") as send:
+            self.assertEqual(tc.main(["aapl", "brk.b"]), 0)
+        self.assertEqual([c.args[0] for c in build.call_args_list], ["AAPL", "BRK.B"])
+        self.assertEqual(send.call_count, 2)
+        self.assertEqual(send.call_args.kwargs, {"source": tc.SOURCE})
+
     def test_no_simulation_on_market_data(self):
         import inspect
         src = inspect.getsource(tc)
