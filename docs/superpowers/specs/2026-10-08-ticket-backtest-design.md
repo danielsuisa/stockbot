@@ -427,3 +427,13 @@ usable time is not tested at all.
 - What passes in practice: more trades a year, a smaller SD per trade (a wider stop, a target instead of an open
   tail), or a larger edge net of costs. Live `/ticket` stays blocked until a rule set passes this gate, a
   pre-registered holdout and the forward shadow test.
+
+### 15.1 Amendment (2026-10-10, before any candidate was measured): what counts as evidence
+
+Section 15 as written counts forward trades only. With a 1.5-year limit that requires an annual Sharpe ratio of
+about 2.0 at the planning edge (2.49 / √1.5), which no candidate we can name reaches: the gate would reject
+everything, not only the unconfirmable. Corrected rule, for both checks: evidence years E = the years of a holdout
+nobody has looked at for this rule set + at most 1.5 forward years; required n / N ≤ E, which is the same as a
+planning annual Sharpe ratio ≥ 2.49 / √E. SD is clustered by the unit in which trades overlap (the day for intraday
+trades, the entry month for multi-week holds). The forward period must also show realized costs within a tolerance
+registered per rule set. X5 still fails: about 9,900 trades, 21 years, against E = 7.5.
