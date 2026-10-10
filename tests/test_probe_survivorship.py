@@ -47,5 +47,80 @@ class Readers(unittest.TestCase):
         self.assertEqual(first["AAPL"]["adv"], 5)
 
 
+class StockMonths(unittest.TestCase):
+    END = "2018-01-31"
+
+    def test_month_ends(self):
+        self.assertEqual(ps.month_ends("2018-01", "2018-02"), [("2018-01", "2018-01-31"), ("2018-02", "2018-02-28")])
+        self.assertEqual(ps.month_ends("2024-02", "2024-02"), [("2024-02", "2024-02-29")])
+        self.assertEqual(len(ps.month_ends("2018-01", "2026-03")), 99)
+
+    def test_latest_before(self):
+        items = [("2018-01-02", "x"), ("2018-01-31", "y"), ("2018-02-01", "z")]
+        self.assertEqual(ps.latest_before(items, "2018-01-31"), ("2018-01-31", "y"))
+        self.assertIsNone(ps.latest_before(items, "2018-01-01"))
+
+    def test_universe_like_conditions(self):
+        filed = {"AAA": ["2017-02-01"], "BBB": ["2017-01-30"], "CCC": ["2017-06-01"], "DDD": ["2017-06-01"],
+                 "EEE": ["2017-06-01"], "FFF": ["2017-06-01"]}
+        prices = {s: [("2018-01-10", "2018-01-09", "a", 20.0)] for s in filed}
+        prices["CCC"] = [("2017-05-01", "2017-04-28", "a", 50.0), ("2018-01-10", "2018-01-09", "b", 4.99)]
+        finra = {"AAA": {"adv": 600_000}, "BBB": {"adv": 9e9}, "CCC": {"adv": 9e9}, "DDD": {"adv": 499_000},
+                 "FFF": {"adv": None}}
+        stats = {}
+        got = ps.universe_like(self.END, filed, prices, finra, stats)
+        self.assertEqual(got, {"AAA": {"V": 600_000, "P": 20.0}})  # $12M; DDD is $9.98M; EEE is not in FINRA
+        self.assertEqual(stats, {"FINRA row without volume": 1, "not in the FINRA report": 1})
+
+    def test_universe_like_edges(self):
+        prices = {"AAA": [("2018-01-31", "2018-01-30", "a", 5.0)]}  # filed on the month's end: counts
+        finra = {"AAA": {"adv": 2_000_000}}  # $5 x 2,000,000 = $10M exactly
+        for d in ("2017-01-31", "2018-01-31"):  # 365 days before the month's end, and the month's end
+            self.assertIn("AAA", ps.universe_like(self.END, {"AAA": [d]}, prices, finra))
+        old = {"AAA": [("2017-01-30", "2017-01-30", "a", 50.0)]}  # the only price is outside the 365 days
+        self.assertEqual(ps.universe_like(self.END, {"AAA": ["2017-06-01"]}, old, finra), {})
+        self.assertEqual(ps.universe_like(self.END, {"AAA": ["2017-06-01"]}, prices, None), {})  # no report
+
+    def test_latest_price_order(self):
+        finra = {"AAA": {"adv": 10_000_000}}
+        same_day = {"AAA": sorted([("2018-01-10", "2018-01-08", "z", 2.0), ("2018-01-10", "2018-01-09", "a", 6.0)])}
+        self.assertIn("AAA", ps.universe_like(self.END, {"AAA": ["2017-06-01"]}, same_day, finra))  # later trade
+        same_trade = {"AAA": sorted([("2018-01-10", "2018-01-09", "b", 6.0), ("2018-01-10", "2018-01-09", "a", 2.0)])}
+        self.assertIn("AAA", ps.universe_like(self.END, {"AAA": ["2017-06-01"]}, same_trade, finra))  # larger acc
+
+    def test_cik_and_rename(self):
+        by_sym = {"OLD": [("2018-11-01", "1")], "SYM": [("2017-03-01", "3"), ("2018-02-01", "4")]}
+        self.assertEqual(ps.cik_at(by_sym, "SYM", "2018-06-30"), "4")
+        self.assertEqual(ps.cik_at(by_sym, "SYM", "2018-01-31"), "3")
+        self.assertIsNone(ps.cik_at(by_sym, "OLD", "2018-06-30"))
+        bars = {"NEW": {"2019-03"}, "X": {"2019-03"}, "Y": {"2019-03"}}
+        ciks = {"1": {"OLD", "NEW"}, "2": {"OLD2", "X", "Y"}, "5": {"OLD3", "NOBARS"}}
+        self.assertEqual(ps.recovered("OLD", "2019-03", "1", ciks, bars), "NEW")
+        self.assertIsNone(ps.recovered("OLD", "2019-04", "1", ciks, bars))  # no NEW bar that month
+        self.assertIsNone(ps.recovered("OLD2", "2019-03", "2", ciks, bars))  # two other symbols with bars
+        self.assertIsNone(ps.recovered("OLD3", "2019-03", "5", ciks, bars))
+        self.assertIsNone(ps.recovered("OLD", "2019-03", None, ciks, bars))
+
+    def test_counts_and_decision(self):
+        per_month = {"2018-01": {"like": {"A", "B", "C"}, "with bars": {"A"}, "recovered": {"B": "B2"}, "duplicates": 1},
+                     "2019-05": {"like": {"A"}, "with bars": {"A"}, "recovered": {}, "duplicates": 0}}
+        c = ps.survivorship_counts(per_month)
+        self.assertEqual(c["per_year"]["2018"], {"universe-like": 3, "with bars": 1, "without bars": 2,
+                                                 "recovered by the rename rule": 1,
+                                                 "recovered, duplicating a stock-month with bars": 1})
+        self.assertEqual(c["overall"]["universe-like"], 4)
+        cell = lambda w, r: {"universe-like": 100, "with bars": 100 - w, "without bars": w,  # noqa: E731
+                             "recovered by the rename rule": r}
+        d = ps.decide(cell(20, 5))  # 5 < 20 / 3: the rule is not used, nothing counts as recovered
+        self.assertEqual((d["rename rule used"], d["f (rule as decided)"], d["f (literal, recovered always subtracted)"],
+                          d["b_R"], d["b within 0.03 R"]), (False, 0.20, 0.15, 0.20, False))
+        d = ps.decide(cell(20, 8))
+        self.assertEqual((d["rename rule used"], d["f (rule as decided)"]), (True, 0.12))
+        self.assertTrue(ps.decide(cell(3, 1))["rename rule used"])  # exactly a third
+        d = ps.decide(cell(3, 0))
+        self.assertEqual((d["b_R"], d["b within 0.03 R"]), (0.03, True))  # b at the limit
+        self.assertEqual(ps.B_MAX, 0.03)
+
+
 if __name__ == "__main__":
     unittest.main()
