@@ -85,8 +85,8 @@ def _to_ny(stamp, tz):
     """EDGAR's acceptanceDateTime ("2024-02-01T21:30:00.000Z") -> New York "YYYY-MM-DDTHH:MM"; tz says how to read
     the field (decided by the live check of the plan's Task 6)."""
     t = dt.datetime.fromisoformat(stamp[:19])
-    if tz == "UTC":
-        t = t.replace(tzinfo=dt.timezone.utc).astimezone(alpaca.NY)
+    for _ in range({"UTC": 1, "double": 2}.get(tz, 0)):  # "double": shifted UTC -> New York twice (2026 sample)
+        t = t.replace(tzinfo=dt.timezone.utc).astimezone(alpaca.NY).replace(tzinfo=None)
     return t.strftime("%Y-%m-%dT%H:%M")
 
 
@@ -129,16 +129,26 @@ def release_symbols(releases, filings, days=365):
     return {s: sorted(v) for s, v in out.items()}
 
 
-def accepted_pairs(zip_path, cik, n):
-    """The time-zone check's input: a CIK's last n item 2.02 8-Ks in submissions.zip -> [(accession number, the raw
-    acceptanceDateTime field)]."""
+def accepted_pairs(zip_path, cik, years):
+    """The time-zone check's input: for each given year, the CIK's first item 2.02 8-K of that year in
+    submissions.zip (recent filings and older pages) -> [(accession number, the raw acceptanceDateTime field)]."""
+    rows = []
     with zipfile.ZipFile(zip_path) as z:
-        d = json.loads(z.read(f"CIK{int(cik):010d}.json"))
-    r = (d.get("filings") or {}).get("recent") or {}
-    rows = [(a, t) for f, i, a, t in zip(r.get("form", []), r.get("items", []), r.get("accessionNumber", []),
-                                         r.get("acceptanceDateTime", []))
-            if f == "8-K" and "2.02" in re.split(r"[,\s]+", i or "")]
-    return rows[:n]
+        names = [n for n in z.namelist() if re.fullmatch(rf"CIK{int(cik):010d}(-submissions-\d+)?\.json",
+                                                          n.rsplit("/", 1)[-1])]
+        for name in names:
+            d = json.loads(z.read(name))
+            r = d if "-submissions-" in name else (d.get("filings") or {}).get("recent") or {}
+            rows += [(t, a) for f, i, a, t in zip(r.get("form", []), r.get("items", []), r.get("accessionNumber", []),
+                                                  r.get("acceptanceDateTime", []))
+                     if f == "8-K" and "2.02" in re.split(r"[,\s]+", i or "") and t]
+    rows.sort()
+    out = []
+    for y in years:
+        hit = next(((a, t) for t, a in rows if t[:4] == str(y)), None)
+        if hit:
+            out.append(hit)
+    return out
 
 
 def index_accepted(cik, accession):

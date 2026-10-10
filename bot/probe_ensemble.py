@@ -213,7 +213,9 @@ def transitions(states, min_outside):
 # ---------- coverage, the run, the report ----------
 SIGNAL_START, SIGNAL_END, BARS_FROM = "2017-01-03", "2026-03-31", "2016-01-04"
 COVERAGE_MIN = 0.90  # spec section 2: below it, S2 drops the 8-K condition
-TZ_SAMPLE = (("320193", 3), ("19617", 2))  # Apple (after the close), JPMorgan Chase (before the open)
+TZ_SAMPLE = ("320193", "19617", "789019")  # Apple and Microsoft (after the close), JPMorgan Chase (before the open)
+TZ_YEARS = tuple(range(2017, 2027))  # one item 2.02 8-K per issuer and year
+TZ_RULES = ("America/New_York", "UTC", "double")
 REPORT_KEYS = ("acceptance_tz_check", "item_202_coverage", "fallback", "universe_per_year",
                "firings_per_signal_per_year", "data_gaps", "requests_and_runtime")
 CHECK_KEYS = ("acceptance_tz_check", "cik_mapping_check", "price_rules_check", "look_ahead_check",
@@ -235,18 +237,20 @@ def item_202_coverage(stock_years, releases):
 
 
 def tz_check(zip_path):
-    """Compare submissions.zip's acceptanceDateTime with EDGAR's index page for a few item 2.02 8-Ks -> {"pairs",
-    "tz"}: "America/New_York" when the field's digits are the index's Eastern time, "UTC" when the field read as UTC
-    gives it, None when the pairs disagree (the run stops)."""
+    """Compare submissions.zip's acceptanceDateTime with EDGAR's index page (Eastern time) for one item 2.02 8-K per
+    issuer and year -> {"pairs" (each with the rule that reproduces the index time, and the offset in hours),
+    "rules_matched", "tz"}: tz is the one rule that reproduces every pair, else None (the full run stops)."""
     pairs = []
-    for cik, n in TZ_SAMPLE:
-        for acc, field in pd.accepted_pairs(zip_path, cik, n):
-            pairs.append({"cik": cik, "accession": acc, "field": field, "index": pd.index_accepted(cik, acc)})
-    verdicts = set()
-    for p in pairs:
-        ny, utc = pd._to_ny(p["field"], "America/New_York"), pd._to_ny(p["field"], "UTC")
-        verdicts.add("America/New_York" if p["index"] == ny else "UTC" if p["index"] == utc else None)
-    return {"pairs": pairs, "tz": verdicts.pop() if len(verdicts) == 1 else None}
+    for cik in TZ_SAMPLE:
+        for acc, field in pd.accepted_pairs(zip_path, cik, TZ_YEARS):
+            idx = pd.index_accepted(cik, acc)
+            off = None
+            if idx:
+                off = (dt.datetime.fromisoformat(field[:16]) - dt.datetime.fromisoformat(idx)).total_seconds() / 3600
+            pairs.append({"cik": cik, "accession": acc, "field": field, "index": idx, "offset_h": off,
+                          "rule": next((r for r in TZ_RULES if idx and pd._to_ny(field, r) == idx), None)})
+    rules = sorted({p["rule"] or "none" for p in pairs})
+    return {"pairs": pairs, "rules_matched": rules, "tz": rules[0] if len(rules) == 1 and rules[0] != "none" else None}
 
 
 def load_insider(today):
@@ -276,10 +280,12 @@ def run(checks, sample=400, seed=7):
     filed, ciks = pd.index(rows)
     zip_path = pd.download(pd.SUBMISSIONS, common.ROOT / ".cache" / "sec" / "submissions.zip")
     tz = tz_check(zip_path)
-    if tz["tz"] is None:
+    if tz["tz"] is None and not checks:
         return {"acceptance_tz_check": tz, "stopped": "the acceptance time zone could not be established"}
-    releases = pd.release_symbols(pd.earnings_releases(zip_path, {c for v in ciks.values() for c in v}, tz["tz"]),
-                                  rows)
+    # the checks continue without an established zone: calendar-year coverage does not depend on it (only releases in
+    # the last hours of December 31 could move a year)
+    releases = pd.release_symbols(pd.earnings_releases(zip_path, {c for v in ciks.values() for c in v},
+                                                       tz["tz"] or "UTC"), rows)
     reactions = {s: {r for r in (pd.reaction_session(t, sessions) for t in v) if r} for s, v in releases.items()}
     symbols = sorted(filed)
     if checks:

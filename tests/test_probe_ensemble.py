@@ -116,6 +116,17 @@ class Submissions(unittest.TestCase):
             got = pd.earnings_releases(self.zip_path(d), {"0000320193"}, "UTC")
         self.assertEqual(got["320193"], ["2024-02-01T16:30", "2024-07-01T10:00"])  # winter UTC-5, summer UTC-4
 
+    def test_double_shift_rule_reproduces_the_2026_index_times(self):
+        self.assertEqual(pd._to_ny("2026-07-31T00:30:28.000Z", "double"), "2026-07-30T16:30")  # Apple, summer
+        self.assertEqual(pd._to_ny("2026-01-30T02:30:33.000Z", "double"), "2026-01-29T16:30")  # Apple, winter
+        self.assertEqual(pd._to_ny("2026-07-14T14:30:38.000Z", "double"), "2026-07-14T06:30")  # JPMorgan
+
+    def test_accepted_pairs_one_per_year_across_pages(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            got = pd.accepted_pairs(self.zip_path(d), "320193", (2023, 2024))
+        self.assertEqual(got, [("a", "2024-02-01T21:30:00.000Z")])  # no 2023 filing; the 2024 one is the earliest
+
     def test_reaction_session_after_close_et(self):
         s = self.SESSIONS
         self.assertEqual(pd.reaction_session("2024-02-01T15:59", s), "2024-02-01")
