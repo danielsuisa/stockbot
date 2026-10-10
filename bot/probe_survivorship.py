@@ -148,19 +148,58 @@ def decide(overall):
     decided: when the rule is not used nothing counts as recovered (spec section 7 A.1 item 3). A stock-month
     recovered as a symbol that is itself universe-like with bars that month is the same company counted twice: it
     leaves the numerator and the denominator (owner's decision 2026-10-10)."""
-    dup = overall.get("recovered, duplicating a stock-month with bars", 0)
-    n, without = overall["universe-like"] - dup, overall["without bars"] - dup
-    rec = overall["recovered by the rename rule"] - dup
+    n, without, rec = _net(overall)
     used = 3 * rec >= without
-    f = (without - (rec if used else 0)) / n if n else None
-    return {"rename rule used": used, "f (rule as decided)": f,
-            "f (literal, recovered always subtracted)": (without - rec) / n if n else None,
-            "b_R": f, "b within 0.03 R": f is not None and f <= B_MAX}
+    f = _fs(n, without, rec, used)
+    return {"rename rule used": used, **f, "b_R": f["f (rule as decided)"],
+            "b within 0.03 R": f["f (rule as decided)"] is not None and f["f (rule as decided)"] <= B_MAX}
+
+
+def _net(cells):
+    """(stock-months, without bars, recovered) with duplicates left out of all three (owner's decision 4)."""
+    dup = cells.get("recovered, duplicating a stock-month with bars", 0)
+    return (cells["universe-like"] - dup, cells["without bars"] - dup,
+            max(0, cells["recovered by the rename rule"] - dup))
+
+
+def _fs(n, without, rec, used):
+    return {"f (rule as decided)": (without - (rec if used else 0)) / n if n else None,
+            "f (literal, recovered always subtracted)": (without - rec) / n if n else None}
+
+
+def f_per_year(per_year, used):
+    """f per year under both readings, with the rename rule as decided on the whole period."""
+    return {y: _fs(*_net(c), used) for y, c in per_year.items()}
+
+
+def rename_bars(by_sym, of_cik, bar_months):
+    """What the raw bars hold under a renamed company's symbols: CIKs with exactly two filed symbols, one filed only
+    before the other (a clean change, dated by the new symbol's first filing) -> counts of changes where the old and
+    the new symbol have bars in a month before the change."""
+    out = {"symbol changes (CIKs with two symbols filed one after the other)": 0,
+           "old symbol has bars before the change": 0, "new symbol has bars before the change": 0,
+           "both": 0, "neither": 0}
+    for syms in of_cik.values():
+        if len(syms) != 2:
+            continue
+        a, b = sorted(syms, key=lambda s: (by_sym[s][0][0], s))
+        if by_sym[a][-1][0] >= by_sym[b][0][0]:
+            continue  # filed side by side (share classes, overlap): not a clean change
+        change = by_sym[b][0][0][:7]
+        old = any(m < change for m in bar_months.get(a, ()))
+        new = any(m < change for m in bar_months.get(b, ()))
+        out["symbol changes (CIKs with two symbols filed one after the other)"] += 1
+        out["old symbol has bars before the change"] += old
+        out["new symbol has bars before the change"] += new
+        out["both"] += old and new
+        out["neither"] += not old and not new
+    return out
 
 
 # ---------- the run and its report ----------
 REPORT_KEYS = ("finra_volume_check", "item_202_coverage_8k_only", "item_202_coverage_with_8k_a", "s2_decision",
-               "stock_months", "rename_rule", "allowance", "data_gaps", "requests_and_runtime")
+               "stock_months", "rename_rule", "rename_bars", "allowance", "f_per_year", "data_gaps",
+               "requests_and_runtime")
 CHECK_KEYS = ("finra_volume_check", "spelling_check", "rename_check", "sample_stock_months", "item_202_coverage_sample",
               "requests_and_runtime")
 CHECK_SYMBOLS = ("BRK.B", "META", "FB", "AAPL")
@@ -284,7 +323,9 @@ def run(checks, sample=300, seed=7):
                             "recovered": counts["overall"]["recovered by the rename rule"],
                             "without bars": counts["overall"]["without bars"],
                             "duplicates (left out of f)": counts["overall"]["recovered, duplicating a stock-month with bars"]},
+            "rename_bars": rename_bars(by_sym, of_cik, bar_months),
             "allowance": allowance,
+            "f_per_year": f_per_year(counts["per_year"], decision["rename rule used"]),
             "data_gaps": {"months with no or a stale FINRA report": stale, **fstats,
                           "insider quarters": f"{quarters[0]}..{quarters[-1]} ({len(quarters)})",
                           "symbols as filed": len(filed), "symbols with raw bars": len(bar_months),

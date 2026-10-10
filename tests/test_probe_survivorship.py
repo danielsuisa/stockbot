@@ -137,6 +137,33 @@ class StockMonths(unittest.TestCase):
                          (False, 10 / 90, 10 / 90))
 
 
+class Additions(unittest.TestCase):
+    def test_f_per_year_both_readings(self):
+        per_year = {"2018": {"universe-like": 110, "with bars": 90, "without bars": 20, "recovered by the rename rule": 8,
+                             "recovered, duplicating a stock-month with bars": 10},
+                    "2019": {"universe-like": 0, "with bars": 0, "without bars": 0, "recovered by the rename rule": 0,
+                             "recovered, duplicating a stock-month with bars": 0}}
+        # 2018 without duplicates: 100 stock-months, 10 without bars, recovered 8 - 10 -> counted as 0 (never below)
+        got = ps.f_per_year(per_year, used=True)
+        self.assertEqual(got["2018"], {"f (rule as decided)": 0.10, "f (literal, recovered always subtracted)": 0.10})
+        self.assertEqual(got["2019"], {"f (rule as decided)": None, "f (literal, recovered always subtracted)": None})
+        per_year["2018"]["recovered, duplicating a stock-month with bars"] = 2  # 108 stock-months, 18 without, 6 rec
+        got = ps.f_per_year(per_year, used=False)["2018"]
+        self.assertEqual(got, {"f (rule as decided)": 18 / 108, "f (literal, recovered always subtracted)": 12 / 108})
+
+    def test_rename_bars(self):
+        # a clean symbol change: the old symbol's last filing is before the new one's first
+        by_sym = {"OLD": [("2018-01-10", "1"), ("2019-05-01", "1")], "NEW": [("2019-07-01", "1"), ("2020-01-01", "1")],
+                  "X1": [("2018-01-10", "2")], "X2": [("2019-01-10", "2")],
+                  "C1": [("2018-01-10", "3"), ("2020-01-01", "3")], "C2": [("2018-02-10", "3")]}  # CIK 3 overlaps
+        of_cik = {"1": {"OLD", "NEW"}, "2": {"X1", "X2"}, "3": {"C1", "C2"}}
+        bars = {"OLD": {"2019-03"}, "NEW": {"2019-03", "2019-08"}, "X2": {"2019-02"}}
+        self.assertEqual(ps.rename_bars(by_sym, of_cik, bars), {
+            "symbol changes (CIKs with two symbols filed one after the other)": 2,
+            "old symbol has bars before the change": 1, "new symbol has bars before the change": 1,
+            "both": 1, "neither": 1})
+
+
 class Run(unittest.TestCase):
     """The run on a mocked data set: A has bars; OLD has none and its CIK's other symbol NEW has bars (recovered); B
     has none and nothing to recover it. Months 2017-03 .. 2017-05."""
@@ -181,6 +208,8 @@ class Run(unittest.TestCase):
         import re
         out = self.run_mocked()
         self.assertEqual(tuple(out), ps.REPORT_KEYS)
+        self.assertIn("2017", out["f_per_year"])
+        self.assertIn("symbol changes (CIKs with two symbols filed one after the other)", out["rename_bars"])
         self.assertIsNone(re.search(r"(?i)(return|returns|mean|median|win)", json.dumps(out)), out)
         o = out["stock_months"]["overall"]
         self.assertEqual((o["universe-like"], o["with bars"], o["without bars"], o["recovered by the rename rule"]),
