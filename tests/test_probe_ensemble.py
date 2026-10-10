@@ -4,7 +4,7 @@ import io
 import unittest
 import zipfile
 
-from bot import probe_ensemble_data as pd
+from bot import probe_ensemble as pe, probe_ensemble_data as pd
 
 
 def tsv(rows):
@@ -177,6 +177,55 @@ class Bars(unittest.TestCase):
                 pd.split_bars(["AAA"], "2016-01-01", "2016-01-05")
                 self.assertEqual(g.call_count, 2)  # the third call is a cache hit
                 self.assertEqual(g.call_args.args[1]["adjustment"], "split")
+
+
+
+def series(dates, close=10.0, volume=2_000_000, raw_close=None, raw_volume=None):
+    n = len(dates)
+    rc = raw_close if raw_close is not None else [close] * n
+    x = {"dates": list(dates), "close": [close] * n if not isinstance(close, list) else close,
+         "volume": [volume] * n if not isinstance(volume, list) else volume,
+         "raw_close": rc if isinstance(rc, list) else [rc] * n,
+         "raw_volume": raw_volume if raw_volume is not None else ([volume] * n if not isinstance(volume, list) else volume),
+         "raw_high": [c * 1.01 for c in (rc if isinstance(rc, list) else [rc] * n)],
+         "raw_low": [c * 0.99 for c in (rc if isinstance(rc, list) else [rc] * n)]}
+    x["segment"] = pd.segments(x["dates"], x["close"], Bars.S)
+    return x
+
+
+class Universe(unittest.TestCase):
+    S = Bars.S
+    D = S[300]  # 300 earlier sessions
+
+    def test_universe_conditions(self):
+        import datetime as dt
+        d0 = dt.date.fromisoformat(self.D)
+        y = (d0 - dt.timedelta(365)).isoformat()
+        ok = series(self.S[:301])
+        cases = {"OK": (ok, [(d0 - dt.timedelta(10)).isoformat()]),
+                 "EDGE": (ok, [y]),  # filed exactly 365 days before D: in
+                 "OLD": (ok, [(d0 - dt.timedelta(366)).isoformat()]),
+                 "SAME": (ok, [self.D]),  # filed on D itself: not "before D"
+                 "NOBAR": (series(self.S[:300]), [y]),
+                 "CHEAP": (series(self.S[:301], raw_close=4.99), [y]),
+                 "THIN": (series(self.S[:301], close=10.0, volume=999_000), [y]),  # $9.99M
+                 "YOUNG": (series(self.S[49:301]), [y])}  # 251 earlier bars
+        u = pe.universe(self.D, {k: v[0] for k, v in cases.items()}, {k: v[1] for k, v in cases.items()})
+        self.assertEqual(sorted(u), ["EDGE", "OK"])
+        self.assertAlmostEqual(u["OK"], 20_000_000)
+
+    def test_split_vs_raw_roles(self):
+        raw = [4.0] * 290 + [40.0] * 11  # a 1:10 reverse split at bar 290: raw x10, split-adjusted flat
+        s = series(self.S[:301], close=40.0, volume=500_000, raw_close=raw, raw_volume=[5_000_000] * 290 + [500_000] * 11)
+        self.assertEqual(s["segment"][-1], 0)  # the split-adjusted series has no jump: one segment
+        u = pe.universe(self.D, {"AAA": s}, {"AAA": [self.S[250]]})
+        self.assertIn("AAA", u)  # $5 uses the raw close on D (40); dollar volume = raw close x raw volume
+        early = pe.universe(self.S[289], {"AAA": s}, {"AAA": [self.S[250]]})
+        self.assertNotIn("AAA", early)  # before the split the raw close was 4.00 < $5
+
+    def test_top_half_by_liquidity(self):
+        u = {"A": 30e6, "B": 20e6, "C": 20e6, "D": 10e6, "E": 50e6}
+        self.assertEqual(pe.liquidity_top_half(u), {"E", "A", "B"})  # ceil(5 / 2) = 3, the tie B / C by symbol
 
 
 if __name__ == "__main__":
