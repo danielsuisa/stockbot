@@ -264,6 +264,19 @@ class Commands(unittest.TestCase):
         self.assertIn(code("AAPL"), sent[0])
         self.assertEqual(sent[1], f"🎫 כרטיס ל-{code('MSFT')}")
 
+    def test_ticket_dry_run_through_the_listener(self):
+        # tests/listen_dry_run.py feeds one fake update to listen.answer (the listener's own path) and prints
+        from bot import ticket_command
+        from tests import listen_dry_run
+        with (mock.patch.object(common, "tickers", return_value={"AAPL": (1, "Apple"), "BRK-B": (2, "Berkshire")}),
+              mock.patch.object(ticket_command, "build", side_effect=lambda s: {"symbol": s}),
+              mock.patch.object(ticket_command, "message", side_effect=lambda t: f"🎫 כרטיס ל-{code(t['symbol'])}"),
+              mock.patch("builtins.print") as out):
+            self.assertEqual(listen_dry_run.main("/ticket AAPL BRK.B ZZZZZ"), 0)
+        printed = "\n".join(str(c.args[0]) for c in out.call_args_list if c.args)
+        for part in (code("AAPL"), code("BRK.B"), code("ZZZZZ"), "answers: 3, failed: 0"):
+            self.assertIn(part, printed)
+
     def test_ticket_every_symbol_answered(self):
         sent, _ = self.run_ticket("/ticket aapl zzzzz", {"AAPL": (1, "Apple")}, lambda s: {"symbol": s})
         self.assertEqual(sent[0], f"🎫 כרטיס ל-{code('AAPL')}")
