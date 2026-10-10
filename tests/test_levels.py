@@ -197,6 +197,46 @@ class FillModel(unittest.TestCase):
         self.assertEqual(ex, [("time", 50.6, 21), ("time", 50.6, 21)])  # the close of the 21st session after entry
         self.assertIsNone(levels.exits(self.t, 50.51, 0, after(FILL0, *[flat] * 20)))  # bars end before it
 
+    def test_rule6_resting_fill_entry_session(self):
+        # opened above the limit (50.76), filled at the limit: the high of 55 may have come before the fill
+        bars = after((55.0, 55.0, 50.7, 51.0), (51.0, 51.5, 48.0, 49.0))
+        self.assertEqual(levels.fill(self.t, bars), (0, 50.76))
+        ex = levels.exits(self.t, 50.76, 0, bars)
+        self.assertEqual(ex, [("stop", 48.76, 1), ("trail", 49.5, 1)])  # no target, no 55 in the running max
+        # the stop is still checked against the entry session's low
+        low = after((55.0, 55.0, 48.5, 49.0))
+        self.assertEqual(levels.exits(self.t, 50.76, 0, low), [("stop", 48.76, 0), ("stop", 48.76, 0)])
+
+    def test_rule6_only_when_the_session_opened_above_the_limit(self):
+        # triggered from below (open 50.0): the fill at the stop comes before the session's high; rules 1-5 apply
+        bars = after((50.0, 54.0, 50.4, 53.8), (53.0, 53.2, 51.0, 51.5))
+        self.assertEqual(levels.exits(self.t, 50.51, 0, bars)[0], ("target", 53.51, 0))
+
+    def test_resting_order_then_a_lower_open(self):
+        # decision 6: rests after opening above the limit; the next session opens below it and fills at the limit
+        bars = after((51.0, 51.2, 50.9, 51.0), (50.5, 51.0, 50.4, 50.8))
+        self.assertEqual(levels.fill(self.t, bars), (1, 50.76))
+
+    def test_leg_b_exit_types(self):
+        trail = levels.exits(self.t, 50.51, 0, after((48.3, 50.6, 48.2, 50.0)))
+        self.assertEqual(trail[1], ("trail", 48.6, 0))  # rule 4: the entry session's high 50.6 lifts the level
+        stop = levels.exits(self.o, 50.4, 0, after((50.4, 50.4, 48.0, 48.5)))
+        self.assertEqual(stop[1], ("stop", 48.4, 0))  # the running max never rose above F: the level is F - R
+        gap = levels.exits(self.t, 50.51, 0, after(FILL0, (48.0, 48.2, 47.5, 48.0)))
+        self.assertEqual(gap[1], ("trail", 48.0, 1))  # the carried level 48.6 is above F - R
+
+    def test_exits_in_open_mode(self):
+        bars = after((50.4, 50.6, 50.3, 50.5), (50.5, 53.5, 50.4, 53.0))
+        self.assertEqual(levels.fill(self.o, bars), (0, 50.4))
+        self.assertEqual(levels.exits(self.o, 50.4, 0, bars), [("target", 53.4, 1), ("trail", 51.5, 1)])
+
+    def test_exit_index_for_a_fill_on_session_2(self):
+        quiet, flat = (50.0, 50.4, 49.9, 50.0), (50.6, 50.7, 50.5, 50.6)
+        bars = after(quiet, quiet, FILL0, *[flat] * 21)
+        self.assertEqual(levels.fill(self.t, bars), (2, 50.51))
+        self.assertEqual(levels.exits(self.t, 50.51, 2, bars), [("time", 50.6, 23), ("time", 50.6, 23)])
+        self.assertIsNone(levels.exits(self.t, 50.51, 2, bars[:-1]))
+
     def test_unfilled_is_zero(self):
         quiet = (50.0, 50.4, 49.9, 50.0)
         self.assertEqual(levels.simulate(self.t, after(quiet, quiet, quiet), 0.02),

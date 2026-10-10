@@ -185,16 +185,21 @@ def exits(t, F, k, after):
     last = k + t["horizon"]
     out = [None, None]
     run_max, prev_level = F, None
+    # rule 6: a resting order filled on a session that opened above the limit -- that session's high may have come
+    # before the fill, so on it there is no target and the running maximum stays at F (the stop is still checked)
+    rested = t["mode"] == "breakout" and k < len(after) and after[k][1] > t["limit"] + EPS
     for j in range(k, min(last, len(after) - 1) + 1):
         _, o, h, l, c, v = after[j]
         entry = j == k
+        pre_fill_high = entry and rested
         if out[0] is None:
             if l <= S + EPS:
                 out[0] = ("stop", S if entry or o >= S else o, j)
-            elif h >= T - EPS:
+            elif h >= T - EPS and not pre_fill_high:
                 out[0] = ("target", T if entry or o <= T else o, j)
         if out[1] is None:
-            run_max = max(run_max, h)
+            if not pre_fill_high:
+                run_max = max(run_max, h)
             level = max(run_max - R, S)
             if l <= level + EPS:
                 gap = not entry and prev_level is not None and o < prev_level
