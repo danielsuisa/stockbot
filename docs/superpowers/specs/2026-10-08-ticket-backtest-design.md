@@ -384,3 +384,46 @@ shadow tracker as before.
 
 Follow-ups for the owner (not done here): live `/ticket` and IBKR orders only after some rule set passes a
 pre-registered test; the squeeze list's relative volume should be matched by time of day (a change to the live list).
+
+### 14.14 Closing analysis and decision (2026-10-10): the ZBA line is closed
+
+A pooled analysis of the two saved realistic CSVs (X5, 5,017 trades, 2016-01-26 → 2026-10-08; script
+`docs/backtest/zba-v2-closing-analysis.py`, no new run, no parameter changed). The gate was fixed before the files
+were opened: continue with ZBA only if a cut by spread / stop distance alone has mean net R ≥ +0.20, a day-clustered
+t ≥ 2.5 and mean net R > 0 in at least 8 of the 11 years.
+
+- No cut passes. All trades: +0.061R, clustered t 1.08, 95% interval (bootstrap over days) −0.04R to +0.18R; without
+  2026: +0.028R. The nearest cut (spread ≤ 0.05 × D): 136 trades, +0.52R, t 1.80, 61% of its total from 3 trades,
+  +1.17R in development against +0.07R in the holdout.
+- Gross +0.275R (clustered t 4.8); cost 0.214R = spread 0.154R + commission 0.060R. An extra $0.005 a share each
+  side gives −0.024R; $0.01 gives −0.110R. Without the top 1% of trades: −0.184R.
+- Trades on the same day are close to independent (design effect 1.02), so the reported t values stand.
+- Per-trade SD 4.0R at about 469 trades a year: confirming a true +0.20R forward (80% power, 5% one-sided) takes
+  about 5.4 years; +0.13R about 12.7 years; +0.06R about 60 years.
+- $100 of risk is a median position of about $27,000 (the stop is 0.37% of the price).
+
+**Decision (the owner delegated it to the analyst, 2026-10-10): the ZBA line is closed.** No further variant, filter
+or stop width of the 5-minute ORB is tested on 2016–2026. K10s's shadow line may keep logging candidates as data for
+future diagnoses (forensics direction 3), but it is no longer a decision input: its forward record cannot settle the
+question in a usable time. Reopening ZBA needs a new pre-registered section that first passes section 15.
+
+## 15. Power gate (applies to every later rule set; added 2026-10-10)
+
+Why: X5 was selected as the best of 22 variants with t 2.1, and three sections in a row (12, 13, 14) ended in a
+forward test that could not have been decided in years. A structure whose edge cannot be confirmed forward in a
+usable time is not tested at all.
+
+- **Quantities.** SD = the day-clustered standard deviation of net R per trade (standard error of the mean × √n);
+  N = filled trades per year; both from the development period. μ = the planning edge = half the development mean
+  net R of the selected variant (the selection shrinkage: X5 went from +0.199R to +0.061R pooled).
+- **Required forward sample.** n = (2.49 × SD / μ)² trades (80% power, 5% one-sided); years = n / N.
+- **Check 1, at design, before any data is downloaded:** with SD and N estimated from the payoff shape (stop
+  distance, target, expected win rate, expected trades a day) and μ = the smallest edge worth trading after costs,
+  years must be ≤ 1.5. Otherwise the structure is redesigned or dropped.
+- **Check 2, after selection, before the holdout runs:** with the measured SD, N and μ as defined above, years must
+  be ≤ 1.5. Otherwise NO-GO ("not confirmable"), and the holdout is not spent.
+- **For reference, X5 fails both:** SD 4.0R, N 469, μ 0.10R → n ≈ 9,900 trades ≈ 21 years (with the unshrunk
+  +0.199R: about 2,500 trades, 5.3 years).
+- What passes in practice: more trades a year, a smaller SD per trade (a wider stop, a target instead of an open
+  tail), or a larger edge net of costs. Live `/ticket` stays blocked until a rule set passes this gate, a
+  pre-registered holdout and the forward shadow test.
