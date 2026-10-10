@@ -147,7 +147,7 @@ def events(filings, sessions):
             since = (dt.date.fromisoformat(F) - dt.timedelta(WINDOW)).isoformat()
             live = [r for r in rows if r[0] <= F and r[1] >= since]
             if len({r[2] for r in live}) >= MIN_PEOPLE and sum(r[3] for r in live) >= MIN_USD:
-                sym = next(r[4] for r in reversed(live) if r[0] == F)
+                sym = max(live)[4]  # the symbol on the latest qualifying filing
                 k = next((i for i, s in enumerate(sessions) if s > F), None)
                 out.append({"issuer": issuer, "filed": F, "symbol": sym, "entry": sessions[k] if k is not None else None,
                             "k": k})
@@ -221,6 +221,7 @@ def main():
             if y == 2015 and q < 4:
                 continue  # only the 30-day window before 2016-01-04 is needed from 2015
             filings.update(read_quarter(z, schema))
+            print(f"{y}Q{q}: {len(filings)} purchase filings so far ({time.time() - t0:.0f}s)", flush=True)
     out["a_quarters"] = {"first": quarters[0] if quarters else None, "last": quarters[-1] if quarters else None,
                          "count": len(quarters), "missing_since_2016": [
                              f"{y}Q{q}" for y in range(2016, today.year + 1) for q in range(1, 5)
