@@ -322,7 +322,7 @@ def purchases(z):
     for f in pi.read_quarter(z, {}).values():
         if (f["form"] or "").strip() != "4":
             continue
-        who = next((o["cik"] for o in f["owners"] if o["od"]), None)
+        who = next((_cik(o["cik"]) for o in f["owners"] if o["od"]), None)  # CIKs as filed may be zero-padded
         sym = normalise_symbol(f["symbol"])
         if not who or not f["filed"]:
             continue
@@ -331,6 +331,6 @@ def purchases(z):
             if bool(x["refs"] & plan_notes) or (f["box"] and not plan_notes):
                 continue
             if x["date"] and x["value"]:
-                out.append({"filed": f["filed"], "issuer": f["issuer"], "symbol": sym, "owner": who,
+                out.append({"filed": f["filed"], "issuer": _cik(f["issuer"]), "symbol": sym, "owner": who,
                             "trade_date": x["date"], "shares": x["shares"], "price": x["price"], "value": x["value"]})
     return out

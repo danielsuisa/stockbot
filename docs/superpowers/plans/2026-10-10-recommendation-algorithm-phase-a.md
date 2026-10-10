@@ -238,6 +238,9 @@ methodology and phase A only, section 1.1).
 - [ ] **Step 3: The time-zone check, first in `main()`:** fetch the EDGAR index pages of 5 known item 2.02 filings
   (two before 16:00, two after, one in summer time), compare their "Accepted" time with `acceptanceDateTime`, and set
   `tz` for Task 2 from the result. If the five disagree, stop the run with the evidence (no report).
+  *Superseded (owner's decision 2026-10-10):* the check (widened to 30 filings, 2017–2026) found the bulk field
+  inconsistent across filers, so the acceptance time now comes from each release's EDGAR index page, fetched lazily
+  where it can change a result; the check is kept as evidence only and does not stop the run.
 - [ ] **Step 4: Run on GitHub** — push `recommendation-algorithm` to `probe-ensemble` with the throwaway workflow;
   expected: success, the JSON in the log.
 - [ ] **Step 5: Write `docs/backtest/ensemble-phaseA-<date>.md`** (English) from the JSON: the coverage table, the

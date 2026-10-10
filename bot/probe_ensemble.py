@@ -246,6 +246,13 @@ def item_202_coverage(stock_years, releases):
     return {"per_year": {y: cell(*per[y]) for y in sorted(per)}, "overall": cell(*tot)}
 
 
+def keeps_8k(cov):
+    """Spec section 2: S2 keeps the 8-K item 2.02 condition iff overall coverage >= COVERAGE_MIN (fixed before the
+    run)."""
+    share = cov["overall"]["share"]
+    return share is not None and share >= COVERAGE_MIN
+
+
 def tz_check(zip_path):
     """Compare submissions.zip's acceptanceDateTime with EDGAR's index page (Eastern time) for one item 2.02 8-K per
     issuer and year -> {"pairs" (each with the rule that reproduces the index time, and the offset in hours),
@@ -325,15 +332,16 @@ def run(checks, sample=400, seed=7):
             s4_states.append((d, s4_state(d, series, u, reactions, sessions)))
     cov = item_202_coverage(stock_years, {s: reactions.filing_dates(s) for s in stock_years})
     tz["index pages read"], tz["index pages missing"] = len(reactions.times), reactions.missing
-    keep = cov["overall"]["share"] is not None and cov["overall"]["share"] >= COVERAGE_MIN
+    keep = keeps_8k(cov)
     s1 = [(d, s) for d, s in s1_firings(buys, sessions) if SIGNAL_START <= d <= SIGNAL_END]
-    s1_in = sum(1 for d, s in s1 if s in members.get(sessions[min(bisect.bisect_left(sessions, d), len(sessions) - 1)], ()))
+    # a filing on a non-session day is checked against the next session's universe (its first tradable session)
+    s1_in = [(d, s) for d, s in s1 if s in members.get(sessions[min(bisect.bisect_left(sessions, d), len(sessions) - 1)], ())]
     per_year = lambda xs: dict(sorted(collections.Counter(d[:4] for d, _ in xs).items()))  # noqa: E731
     s3, s3_warm = transitions(s3_states, S3_OUTSIDE)
     s4, s4_warm = transitions(s4_states, 1)
     warm = lambda n, k: {"sessions": n, "from": s3_states[0][0], "to": s3_states[n - 1][0],  # noqa: E731
                          "entries not counted": k}
-    firings = {"S1 insider cluster (all)": per_year(s1), "S1 in universe on its session": s1_in,
+    firings = {"S1 insider cluster (all)": per_year(s1), "S1 in universe on its session": per_year(s1_in),
                "S1 without a usable symbol": sum(1 for _, s in s1 if s is None),
                "S2 earnings drift (decided rule, in universe)": dict(sorted(s2["8-K, in universe" if keep else
                                                                             "fallback, in universe"].items())),

@@ -69,6 +69,14 @@ class InsiderReaders(unittest.TestCase):
                          [("1", "2017-01-03", 1000.0, 10.0, 10000.0)])  # plan, 10% owner, box, 4/A, sale excluded
         self.assertEqual((got[0]["filed"], got[0]["issuer"], got[0]["symbol"]), ("2017-01-05", "100", "ACME"))
 
+    def test_purchases_normalise_padded_ciks(self):
+        z = make_zip({"SUBMISSION": [sub("a", "4", cik="0000000100"), sub("b", "4")],
+                      "NONDERIV_TRANS": [tx("a"), tx("b")],
+                      "REPORTINGOWNER": [owner("a", "0000000007"), owner("b", "8")]})
+        got = pd.purchases(z)
+        self.assertEqual({p["issuer"] for p in got}, {"100"})  # one issuer whether or not the CIK was padded
+        self.assertEqual({p["owner"] for p in got}, {"7", "8"})
+
     def test_a_denied_plan_footnote_still_counts(self):
         z = make_zip({"SUBMISSION": [sub("a", "4")], "NONDERIV_TRANS": [tx("a", fn="F1")],
                       "REPORTINGOWNER": [owner("a", "1", rel="Officer")],
@@ -365,6 +373,22 @@ class S3S4(unittest.TestCase):
         self.assertEqual(pe.s4_state(D, ser, u, {"A": {S[294]}}, S), {"A", "B"})  # 5 sessions back: outside
         u.update({"A": 1e6})
         self.assertEqual(pe.s4_state(D, ser, u, {}, S), {"B"})  # A is not in the top half by liquidity
+
+
+class Coverage(unittest.TestCase):
+    def test_item_202_coverage_by_filing_year(self):
+        stock_years = {"A": {"2017", "2018"}, "B": {"2018"}, "C": {"2018"}}
+        releases = {"A": ["2016-12-20", "2018-02-01"], "B": ["2018-12-31"], "C": ["2019-01-02"]}
+        cov = pe.item_202_coverage(stock_years, releases)
+        self.assertEqual(cov["per_year"]["2017"], {"stock_years": 1, "covered": 0, "share": 0.0})  # 2016 release
+        self.assertEqual(cov["per_year"]["2018"], {"stock_years": 3, "covered": 2, "share": 0.6667})
+        self.assertEqual(cov["overall"], {"stock_years": 4, "covered": 2, "share": 0.5})
+        self.assertEqual(pe.item_202_coverage({}, {})["overall"]["share"], None)
+
+    def test_the_90_percent_decision(self):
+        self.assertEqual(pe.COVERAGE_MIN, 0.90)
+        for share, keep in ((0.9, True), (0.8999, False), (0.95, True), (None, False)):
+            self.assertEqual(pe.keeps_8k({"overall": {"share": share}}), keep, share)
 
 
 class Ranks(unittest.TestCase):

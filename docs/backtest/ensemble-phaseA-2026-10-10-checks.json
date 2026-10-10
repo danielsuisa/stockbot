@@ -1,0 +1,347 @@
+{
+ "acceptance_tz_check": {
+  "pairs": [
+   {
+    "cik": "320193",
+    "accession": "0001628280-17-000663",
+    "field": "2017-02-01T02:31:02.000Z",
+    "index": "2017-01-31T16:31",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-18-000005",
+    "field": "2018-02-02T02:30:17.000Z",
+    "index": "2018-02-01T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-19-000002",
+    "field": "2019-01-03T02:30:03.000Z",
+    "index": "2019-01-02T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-20-000008",
+    "field": "2020-01-29T02:30:40.000Z",
+    "index": "2020-01-28T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-21-000009",
+    "field": "2021-01-28T02:30:35.000Z",
+    "index": "2021-01-27T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-22-000006",
+    "field": "2022-01-28T02:30:36.000Z",
+    "index": "2022-01-27T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-23-000005",
+    "field": "2023-02-03T02:30:33.000Z",
+    "index": "2023-02-02T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-24-000005",
+    "field": "2024-02-02T02:30:30.000Z",
+    "index": "2024-02-01T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-25-000007",
+    "field": "2025-01-31T02:30:23.000Z",
+    "index": "2025-01-30T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-26-000005",
+    "field": "2026-01-30T02:30:33.000Z",
+    "index": "2026-01-29T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-17-000058",
+    "field": "2017-01-13T17:54:39.000Z",
+    "index": "2017-01-13T07:54",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-18-000004",
+    "field": "2018-01-12T16:46:59.000Z",
+    "index": "2018-01-12T06:46",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-19-000002",
+    "field": "2019-01-15T16:46:00.000Z",
+    "index": "2019-01-15T06:46",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-20-000082",
+    "field": "2020-01-14T16:46:00.000Z",
+    "index": "2020-01-14T06:46",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-21-000071",
+    "field": "2021-01-15T16:45:52.000Z",
+    "index": "2021-01-15T06:45",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-22-000079",
+    "field": "2022-01-14T16:45:48.000Z",
+    "index": "2022-01-14T06:45",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-23-000063",
+    "field": "2023-01-13T16:45:26.000Z",
+    "index": "2023-01-13T06:45",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-24-000049",
+    "field": "2024-01-12T16:47:22.000Z",
+    "index": "2024-01-12T06:47",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-25-000040",
+    "field": "2025-01-15T16:46:01.000Z",
+    "index": "2025-01-15T06:46",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0001628280-26-001902",
+    "field": "2026-01-13T16:41:09.000Z",
+    "index": "2026-01-13T06:41",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-17-019726",
+    "field": "2017-01-26T21:07:02.000Z",
+    "index": "2017-01-26T16:07",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-18-027377",
+    "field": "2018-01-31T21:05:57.000Z",
+    "index": "2018-01-31T16:05",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-19-022553",
+    "field": "2019-01-30T21:03:36.000Z",
+    "index": "2019-01-30T16:03",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-20-018383",
+    "field": "2020-01-29T21:03:50.000Z",
+    "index": "2020-01-29T16:03",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-21-017683",
+    "field": "2021-01-26T21:04:05.000Z",
+    "index": "2021-01-26T16:04",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-22-017041",
+    "field": "2022-01-25T21:03:05.000Z",
+    "index": "2022-01-25T16:03",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-23-014230",
+    "field": "2023-01-24T21:28:00.000Z",
+    "index": "2023-01-24T16:28",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0000950170-24-008809",
+    "field": "2024-01-30T21:03:17.000Z",
+    "index": "2024-01-30T16:03",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0000950170-25-010484",
+    "field": "2025-01-29T21:08:56.000Z",
+    "index": "2025-01-29T16:08",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-26-027198",
+    "field": "2026-01-28T21:04:38.000Z",
+    "index": "2026-01-28T16:04",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   }
+  ],
+  "rules_matched": [
+   "UTC",
+   "double"
+  ],
+  "tz": null
+ },
+ "cik_mapping_check": {
+  "symbols": 14035,
+  "symbols filed under more than one CIK": 815,
+  "AAPL -> 320193": true,
+  "FB and META -> 1326801": true
+ },
+ "price_rules_check": {
+  "AAPL": {
+   "raw close moved by the split factor": true,
+   "split-adjusted close continuous (within a factor of 1.5)": true,
+   "same segment across the split": true
+  },
+  "GE": {
+   "raw close moved by the split factor": true,
+   "split-adjusted close continuous (within a factor of 1.5)": true,
+   "same segment across the split": true
+  },
+  "sample series broken by the bad-price rule": 18,
+  "sample symbols with bars": 300
+ },
+ "look_ahead_check": {
+  "days compared": [
+   "2017-03-14",
+   "2019-08-01",
+   "2021-12-16"
+  ],
+  "identical with every bar after D removed": true
+ },
+ "item_202_coverage_sample": {
+  "per_year": {
+   "2017": {
+    "stock_years": 67,
+    "covered": 64,
+    "share": 0.9552
+   },
+   "2018": {
+    "stock_years": 63,
+    "covered": 61,
+    "share": 0.9683
+   },
+   "2019": {
+    "stock_years": 65,
+    "covered": 63,
+    "share": 0.9692
+   },
+   "2020": {
+    "stock_years": 71,
+    "covered": 61,
+    "share": 0.8592
+   },
+   "2021": {
+    "stock_years": 78,
+    "covered": 74,
+    "share": 0.9487
+   },
+   "2022": {
+    "stock_years": 81,
+    "covered": 76,
+    "share": 0.9383
+   },
+   "2023": {
+    "stock_years": 77,
+    "covered": 72,
+    "share": 0.9351
+   },
+   "2024": {
+    "stock_years": 75,
+    "covered": 71,
+    "share": 0.9467
+   },
+   "2025": {
+    "stock_years": 73,
+    "covered": 71,
+    "share": 0.9726
+   },
+   "2026": {
+    "stock_years": 73,
+    "covered": 64,
+    "share": 0.8767
+   }
+  },
+  "overall": {
+   "stock_years": 723,
+   "covered": 677,
+   "share": 0.9364
+  }
+ },
+ "index_pages": {
+  "read": 2,
+  "missing": 0
+ },
+ "requests_and_runtime": {
+  "alpaca": 91,
+  "sec zips": 48,
+  "runtime_s": 191
+ }
+}
