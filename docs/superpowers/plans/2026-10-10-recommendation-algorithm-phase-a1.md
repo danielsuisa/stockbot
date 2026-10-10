@@ -1,5 +1,7 @@
 # Recommendation algorithm — phase A.1 (survivorship and 8-K coverage) Implementation Plan
 
+Status: not executed. Phase A.1 runs from 2026-10-10-recommendation-algorithm-phase-a1-claude.md (owner's decision, 2026-10-10).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Run only spec section 7 A.1: recompute item 2.02 coverage using 8-K (not 8-K/A), measure universe-like stock-months without Alpaca bars using FINRA average daily share volume and SEC Form 4/5 transaction prices, count recoveries by the registered rename rule, and report (f) and (b=f\times1R) against (0.03R).

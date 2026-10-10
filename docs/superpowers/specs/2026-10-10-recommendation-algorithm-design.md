@@ -353,7 +353,7 @@ below the backtest's x̄ by more than 2 forward standard errors (6.3's formula w
      365 days is ≥ $5; and V × P ≥ $10M. Count them with and without an Alpaca bar in the month, per year and
      overall.
   3. Of those without bars: how many the rename rule of section 2 would recover. f = the rest / all universe-like
-     stock-months. The rename rule's one-third condition is decided here.
+     stock-months. The rename rule's one-third condition is decided here. If the rename rule is not used (it recovers less than a third), nothing counts as recovered: f = all universe-like stock-months without bars / all.
   4. Report b = f × 1 R against the 0.03 R limit of 6.4. If FINRA's reports carry no volume field, stop and report
      instead of substituting another definition.
 - **B — levels engine + `/ticket`:** section 3 and the cost guard, live for any symbol, labelled unproven.
