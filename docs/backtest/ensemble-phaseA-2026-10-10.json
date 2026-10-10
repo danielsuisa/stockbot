@@ -1,0 +1,496 @@
+{
+ "acceptance_tz_check": {
+  "pairs": [
+   {
+    "cik": "320193",
+    "accession": "0001628280-17-000663",
+    "field": "2017-02-01T02:31:02.000Z",
+    "index": "2017-01-31T16:31",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-18-000005",
+    "field": "2018-02-02T02:30:17.000Z",
+    "index": "2018-02-01T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-19-000002",
+    "field": "2019-01-03T02:30:03.000Z",
+    "index": "2019-01-02T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-20-000008",
+    "field": "2020-01-29T02:30:40.000Z",
+    "index": "2020-01-28T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-21-000009",
+    "field": "2021-01-28T02:30:35.000Z",
+    "index": "2021-01-27T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-22-000006",
+    "field": "2022-01-28T02:30:36.000Z",
+    "index": "2022-01-27T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-23-000005",
+    "field": "2023-02-03T02:30:33.000Z",
+    "index": "2023-02-02T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-24-000005",
+    "field": "2024-02-02T02:30:30.000Z",
+    "index": "2024-02-01T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-25-000007",
+    "field": "2025-01-31T02:30:23.000Z",
+    "index": "2025-01-30T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "320193",
+    "accession": "0000320193-26-000005",
+    "field": "2026-01-30T02:30:33.000Z",
+    "index": "2026-01-29T16:30",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-17-000058",
+    "field": "2017-01-13T17:54:39.000Z",
+    "index": "2017-01-13T07:54",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-18-000004",
+    "field": "2018-01-12T16:46:59.000Z",
+    "index": "2018-01-12T06:46",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-19-000002",
+    "field": "2019-01-15T16:46:00.000Z",
+    "index": "2019-01-15T06:46",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-20-000082",
+    "field": "2020-01-14T16:46:00.000Z",
+    "index": "2020-01-14T06:46",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-21-000071",
+    "field": "2021-01-15T16:45:52.000Z",
+    "index": "2021-01-15T06:45",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-22-000079",
+    "field": "2022-01-14T16:45:48.000Z",
+    "index": "2022-01-14T06:45",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-23-000063",
+    "field": "2023-01-13T16:45:26.000Z",
+    "index": "2023-01-13T06:45",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-24-000049",
+    "field": "2024-01-12T16:47:22.000Z",
+    "index": "2024-01-12T06:47",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0000019617-25-000040",
+    "field": "2025-01-15T16:46:01.000Z",
+    "index": "2025-01-15T06:46",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "19617",
+    "accession": "0001628280-26-001902",
+    "field": "2026-01-13T16:41:09.000Z",
+    "index": "2026-01-13T06:41",
+    "offset_h": 10.0,
+    "rule": "double"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-17-019726",
+    "field": "2017-01-26T21:07:02.000Z",
+    "index": "2017-01-26T16:07",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-18-027377",
+    "field": "2018-01-31T21:05:57.000Z",
+    "index": "2018-01-31T16:05",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-19-022553",
+    "field": "2019-01-30T21:03:36.000Z",
+    "index": "2019-01-30T16:03",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-20-018383",
+    "field": "2020-01-29T21:03:50.000Z",
+    "index": "2020-01-29T16:03",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-21-017683",
+    "field": "2021-01-26T21:04:05.000Z",
+    "index": "2021-01-26T16:04",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-22-017041",
+    "field": "2022-01-25T21:03:05.000Z",
+    "index": "2022-01-25T16:03",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-23-014230",
+    "field": "2023-01-24T21:28:00.000Z",
+    "index": "2023-01-24T16:28",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0000950170-24-008809",
+    "field": "2024-01-30T21:03:17.000Z",
+    "index": "2024-01-30T16:03",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0000950170-25-010484",
+    "field": "2025-01-29T21:08:56.000Z",
+    "index": "2025-01-29T16:08",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   },
+   {
+    "cik": "789019",
+    "accession": "0001193125-26-027198",
+    "field": "2026-01-28T21:04:38.000Z",
+    "index": "2026-01-28T16:04",
+    "offset_h": 5.0,
+    "rule": "UTC"
+   }
+  ],
+  "rules_matched": [
+   "UTC",
+   "double"
+  ],
+  "tz": null,
+  "index pages read": 23605,
+  "index pages missing": 0
+ },
+ "item_202_coverage": {
+  "per_year": {
+   "2017": {
+    "stock_years": 2149,
+    "covered": 2067,
+    "share": 0.9618
+   },
+   "2018": {
+    "stock_years": 2224,
+    "covered": 2152,
+    "share": 0.9676
+   },
+   "2019": {
+    "stock_years": 2176,
+    "covered": 2094,
+    "share": 0.9623
+   },
+   "2020": {
+    "stock_years": 2392,
+    "covered": 2252,
+    "share": 0.9415
+   },
+   "2021": {
+    "stock_years": 2766,
+    "covered": 2633,
+    "share": 0.9519
+   },
+   "2022": {
+    "stock_years": 2526,
+    "covered": 2426,
+    "share": 0.9604
+   },
+   "2023": {
+    "stock_years": 2339,
+    "covered": 2258,
+    "share": 0.9654
+   },
+   "2024": {
+    "stock_years": 2382,
+    "covered": 2304,
+    "share": 0.9673
+   },
+   "2025": {
+    "stock_years": 2531,
+    "covered": 2408,
+    "share": 0.9514
+   },
+   "2026": {
+    "stock_years": 2455,
+    "covered": 2156,
+    "share": 0.8782
+   }
+  },
+  "overall": {
+   "stock_years": 23940,
+   "covered": 22750,
+   "share": 0.9503
+  }
+ },
+ "fallback": "8-K kept",
+ "universe_per_year": {
+  "2017": {
+   "average daily size": 1590.9,
+   "distinct symbols": 2149,
+   "sessions": 251
+  },
+  "2018": {
+   "average daily size": 1703.1,
+   "distinct symbols": 2224,
+   "sessions": 251
+  },
+  "2019": {
+   "average daily size": 1645.8,
+   "distinct symbols": 2176,
+   "sessions": 252
+  },
+  "2020": {
+   "average daily size": 1709.0,
+   "distinct symbols": 2392,
+   "sessions": 253
+  },
+  "2021": {
+   "average daily size": 1933.9,
+   "distinct symbols": 2766,
+   "sessions": 252
+  },
+  "2022": {
+   "average daily size": 1869.4,
+   "distinct symbols": 2526,
+   "sessions": 251
+  },
+  "2023": {
+   "average daily size": 1745.0,
+   "distinct symbols": 2339,
+   "sessions": 250
+  },
+  "2024": {
+   "average daily size": 1793.5,
+   "distinct symbols": 2382,
+   "sessions": 252
+  },
+  "2025": {
+   "average daily size": 1906.9,
+   "distinct symbols": 2531,
+   "sessions": 250
+  },
+  "2026": {
+   "average daily size": 2033.3,
+   "distinct symbols": 2455,
+   "sessions": 61
+  }
+ },
+ "firings_per_signal_per_year": {
+  "S1 insider cluster (all)": {
+   "2017": 503,
+   "2018": 606,
+   "2019": 642,
+   "2020": 892,
+   "2021": 552,
+   "2022": 661,
+   "2023": 586,
+   "2024": 395,
+   "2025": 515,
+   "2026": 128
+  },
+  "S1 in universe on its session": 1511,
+  "S1 without a usable symbol": 135,
+  "S2 earnings drift (decided rule, in universe)": {
+   "2017": 693,
+   "2018": 847,
+   "2019": 869,
+   "2020": 622,
+   "2021": 694,
+   "2022": 793,
+   "2023": 999,
+   "2024": 1103,
+   "2025": 1056,
+   "2026": 303
+  },
+  "S2 for information": {
+   "8-K, in universe": {
+    "2017": 693,
+    "2018": 847,
+    "2019": 869,
+    "2020": 622,
+    "2021": 694,
+    "2022": 793,
+    "2023": 999,
+    "2024": 1103,
+    "2025": 1056,
+    "2026": 303
+   },
+   "8-K, all": {
+    "2017": 1582,
+    "2018": 1718,
+    "2019": 1700,
+    "2020": 1331,
+    "2021": 1432,
+    "2022": 1656,
+    "2023": 1946,
+    "2024": 2027,
+    "2025": 1803,
+    "2026": 503
+   },
+   "fallback, in universe": {
+    "2017": 1913,
+    "2018": 2068,
+    "2019": 2057,
+    "2020": 3580,
+    "2021": 3496,
+    "2022": 2833,
+    "2023": 2848,
+    "2024": 3276,
+    "2025": 3680,
+    "2026": 999
+   },
+   "fallback, all": {
+    "2017": 12246,
+    "2018": 12133,
+    "2019": 13413,
+    "2020": 20200,
+    "2021": 16996,
+    "2022": 17036,
+    "2023": 19011,
+    "2024": 20519,
+    "2025": 19205,
+    "2026": 4444
+   }
+  },
+  "S3 momentum near the high": {
+   "2017": 1353,
+   "2018": 1314,
+   "2019": 1502,
+   "2020": 1345,
+   "2021": 1719,
+   "2022": 1305,
+   "2023": 1460,
+   "2024": 1526,
+   "2025": 1471,
+   "2026": 360
+  },
+  "S4 short-term reversal": {
+   "2017": 664,
+   "2018": 1179,
+   "2019": 862,
+   "2020": 1848,
+   "2021": 2190,
+   "2022": 2391,
+   "2023": 1340,
+   "2024": 1462,
+   "2025": 1893,
+   "2026": 850
+  }
+ },
+ "warm_up": {
+  "states observed from": "2017-01-03",
+  "S3": {
+   "sessions": 21,
+   "from": "2017-01-03",
+   "to": "2017-02-01",
+   "entries not counted": 364
+  },
+  "S4": {
+   "sessions": 1,
+   "from": "2017-01-03",
+   "to": "2017-01-03",
+   "entries not counted": 4
+  }
+ },
+ "data_gaps": {
+  "insider quarters": "2015Q1..2026Q1 (45)",
+  "symbols as filed": 14035,
+  "symbols with bars": 10508,
+  "symbols without bars": 3527,
+  "series broken by the bad-price rule": 480,
+  "filings with an unusable symbol": 41596,
+  "S1 purchase lines": 206530
+ },
+ "requests_and_runtime": {
+  "alpaca": 3171,
+  "sec zips": 48,
+  "runtime_s": 5818
+ }
+}
