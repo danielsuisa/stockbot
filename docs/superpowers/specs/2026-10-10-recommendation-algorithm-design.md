@@ -2,7 +2,7 @@
 
 Date: 2026-10-10 · Status: revision 7 (proposed; clarified 2026-10-11 for phase B: quote times relative to the
 session, a partial universe mark on `/ticket`, the position value in the message; section 10, sizing by equity, added
-2026-10-11 and approved as phase B.1). Phases A and A.1 ran under revisions 5 and 6
+2026-10-11 and approved as phase B.1; rule 6 of section 3 added 2026-10-11). Phases A and A.1 ran under revisions 5 and 6
 (`docs/backtest/ensemble-phaseA-2026-10-10.md`, `docs/backtest/survivorship-phaseA1-2026-10-10.md`). Revision 7
 records their results and fixes, before any return is computed, what they left open: the final rename rule, the
 survivorship allowance and its multiplier K. It needs the owner's approval; approval covers phase B only
@@ -124,6 +124,10 @@ shares < 2 · shares × P > 1% of the 20-session average dollar volume. Quote-ba
    checked against (running maximum − R); the exit is at that level, or at the open when the open is below the
    level carried from the previous session. This assumes the high comes before the low.
 5. A take-profit limit fills at its price (at the open when the open is above it).
+6. When an order rests at its limit and fills on a session that opened above the limit, that session's high may have
+   come before the fill: on that session leg A's target does not fill and leg B's running maximum starts at F; the
+   stop is still checked against the session's low. From the next session on, rules 1 to 5 apply (owner,
+   2026-10-11).
 
 **Gross result of a ticket in R:** Σ over legs of leg shares × (exit − F) / (shares × R), each stock in its own R.
 **Cost in R:** section 5's costs / (shares × R). A ticket that never fills has gross result 0 and cost 0.
@@ -421,7 +425,7 @@ variable set by the owner) and proves the requirement with a test and a check of
 the risk per trade in dollars and the number of positions the open-risk limit allows. E stays in force until the
 next `/equity`; the owner sends it only when the account has changed, not before every ticket. From phase E on, the
 reply also re-sends that day's scan list with every ticket resized to the new E. `/equity` without an amount shows
-the current setting. The listener polls about every 10 minutes, so a reply can take that long.
+the current setting.
 
 **Rule, for a live ticket with planned entry P and R of section 3:**
 
