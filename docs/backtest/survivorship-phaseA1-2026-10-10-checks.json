@@ -1,0 +1,233 @@
+{
+ "finra_volume_check": {
+  "reports": 99,
+  "rows": 780368,
+  "rows with volume": 775219,
+  "reports without any volume": []
+ },
+ "spelling_check": {
+  "BRK.B in the FINRA report for 2024-06": true
+ },
+ "rename_check": {
+  "FB": {
+   "filed": true,
+   "bar in 2021-06": true,
+   "CIK at 2021-06": "1326801",
+   "recovered as": null
+  },
+  "META": {
+   "filed": true,
+   "bar in 2021-06": true,
+   "CIK at 2021-06": null,
+   "recovered as": null
+  }
+ },
+ "sample_stock_months": {
+  "symbols counted": 304,
+  "per_year": {
+   "2018": {
+    "universe-like": 543,
+    "with bars": 524,
+    "without bars": 19,
+    "recovered by the rename rule": 12,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2019": {
+    "universe-like": 519,
+    "with bars": 502,
+    "without bars": 17,
+    "recovered by the rename rule": 12,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2020": {
+    "universe-like": 494,
+    "with bars": 481,
+    "without bars": 13,
+    "recovered by the rename rule": 12,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2021": {
+    "universe-like": 574,
+    "with bars": 562,
+    "without bars": 12,
+    "recovered by the rename rule": 12,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2022": {
+    "universe-like": 549,
+    "with bars": 543,
+    "without bars": 6,
+    "recovered by the rename rule": 6,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2023": {
+    "universe-like": 514,
+    "with bars": 514,
+    "without bars": 0,
+    "recovered by the rename rule": 0,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2024": {
+    "universe-like": 465,
+    "with bars": 465,
+    "without bars": 0,
+    "recovered by the rename rule": 0,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2025": {
+    "universe-like": 470,
+    "with bars": 470,
+    "without bars": 0,
+    "recovered by the rename rule": 0,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2026": {
+    "universe-like": 137,
+    "with bars": 137,
+    "without bars": 0,
+    "recovered by the rename rule": 0,
+    "recovered, duplicating a stock-month with bars": 0
+   }
+  },
+  "overall": {
+   "universe-like": 4265,
+   "with bars": 4198,
+   "without bars": 67,
+   "recovered by the rename rule": 54,
+   "recovered, duplicating a stock-month with bars": 0
+  },
+  "decision": {
+   "rename rule used": true,
+   "f (rule as decided)": 0.0030480656506447833,
+   "f (literal, recovered always subtracted)": 0.0030480656506447833,
+   "b_R": 0.0030480656506447833,
+   "b within 0.03 R": true
+  }
+ },
+ "item_202_coverage_sample": {
+  "8-K only": {
+   "per_year": {
+    "2017": {
+     "stock_years": 52,
+     "covered": 50,
+     "share": 0.9615
+    },
+    "2018": {
+     "stock_years": 49,
+     "covered": 49,
+     "share": 1.0
+    },
+    "2019": {
+     "stock_years": 48,
+     "covered": 47,
+     "share": 0.9792
+    },
+    "2020": {
+     "stock_years": 51,
+     "covered": 45,
+     "share": 0.8824
+    },
+    "2021": {
+     "stock_years": 59,
+     "covered": 56,
+     "share": 0.9492
+    },
+    "2022": {
+     "stock_years": 62,
+     "covered": 59,
+     "share": 0.9516
+    },
+    "2023": {
+     "stock_years": 56,
+     "covered": 52,
+     "share": 0.9286
+    },
+    "2024": {
+     "stock_years": 54,
+     "covered": 51,
+     "share": 0.9444
+    },
+    "2025": {
+     "stock_years": 51,
+     "covered": 50,
+     "share": 0.9804
+    },
+    "2026": {
+     "stock_years": 53,
+     "covered": 45,
+     "share": 0.8491
+    }
+   },
+   "overall": {
+    "stock_years": 535,
+    "covered": 504,
+    "share": 0.9421
+   }
+  },
+  "with 8-K/A": {
+   "per_year": {
+    "2017": {
+     "stock_years": 52,
+     "covered": 50,
+     "share": 0.9615
+    },
+    "2018": {
+     "stock_years": 49,
+     "covered": 49,
+     "share": 1.0
+    },
+    "2019": {
+     "stock_years": 48,
+     "covered": 47,
+     "share": 0.9792
+    },
+    "2020": {
+     "stock_years": 51,
+     "covered": 45,
+     "share": 0.8824
+    },
+    "2021": {
+     "stock_years": 59,
+     "covered": 56,
+     "share": 0.9492
+    },
+    "2022": {
+     "stock_years": 62,
+     "covered": 59,
+     "share": 0.9516
+    },
+    "2023": {
+     "stock_years": 56,
+     "covered": 52,
+     "share": 0.9286
+    },
+    "2024": {
+     "stock_years": 54,
+     "covered": 51,
+     "share": 0.9444
+    },
+    "2025": {
+     "stock_years": 51,
+     "covered": 50,
+     "share": 0.9804
+    },
+    "2026": {
+     "stock_years": 53,
+     "covered": 45,
+     "share": 0.8491
+    }
+   },
+   "overall": {
+    "stock_years": 535,
+    "covered": 504,
+    "share": 0.9421
+   }
+  }
+ },
+ "requests_and_runtime": {
+  "alpaca": 97,
+  "sec zips": 48,
+  "finra reports fetched": 99,
+  "runtime_s": 359
+ }
+}
