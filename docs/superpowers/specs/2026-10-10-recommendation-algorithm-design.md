@@ -1,6 +1,7 @@
 # Recommendation algorithm (levels engine + four-signal ensemble) — design
 
-Date: 2026-10-10 · Status: revision 7 (proposed). Phases A and A.1 ran under revisions 5 and 6
+Date: 2026-10-10 · Status: revision 7 (proposed; clarified 2026-10-11 for phase B: quote times relative to the
+session, a partial universe mark on `/ticket`, the position value in the message). Phases A and A.1 ran under revisions 5 and 6
 (`docs/backtest/ensemble-phaseA-2026-10-10.md`, `docs/backtest/survivorship-phaseA1-2026-10-10.md`). Revision 7
 records their results and fixes, before any return is computed, what they left open: the final rename rule, the
 survivorship allowance and its multiplier K. It needs the owner's approval; approval covers phase B only
@@ -173,16 +174,18 @@ Settled in revision 6:
 **Backtest and shadow, per filled ticket:**
 
 - Commission: $0.0035 a share, minimum $0.35 an order, 4 orders (two entries, two exits).
-- Spread: the SIP quote at 09:35 ET of the entry session (the latest quote no older than 60 s; a locked or crossed
-  quote counts $0.01); the full spread is charged on every share (half in, half out), on every exit type. When no
-  such quote exists, the guard spread is charged instead.
-- Guard spread (what the bot can know when it issues the ticket): the SIP quote at 15:55 ET of D, same freshness
-  rule; without it → `NO TICKET` (no usable quote).
+- Spread: the SIP quote 5 minutes after the entry session's open, from the exchange calendar (09:35 ET on a full
+  session; the latest quote no older than 60 s; a locked or crossed quote counts $0.01); the full spread is charged
+  on every share (half in, half out), on every exit type. When no such quote exists, the guard spread is charged
+  instead.
+- Guard spread (what the bot can know when it issues the ticket): the SIP quote 5 minutes before D's close, from the
+  exchange calendar (15:55 ET on a full session, 12:55 ET on a 13:00 close), same freshness rule; without it →
+  `NO TICKET` (no usable quote).
 - Slippage beyond the spread is in the fill rules of section 3 (gaps fill at the open).
 - Stress case for gate 5: every spread × 1.5.
 
 **Forward (from the day the signals run live):** the shadow journal stores, for every issued ticket, the guard
-quote, the 09:35 quote of the entry session, and two simulated outcomes: the daily-bar model of section 3 and a
+quote, the quote 5 minutes after the entry session's open, and two simulated outcomes: the daily-bar model of section 3 and a
 1-minute-bar replay in which leg B trails continuously. Forward cost and fill checks are in section 6.5.
 
 ## 6. The decision test (fixed here; one run)
@@ -374,7 +377,7 @@ below the backtest's x̄ by more than 2 forward standard errors (6.3's formula w
 
 - `/ticket SYMBOL` and the daily scan: Hebrew, RTL, the bot's message conventions (numbers and symbols in
   `<code>`): source, signals, entry (type, stop/limit), stop loss, target (leg A), trailing amount (leg B), time
-  exit date, shares per leg, cost in R, the label.
+  exit date, shares per leg, the position value (shares × planned entry), cost in R, the label.
 - `data/ticket_journal.json`: every issued ticket and its outcomes.
 - `docs/backtest/ensemble-<date>.md` (+ CSV of tickets, verdict run only): Hebrew summary, the gates table, every
   assumption above.

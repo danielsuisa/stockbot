@@ -35,7 +35,10 @@
 - **Messages.** Hebrew RTL, Hebrew first on every line, numbers and symbols in `<code>`, Israeli dates, no "R" unit (`tests/msgrules.py`). Artifacts are in English.
 - **Secrets.** Alpaca keys and SEC_UA come only from the environment. Live checks run on GitHub Actions from a throwaway branch.
 
-## Decisions this plan makes where the spec is silent (for the owner's review)
+## Decisions this plan makes where the spec is silent
+
+Owner (2026-10-11): decisions 1–6 confirmed as written; 7 and 8 changed as recorded below, and the position value
+added to the message (spec status line: clarified 2026-10-11; sections 5 and 8 reworded).
 
 1. **D for a live `/ticket`.** D is the latest session whose close was at least 15 minutes ago (Alpaca's free-plan lag, `shadow.LIVE_LAG`). A request during a session therefore gives a ticket on the previous session, valid for the next 3 sessions, and the message says so when the first of them is already trading.
 2. **`atr14` through D.** `ticket.atr14(daily, day)` reads bars strictly before `day`, so the call is `atr14(bars, next_day)`, where `next_day` is the calendar day after D.
@@ -49,8 +52,14 @@
    - On the entry session the stop fills at the stop, never at an open that came before the fill.
    - A resting breakout order (open above the limit) fills at the limit when a later low reaches it, even if a later session opens below the limit, as the spec says.
    - A target inside the entry session's bar counts unless the stop is also inside it (rule 2).
-7. **Half-day sessions. OPEN, needs the owner:** the guard quote is "15:55 ET of D", but on a 13:00 close no quote exists at 15:55, so every half-day D gives `NO TICKET` (no usable quote). The plan follows the spec as written (15:55). The alternative is 5 minutes before the session's close (15:55 on a normal day), and likewise 5 minutes after the open instead of 09:35.
-8. **No universe mark in B.** Section 4's "מחוץ ליקום שנבדק" (outside the tested universe) needs the point-in-time universe (insider filings, phase C). Phase B's message shows no universe line.
+7. **Quote times relative to the session (owner, option (b)).** The guard quote is taken 5 minutes before D's close, and the entry quote 5 minutes after the entry session's open, both from the exchange calendar. That is 15:55 and 09:35 ET on a full session, and 12:55 ET on a 13:00 close.
+8. **Partial universe mark (owner).** From the bars the command already loads (the read is extended to 252 sessions before D), the ticket is marked "מחוץ ליקום שנבדק" (outside the tested universe) with the failed condition named, when any of these fails:
+   - raw close of D ≥ $5;
+   - the average dollar volume of the 20 sessions through D ≥ $10M;
+   - at least 252 sessions of bars before D.
+
+   The insider-filing condition (a Form 3/4/5 in the 365 days before D) is added in phase C. The mark never refuses a ticket.
+9. **Position value (owner).** The shares line shows the position value = shares × planned entry (spec section 8).
 
 ## Review Focus
 
@@ -96,6 +105,13 @@
     - close 50 with volume 4,000 gives ADV $200,000; its 1% is $2,000.
     - 50 shares × P 50.51 = $2,525.50 is above it, so `"size above 1% of dollar volume"`.
     - Volume 5,051 gives 1% of ADV = $2,525.50, equal to the position, so a ticket. Only "above" refuses (compare with a 1e-9 tolerance).
+  - `test_universe_mark`: each condition at its threshold.
+    - Raw close 5.00 is in; 4.99 is out with "מחיר מתחת ל-5$" (price below $5).
+    - Dollar volume exactly $10M is in; just below is out with "מחזור דולרי ממוצע מתחת ל-10M$" (average dollar volume below $10M).
+    - 252 earlier bars are in; 251 are out with "פחות מ-252 ימי מסחר" (fewer than 252 trading days).
+    - Two failures are both named.
+    - `levels.universe_mark(bars, day) -> list[str]` returns `[]` when inside.
+    - A marked ticket is still a ticket.
   - `test_px`: `px(50.7651) == 50.77`, `px(0.123456) == 0.1235`, `px(1234.5649) == 1234.56`. Avoid exact half-cents in tests (binary floats).
 - [ ] **Step 2: Run.** `SEC_UA= PYTHONUTF8=1 python <scratchpad>/run_tests.py tests.test_levels`. Expect FAIL (no module).
 - [ ] **Step 3: Implement** the signatures above. `plan` checks the bars first, then size, then dollar volume.
@@ -112,7 +128,7 @@
 - Consumes: Task 1's ticket dict.
 - Produces:
   - `COMMISSION, MIN_ORDER, TICK, QUOTE_AGE, COST_GUARD, STRESS = 0.0035, 0.35, 0.01, 60, 0.10, 1.5`.
-  - `GUARD_AT, ENTRY_AT = "15:55", "09:35"` (Decision 7: as written).
+  - `QUOTE_OFFSET_MIN = 5`; `guard_time(day, cal) -> str` (UTC ISO, 5 minutes before the close) and `entry_time(day, cal) -> str` (5 minutes after the open), both from `alpaca.calendar`'s `{date: (open, close)}` (Decision 7).
   - `spread(quote) -> float | None`. The quote is `alpaca.quote_full`'s `(bid, ask, bid_size, ask_size, age_s)` or None. A missing quote, a side ≤ 0, or age > 60 gives None. A locked or crossed quote gives 0.01. Otherwise it gives ask − bid.
   - `commission(legs: tuple[int, int]) -> float`: Σ max(0.35, q × 0.0035) over the 4 orders (a, b, a, b).
   - `cost(ticket, spread: float, stress=False) -> float`: the dollars of `commission(legs) + spread × shares` (spread × 1.5 under stress).
@@ -128,6 +144,7 @@
     - legs (25, 25) give 4 × 0.35 = 1.40, since 25 × 0.0035 = 0.0875 is below the minimum.
     - legs (500, 500) give 4 × 1.75 = 7.00.
   - `test_cost_and_stress`: 50 shares, R = 2 and spread 0.02 give `cost_r == (1.40 + 1.00) / 100`. The stress case gives `(1.40 + 1.50) / 100`.
+  - `test_quote_times`: a full session gives 15:55 and 09:35 NY. A 13:00 close (2026-11-27) gives 12:55. The times go through `alpaca.utc`.
   - `test_cost_guard_edge`: pick the spread so that cost_r is 0.10 (50 shares, R 2, spread 0.172: (1.40 + 8.60) / 100) and assert a ticket. Only "above 0.10" refuses, compared with a 1e-9 tolerance. Add $0.0001 to the spread and assert the refusal `"cost above 10% of risk"`. A `None` quote gives `"no usable quote"`.
 - [ ] **Step 2: Run.** Expect FAIL.
 - [ ] **Step 3: Implement.**
@@ -183,7 +200,7 @@
   - `SOURCE`: a Hebrew source line naming the levels engine, Alpaca SIP daily bars and the 15:55 quote, and the label.
   - `signal_day(now_ny: datetime, cal: dict) -> str`: Decision 1.
   - `sessions_after(day, cal, n) -> list[str]`.
-  - `build(symbol, now=None) -> dict`. It reads the calendar (D − 60 days … D + 60 days), the daily bars (D − 60 days … D) and `quote_full(symbol, alpaca.utc(D, "15:55"))`. It returns the guarded ticket plus `"valid_sessions"` (3 dates) and `"time_exit_if_first"` (the date of session 21 after the first valid session), or the refusal.
+  - `build(symbol, now=None) -> dict`. It reads the calendar (D − 400 days … D + 60 days), the daily bars (D − 400 days … D; at least 253 sessions for the universe mark) and `quote_full(symbol, levels.guard_time(D, cal))`. It also stores `"universe": levels.universe_mark(bars, D)`. It returns the guarded ticket plus `"valid_sessions"` (3 dates) and `"time_exit_if_first"` (the date of session 21 after the first valid session), or the refusal.
   - `message(t) -> str`: the Hebrew text below.
   - `REASONS`: English refusal reason to Hebrew.
 
@@ -195,8 +212,13 @@
     - The day after a holiday, at 10:00, gives the session before the holiday.
   - `test_build_ticket`: 30 synthetic bars and quote `(50.50, 50.52, 1, 1, 3)`. Assert:
     - `ok`, `shares == 50`, `valid_sessions` is the next 3 sessions;
-    - the `alpaca.quote_full` call is made at `alpaca.utc(D, "15:55")`;
+    - the `alpaca.quote_full` call is made at 5 minutes before D's close;
     - `cost_r == (1.40 + 50 × 0.02) / 100`.
+  - `test_message_universe_mark_and_value`:
+    - a symbol failing a universe condition gets a line "מחוץ ליקום שנבדק: <reason>" (outside the tested universe: `<reason>`), plus a note that the insider-filing condition is not checked until phase C;
+    - a symbol inside gets no such line;
+    - the shares line shows the position value, e.g. 50 × 50.51 = `price(2525.5)`.
+  - `test_half_day_guard_quote`: D is a 13:00-close session, so `quote_full` is called at 12:55 NY.
   - `test_message_full`. The message contains each of these, and `msgrules.check` passes:
     - `code("AAPL")`;
     - "אין אות תומך" (no supporting signal);
@@ -222,8 +244,8 @@
 סטופ לוס (שתי המנות): <price> · יעד מנה א': <price> · טריילינג מנה ב': <price>
 המחירים מחושבים ממחיר הכניסה המתוכנן ויזוזו עם הכניסה בפועל (כניסה פחות <price>, כניסה ועוד <price>)
 יציאה בזמן: בסגירה של יום המסחר ה-<code>21</code> אחרי הכניסה (כניסה ב-<date> → <date>)
-מניות: מנה א' <code>n</code> · מנה ב' <code>n</code> · סיכון <price>
-עלות משוערת: <code>x%</code> מהסיכון (מרווח ב-15:55 של יום האות ועמלות)
+מניות: מנה א' <code>n</code> · מנה ב' <code>n</code> · שווי פוזיציה <price> · סיכון <price>
+עלות משוערת: <code>x%</code> מהסיכון (מרווח 5 דקות לפני סגירת יום האות, ועמלות)
 ב-IBKR: שתי פקודות bracket בחצי כמות — א': כניסה + יעד לימיט + סטופ · ב': כניסה + TRAIL — עד היציאה בזמן
 תווית: ללא יתרון מוכח
 ```
@@ -235,8 +257,8 @@
   - **Line 4:** Stop loss (both legs): `<price>` · Leg A target: `<price>` · Leg B trailing: `<price>`
   - **Line 5:** The prices are computed from the planned entry and will move with the actual entry (entry minus `<price>`, entry plus `<price>`)
   - **Line 6:** Time exit: at the close of the 21st trading day after the entry (entry on `<date>` → `<date>`)
-  - **Line 7:** Shares: leg A `n` · leg B `n` · risk `<price>`
-  - **Line 8:** Estimated cost: `x%` of the risk (spread at 15:55 on the signal day, plus commissions)
+  - **Line 7:** Shares: leg A `n` · leg B `n` · position value `<price>` · risk `<price>`
+  - **Line 8:** Estimated cost: `x%` of the risk (spread 5 minutes before the signal day's close, plus commissions)
   - **Line 9:** In IBKR: two bracket orders at half size each — A: entry + limit target + stop · B: entry + TRAIL — until the time exit
   - **Line 10:** Label: no proven edge
 
