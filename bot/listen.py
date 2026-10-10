@@ -169,8 +169,17 @@ def ticket_cmd(rest):
         common.send(f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}." if unknown else
                     f"כתבו טיקר אחרי הפקודה, למשל {code('/ticket AAPL')}.")
         return 0
-    for sym in known[:TICKET_MAX]:
-        common.send(ticket_command.message(ticket_command.build(sym.replace("-", "."))), source=ticket_command.SOURCE)
+    for sym in known[:TICKET_MAX]:  # one symbol's failure is its own line; the others still get their ticket
+        try:
+            text = ticket_command.message(ticket_command.build(sym.replace("-", ".")))
+        except Exception as e:  # noqa: BLE001 - missing keys, network, bad data: never out of the command
+            traceback.print_exc()
+            text = f"לא הצלחתי להכין כרטיס ל-{code(sym)}: תקלה בקריאת הנתונים ({code(type(e).__name__)})."
+        common.send(text, source=ticket_command.SOURCE)
+    if unknown:
+        common.send(f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}.")
+    if known[TICKET_MAX:]:
+        common.send(f"לא טופלו (עד {code(TICKET_MAX)} בהודעה): {', '.join(map(code, known[TICKET_MAX:]))}.")
     return 0
 
 

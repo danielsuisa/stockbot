@@ -121,6 +121,8 @@ class Message(unittest.TestCase):
                      common.il_date("2026-04-09"), "עלות", "%", "ב-IBKR", "ללא יתרון מוכח", "10.3.2026"):
             self.assertIn(part, text)
         self.assertNotIn("מחוץ ליקום שנבדק", text)
+        self.assertIn("פקודת bracket אחת לכל מנה", text)  # review minor 4: odd share counts give unequal legs
+        self.assertNotIn("בחצי כמות", text)
         self.assertNotIn("כבר במסחר", text)
 
     def test_position_value(self):

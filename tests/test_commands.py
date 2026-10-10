@@ -8,6 +8,7 @@ import unittest
 from unittest import mock
 
 from bot import check, common, health, journal, listen, market, scan
+from bot.common import code
 import msgrules
 from test_signals import doc, tx
 
@@ -230,12 +231,44 @@ class Commands(unittest.TestCase):
             self.assertIn("לא מצאתי ברשימת החברות של SEC", self.run_handle("/ticket ZZZZ")[0][0])
         build.assert_not_called()
 
-    def test_ticket_at_most_three(self):
+    def run_ticket(self, text, tick, build):
         from bot import ticket_command
-        tick = {s: (i, s) for i, s in enumerate(("AAPL", "MSFT", "TSLA", "NVDA"))}
-        with mock.patch.object(common, "tickers", return_value=tick), mock.patch.object(common, "send"),                 mock.patch.object(common, "tg"), mock.patch.object(ticket_command, "build", return_value={}) as build,                 mock.patch.object(ticket_command, "message", return_value="🎫 כרטיס"):
-            listen.handle("/ticket aapl msft tsla nvda")
+        sent = []
+        with (mock.patch.object(common, "tickers", return_value=tick),
+              mock.patch.object(common, "send", side_effect=lambda t, **k: sent.append(t)),
+              mock.patch.object(common, "tg"), mock.patch.object(ticket_command, "build", side_effect=build) as b,
+              mock.patch.object(ticket_command, "message", side_effect=lambda t: f"🎫 כרטיס ל-{code(t['symbol'])}")):
+            self.assertEqual(listen.handle(text), 0)
+        for t in sent:
+            msgrules.check(self, t)
+        return sent, b
+
+    def test_ticket_at_most_three_and_the_rest_named(self):
+        tick = {s: (i, s) for i, s in enumerate(("AAPL", "MSFT", "TSLA", "NVDA", "AMD"))}
+        sent, build = self.run_ticket("/ticket aapl msft tsla nvda amd", tick, lambda s: {"symbol": s})
         self.assertEqual(build.call_count, 3)
+        self.assertEqual(len(sent), 4)
+        self.assertIn("לא טופלו", sent[-1])
+        self.assertIn(code("NVDA"), sent[-1])
+        self.assertIn(code("AMD"), sent[-1])
+
+    def test_ticket_failure_is_one_line_and_the_others_continue(self):
+        def build(s):
+            if s == "AAPL":
+                raise RuntimeError("ALPACA_KEY_ID / ALPACA_SECRET_KEY are not set")
+            return {"symbol": s}
+        tick = {"AAPL": (1, "Apple"), "MSFT": (2, "Microsoft")}
+        sent, _ = self.run_ticket("/ticket aapl msft", tick, build)
+        self.assertEqual(len(sent), 2)
+        self.assertIn("לא הצלחתי להכין כרטיס", sent[0])
+        self.assertIn(code("AAPL"), sent[0])
+        self.assertEqual(sent[1], f"🎫 כרטיס ל-{code('MSFT')}")
+
+    def test_ticket_every_symbol_answered(self):
+        sent, _ = self.run_ticket("/ticket aapl zzzzz", {"AAPL": (1, "Apple")}, lambda s: {"symbol": s})
+        self.assertEqual(sent[0], f"🎫 כרטיס ל-{code('AAPL')}")
+        self.assertIn("לא מצאתי ברשימת החברות של SEC", sent[1])
+        self.assertIn(code("ZZZZZ"), sent[1])
 
     def test_check_reply_has_prompt(self):
         with mock.patch.object(check, "report", return_value="📊 דוח"):
