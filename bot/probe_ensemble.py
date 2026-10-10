@@ -135,7 +135,7 @@ def s1_firings(purchases, sessions):
                 sym = next((x["symbol"] for x in reversed(live) if x["symbol"]), None)
                 out.append((F, sym))
                 blocked = k + S1_GAP
-    return sorted(out)
+    return sorted(out, key=lambda e: (e[0], e[1] or ""))  # symbol None: no usable symbol on the lines
 
 
 def _i(s, day):
@@ -334,6 +334,7 @@ def run(checks, sample=400, seed=7):
     warm = lambda n, k: {"sessions": n, "from": s3_states[0][0], "to": s3_states[n - 1][0],  # noqa: E731
                          "entries not counted": k}
     firings = {"S1 insider cluster (all)": per_year(s1), "S1 in universe on its session": s1_in,
+               "S1 without a usable symbol": sum(1 for _, s in s1 if s is None),
                "S2 earnings drift (decided rule, in universe)": dict(sorted(s2["8-K, in universe" if keep else
                                                                             "fallback, in universe"].items())),
                "S2 for information": {k: dict(sorted(v.items())) for k, v in s2.items()},

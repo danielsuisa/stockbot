@@ -263,6 +263,12 @@ class S1(unittest.TestCase):
         self.assertEqual(pe.s1_firings(short, S), [])
         self.assertEqual(pe.s1_firings(short[:2] + [buy("3", S[301], 33_334)], S), [(S[301], "ACME")])  # $100,000
 
+    def test_issuer_without_a_usable_symbol(self):
+        S = self.S
+        named = [buy(o, S[300], 40_000 + int(o)) for o in "123"]
+        unnamed = [buy(o, S[300], 40_000 + int(o), issuer="200", symbol=None) for o in "123"]
+        self.assertEqual(pe.s1_firings(unnamed + named, S), [(S[300], None), (S[300], "ACME")])  # sorts; None first
+
     def test_identical_lines_count_as_one_person(self):
         S = self.S
         joint = [buy("1", S[300], trade=S[299], shares=5000, value=50_000), buy("2", S[300], trade=S[299], shares=5000,
