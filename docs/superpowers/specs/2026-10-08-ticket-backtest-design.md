@@ -371,3 +371,16 @@ and re-select; the holdout has not been run.
   older than 60 s shows as "spread", not "dq".
 - A pre-holdout review (fresh reviewer, most capable model) found no blocking defect and no look-ahead in X5's
   path.
+
+### 14.13 Result (2026-10-10): NO-GO for ZBA v2
+
+The holdout ran once (run 38003155445): X5, 2,971 trades, mean −0.033R, t −0.47; positive in 3 of 6 years (2016
++0.207, 2017 −0.120, 2018 +0.148, 2019 +0.018, 2020 −0.071, 2021 −0.348); −0.267R without the top 1%; it fails gates
+2, 4, 5 and 6. Gate 3 passed only because the opposite side loses more (−0.44R a trade). Costs were the same in both
+periods (0.21R a trade); the gross edge fell from +0.41R (development) to +0.18R. A final review found no defect that
+could explain the gap and confirmed the protocol (freeze before the holdout, one run). Per 14.5 nothing is re-run and
+no variant is tried on 2016–2021; 14.8 (the second shadow line and its risk layer) is not built. K10s stays in the
+shadow tracker as before.
+
+Follow-ups for the owner (not done here): live `/ticket` and IBKR orders only after some rule set passes a
+pre-registered test; the squeeze list's relative volume should be matched by time of day (a change to the live list).
