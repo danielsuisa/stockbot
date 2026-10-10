@@ -202,12 +202,40 @@ class Commands(unittest.TestCase):
 
     def test_help_and_menu(self):
         names = [c for c, _ in listen.COMMANDS]
-        self.assertEqual(names, ["check", "scan", "status", "stats", "journal", "verify", "health", "squeeze", "shadow", "help"])
+        self.assertEqual(names, ["check", "scan", "status", "stats", "journal", "verify", "health", "squeeze", "shadow",
+                                 "ticket", "help"])
         self.assertTrue(all(1 <= len(d) <= 256 for _, d in listen.COMMANDS))
         for c in names:  # /help itself is the menu entry and the HELP text's own title, so it is not listed inside
             if c != "help":
                 self.assertIn(f"/{c}", listen.HELP)
         msgrules.check(self, listen.HELP)
+
+    def test_ticket_command(self):
+        from bot import ticket_command
+        with mock.patch.object(ticket_command, "build", return_value={"ok": True}) as build,                 mock.patch.object(ticket_command, "message", return_value="🎫 כרטיס"):
+            sent = self.run_handle("/ticket aapl")
+        build.assert_called_once_with("AAPL")
+        self.assertEqual(sent, [("🎫 כרטיס", {"source": ticket_command.SOURCE})])
+
+    def test_ticket_class_share_spelling(self):
+        from bot import ticket_command
+        with mock.patch.object(common, "tickers", return_value={"BRK-B": (1067983, "Berkshire")}),                 mock.patch.object(common, "send"), mock.patch.object(common, "tg"),                 mock.patch.object(ticket_command, "build", return_value={"ok": True}) as build,                 mock.patch.object(ticket_command, "message", return_value="🎫 כרטיס"):
+            listen.handle("/ticket brk.b")
+        build.assert_called_once_with("BRK.B")  # Alpaca spells class shares with a dot
+
+    def test_ticket_unknown_and_empty(self):
+        from bot import ticket_command
+        with mock.patch.object(ticket_command, "build") as build:
+            self.assertIn("/ticket AAPL", self.run_handle("/ticket")[0][0])
+            self.assertIn("לא מצאתי ברשימת החברות של SEC", self.run_handle("/ticket ZZZZ")[0][0])
+        build.assert_not_called()
+
+    def test_ticket_at_most_three(self):
+        from bot import ticket_command
+        tick = {s: (i, s) for i, s in enumerate(("AAPL", "MSFT", "TSLA", "NVDA"))}
+        with mock.patch.object(common, "tickers", return_value=tick), mock.patch.object(common, "send"),                 mock.patch.object(common, "tg"), mock.patch.object(ticket_command, "build", return_value={}) as build,                 mock.patch.object(ticket_command, "message", return_value="🎫 כרטיס"):
+            listen.handle("/ticket aapl msft tsla nvda")
+        self.assertEqual(build.call_count, 3)
 
     def test_check_reply_has_prompt(self):
         with mock.patch.object(check, "report", return_value="📊 דוח"):

@@ -1,4 +1,4 @@
-"""Telegram listener: /help /check /scan /status /stats /journal /verify /health and free-text tickers -> Hebrew
+"""Telegram listener: /help /check /scan /status /stats /journal /verify /health /ticket and free-text tickers -> Hebrew
 replies. `--serve` (Actions): one long-poll consumer for ~5h20m, then the workflow starts the next one; without it,
 one pass over the waiting messages."""
 import datetime as dt
@@ -12,7 +12,7 @@ import traceback
 import urllib.error
 from pathlib import Path
 
-from bot import check, clock, common, fundamentals, health, journal, market, scan, shadow, squeeze_live
+from bot import check, clock, common, fundamentals, health, journal, market, scan, shadow, squeeze_live, ticket_command
 from bot.common import code
 
 MAX = 3  # reports per message
@@ -26,7 +26,8 @@ COMMANDS = (("check", "דוח על מניה, למשל /check AAPL"), ("scan", "�
             ("journal", "ההתראות האחרונות, למשל /journal 5"), ("verify", "בדיקה מחדש מול SEC, למשל /verify AAPL"),
             ("health", "בדיקה שהכול עובד"),
             ("squeeze", "סקוויז: /squeeze, /squeeze now, /squeeze GME, /squeeze stats"),
-            ("shadow", "מעקב הצל: מה השיטה עושה היום, מה־pre market"), ("help", "רשימת הפקודות"))
+            ("shadow", "מעקב הצל: מה השיטה עושה היום, מה־pre market"),
+            ("ticket", "כרטיס מסחר למניה: כניסה, סטופ, יעד וגודל, למשל /ticket AAPL"), ("help", "רשימת הפקודות"))
 HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, או עם דולר, {code('$msft')} (עד {code(MAX)} בהודעה)."
         f" לרשימת הפקודות: {code('/help')}.")
 HELP = "\n".join((
@@ -48,6 +49,8 @@ HELP = "\n".join((
     f"• התוצאות עד היום: {code('/squeeze stats')}",
     "",
     f"👻 מעקב הצל של שיטת הכניסה (נשלח לבד כל בוקר אחרי יום מסחר). מה היא עושה היום, מה־pre market: {code('/shadow')}",
+    "",
+    f"🎫 כרטיס מסחר למניה (כניסה, סטופ לוס, יעד, טריילינג, גודל ועלות; ללא יתרון מוכח): {code('/ticket AAPL')}",
     "",
     f"🩺 בדיקה שהכול עובד: {code('/health')}"))
 
@@ -144,6 +147,8 @@ def handle(text):
         return squeeze_cmd(rest)
     if cmd == "shadow":
         return shadow_now()
+    if cmd == "ticket":
+        return ticket_cmd(rest)
     common.send(HELP)  # /help, /start and any unknown command
     common.tg("setMyCommands", commands=[{"command": c, "description": d} for c, d in COMMANDS])  # Telegram's "/" menu
     return 0
@@ -152,6 +157,21 @@ def handle(text):
 SERVE_SECONDS = 5 * 3600 + 20 * 60  # the job allows 340 min: the last long poll and reply fit well inside it
 POLL = 50  # getUpdates long-poll seconds (common.fetch's socket timeout is 60)
 LIVE_AFTER = 120  # an in-progress listener run older than this is past its start-up: it is the live poller
+
+
+TICKET_MAX = 3
+
+
+def ticket_cmd(rest):
+    """/ticket SYMBOL: the levels engine's ticket (phase B: no signals, breakout, H = 21, labelled unproven)."""
+    known, unknown = extract(rest, loose=True)
+    if not known:
+        common.send(f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}." if unknown else
+                    f"כתבו טיקר אחרי הפקודה, למשל {code('/ticket AAPL')}.")
+        return 0
+    for sym in known[:TICKET_MAX]:
+        common.send(ticket_command.message(ticket_command.build(sym.replace("-", "."))), source=ticket_command.SOURCE)
+    return 0
 
 
 def squeeze_cmd(rest):
