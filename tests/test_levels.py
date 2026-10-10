@@ -116,6 +116,89 @@ class Costs(unittest.TestCase):
         self.assertEqual(levels.entry_time("2026-11-27", cal), alpaca.utc("2026-11-27", "09:35"))
 
 
+def after(*ohlc, start="2025-02-03"):
+    """Synthetic sessions after D: (o, h, l, c) rows -> bars with weekday dates."""
+    d, out = dt.date.fromisoformat(start), []
+    for o, h, l, c in ohlc:
+        while d.weekday() >= 5:
+            d += dt.timedelta(1)
+        out.append((d.isoformat(), o, h, l, c, 1_000))
+        d += dt.timedelta(1)
+    return out
+
+
+FILL0 = (50.0, 50.6, 50.4, 50.5)  # triggers the breakout at 50.51 and touches nothing else
+
+
+class FillModel(unittest.TestCase):
+    """Section 3's daily-bar simulation, rule by rule, on synthetic bars (stop 50.51, limit 50.76, R 2)."""
+
+    def setUp(self):
+        bars = daily(20)
+        self.t = levels.plan("AAPL", bars, bars[-1][0])
+        self.o = levels.plan("AAPL", bars, bars[-1][0], mode="open")  # limit 50.5
+
+    def test_breakout_fills(self):
+        t = self.t
+        self.assertEqual(levels.fill(t, after(FILL0)), (0, 50.51))
+        self.assertEqual(levels.fill(t, after((50.60, 51.0, 50.5, 50.9))), (0, 50.60))  # open between stop and limit
+        self.assertEqual(levels.fill(t, after((51.0, 51.2, 50.70, 51.0))), (0, 50.76))  # rests at the limit
+        self.assertEqual(levels.fill(t, after((51.0, 51.2, 50.9, 51.0), (51.0, 51.0, 50.7, 50.8))), (1, 50.76))
+        quiet = (50.0, 50.4, 49.9, 50.0)
+        self.assertIsNone(levels.fill(t, after(quiet, quiet, quiet)))
+        self.assertIsNone(levels.fill(t, after(quiet, quiet, quiet, FILL0)))  # expired after 3 sessions
+
+    def test_open_fills(self):
+        self.assertEqual(levels.fill(self.o, after((50.4, 50.6, 50.3, 50.5))), (0, 50.4))
+        self.assertIsNone(levels.fill(self.o, after((50.6, 50.8, 50.5, 50.7))))
+
+    def test_stop_gap_rule1(self):
+        ex = levels.exits(self.t, 50.51, 0, after(FILL0, (48.0, 48.2, 47.5, 48.0)))
+        self.assertEqual(ex[0], ("stop", 48.0, 1))  # leg A at the open below the stop
+        self.assertEqual(ex[1][1:], (48.0, 1))  # leg B at the open below the level carried (50.6 - 2 = 48.6)
+
+    def test_stop_first_rule2(self):
+        ex = levels.exits(self.t, 50.51, 0, after(FILL0, (50.5, 54.0, 48.0, 51.0)))
+        self.assertEqual(ex[0], ("stop", 48.51, 1))
+
+    def test_entry_session_stop_rule3(self):
+        ex = levels.exits(self.t, 50.51, 0, after((48.3, 50.6, 48.2, 50.0)))  # opened below F - R before the fill
+        self.assertEqual(ex[0], ("stop", 48.51, 0))
+
+    def test_trailing_rule4(self):
+        bars = after(FILL0, (50.6, 52.0, 50.5, 51.8), (51.9, 54.0, 52.5, 53.9), (53.0, 53.5, 51.9, 52.0))
+        ex = levels.exits(self.t, 50.51, 0, bars)
+        self.assertEqual(ex[0], ("target", 53.51, 2))
+        self.assertEqual(ex[1], ("trail", 52.0, 3))  # running max 54, level 52
+        gap = after(FILL0, (50.6, 52.0, 50.5, 51.8), (51.9, 54.0, 52.5, 53.9), (51.5, 51.8, 51.0, 51.2))
+        self.assertEqual(levels.exits(self.t, 50.51, 0, gap)[1], ("trail", 51.5, 3))  # open below the carried 52
+
+    def test_target_at_open_rule5(self):
+        ex = levels.exits(self.t, 50.51, 0, after(FILL0, (54.0, 54.5, 53.8, 54.2), (53.0, 53.0, 52.0, 52.2)))
+        self.assertEqual(ex[0], ("target", 54.0, 1))  # leg B closes on the next bar (level 52.5)
+
+    def test_time_exit(self):
+        flat = (50.6, 50.7, 50.5, 50.6)
+        ex = levels.exits(self.t, 50.51, 0, after(FILL0, *[flat] * 21))
+        self.assertEqual(ex, [("time", 50.6, 21), ("time", 50.6, 21)])  # the close of the 21st session after entry
+        self.assertIsNone(levels.exits(self.t, 50.51, 0, after(FILL0, *[flat] * 20)))  # bars end before it
+
+    def test_unfilled_is_zero(self):
+        quiet = (50.0, 50.4, 49.9, 50.0)
+        self.assertEqual(levels.simulate(self.t, after(quiet, quiet, quiet), 0.02),
+                         {"filled": False, "gross_r": 0.0, "cost_r": 0.0})
+
+    def test_gross_r_by_hand(self):
+        self.assertAlmostEqual(levels.gross_r(self.t, 50.51, [("target", 53.51, 2), ("trail", 52.51, 3)]), 1.25)
+
+    def test_simulate_filled(self):
+        bars = after(FILL0, (54.0, 54.5, 53.8, 54.2), (54.0, 54.0, 52.0, 52.5))
+        got = levels.simulate(self.t, bars, 0.02)  # A at 54.0; B: max 54.5, level 52.5, low 52.0 -> 52.5
+        self.assertEqual(got["filled"], True)
+        self.assertAlmostEqual(got["gross_r"], (25 * (54.0 - 50.51) + 25 * (52.5 - 50.51)) / 100)
+        self.assertAlmostEqual(got["cost_r"], (1.40 + 1.00) / 100)
+
+
 class UniverseMark(unittest.TestCase):
     """The partial universe mark of phase B (owner 2026-10-11): price, dollar volume, history; never a refusal."""
 

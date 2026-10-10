@@ -145,3 +145,75 @@ def guard(t, quote):
     if c > COST_GUARD + EPS:
         return {"ok": False, "reason": "cost above 10% of risk"}
     return {**t, "guard_spread": spr, "cost_r": c}
+
+
+# ---------- the daily-bar fill model (spec section 3; synthetic tests only in phase B) ----------
+def fill(t, after):
+    """The entry: (index of the entry session in `after`, the sessions after D, fill price F), or None.
+    `open`: the first session's open when it is at or below the limit. `breakout`: within 3 sessions, a high at or
+    above the stop fills at max(stop, open) when that is within the limit; an open above the limit leaves the order
+    resting at the limit, filled at the limit by that or a later valid session's low (plan decision 6)."""
+    if not after:
+        return None
+    if t["mode"] == "open":
+        o = after[0][1]
+        return (0, o) if o <= t["limit"] + EPS else None
+    stop, limit, resting = t["entry_stop"], t["limit"], False
+    for k, (_, o, h, l, c, v) in enumerate(after[:BREAKOUT_DAYS]):
+        if not resting and h >= stop - EPS:
+            x = max(stop, o)
+            if x <= limit + EPS:
+                return k, x
+            resting = True
+        if resting and l <= limit + EPS:
+            return k, limit
+    return None
+
+
+def exits(t, F, k, after):
+    """Both legs' exits after a fill at F on session k -> [(type, price, session index)] for leg A then leg B, or
+    None when the bars end with a leg still open. Rules 1-5 of section 3: a stop fills at the stop or at a lower open
+    (never at an open before the fill: the entry session uses the stop); stop before target in one bar; the trail
+    raises its running maximum by the session's high, then checks the low; a target fills at its price or a higher
+    open; the time exit is the close of the H-th session after the entry session."""
+    R = t["R"]
+    S, T = px(F - R), px(F + TARGET_R * R)
+    last = k + t["horizon"]
+    out = [None, None]
+    run_max, prev_level = F, None
+    for j in range(k, min(last, len(after) - 1) + 1):
+        _, o, h, l, c, v = after[j]
+        entry = j == k
+        if out[0] is None:
+            if l <= S + EPS:
+                out[0] = ("stop", S if entry or o >= S else o, j)
+            elif h >= T - EPS:
+                out[0] = ("target", T if entry or o <= T else o, j)
+        if out[1] is None:
+            run_max = max(run_max, h)
+            level = max(run_max - R, S)
+            if l <= level + EPS:
+                gap = not entry and prev_level is not None and o < prev_level
+                out[1] = ("stop" if level <= S + EPS else "trail", px(o if gap else level), j)
+            prev_level = level
+        if j == last:
+            out = [x or ("time", c, j) for x in out]
+    return None if None in out else out
+
+
+def gross_r(t, F, legs_exits):
+    """Σ over legs of leg shares x (exit - F) / (shares x R)."""
+    return sum(q * (x[1] - F) for q, x in zip(t["legs"], legs_exits)) / (t["shares"] * t["R"])
+
+
+def simulate(t, after, spr):
+    """A ticket's gross result and cost in R on the sessions after D; an unfilled ticket is 0 and 0; None while a
+    leg is still open at the end of the bars. Never called on market data in phase B."""
+    f = fill(t, after)
+    if f is None:
+        return {"filled": False, "gross_r": 0.0, "cost_r": 0.0}
+    k, F = f
+    ex = exits(t, F, k, after)
+    if ex is None:
+        return None
+    return {"filled": True, "gross_r": gross_r(t, F, ex), "cost_r": cost_r(t, spr)}
