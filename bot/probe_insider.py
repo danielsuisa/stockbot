@@ -241,13 +241,14 @@ def main():
     out["a_box_filings"] = sum(1 for f in filings.values() if f["box"])
     latest = max((f["filed"] for f in filings.values() if f["filed"]), default=START)
     cal = alpaca.calendar("2015-12-01", (dt.date.fromisoformat(latest) + dt.timedelta(120)).isoformat())
-    sessions = sorted(d for d in cal if d <= today.isoformat())
+    sessions = sorted(d for d in cal if d < today.isoformat())
     ev = events(filings, sessions)
     out["b_events_per_year"] = dict(sorted(collections.Counter(e["filed"][:4] for e in ev).items()))
     out["b_events"], out["b_latest_filing"] = len(ev), latest
     symbols = sorted({e["symbol"] for e in ev if re.fullmatch(r"[A-Z][A-Z.\-]{0,6}", e["symbol"] or "")})
     out["c_symbols_queried"] = len(symbols)
-    bars = split_daily(symbols + ["SPY"], "2015-12-01", today.isoformat())
+    end = (today - dt.timedelta(1)).isoformat()  # the free plan refuses SIP data from the last 15 minutes
+    bars = split_daily(symbols + ["SPY"], "2015-12-01", end)
     spy = bars.get("SPY", {})
     cov = collections.defaultdict(lambda: [0, 0, 0])  # year -> [events, covered, missing]
     covered = []
