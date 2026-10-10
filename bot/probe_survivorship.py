@@ -172,6 +172,13 @@ def f_per_year(per_year, used):
     return {y: _fs(*_net(c), used) for y, c in per_year.items()}
 
 
+def price_consistent(price, close_range):
+    """Review M1 (a sensitivity count, not a rule): is a stock-month's own insider price P within a factor of 2 of the
+    recovering symbol's raw closes that month ((lowest, highest) or None)? Bars of another security that held the
+    ticker earlier usually fail this."""
+    return close_range is not None and close_range[0] / 2 <= price <= close_range[1] * 2
+
+
 def rename_bars(by_sym, of_cik, bar_months):
     """What the raw bars hold under a renamed company's symbols: CIKs with exactly two filed symbols, one filed only
     before the other (a clean change, dated by the new symbol's first filing) -> counts of changes where the old and
@@ -198,8 +205,8 @@ def rename_bars(by_sym, of_cik, bar_months):
 
 # ---------- the run and its report ----------
 REPORT_KEYS = ("finra_volume_check", "item_202_coverage_8k_only", "item_202_coverage_with_8k_a", "s2_decision",
-               "stock_months", "rename_rule", "rename_bars", "allowance", "f_per_year", "data_gaps",
-               "requests_and_runtime")
+               "stock_months", "rename_rule", "rename_bars", "rename_price_check", "allowance", "f_per_year",
+               "data_gaps", "requests_and_runtime")
 CHECK_KEYS = ("finra_volume_check", "spelling_check", "rename_check", "sample_stock_months", "item_202_coverage_sample",
               "requests_and_runtime")
 CHECK_SYMBOLS = ("BRK.B", "META", "FB", "AAPL")
@@ -261,15 +268,20 @@ def run(checks, sample=300, seed=7):
     siblings = {o for s in counted for c in ciks.get(s, ()) for o in of_cik.get(pd._cik(c), ())}
     series = pd.load_series(sorted(set(counted) | siblings), pe.BARS_FROM, pe.SIGNAL_END, sessions)
     bar_months = {}  # decision 5: a session in the raw Alpaca bars (read from the cache load_series just filled)
+    close_range = {}  # {symbol: {month: (lowest, highest) raw close}} for the review's price check
     wanted_bars = sorted(set(counted) | siblings)
     for i in range(0, len(wanted_bars), alpaca.CHUNK):
         for sym, bars in alpaca.daily(wanted_bars[i:i + alpaca.CHUNK], pe.BARS_FROM, pe.SIGNAL_END).items():
             if bars:
                 bar_months[sym] = {b[0][:7] for b in bars}
+                rng = close_range[sym] = {}
+                for b in bars:
+                    lo, hi = rng.get(b[0][:7], (b[4], b[4]))
+                    rng[b[0][:7]] = (min(lo, b[4]), max(hi, b[4]))
 
     # items 2-3: universe-like stock-months, bars, the rename rule
     filed_counted = {s: filed[s] for s in counted}
-    per_month, fstats = {}, {}
+    per_month, fstats, price_check = {}, {}, collections.Counter()
     for m, end in months:
         like = universe_like(end, filed_counted, prices, reports.get(chosen[m]), fstats)
         with_bars = {s for s in like if m in bar_months.get(s, ())}
@@ -280,6 +292,10 @@ def run(checks, sample=300, seed=7):
                 rec[s] = other
         per_month[m] = {"like": set(like), "with bars": with_bars, "recovered": rec,
                         "duplicates": sum(1 for o in rec.values() if o in with_bars)}
+        for s, o in rec.items():
+            if o not in with_bars:
+                ok = price_consistent(like[s]["P"], close_range.get(o, {}).get(m))
+                price_check["price-consistent" if ok else "price-inconsistent"] += 1
     counts = survivorship_counts(per_month)
     decision = decide(counts["overall"])
 
@@ -324,6 +340,7 @@ def run(checks, sample=300, seed=7):
                             "without bars": counts["overall"]["without bars"],
                             "duplicates (left out of f)": counts["overall"]["recovered, duplicating a stock-month with bars"]},
             "rename_bars": rename_bars(by_sym, of_cik, bar_months),
+            "rename_price_check": _price_check(counts["overall"], price_check),
             "allowance": allowance,
             "f_per_year": f_per_year(counts["per_year"], decision["rename rule used"]),
             "data_gaps": {"months with no or a stale FINRA report": stale, **fstats,
@@ -331,6 +348,20 @@ def run(checks, sample=300, seed=7):
                           "symbols as filed": len(filed), "symbols with raw bars": len(bar_months),
                           "filings with an unusable symbol": stats.get("unusable symbol", 0)},
             "requests_and_runtime": requests}
+
+
+def _price_check(overall, price_check):
+    """The rule decision and f when only price-consistent recoveries count (duplicates are left out either way)."""
+    cells = dict(overall)
+    dup = overall["recovered, duplicating a stock-month with bars"]
+    cells["recovered by the rename rule"] = price_check["price-consistent"] + dup
+    d = decide(cells)
+    return {"recovered, not duplicates": price_check["price-consistent"] + price_check["price-inconsistent"],
+            "price-consistent": price_check["price-consistent"],
+            "price-inconsistent": price_check["price-inconsistent"],
+            "rule used with price-consistent recoveries only": d["rename rule used"],
+            "f with price-consistent recoveries only": d["f (rule as decided)"],
+            "b within 0.03 R with price-consistent recoveries only": d["b within 0.03 R"]}
 
 
 def main(argv=None):

@@ -151,6 +151,15 @@ class Additions(unittest.TestCase):
         got = ps.f_per_year(per_year, used=False)["2018"]
         self.assertEqual(got, {"f (rule as decided)": 18 / 108, "f (literal, recovered always subtracted)": 12 / 108})
 
+    def test_price_consistent(self):
+        # review M1: a recovery is price-consistent when the stock-month's own P lies within a factor of 2 of the
+        # recovering symbol's raw closes that month
+        self.assertTrue(ps.price_consistent(20.0, (10.0, 12.0)))  # 20 <= 2 x 12
+        self.assertTrue(ps.price_consistent(5.0, (10.0, 12.0)))  # 5 = 10 / 2
+        self.assertFalse(ps.price_consistent(24.01, (10.0, 12.0)))
+        self.assertFalse(ps.price_consistent(4.99, (10.0, 12.0)))
+        self.assertFalse(ps.price_consistent(20.0, None))
+
     def test_rename_bars(self):
         # a clean symbol change: the old symbol's last filing is before the new one's first
         by_sym = {"OLD": [("2018-01-10", "1"), ("2019-05-01", "1")], "NEW": [("2019-07-01", "1"), ("2020-01-01", "1")],
@@ -169,10 +178,11 @@ class Run(unittest.TestCase):
     has none and nothing to recover it. Months 2017-03 .. 2017-05."""
     S = Bars.S
 
-    def run_mocked(self, checks=False, adv=1_000_000, new_like=False, raw_extra=None):
+    def run_mocked(self, checks=False, adv=1_000_000, new_like=False, raw_extra=None, new_close=10.0):
         S = self.S
         ser = {"A": bars_for(400, 10.0, 2_000_000), "NEW": bars_for(400, 10.0, 2_000_000)}
         raw = {s: [(d, 10.0, 10.1, 9.9, 10.0, 2_000_000) for d in S] for s in ser}  # raw Alpaca bars (decision 5)
+        raw["NEW"] = [(d, new_close, new_close, new_close, new_close, 2_000_000) for d in S]
         raw.update(raw_extra or {})
         rows = [("2017-02-01", "100", "A"), ("2017-02-01", "1", "OLD"), ("2016-06-01", "1", "NEW"),
                 ("2017-02-01", "200", "B")]
@@ -197,6 +207,16 @@ class Run(unittest.TestCase):
               mock.patch.object(ps, "MONTHS", ("2017-03", "2017-05")),
               mock.patch.object(pe, "SIGNAL_START", S[261]), mock.patch.object(pe, "SIGNAL_END", S[-1])):
             return ps.run(checks)
+
+    def test_rename_price_check(self):
+        # OLD's own P is $20; NEW's raw closes are $10 (consistent) or $100 (another security's bars: inconsistent)
+        c = self.run_mocked()["rename_price_check"]
+        self.assertEqual((c["recovered, not duplicates"], c["price-consistent"], c["price-inconsistent"]), (3, 3, 0))
+        self.assertTrue(c["rule used with price-consistent recoveries only"])
+        c = self.run_mocked(new_close=100.0)["rename_price_check"]
+        self.assertEqual((c["price-consistent"], c["price-inconsistent"]), (0, 3))
+        self.assertFalse(c["rule used with price-consistent recoveries only"])  # 0 of 6 without bars
+        self.assertAlmostEqual(c["f with price-consistent recoveries only"], 6 / 9)
 
     def test_bars_come_from_raw_alpaca(self):
         # decision 5: a stock-month has bars when the raw Alpaca bars hold a session in the month (B: April only)
