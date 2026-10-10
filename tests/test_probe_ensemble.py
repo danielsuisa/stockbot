@@ -107,14 +107,18 @@ class Submissions(unittest.TestCase):
     def test_items_and_pages(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
-            got = pd.earnings_releases(self.zip_path(d), {"320193"}, "America/New_York")
-        self.assertEqual(got, {"320193": ["2024-02-01T21:30", "2024-07-01T14:00"]})  # 5.02 and 10-Q out, CIK 999 not asked
-
-    def test_acceptance_tz(self):
-        import tempfile
+            got = pd.earnings_releases(self.zip_path(d), {"0000320193"}, "2016-12-01", "2026-03-31")
+        self.assertEqual(got, {"320193": [("a", "2024-02-01"), ("d", "2024-07-01")]})  # 5.02, 10-Q and CIK 999 out
         with tempfile.TemporaryDirectory() as d:
-            got = pd.earnings_releases(self.zip_path(d), {"0000320193"}, "UTC")
-        self.assertEqual(got["320193"], ["2024-02-01T16:30", "2024-07-01T10:00"])  # winter UTC-5, summer UTC-4
+            got = pd.earnings_releases(self.zip_path(d), {"320193"}, "2024-03-01", "2026-03-31")
+        self.assertEqual(got, {"320193": [("d", "2024-07-01")]})  # the filing-date window
+
+    def test_release_times_from_the_index_pages(self):
+        from unittest import mock
+        pages = {("320193", "a"): "2024-02-01T16:30", ("320193", "d"): None}  # one page could not be read
+        with mock.patch.object(pd, "index_accepted", side_effect=lambda c, a: pages[(c, a)]):
+            times, missing = pd.release_times({"320193": [("a", "2024-02-01"), ("d", "2024-07-01")]})
+        self.assertEqual((times, missing), ({"320193": ["2024-02-01T16:30"]}, 1))  # counted, never guessed
 
     def test_double_shift_rule_reproduces_the_2026_index_times(self):
         self.assertEqual(pd._to_ny("2026-07-31T00:30:28.000Z", "double"), "2026-07-30T16:30")  # Apple, summer
@@ -383,6 +387,22 @@ class PointInTime(unittest.TestCase):
         self.assertEqual(got, {"OLD": ["2017-10-25T16:30", "2019-11-01T07:00"], "NEW": ["2019-10-25T16:30"]})
         # issuer 100's 2019 release is not OLD's: OLD belongs to issuer 200 by then
 
+    def test_releases_point_in_time_and_lazy_times(self):
+        from unittest import mock
+        S = ["2019-10-24", "2019-10-25", "2019-10-28", "2019-10-29"]
+        filings = [("2017-03-01", "100", "OLD"), ("2019-05-01", "100", "NEW"), ("2019-06-01", "200", "OLD")]
+        found = {"100": [("a", "2019-10-25")], "0000000200": [("b", "2019-10-24")]}
+        rel = pd.Releases(found, filings)
+        self.assertEqual((rel.filing_dates("NEW"), rel.filing_dates("OLD")), (["2019-10-25"], ["2019-10-24"]))
+        times = {"a": "2019-10-25T16:30", "b": None}
+        with mock.patch.object(pd, "index_accepted", side_effect=lambda c, a: times[a]) as idx:
+            self.assertFalse(rel.reacts_on("NEW", S, {S[3]}))  # filing date 10-25: candidates 10-25 / 10-28 only
+            self.assertEqual(idx.call_count, 0)  # no time needed
+            self.assertTrue(rel.reacts_on("NEW", S, {S[2]}))  # 16:30 on Friday -> Monday
+            self.assertFalse(rel.reacts_on("NEW", S, {S[1]}))
+            self.assertFalse(rel.reacts_on("OLD", S, {S[0]}))  # its page is unreadable: counted, never guessed
+        self.assertEqual((idx.call_count, rel.missing), (2, 1))  # each page fetched once
+
     def test_index_accepted_parses_edgar_index(self):
         from unittest import mock
         page = b'<div class="infoHead">Accepted</div>\n<div class="info">2024-02-01 16:30:43</div>'
@@ -403,7 +423,7 @@ class Report(unittest.TestCase):
         ser = {sym: bars_for(330, [10 + k * 0.01 * (j + 1) for k in range(330)], 2_000_000) for j, sym in enumerate("ABCDE")}
         rows = [(S[100], "100", sym) for sym in ser]
         buys = [buy(o, S[300], 40_000 + int(o)) for o in "123"]
-        with mock.patch.object(pe, "_calendar", return_value=S),                 mock.patch.object(pe, "load_insider", return_value=(rows, buys, {}, ["2015Q4", "2026Q1"])),                 mock.patch.object(pd, "download", return_value="x.zip"),                 mock.patch.object(pe, "tz_check", return_value={"pairs": [], "tz": "America/New_York"}),                 mock.patch.object(pd, "earnings_releases", return_value={"100": [S[310] + "T07:00"]}),                 mock.patch.object(pd, "load_series", return_value=ser),                 mock.patch.object(pe, "SIGNAL_START", S[260]), mock.patch.object(pe, "SIGNAL_END", S[-1]):
+        with mock.patch.object(pe, "_calendar", return_value=S),                 mock.patch.object(pe, "load_insider", return_value=(rows, buys, {}, ["2015Q4", "2026Q1"])),                 mock.patch.object(pd, "download", return_value="x.zip"),                 mock.patch.object(pe, "tz_check", return_value={"pairs": [], "tz": "America/New_York"}),                 mock.patch.object(pd, "earnings_releases", return_value={"100": [("x", S[310])]}), mock.patch.object(pd, "release_times", return_value=({"100": [S[310] + "T07:00"]}, 0)),                 mock.patch.object(pd, "load_series", return_value=ser),                 mock.patch.object(pe, "SIGNAL_START", S[260]), mock.patch.object(pe, "SIGNAL_END", S[-1]):
             out = pe.run(False)
         self.assertEqual(tuple(out), pe.REPORT_KEYS)
         text = json.dumps(out, default=sorted)

@@ -16,6 +16,7 @@ import os
 import re
 import urllib.request
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 
 from bot import alpaca, common, form4, probe_insider as pi
 
@@ -90,11 +91,13 @@ def _to_ny(stamp, tz):
     return t.strftime("%Y-%m-%dT%H:%M")
 
 
-def earnings_releases(zip_path, ciks, tz):
-    """8-K / 8-K/A filings whose items include 2.02, for the given issuer CIKs -> {CIK: sorted New York acceptance
-    times}, from each issuer's recent filings and every older page in submissions.zip (read in place)."""
+def earnings_releases(zip_path, ciks, start, end):
+    """8-K / 8-K/A filings whose items include 2.02, for the given issuer CIKs, filed from `start` to `end` ->
+    {CIK: sorted [(accession number, filing date)]}, from each issuer's recent filings and every older page in
+    submissions.zip (read in place). The acceptance time comes from the EDGAR index page (release_times): the zip's
+    acceptanceDateTime is not consistent across filers (phase A check, 2026-10-10)."""
     want = {_cik(c) for c in ciks}
-    out = collections.defaultdict(list)
+    out = collections.defaultdict(set)
     with zipfile.ZipFile(zip_path) as z:
         for name in z.namelist():
             m = re.fullmatch(r"CIK(\d{10})(-submissions-\d+)?\.json", name.rsplit("/", 1)[-1])
@@ -102,10 +105,74 @@ def earnings_releases(zip_path, ciks, tz):
                 continue
             d = json.loads(z.read(name))
             cols = d if m.group(2) else (d.get("filings") or {}).get("recent") or {}
-            for form, items, acc in zip(cols.get("form", []), cols.get("items", []), cols.get("acceptanceDateTime", [])):
-                if form in ("8-K", "8-K/A") and "2.02" in re.split(r"[,\s]+", items or "") and acc:
-                    out[_cik(m.group(1))].append(_to_ny(acc, tz))
+            for form, items, acc, filed in zip(cols.get("form", []), cols.get("items", []),
+                                               cols.get("accessionNumber", []), cols.get("filingDate", [])):
+                if form in ("8-K", "8-K/A") and "2.02" in re.split(r"[,\s]+", items or "") and start <= filed <= end:
+                    out[_cik(m.group(1))].add((acc, filed))
     return {c: sorted(v) for c, v in out.items()}
+
+
+def release_times(found, workers=8):
+    """Each filing's acceptance time from its EDGAR index page (Eastern time; common.fetch keeps SEC's 8 requests a
+    second) -> ({CIK: sorted "YYYY-MM-DDTHH:MM"}, the number of pages that could not be read: counted, never
+    guessed)."""
+    jobs = [(c, a) for c, v in found.items() for a, _ in v]
+    with ThreadPoolExecutor(workers) as ex:
+        got = list(ex.map(lambda j: index_accepted(*j), jobs))
+    out, missing = collections.defaultdict(list), 0
+    for (c, _), t in zip(jobs, got):
+        if t:
+            out[c].append(t)
+        else:
+            missing += 1
+    return {c: sorted(v) for c, v in out.items()}, missing
+
+
+class Releases:
+    """Item 2.02 releases by symbol, point in time (a CIK's release goes to the symbols it filed a Form 3/4/5 under in
+    the 365 days before the filing date), with each acceptance time read from its EDGAR index page only when a rule
+    needs it (cached; unreadable pages counted, never guessed). The reaction session of a release is its filing date or
+    the next session, so a time matters only where those two give different answers."""
+
+    def __init__(self, found, filings, days=365):
+        by_cik = collections.defaultdict(list)
+        for filed, cik, sym in filings:
+            by_cik[_cik(cik)].append((filed, sym))
+        for v in by_cik.values():
+            v.sort()
+        self.by_symbol = collections.defaultdict(list)
+        for cik, items in found.items():
+            rows = by_cik.get(_cik(cik), [])
+            dates = [d for d, _ in rows]
+            for acc, filed in items:
+                lo = (dt.date.fromisoformat(filed) - dt.timedelta(days)).isoformat()
+                for sym in {s for _, s in rows[bisect.bisect_left(dates, lo):bisect.bisect_right(dates, filed)]}:
+                    self.by_symbol[sym].append((filed, _cik(cik), acc))
+        for v in self.by_symbol.values():
+            v.sort()
+        self.times, self.missing = {}, 0
+
+    def filing_dates(self, sym):
+        return [f for f, _, _ in self.by_symbol.get(sym, ())]
+
+    def time(self, cik, acc):
+        if acc not in self.times:
+            self.times[acc] = index_accepted(cik, acc)
+            self.missing += self.times[acc] is None
+        return self.times[acc]
+
+    def reacts_on(self, sym, sessions, days):
+        """Is any of the symbol's reaction sessions in `days` (a set of sessions)? Times are fetched only for
+        releases whose filing date or next session is in `days`."""
+        for filed, cik, acc in self.by_symbol.get(sym, ()):
+            k = bisect.bisect_left(sessions, filed)
+            cands = {sessions[j] for j in (k, k + 1) if j < len(sessions)}
+            if not cands & days:
+                continue
+            t = self.time(cik, acc)
+            if t and reaction_session(t, sessions) in days:
+                return True
+        return False
 
 
 def release_symbols(releases, filings, days=365):
@@ -152,9 +219,13 @@ def accepted_pairs(zip_path, cik, years):
 
 
 def index_accepted(cik, accession):
-    """EDGAR's filing index page -> its "Accepted" time as printed there ("YYYY-MM-DDTHH:MM", Eastern time)."""
+    """EDGAR's filing index page -> its "Accepted" time as printed there ("YYYY-MM-DDTHH:MM", Eastern time), or None
+    when the page cannot be read."""
     url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession.replace('-', '')}/{accession}-index.htm"
-    page = (common.fetch(url, tries=3) or b"").decode("utf-8", "replace")
+    try:
+        page = (common.fetch(url, tries=3) or b"").decode("utf-8", "replace")
+    except Exception:  # a failed page is counted by release_times, never guessed
+        return None
     m = re.search(r"Accepted</div>\s*<div class=\"info\">(\d{4}-\d\d-\d\d) (\d\d:\d\d)", page)
     return f"{m.group(1)}T{m.group(2)}" if m else None
 

@@ -142,22 +142,28 @@ def _i(s, day):
     return _prepare(s)["_pos"].get(day)
 
 
-def s2_firings(day, series, releases, use_8k):
+def _reacts(releases, sym, sessions, days):
+    """Is one of the symbol's item 2.02 reaction sessions in `days`? releases: a pd.Releases (times fetched lazily) or,
+    in tests, {symbol: {reaction sessions}}."""
+    if isinstance(releases, pd.Releases):
+        return releases.reacts_on(sym, sessions, days)
+    return bool(set(releases.get(sym, ())) & days)
+
+
+def s2_firings(day, series, releases, use_8k, sessions=None):
     """S2 on `day`: close / previous close >= 1.05 (split-adjusted), volume >= 2 x the mean of the 20 sessions before
     (split-adjusted), raw close in the upper half of the day's raw range, and (unless the fallback) `day` is the
-    reaction session of an item 2.02 release (releases: {symbol: {reaction sessions}}) -> {symbols}."""
+    reaction session of an item 2.02 release -> {symbols}. The release is checked last (it may fetch a time)."""
     out = set()
     for sym, s in series.items():
         i = _i(s, day)
         if i is None or i - s["_seg_start"][i] < S2_AVG:
             continue
-        if use_8k and day not in releases.get(sym, ()):
-            continue
         c, prev = s["close"][i], s["close"][i - 1]
         avg = sum(s["volume"][i - S2_AVG:i]) / S2_AVG
         mid = (s["raw_high"][i] + s["raw_low"][i]) / 2
         if prev and c / prev >= S2_JUMP - 1e-9 and avg and s["volume"][i] >= S2_VOLUME * avg - 1e-9 \
-                and s["raw_close"][i] >= mid - 1e-9:
+                and s["raw_close"][i] >= mid - 1e-9 and (not use_8k or _reacts(releases, sym, sessions, {day})):
             out.add(sym)
     return out
 
@@ -194,7 +200,7 @@ def s4_state(day, series, u, releases, sessions):
     quiet = set(sessions[max(0, k - S4_QUIET + 1):k + 1])
     top = liquidity_top_half(u)
     return {sym for sym in rank_cut(ret, S4_BOTTOM, False) if ret[sym] <= S4_MAX + 1e-9 and sym in top
-            and not quiet & set(releases.get(sym, ()))}
+            and not _reacts(releases, sym, sessions, quiet)}
 
 
 def transitions(states, min_outside):
@@ -219,12 +225,12 @@ TZ_RULES = ("America/New_York", "UTC", "double")
 REPORT_KEYS = ("acceptance_tz_check", "item_202_coverage", "fallback", "universe_per_year",
                "firings_per_signal_per_year", "data_gaps", "requests_and_runtime")
 CHECK_KEYS = ("acceptance_tz_check", "cik_mapping_check", "price_rules_check", "look_ahead_check",
-              "item_202_coverage_sample", "requests_and_runtime")
+              "item_202_coverage_sample", "index_pages", "requests_and_runtime")
 
 
 def item_202_coverage(stock_years, releases):
-    """Universe stock-years {symbol: {years}} covered when the symbol has an item 2.02 release (point in time) in that
-    year -> {"per_year": {year: {"stock_years", "covered", "share"}}, "overall": {...}}."""
+    """Universe stock-years {symbol: {years}} covered when the symbol has an item 2.02 release (point in time) filed in
+    that year (releases: {symbol: [filing dates]}) -> {"per_year": {year: {"stock_years", "covered", "share"}}, "overall": {...}}."""
     per = collections.defaultdict(lambda: [0, 0])
     for sym, years in stock_years.items():
         have = {t[:4] for t in releases.get(sym, ())}
@@ -279,22 +285,17 @@ def run(checks, sample=400, seed=7):
     rows, buys, stats, quarters = load_insider(today)
     filed, ciks = pd.index(rows)
     zip_path = pd.download(pd.SUBMISSIONS, common.ROOT / ".cache" / "sec" / "submissions.zip")
-    tz = tz_check(zip_path)
-    if tz["tz"] is None and not checks:
-        return {"acceptance_tz_check": tz, "stopped": "the acceptance time zone could not be established"}
-    # the checks continue without an established zone: calendar-year coverage does not depend on it (only releases in
-    # the last hours of December 31 could move a year)
-    releases = pd.release_symbols(pd.earnings_releases(zip_path, {c for v in ciks.values() for c in v},
-                                                       tz["tz"] or "UTC"), rows)
-    reactions = {s: {r for r in (pd.reaction_session(t, sessions) for t in v) if r} for s, v in releases.items()}
+    tz = tz_check(zip_path)  # evidence only: the zip's acceptanceDateTime is not used (owner's decision 2026-10-10)
     symbols = sorted(filed)
     if checks:
         rng = random.Random(seed)
         symbols = sorted(set(rng.sample(symbols, min(sample, len(symbols)))) | {"AAPL", "GE"})
+    found = pd.earnings_releases(zip_path, {c for s in symbols for c in ciks.get(s, ())}, "2016-12-01", SIGNAL_END)
+    reactions = pd.Releases(found, rows)  # acceptance times from EDGAR's index pages, fetched only where they matter
     series = pd.load_series(symbols, BARS_FROM, SIGNAL_END, sessions)
     days = [d for d in sessions if d <= SIGNAL_END]
     if checks:
-        return checks_report(t0, tz, ciks, series, filed, releases, reactions, sessions)
+        return checks_report(t0, tz, ciks, series, filed, reactions, sessions)
     sizes, distinct, stock_years = collections.defaultdict(list), collections.defaultdict(set), collections.defaultdict(set)
     s2 = {k: collections.Counter() for k in ("8-K, in universe", "8-K, all", "fallback, in universe", "fallback, all")}
     s3_states, s4_states, members = [], [], {}
@@ -308,13 +309,14 @@ def run(checks, sample=400, seed=7):
             for sym in u:
                 stock_years[sym].add(y)
             for use_8k in (True, False):
-                fired = s2_firings(d, series, reactions, use_8k)
+                fired = s2_firings(d, series, reactions, use_8k, sessions)
                 tag = "8-K" if use_8k else "fallback"
                 s2[f"{tag}, all"][y] += len(fired)
                 s2[f"{tag}, in universe"][y] += len(fired & set(u))
         s3_states.append((d, s3_state(d, series, u)))
         s4_states.append((d, s4_state(d, series, u, reactions, sessions)))
-    cov = item_202_coverage(stock_years, releases)
+    cov = item_202_coverage(stock_years, {s: reactions.filing_dates(s) for s in stock_years})
+    tz["index pages read"], tz["index pages missing"] = len(reactions.times), reactions.missing
     keep = cov["overall"]["share"] is not None and cov["overall"]["share"] >= COVERAGE_MIN
     s1 = [(d, s) for d, s in s1_firings(buys, sessions) if SIGNAL_START <= d <= SIGNAL_END]
     s1_in = sum(1 for d, s in s1 if s in members.get(sessions[min(bisect.bisect_left(sessions, d), len(sessions) - 1)], ()))
@@ -341,7 +343,7 @@ def run(checks, sample=400, seed=7):
                                      "runtime_s": round(time.time() - t0)}}
 
 
-def checks_report(t0, tz, ciks, series, filed, releases, reactions, sessions):
+def checks_report(t0, tz, ciks, series, filed, reactions, sessions):
     """The pre-run checks (booleans and counts only; no price ratio is output)."""
     multi = sum(1 for v in ciks.values() if len(v) > 1)
     known = {"AAPL -> 320193": "320193" in ciks.get("AAPL", set()),
@@ -364,7 +366,8 @@ def checks_report(t0, tz, ciks, series, filed, releases, reactions, sessions):
     for d in days:
         u = universe(d, series, filed)
         cut = through(series, d)
-        look &= (u == universe(d, cut, filed) and s2_firings(d, series, reactions, True) == s2_firings(d, cut, reactions, True)
+        look &= (u == universe(d, cut, filed)
+                 and s2_firings(d, series, reactions, True, sessions) == s2_firings(d, cut, reactions, True, sessions)
                  and s3_state(d, series, u) == s3_state(d, cut, u)
                  and s4_state(d, series, u, reactions, sessions) == s4_state(d, cut, u, reactions, sessions))
     stock_years = collections.defaultdict(set)
@@ -377,7 +380,8 @@ def checks_report(t0, tz, ciks, series, filed, releases, reactions, sessions):
             "price_rules_check": {**rules, "sample series broken by the bad-price rule": breaks,
                                   "sample symbols with bars": len(series)},
             "look_ahead_check": {"days compared": days, "identical with every bar after D removed": look},
-            "item_202_coverage_sample": item_202_coverage(stock_years, releases),
+            "item_202_coverage_sample": item_202_coverage(stock_years, {s: reactions.filing_dates(s) for s in stock_years}),
+            "index_pages": {"read": len(reactions.times), "missing": reactions.missing},
             "requests_and_runtime": {"alpaca": alpaca.REQUESTS[0], "sec zips": pi.SEC_REQUESTS[0],
                                      "runtime_s": round(time.time() - t0)}}
 
