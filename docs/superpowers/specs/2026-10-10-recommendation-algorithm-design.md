@@ -1,8 +1,9 @@
 # Recommendation algorithm (levels engine + four-signal ensemble) — design
 
-Date: 2026-10-10 · Status: revision 5. Design approved in chat in three parts and revised after four reviews by
-the owner (2026-10-10). This file is committed only on the owner's approval, and that approval covers the
-methodology and phase A only (section 1.1) · Background:
+Date: 2026-10-10 · Status: revision 6 (proposed). Revision 5 was approved by the owner for the methodology and
+phase A, and phase A ran (`docs/backtest/ensemble-phaseA-2026-10-10.md`). Revision 6 settles what phase A left
+open, before any return is computed: the rule clarifications of 4.1, the survivorship measurement (phase A.1) and
+its allowance (6.4). It needs the owner's approval; approval covers phase A.1 only (section 1.1) · Background:
 `docs/superpowers/specs/2026-10-08-ticket-backtest-design.md` sections 6, 14.14, 15, 15.1, 16;
 `docs/backtest/insider-step0-2026-10-10.md`; `docs/backtest/t-estimator-validation.py`
 
@@ -24,8 +25,8 @@ Owner's decisions (2026-10-10):
 
 ### 1.1 What approval of this spec covers
 
-- **Approved:** the methodology of this document, and phase A (section 7): the data sources and their coverage, with
-  no return computed.
+- **Approved:** the methodology of this document, phase A (done) and phase A.1 (section 7): data sources, coverage
+  and the survivorship measurement, with no return computed.
 - **Not approved by it:** phases B to E. Each needs the owner's explicit go-ahead after the previous phase's report.
   The blind run (C) and the verdict run (D) each need their own go-ahead; D also needs check 1 to have passed.
 - **Never covered by this spec:** real money. A GO of section 6 changes a label and starts the forward check; trading
@@ -48,10 +49,12 @@ this spec on returns, real-fill bookkeeping (a later `/fill` command; until then
 - **Quotes:** Alpaca historical SIP quotes (`alpaca.quote_full`), as in section 6 of the ticket spec.
 - **Insider filings:** SEC Insider Transactions Data Sets (2015Q1 → 2026Q1 measured usable in STEP 0); later
   quarters from EDGAR daily indexes + Form 4 XML (the live scan's path).
-- **Earnings releases:** EDGAR bulk `submissions.zip`: 8-K filings with item 2.02 and their acceptance time, by CIK;
-  CIK → symbol as filed, from the insider data sets. To be verified in phase A (section 7). Pre-registered fallback
-  if item 2.02 is available for fewer than 90% of universe stock-years: signal S2 drops the 8-K condition and keeps
-  its price and volume conditions.
+- **Earnings releases:** EDGAR bulk `submissions.zip`: filings of form type 8-K with item 2.02, by CIK; CIK →
+  symbol as filed, from the insider data sets. An 8-K/A is an amendment, not a release, and is ignored. The
+  acceptance time is read from the filing's EDGAR index page (Eastern time): phase A found the bulk file's time
+  field inconsistent between filers. Phase A measured item 2.02 coverage of 95.0% of universe stock-years with
+  8-K/A counted; phase A.1 re-measures it with 8-K only, and the 90% rule is applied to that figure: below 90%, S2
+  drops the 8-K condition and keeps its price and volume conditions.
 - **Universe on day D (point in time, includes later-delisted names):** symbols that appear as the issuer's trading
   symbol in a Form 3/4/5 filed in the 365 days before D (operating companies have insiders; funds do not), with an
   Alpaca bar on D, raw close ≥ $5, 20-session average dollar volume ≥ $10M, and ≥ 252 earlier sessions of bars.
@@ -59,8 +62,16 @@ this spec on returns, real-fill bookkeeping (a later `/fill` command; until then
 - **Bad prices (registered before any return is looked at):** a one-day close ratio ≥ 4 or a gap of more than 10
   sessions without bars ends a symbol's series (treated as a different security afterwards). A ticket open at that
   point exits at the last close before it. Downward one-day moves are kept as real.
-- **Known biases, reported with every result:** about 10% of symbols as filed have no Alpaca bars (renamed or
-  delisted; STEP 0), a delisted stock exits at its last close, Form 4/A amendments are ignored.
+- **Known biases, reported with every result:** 3,527 of the 14,035 symbols as filed (25%) have no Alpaca bars
+  (phase A; the earlier estimate was 10% of insider events); bars are keyed by today's ticker, so a renamed company
+  is missing before its rename unless section 2's rename rule recovers it; a delisted stock exits at its last
+  close; Form 4/A amendments are ignored.
+- **Renames (decided by phase A.1's count):** when a symbol as filed has no bars and its CIK has exactly one other
+  filed symbol with bars, the universe uses that symbol's bars for the CIK, if phase A.1 finds that this recovers at
+  least a third of the universe-like stock-months without bars; otherwise the rule is not used.
+- **Survivorship is not symmetric.** S4 buys stocks that have just fallen hard and S1 buys where insiders buy into
+  weakness; such stocks are delisted more often than a random stock of the same liquidity. Missing delisted names
+  therefore flatter the signals more than the pool. Phase A.1 measures the gap f and 6.4 charges for it.
 
 ## 3. Levels engine (`bot/levels.py`, pure functions; one code path for backtest, shadow and live)
 
@@ -119,8 +130,8 @@ A symbol has at most one open or pending ticket per signal; the same symbol may 
 
 | Signal | Fires on day D when | Entry | H |
 |---|---|---|---|
-| **S1 insider cluster** | D is the first filing date on which ≥ 3 distinct officers/directors have open-market purchases (code P, not a 10b5-1 line) totalling ≥ $100,000 with trade dates in the 30 days before; purchases with the same issuer, trade date, shares and price count as one person; no second event for the issuer within 21 sessions | `open` | 21 |
-| **S2 earnings drift** | D is the reaction session of an 8-K item 2.02 (the acceptance day, or the next session when accepted at or after 16:00 ET) and: close/previous close ≥ 1.05, volume ≥ 2 × the 20-session average, close in the upper half of D's range | `breakout` | 42 |
+| **S1 insider cluster** | D is the first filing date on which ≥ 3 distinct officers/directors have open-market purchases (code P, not a 10b5-1 line) totalling ≥ $100,000 with trade dates in the 30 days before; purchases with the same issuer, trade date, shares and price count as one person; no second event for the issuer within 21 sessions; the symbol is in the universe on D (a filing date that is not a session: the next session) | `open` | 21 |
+| **S2 earnings drift** | D is the reaction session of an 8-K item 2.02 (the acceptance day, or the next session when accepted at or after 16:00 ET) and: the symbol is in the universe on D and has a bar on the session before D; close/previous close ≥ 1.05, volume ≥ 2 × the average of the 20 sessions before D, close in the upper half of D's range | `breakout` | 42 |
 | **S3 momentum near the 52-week high** | D is the first session after ≥ 21 sessions outside the state: close ≥ 0.95 × the highest close of the last 252 sessions, and the return from D−147 to D−21 is in the top 20% of that day's universe | `breakout` | 21 |
 | **S4 short-term reversal** | D is the first session in the state: the 5-session return is in the bottom 5% of that day's universe and ≤ −10%, the stock is in the top half of the universe by liquidity, and no S2 reaction session fell in the last 5 sessions | `open` | 5 |
 
@@ -131,6 +142,26 @@ A symbol has at most one open or pending ticket per signal; the same symbol may 
   "מחוץ ליקום שנבדק". The squeeze list is shown as expected volatility, not as a buy signal (measured: no
   direction). Piotroski / Altman / Beneish are shown as information and do not enter any rule.
 - Weights are equal and fixed. No signal is dropped, re-weighted or re-parametrised after any result is seen.
+
+### 4.1 Clarifications fixed after phase A, before any return
+
+Approved by the owner during phase A: S2's volume average is the 20 sessions before D; S4's "no S2 reaction
+session" means no item 2.02 reaction session in D−4..D, whether or not S2 fired; S3's and S4's lags count the
+symbol's own sessions; the universe's 20-session dollar volume includes D; S3 and S4 states are observed from
+2017-01-03, and an entry counts only after the required observed sessions outside the state (S3: 21, S4: 1).
+
+Settled in revision 6:
+
+- **A ticket of the test needs a universe symbol.** Section 6.2's pool is defined by the symbol's liquidity decile
+  in the universe, so S1 and S2 fire for the test only on a universe symbol (phase A: 1,511 of 5,479 S1 firings).
+  Live, a symbol outside the universe still gets a ticket marked "מחוץ ליקום שנבדק".
+- **8-K only** (section 2).
+- **S2 needs a bar on the session before D**, so the 5% jump is always a one-session move.
+- **S1 may fire again** on a later filing date on which its condition holds, once 21 sessions have passed. This is
+  the rule as written and as measured in STEP 0; a new firing needs a new filing and purchases inside the 30 days
+  before it.
+- **Known property, not changed:** tickets weigh equally, so signals weigh by how often they fire. In phase A's
+  counts S3 and S4 are 75% of the tickets and S1 is 4%; gate 4 (each signal removed in turn) is the check on that.
 
 ## 5. Costs (how "actual costs" are computed)
 
@@ -268,8 +299,14 @@ Enforced, not promised:
 μ_min = 4.1 × the larger of the two estimated SEs (T10, T5). 4.1 is the largest in-scope figure of 6.3's table: in
 scenario D an edge of 4.1 estimated SEs is the one found in 80% of histories, and in A–C a smaller one is. The
 constant is in units of the estimated SE, so it already contains how far the estimate falls below the truth in
-every in-scope scenario; nothing is assumed about that gap. Continue only if **μ_min ≤ 0.10 R** and both
-comparability conditions hold.
+every in-scope scenario; nothing is assumed about that gap.
+
+**Survivorship allowance b** (from phase A.1, fixed before the blind run): b = f × 1 R, where f is the share of
+universe-like stock-months without bars that the rename rule does not recover. It assumes each missing ticket
+would have lost its full risk against its pool. If **b > 0.03 R** the bars cannot support this test: NO-GO
+("data"), and another source of bars is needed before anything else.
+
+Continue only if **μ_min + b ≤ 0.10 R** and both comparability conditions hold.
 
 What the claim is: when check 1 passes and a signal does not stay in or out of favour for more than about a year,
 an edge of 0.10 R is found with a probability of at least 80%. Under scenario E the same check would need 4.4
@@ -280,7 +317,7 @@ return statistic is computed for output, then or later, and the verdict run is n
 
 **GO only if all hold, on the pooled issued tickets:**
 
-1. x̄ > 0 and t ≥ the critical value under both T10 and T5.
+1. With b subtracted from every x_i: x̄ > 0 and t ≥ the critical value under both T10 and T5.
 2. A strictly above the 950th smallest of the 1,000 A_k.
 3. The mean of x_i is > 0 in at least 7 of the ten equal blocks, and in each half (blocks 0–4, blocks 5–9).
 4. x̄ > 0 without the top 1% of tickets by x_i, and x̄ > 0 with each one of the four signals removed in turn.
@@ -305,8 +342,20 @@ below the backtest's x̄ by more than 2 forward standard errors (6.3's formula w
 
 ## 7. Phases (each ends in a report; the next starts only on the owner's go-ahead, section 1.1; a plan per phase)
 
-- **A — data probe (no returns):** `submissions.zip` item 2.02 coverage; the universe size per year; firings per
-  signal per year. Fallback of section 2 decided here.
+- **A — data probe (no returns): done 2026-10-10.** Item 2.02 coverage 95.0% (8-K/A counted); universe 1,591 to
+  2,033 symbols a day; firings 2017–2026Q1: S1 1,511 in the universe (5,479 in all), S2 7,979, S3 13,355,
+  S4 14,679.
+- **A.1 — survivorship and the 8-K-only coverage (counts only, no returns):**
+  1. Item 2.02 coverage with form type 8-K only, per year and overall; the 90% rule of section 2 applied to it.
+  2. Universe-like stock-months, 2018-01 → 2026-03, defined without bars: the symbol is an issuer symbol on a Form
+     3/4/5 of the 365 days before the month's end; it is in the latest FINRA short-interest report before the
+     month's end with average daily share volume V; its latest Form 4/5 non-derivative transaction price P of those
+     365 days is ≥ $5; and V × P ≥ $10M. Count them with and without an Alpaca bar in the month, per year and
+     overall.
+  3. Of those without bars: how many the rename rule of section 2 would recover. f = the rest / all universe-like
+     stock-months. The rename rule's one-third condition is decided here.
+  4. Report b = f × 1 R against the 0.03 R limit of 6.4. If FINRA's reports carry no volume field, stop and report
+     instead of substituting another definition.
 - **B — levels engine + `/ticket`:** section 3 and the cost guard, live for any symbol, labelled unproven.
 - **C — signals, journal, statistics with their tests, review, blind run, check 1.**
 - **D — the single verdict run** (only after check 1 passes, from the blind run's commit).
