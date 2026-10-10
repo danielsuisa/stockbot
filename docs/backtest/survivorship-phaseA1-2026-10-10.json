@@ -1,0 +1,278 @@
+{
+ "finra_volume_check": {
+  "reports": 99,
+  "rows": 780368,
+  "rows with volume": 775219,
+  "reports without any volume": []
+ },
+ "item_202_coverage_8k_only": {
+  "per_year": {
+   "2017": {
+    "stock_years": 2149,
+    "covered": 2067,
+    "share": 0.9618
+   },
+   "2018": {
+    "stock_years": 2224,
+    "covered": 2152,
+    "share": 0.9676
+   },
+   "2019": {
+    "stock_years": 2176,
+    "covered": 2094,
+    "share": 0.9623
+   },
+   "2020": {
+    "stock_years": 2392,
+    "covered": 2252,
+    "share": 0.9415
+   },
+   "2021": {
+    "stock_years": 2766,
+    "covered": 2633,
+    "share": 0.9519
+   },
+   "2022": {
+    "stock_years": 2526,
+    "covered": 2426,
+    "share": 0.9604
+   },
+   "2023": {
+    "stock_years": 2339,
+    "covered": 2258,
+    "share": 0.9654
+   },
+   "2024": {
+    "stock_years": 2382,
+    "covered": 2304,
+    "share": 0.9673
+   },
+   "2025": {
+    "stock_years": 2531,
+    "covered": 2408,
+    "share": 0.9514
+   },
+   "2026": {
+    "stock_years": 2455,
+    "covered": 2155,
+    "share": 0.8778
+   }
+  },
+  "overall": {
+   "stock_years": 23940,
+   "covered": 22749,
+   "share": 0.9503
+  }
+ },
+ "item_202_coverage_with_8k_a": {
+  "per_year": {
+   "2017": {
+    "stock_years": 2149,
+    "covered": 2067,
+    "share": 0.9618
+   },
+   "2018": {
+    "stock_years": 2224,
+    "covered": 2152,
+    "share": 0.9676
+   },
+   "2019": {
+    "stock_years": 2176,
+    "covered": 2094,
+    "share": 0.9623
+   },
+   "2020": {
+    "stock_years": 2392,
+    "covered": 2252,
+    "share": 0.9415
+   },
+   "2021": {
+    "stock_years": 2766,
+    "covered": 2633,
+    "share": 0.9519
+   },
+   "2022": {
+    "stock_years": 2526,
+    "covered": 2426,
+    "share": 0.9604
+   },
+   "2023": {
+    "stock_years": 2339,
+    "covered": 2258,
+    "share": 0.9654
+   },
+   "2024": {
+    "stock_years": 2382,
+    "covered": 2304,
+    "share": 0.9673
+   },
+   "2025": {
+    "stock_years": 2531,
+    "covered": 2408,
+    "share": 0.9514
+   },
+   "2026": {
+    "stock_years": 2455,
+    "covered": 2156,
+    "share": 0.8782
+   }
+  },
+  "overall": {
+   "stock_years": 23940,
+   "covered": 22750,
+   "share": 0.9503
+  }
+ },
+ "s2_decision": {
+  "threshold": 0.9,
+  "overall share, 8-K only": 0.9503,
+  "decision": "8-K kept"
+ },
+ "stock_months": {
+  "per_year": {
+   "2018": {
+    "universe-like": 20813,
+    "with bars": 20438,
+    "without bars": 375,
+    "recovered by the rename rule": 190,
+    "recovered, duplicating a stock-month with bars": 12
+   },
+   "2019": {
+    "universe-like": 19738,
+    "with bars": 19446,
+    "without bars": 292,
+    "recovered by the rename rule": 148,
+    "recovered, duplicating a stock-month with bars": 2
+   },
+   "2020": {
+    "universe-like": 19988,
+    "with bars": 19795,
+    "without bars": 193,
+    "recovered by the rename rule": 93,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2021": {
+    "universe-like": 23368,
+    "with bars": 23213,
+    "without bars": 155,
+    "recovered by the rename rule": 107,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2022": {
+    "universe-like": 22488,
+    "with bars": 22357,
+    "without bars": 131,
+    "recovered by the rename rule": 83,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2023": {
+    "universe-like": 20695,
+    "with bars": 20599,
+    "without bars": 96,
+    "recovered by the rename rule": 55,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2024": {
+    "universe-like": 21633,
+    "with bars": 21566,
+    "without bars": 67,
+    "recovered by the rename rule": 36,
+    "recovered, duplicating a stock-month with bars": 0
+   },
+   "2025": {
+    "universe-like": 23042,
+    "with bars": 22996,
+    "without bars": 46,
+    "recovered by the rename rule": 23,
+    "recovered, duplicating a stock-month with bars": 4
+   },
+   "2026": {
+    "universe-like": 6124,
+    "with bars": 6117,
+    "without bars": 7,
+    "recovered by the rename rule": 4,
+    "recovered, duplicating a stock-month with bars": 1
+   }
+  },
+  "overall": {
+   "universe-like": 177889,
+   "with bars": 176527,
+   "without bars": 1362,
+   "recovered by the rename rule": 739,
+   "recovered, duplicating a stock-month with bars": 19
+  }
+ },
+ "rename_rule": {
+  "rename rule used": true,
+  "recovered": 739,
+  "without bars": 1362,
+  "duplicates (left out of f)": 19
+ },
+ "rename_bars": {
+  "symbol changes (CIKs with two symbols filed one after the other)": 1169,
+  "old symbol has bars before the change": 778,
+  "new symbol has bars before the change": 643,
+  "both": 591,
+  "neither": 339
+ },
+ "allowance": {
+  "f (rule as decided)": 0.0035025580480125933,
+  "f (literal, recovered always subtracted)": 0.0035025580480125933,
+  "b_R": 0.0035025580480125933,
+  "b within 0.03 R": true,
+  "limit_R": 0.03
+ },
+ "f_per_year": {
+  "2018": {
+   "f (rule as decided)": 0.008893803182539302,
+   "f (literal, recovered always subtracted)": 0.008893803182539302
+  },
+  "2019": {
+   "f (rule as decided)": 0.007296311309282529,
+   "f (literal, recovered always subtracted)": 0.007296311309282529
+  },
+  "2020": {
+   "f (rule as decided)": 0.005003001801080648,
+   "f (literal, recovered always subtracted)": 0.005003001801080648
+  },
+  "2021": {
+   "f (rule as decided)": 0.0020540910647038686,
+   "f (literal, recovered always subtracted)": 0.0020540910647038686
+  },
+  "2022": {
+   "f (rule as decided)": 0.0021344717182497333,
+   "f (literal, recovered always subtracted)": 0.0021344717182497333
+  },
+  "2023": {
+   "f (rule as decided)": 0.0019811548683256824,
+   "f (literal, recovered always subtracted)": 0.0019811548683256824
+  },
+  "2024": {
+   "f (rule as decided)": 0.0014329958859150371,
+   "f (literal, recovered always subtracted)": 0.0014329958859150371
+  },
+  "2025": {
+   "f (rule as decided)": 0.0009983505512631305,
+   "f (literal, recovered always subtracted)": 0.0009983505512631305
+  },
+  "2026": {
+   "f (rule as decided)": 0.0004899559039686428,
+   "f (literal, recovered always subtracted)": 0.0004899559039686428
+  }
+ },
+ "data_gaps": {
+  "months with no or a stale FINRA report": [],
+  "not in the FINRA report": 114956,
+  "FINRA row without volume": 212,
+  "insider quarters": "2015Q1..2026Q1 (45)",
+  "symbols as filed": 14035,
+  "symbols with raw bars": 10508,
+  "filings with an unusable symbol": 41596
+ },
+ "requests_and_runtime": {
+  "alpaca": 3171,
+  "sec zips": 48,
+  "finra reports fetched": 99,
+  "runtime_s": 2471
+ }
+}
