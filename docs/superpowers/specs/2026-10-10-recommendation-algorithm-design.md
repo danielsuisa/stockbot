@@ -1,7 +1,8 @@
 # Recommendation algorithm (levels engine + four-signal ensemble) — design
 
 Date: 2026-10-10 · Status: revision 7 (proposed; clarified 2026-10-11 for phase B: quote times relative to the
-session, a partial universe mark on `/ticket`, the position value in the message). Phases A and A.1 ran under revisions 5 and 6
+session, a partial universe mark on `/ticket`, the position value in the message; section 10, sizing by equity, added
+2026-10-11 and approved as phase B.1). Phases A and A.1 ran under revisions 5 and 6
 (`docs/backtest/ensemble-phaseA-2026-10-10.md`, `docs/backtest/survivorship-phaseA1-2026-10-10.md`). Revision 7
 records their results and fixes, before any return is computed, what they left open: the final rename rule, the
 survivorship allowance and its multiplier K. It needs the owner's approval; approval covers phase B only
@@ -26,8 +27,9 @@ Owner's decisions (2026-10-10):
 
 ### 1.1 What approval of this spec covers
 
-- **Approved:** the methodology of this document, phases A and A.1 (done), and phase B (section 7): the levels
-  engine and `/ticket`, which compute no return of a past ticket.
+- **Approved:** the methodology of this document, phases A and A.1 (done), phase B (section 7): the levels
+  engine and `/ticket`, which compute no return of a past ticket, and phase B.1 (section 10): sizing live tickets by
+  the account's equity.
 - **Not approved by it:** phases C to E. Each needs the owner's explicit go-ahead after the previous phase's report.
   The blind run (C) and the verdict run (D) each need their own go-ahead; D also needs check 1 to have passed.
 - **Never covered by this spec:** real money. A GO of section 6 changes a label and starts the forward check; trading
@@ -368,6 +370,8 @@ below the backtest's x̄ by more than 2 forward standard errors (6.3's formula w
   of them duplicates and 708 of the other 720 price-consistent; f = 0.35% (0.36% with price-consistent recoveries
   only). Definitions and decisions: `docs/backtest/survivorship-phaseA1-2026-10-10.md`.
 - **B — levels engine + `/ticket`:** section 3 and the cost guard, live for any symbol, labelled unproven.
+- **B.1 — sizing by equity (section 10):** `/equity`, the risk of live tickets from p × E with its caps, E kept in
+  a private store; the backtest keeps the fixed $100 risk.
 - **C — K (section 6.4) first; then signals, journal, statistics with their tests, review, blind run, check 1.**
   Insider prices are matched by CIK, not by symbol.
 - **D — the single verdict run** (only after check 1 passes, from the blind run's commit).
@@ -395,3 +399,56 @@ comparability shares. Statistics: the hand example of 6.3 (0.6667, 0.3966, 1.68)
 ten-block split on a period that does not divide evenly, the five long blocks as pairs of the ten. Blind mode: the two invariance tests,
 the whitelist (a report key outside it fails the test), nothing written besides the report. Each gate at its
 threshold.
+
+## 10. Sizing by equity (phase B.1; approved by the owner 2026-10-11, to run after phase B's report)
+
+Section 3 sizes every ticket from a fixed risk. For live tickets the risk follows the account, so it shrinks after
+losses and grows after gains without anyone choosing a number each time. The position value is never chosen: it
+follows from the risk and R.
+
+**Settings (the owner's; the bot has no broker connection):**
+
+- E = account equity in USD, updated by the owner whenever it changes.
+- p = risk per trade as a share of E. Default 0.5%. Cap: 0.5% while the label is "ללא יתרון מוכח"; 1% once section
+  6 has given a GO and the forward check of 6.5 holds. A higher setting is cut to the cap, and the message says so.
+
+**Privacy (hard requirement):** the repository and its workflow logs are public. E, the risk in dollars and the
+position value are never written to a file in the repository, a commit message, a log or a workflow summary. They
+appear only in the Telegram message. The plan chooses a private store for E (for example a repository secret or
+variable set by the owner) and proves the requirement with a test and a check of a live run's log.
+
+**The `/equity AMOUNT` command (Telegram):** stores E in the private store and replies with what follows from it:
+the risk per trade in dollars and the number of positions the open-risk limit allows. E stays in force until the
+next `/equity`; the owner sends it only when the account has changed, not before every ticket. From phase E on, the
+reply also re-sends that day's scan list with every ticket resized to the new E. `/equity` without an amount shows
+the current setting. The listener polls about every 10 minutes, so a reply can take that long.
+
+**Rule, for a live ticket with planned entry P and R of section 3:**
+
+1. risk = p × E.
+2. shares = floor(risk / R).
+3. Position cap: shares = min(shares, floor(0.20 × E / P)). One position is at most 20% of the equity.
+4. Then section 3 unchanged: leg A = floor(shares / 2), leg B = the rest; the refusals (shares < 2, 1% of dollar
+   volume, usable quote, cost guard) apply to these shares. The cost guard uses the actual risk shares × R.
+5. Without E the ticket falls back to section 3's fixed risk (`TICKET_RISK_USD`), and the message says the size is
+   not tied to the account.
+
+**Open risk:** the total risk of open positions should stay at or below 3% of E, because the signals bunch (S4 can
+fire on dozens of stocks in one week of a falling market). The bot does not know which tickets the owner took, so
+it cannot enforce this. Each message states the limit as a number of positions: floor(3% / p), for example 6 at
+p = 0.5%. Enforcement waits for the real-fill bookkeeping (`/fill`, out of scope).
+
+**What a small account should expect:** four orders cost at least $1.40 in commissions, and the cost guard refuses
+a ticket whose cost is above 10% of its risk. A risk under about $20 is therefore refused almost always: at
+p = 0.5% that is an equity under about $4,000. The refusal message gives this reason; the guard is not loosened.
+
+**Message (added to the shares line of section 8):** the risk in dollars and as a percentage of E; the position
+value in dollars and as a percentage of E; the number of positions the open-risk limit allows; a note when the
+position cap or the p cap reduced the size.
+
+**What does not change:** the backtest, the blind run, the verdict run and the shadow journal keep the fixed $100
+risk of section 3. Their results are in R and do not depend on the account, so nothing in section 6 is affected.
+
+**Tests:** risk and shares from E and p; the position cap at its threshold; the p cap under each label; the
+fallback without E; the open-risk number; a refusal by the cost guard at a small E; the message passing
+`msgrules`; no equity, dollar risk or position value in any file, log line or summary the command writes.
