@@ -91,8 +91,9 @@ def _to_ny(stamp, tz):
     return t.strftime("%Y-%m-%dT%H:%M")
 
 
-def earnings_releases(zip_path, ciks, start, end):
-    """8-K / 8-K/A filings whose items include 2.02, for the given issuer CIKs, filed from `start` to `end` ->
+def earnings_releases(zip_path, ciks, start, end, forms=("8-K",)):
+    """Filings of the given form types (8-K only by default: an 8-K/A is an amendment, not a release; spec revision 6)
+    whose items include 2.02, for the given issuer CIKs, filed from `start` to `end` ->
     {CIK: sorted [(accession number, filing date)]}, from each issuer's recent filings and every older page in
     submissions.zip (read in place). The acceptance time comes from the EDGAR index page (release_times): the zip's
     acceptanceDateTime is not consistent across filers (phase A check, 2026-10-10)."""
@@ -107,7 +108,7 @@ def earnings_releases(zip_path, ciks, start, end):
             cols = d if m.group(2) else (d.get("filings") or {}).get("recent") or {}
             for form, items, acc, filed in zip(cols.get("form", []), cols.get("items", []),
                                                cols.get("accessionNumber", []), cols.get("filingDate", [])):
-                if form in ("8-K", "8-K/A") and "2.02" in re.split(r"[,\s]+", items or "") and start <= filed <= end:
+                if form in forms and "2.02" in re.split(r"[,\s]+", items or "") and start <= filed <= end:
                     out[_cik(m.group(1))].add((acc, filed))
     return {c: sorted(v) for c, v in out.items()}
 

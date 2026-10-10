@@ -116,9 +116,13 @@ class Submissions(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             got = pd.earnings_releases(self.zip_path(d), {"0000320193"}, "2016-12-01", "2026-03-31")
-        self.assertEqual(got, {"320193": [("a", "2024-02-01"), ("d", "2024-07-01")]})  # 5.02, 10-Q and CIK 999 out
+        self.assertEqual(got, {"320193": [("a", "2024-02-01")]})  # 8-K only: 8-K/A, 5.02, 10-Q and CIK 999 out
         with tempfile.TemporaryDirectory() as d:
-            got = pd.earnings_releases(self.zip_path(d), {"320193"}, "2024-03-01", "2026-03-31")
+            got = pd.earnings_releases(self.zip_path(d), {"0000320193"}, "2016-12-01", "2026-03-31",
+                                       forms=("8-K", "8-K/A"))
+        self.assertEqual(got, {"320193": [("a", "2024-02-01"), ("d", "2024-07-01")]})  # the 8-K/A on an older page
+        with tempfile.TemporaryDirectory() as d:
+            got = pd.earnings_releases(self.zip_path(d), {"320193"}, "2024-03-01", "2026-03-31", forms=("8-K", "8-K/A"))
         self.assertEqual(got, {"320193": [("d", "2024-07-01")]})  # the filing-date window
 
     def test_release_times_from_the_index_pages(self):
