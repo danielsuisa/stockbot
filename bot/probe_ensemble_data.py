@@ -43,7 +43,7 @@ def symbol_filings(z, stats=None):
             continue
         sym, filed = normalise_symbol(r.get("ISSUERTRADINGSYMBOL")), pi.day(r.get("FILING_DATE"))
         if sym and filed:
-            out.append((filed, (r.get("ISSUERCIK") or "").strip(), sym))
+            out.append((filed, _cik(r.get("ISSUERCIK") or ""), sym))  # "0000320193" -> "320193"
         elif stats is not None:
             stats["unusable symbol"] = stats.get("unusable symbol", 0) + 1
     return out

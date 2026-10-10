@@ -49,8 +49,8 @@ class InsiderReaders(unittest.TestCase):
             self.assertIsNone(pd.normalise_symbol(bad), bad)
 
     def test_symbol_filings_all_forms(self):
-        z = make_zip({"SUBMISSION": [sub("a", "3"), sub("b", "4"), sub("c", "5"), sub("d", "4/A"), sub("e", "10-K"),
-                                     sub("f", "4", symbol="NONE")]})
+        z = make_zip({"SUBMISSION": [sub("a", "3"), sub("b", "4", cik="0000000100"), sub("c", "5"), sub("d", "4/A"),
+                                     sub("e", "10-K"), sub("f", "4", symbol="NONE")]})  # CIKs as filed may be zero-padded
         rows = pd.symbol_filings(z)
         self.assertEqual(sorted(rows), [("2017-01-05", "100", "ACME")] * 4)  # 10-K and the unusable symbol dropped
         by_date, ciks = pd.index(rows + [("2017-01-02", "200", "ACME")])
