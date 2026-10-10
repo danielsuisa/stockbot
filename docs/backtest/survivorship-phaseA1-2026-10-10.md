@@ -16,7 +16,7 @@ output is the JSON report. The only files it writes are raw-data caches: FINRA r
 |---|---|
 | 1. Item 2.02 coverage, form type 8-K only | **95.03%** (22,749 / 23,940 universe stock-years). **S2 keeps the 8-K condition** (≥ 90%, threshold fixed in advance) |
 | 2. Universe-like stock-months 2018-01 .. 2026-03 | 177,889, of which 1,362 (0.77%) have no Alpaca bar in the month |
-| 3. Rename rule | recovers 739 of the 1,362 (54%) → **used** (≥ one third). 19 of the 739 duplicate a company already counted and are left out of f |
+| 3. Rename rule | recovers 739 of the 1,362 (54%) → **used** (≥ one third). 19 of the 739 duplicate a company already counted and are left out of f. Of the other 720, 708 have recovering bars that fit the stock-month's own price (review check), so the rule stays used with those alone |
 | f | (1,362 − 19 − (739 − 19)) / (177,889 − 19) = 623 / 177,870 = **0.35%**, the same under readings (a) and (b) because the rule is used |
 | 4. b = f × 1 R | **0.0035 R ≤ 0.03 R**: the bars can support the test (spec 6.4) |
 
@@ -25,9 +25,9 @@ output is the JSON report. The only files it writes are raw-data caches: FINRA r
 | | |
 |---|---|
 | Pre-run checks | GitHub Actions run 38076826515 (code `1708ce2`), passed |
-| Full run | GitHub Actions run 38078179088 (code `fd7d557`), passed, 2,471 s |
+| Full run | GitHub Actions run 38081309153 (code `b6c6199`, after the independent review), passed, 2,606 s. The earlier full run 38078179088 (code `fd7d557`) gave the same numbers; the review added the rename price check |
 | Requests | Alpaca 3,171; SEC quarterly zips 48; FINRA reports 99; submissions.zip once |
-| Tests | 497 offline tests, all passing (`tests/test_probe_survivorship.py`: 20) |
+| Tests | 499 offline tests, all passing (`tests/test_probe_survivorship.py`: 22) |
 
 ## Item 1: item 2.02 coverage, 8-K only
 
@@ -77,6 +77,21 @@ whole period, so per-year f uses that decision.
 (a) = when the rename rule is not used, nothing counts as recovered (spec 7 A.1 item 3, owner's decision; b uses it).
 (b) = recovered stock-months always subtracted. The two agree here because the rule is used.
 
+### Are the recoveries the same company? (review check)
+
+The rename rule only asks whether the CIK's other symbol has a bar in the month. An independent review pointed out
+that those bars can belong to another security that held the ticker earlier. For example, `META` had bars in 2021,
+when the ticker belonged to an ETF. So the run counted, for each recovery that is not a duplicate, whether the
+stock-month's own price P is within a factor of 2 of the recovering symbol's raw closes that month. This is a
+sensitivity count. The rule itself is unchanged.
+
+| Recoveries (not duplicates) | Price-consistent | Price-inconsistent | Rule used with consistent ones only | f with consistent ones only | b within 0.03 R |
+|---:|---:|---:|---|---:|---|
+| 720 | 708 (98%) | 12 | yes (708 ≥ 1,343 / 3) | 0.357% | yes |
+
+The rule's decision and b do not depend on the 12 doubtful recoveries. Even with no recoveries at all, f would be
+1,343 / 177,870 = 0.76% and b = 0.0076 R.
+
 The missing stock-months fall from 0.89% in 2018 to 0.05% in 2026. This is the expected direction: the further back,
 the more of the listed names have since been delisted, renamed or merged.
 
@@ -90,16 +105,18 @@ dated by that first filing. The run counted which symbol has raw Alpaca bars in 
 |---:|---:|---:|---:|---:|
 | 1,169 | 778 (67%) | 643 (55%) | 591 | 339 |
 
-**Finding:** Alpaca does not consistently key bars by today's ticker.
-- In two thirds of the changes, the old symbol still has its bars before the change; FB in 2021 is one case.
-- In about half of the changes, the new symbol carries the history too.
-- In 339 changes (29%), neither symbol has bars before the change.
+**Finding:** in 778 of 1,169 changes (67%), the old symbol still has bars before the change (FB in 2021 is one case).
+So bars are often kept under the symbol as traded, not only under today's ticker. The known-bias text of spec section 2
+("bars are keyed by today's ticker") is stricter than what the data shows. Changing it is left to the owner.
 
-So a renamed company is often present under one of its symbols. The rename rule recovers the stock-months it misses
-when the CIK's other symbol has the bars.
-
-"New symbol has bars before the change" can also mean the new symbol was an unrelated security before. A ticker
-reused by another company is one example. The count does not separate these cases.
+The other columns support less than they seem to:
+- **"New symbol has bars before the change" (643)** often means the ticker belonged to another security before. META,
+  an ETF ticker in 2021, is one example. These rows are not evidence that Alpaca re-keys a company's history.
+- **"Neither" (339) is partly built in.** Bars start in 2016-01, so a change in 2015 cannot show bars before it.
+  Names that traded off-exchange before the change have no bars. The change is dated by the new symbol's first
+  filing, which can come after the actual change.
+- **Reused tickers can distort the clean-change test.** A symbol's filings are taken from every CIK that used it, so
+  a reused ticker can change which symbol counts as old and whether the change counts as clean.
 
 ## Data gaps and checks
 
@@ -138,12 +155,36 @@ Implementation choices confirmed by the owner:
    and its denominator.
 3. **V is FINRA's average daily share volume of the report's own period** (about two weeks), and P is an insider's
    transaction price, not a close. Both are what the spec defines; neither is Alpaca data.
-4. **The rename rule's recovery means "the CIK's one other symbol has a bar in the month".** A share class of the same
-   issuer filed under another symbol can recover a stock-month that is not the same security. The 19 duplicates are
-   the cases where both symbols are universe-like that month.
+4. **The rename rule's recovery means "the CIK's one other symbol has a bar in the month".** That bar can belong to
+   a share class of the same issuer, or to another security that held the ticker earlier. The 19 duplicates are
+   the cases where both symbols are universe-like that month. The price check finds 12 of the other 720 recoveries
+   inconsistent with the stock-month's own price.
+7. **Exchange classes.** FINRA's NNM, SC, NYSE and AMEX classes leave out stocks listed only on NYSE Arca or Cboe.
+   Those stocks are outside both sides of f.
 5. **2026 is one quarter** (coverage 87.8%, 6,124 stock-months).
 6. **b assumes each missing ticket loses its full risk against its pool** (spec 6.4). It is an allowance, not a
    measurement of returns.
+
+## Independent review
+
+A reviewer who did not write the code reviewed the code, tests, coverage and this report (2026-10-10):
+- no critical finding;
+- no return computed or written;
+- every number matches the JSON, and f recomputes to 623 / 177,870.
+
+Two major findings:
+- **M1:** a rename recovery can rest on another security's bars. This is measured above, without changing the rule.
+- **M2:** this report over-read the renamed-symbol table. The section above is rewritten.
+
+Neither changes the S2 decision, the rename-rule decision or b ≤ 0.03 R.
+
+Minor findings not acted on, for the owner:
+1. When filing date, trade date and accession are all equal, the higher price wins.
+2. Prices are matched by symbol and not by CIK, so a ticker reused within the 365-day window mixes two companies.
+3. A spelling collision is possible: `AB.C` becomes `ABC` in FINRA's form.
+4. Two symbols without bars that recover to the same other symbol both count.
+5. The rename rule is applied per stock-month, which is broader than the spec's "a symbol as filed has no bars".
+6. `keeps_8k` compares a share already rounded to four places. This has no effect at 95.03%.
 
 ## Next
 

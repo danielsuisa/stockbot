@@ -215,6 +215,14 @@
   "both": 591,
   "neither": 339
  },
+ "rename_price_check": {
+  "recovered, not duplicates": 720,
+  "price-consistent": 708,
+  "price-inconsistent": 12,
+  "rule used with price-consistent recoveries only": true,
+  "f with price-consistent recoveries only": 0.003570023050542531,
+  "b within 0.03 R with price-consistent recoveries only": true
+ },
  "allowance": {
   "f (rule as decided)": 0.0035025580480125933,
   "f (literal, recovered always subtracted)": 0.0035025580480125933,
@@ -273,6 +281,6 @@
   "alpaca": 3171,
   "sec zips": 48,
   "finra reports fetched": 99,
-  "runtime_s": 2471
+  "runtime_s": 2606
  }
 }
