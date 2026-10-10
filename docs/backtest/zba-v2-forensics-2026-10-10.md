@@ -1,133 +1,142 @@
-# ZBA v2 — אבחון כישלון X5 ב־holdout (2026-10-10)
+# ZBA v2 — forensics of X5's holdout failure (2026-10-10)
 
-דוח אבחון בלבד. לא שונה שום פרמטר, לא נבחרה אסטרטגיה חדשה, וה־holdout לא הורץ שוב. כל המספרים מחושבים מהקבצים
-השמורים בלבד: `ticket-zba-v2-2026-10-09-realistic.csv` (פיתוח, `2,046` עסקאות של X5) וגם
-הקובץ `ticket-zba-v2-holdout-2026-10-10-realistic.csv` (holdout, `2,971` עסקאות), עם הסקריפט `zba-v2-forensics.py`.
-הטבלאות המלאות נמצאות ב־`zba-v2-forensics-tables.md`.
+A diagnostic report only. No parameter was changed, no new strategy was selected, and the holdout was not run again.
+Every number is computed from the saved files only: `ticket-zba-v2-2026-10-09-realistic.csv` (development, 2,046 X5
+trades) and `ticket-zba-v2-holdout-2026-10-10-realistic.csv` (holdout, 2,971 trades), with the script
+`zba-v2-forensics.py`. The full tables are in `zba-v2-forensics-tables.md`.
 
-## סיכום
+## Summary
 
-- הפער בין הפיתוח (`+0.199R`) ל־holdout (`-0.033R`) הוא `0.231R` לעסקה, וכמעט כולו בתוצאה לפני עלויות: `+0.413R` מול
-  `+0.180R`. העלות זהה בשתי התקופות (`0.214R` מול `0.213R`).
-- השיטה חיה מעסקאות זנב נדירות. בשתי התקופות `83–85%` מהעסקאות נעצרות בסטופ (בממוצע `-1.22R`), ו־`7.5–8.8%` מסתיימות
-  ברווח של `5R` ומעלה (בממוצע `+11.5R`). בלי האחוז העליון של העסקאות שתי התקופות שליליות.
-- נקודת האיזון היא בערך `7.3–7.8%` עסקאות זנב. בפיתוח היו `8.8%`, וב־holdout `7.5%`, כלומר בדיוק על הקו.
-- ירידה של `1.3` נקודות אחוז בשיעור עסקאות הזנב מסבירה כ־`70%` מהפער: עם שיעור הזנב של הפיתוח, ה־holdout היה
-  `+0.130R`. השאר בא מהפסד מעט גדול יותר בשאר העסקאות (`-0.972R` מול `-0.916R`).
-- הפרש שיעור הזנב (`8.8%` מול `7.5%`) הוא כ־`1.7` טעויות תקן בלבד. כלומר התוצאה בפיתוח מתיישבת עם מזל, בלי צורך
-  בבאג או בשינוי שוק.
-- הנחות הביצוע ואיכות הנתונים, כפי שהן במודל, זהות בשתי התקופות ולא מסבירות את הפער (פירוט למטה). המודל עצמו לא בודק
-  החלקה אמיתית מעבר להנחות שלו.
-- אף תת־קבוצה שנראתה טובה בפיתוח (נפח יחסי, דירוג, שעה, מרווח, תנודתיות, מחיר) לא חזרה ב־holdout. אין כאן "תנאי כניסה"
-  יציב שאפשר להציל.
+- The gap between development (+0.199R) and the holdout (−0.033R) is 0.231R a trade, and almost all of it is in the
+  gross result: +0.413R against +0.180R. Costs are the same in both periods (0.214R against 0.213R).
+- The method lives on rare tail trades. In both periods 83–85% of trades stop out (on average −1.22R) and 7.5–8.8% end
+  at +5R or more (on average +11.5R). Without the top 1% of trades both periods are negative.
+- Breakeven is at a tail share of about 7.3–7.8%. Development had 8.8%; the holdout had 7.5%, right on the line.
+- The 1.3-point drop in the tail share explains about 70% of the gap: with development's tail share, the holdout would
+  have been +0.130R. The rest comes from a slightly larger loss on the other trades (−0.972R against −0.916R).
+- The tail-share difference (8.8% against 7.5%) is only about 1.7 standard errors. Development's result is consistent
+  with luck; no bug or market change is needed to explain it.
+- Within the model, the execution assumptions and data quality are the same in both periods and do not explain the gap
+  (details below). The model itself does not measure real slippage beyond its own assumptions.
+- No sub-group that looked good in development (relative volume, rank, time of day, spread, volatility, price, side)
+  repeats in the holdout. There is no stable entry condition to rescue.
 
-## 1. ממצאים מוכחים (מחושבים מהקבצים)
+## 1. Proven findings (computed from the files)
 
-### 1.1 פרופיל התשלום זהה, התדירות של הזנב לא
+### 1.1 The payoff shape is the same; the tail frequency is not
 
-| | פיתוח | holdout |
+| | Development | Holdout |
 |---|---:|---:|
-| עסקאות | 2,046 | 2,971 |
-| ממוצע נטו | +0.199R (t 2.1) | -0.033R (t -0.5) |
-| ממוצע לפני עלויות | +0.413R | +0.180R |
-| עלות ממוצעת | 0.214R | 0.213R |
-| אחוז הצלחה | 16% | 14% |
-| יציאה בסטופ | 83% (ממוצע -1.219R) | 85% (ממוצע -1.214R) |
-| מוחזקות לסגירה | 17% (ממוצע +7.14R) | 15% (ממוצע +6.74R) |
-| עסקאות ≥ 5R | 181 (8.8%), ממוצע +11.69R | 224 (7.5%), ממוצע +11.49R |
-| שאר העסקאות | ממוצע -0.916R | ממוצע -0.972R |
-| סה״כ בלי האחוז העליון | -101.8R | -786.4R |
+| Trades | 2,046 | 2,971 |
+| Mean net | +0.199R (t 2.1) | −0.033R (t −0.5) |
+| Mean gross | +0.413R | +0.180R |
+| Mean cost | 0.214R | 0.213R |
+| Win rate | 16% | 14% |
+| Stopped out | 83% (mean −1.219R) | 85% (mean −1.214R) |
+| Held to the close | 17% (mean +7.14R) | 15% (mean +6.74R) |
+| Trades ≥ 5R | 181 (8.8%), mean +11.69R | 224 (7.5%), mean +11.49R |
+| The other trades | mean −0.916R | mean −0.972R |
+| Total without the top 1% | −101.8R | −786.4R |
 
-### 1.2 לפי שנה: שיעור הזנב קובע
+### 1.2 By year: the tail share decides
 
-| שנה | עסקאות | ממוצע נטו | עסקאות ≥ 5R |
+| Year | Trades | Mean net | Trades ≥ 5R |
 |---|---:|---:|---:|
 | 2016 | 481 | +0.207 | 9.1% |
-| 2017 | 406 | -0.120 | 8.4% |
+| 2017 | 406 | −0.120 | 8.4% |
 | 2018 | 484 | +0.148 | 7.4% |
 | 2019 | 472 | +0.018 | 8.5% |
-| 2020 | 591 | -0.071 | 7.3% |
-| 2021 | 537 | -0.348 | 5.0% |
+| 2020 | 591 | −0.071 | 7.3% |
+| 2021 | 537 | −0.348 | 5.0% |
 | 2022 | 551 | +0.119 | 8.2% |
 | 2023 | 512 | +0.072 | 8.6% |
 | 2024 | 353 | +0.128 | 7.1% |
 | 2025 | 351 | +0.244 | 9.1% |
 | 2026 | 279 | +0.622 | 12.5% |
 
-- השנה הגרועה ביותר (`2021`, `-0.348R`, t `-2.4`) היא גם השנה עם הכי מעט עסקאות זנב (`5.0%`). הטובה ביותר (`2026`,
-  `+0.622R`) היא עם הכי הרבה (`12.5%`).
-- בלי `2026`, הפיתוח עמד על כ־`+0.13R` בלבד. `2026` הייתה גם תקופה שכבר נראתה לפני כן.
-- ההפסדים לא מרוכזים בכמה עסקאות: הם `85%` מהעסקאות, כל אחת בערך `-1.2R`. הרווחים הם שמרוכזים.
-- חודשים: בפיתוח `39` מ־`58` חודשים חיוביים, ב־holdout `32` מ־`72`. חמשת החודשים הגרועים ב־holdout
-  (`-187.9R` יחד) פזורים על פני `2016`, `2017`, `2020` ו־`2021`, ולא בתקופת שוק אחת.
+- The worst year (2021, −0.348R, t −2.4) has the fewest tail trades (5.0%); the best (2026, +0.622R) has the most
+  (12.5%).
+- Without 2026, development was only about +0.13R, and 2026 had already been seen before this study.
+- Losses are not concentrated in a few trades: they are 85% of all trades, about −1.2R each. The gains are what is
+  concentrated.
+- Months: 39 of 58 positive in development, 32 of 72 in the holdout. The holdout's five worst months (−187.9R
+  together) are spread over 2016, 2017, 2020 and 2021, not one market period.
 
-### 1.3 הנחות הביצוע ואיכות הנתונים זהות בשתי התקופות
+### 1.3 Execution assumptions and data quality are the same in both periods
 
-- **עלות:** `0.21–0.23R` לעסקה בכל אחת מ־`11` השנים.
-- **החלקה בכניסה** (מילוי ברמת עסקה מול רמת הסטופ): ממוצע בין `-0.03R` ל־`+0.004R` בכל שנה, וחציון `0` בכל שנה.
-  כ־`20%` מהמילויים מעבר לרמה בכל שנה (`29%` ב־`2022`).
-- **כלל `201`:** הוריד `22%` מהשורטים בפיתוח ו־`18%` ב־holdout.
-- **איכות נתונים:** `9` דילוגים בגלל דקות חסרות ב־holdout. `20` ימי מניה בלי נתוני דקה ב־holdout, מול `6` בפיתוח.
-- **המשמעות:** בתוך המודל אין הבדל בין התקופות שיכול להסביר את הפער. ההנחות עצמן (חצי מרווח, עמלה, מילוי בעסקה
-  הבאה) זהות, ולכן הקבצים לא יכולים לומר אם הביצוע האמיתי היה גרוע יותר.
+- **Cost:** 0.21–0.23R a trade in each of the 11 years.
+- **Entry slippage** (tick-level fill against the stop level): mean between −0.03R and +0.004R in every year, median 0
+  in every year. About 20% of fills are beyond the level each year (29% in 2022).
+- **Rule 201:** dropped 22% of the shorts in development and 18% in the holdout.
+- **Data quality:** 9 skips for missing minutes in the holdout; 20 ticker-days without minute bars in the holdout
+  against 6 in development.
+- **Meaning:** within the model there is no difference between the periods that could explain the gap. The assumptions
+  themselves (half the spread, commission, fill at the next trade) are identical, so these files cannot tell whether
+  real execution would have been worse.
 
-### 1.4 תת־קבוצות: שום דפוס מהפיתוח לא חזר
+### 1.4 Sub-groups: no development pattern repeats
 
-| חיתוך | בפיתוח | ב־holdout |
+| Cut | Development | Holdout |
 |---|---|---|
-| נפח יחסי בפתיחה (חמישונים) | Q2 `+0.47`, Q4 `+0.72`, Q3 `-0.24` | Q2 `-0.27`, Q4 `0.00`, Q1 `+0.15` |
-| דירוג בטופ 20 | מקומות `6–10`: `+0.60` | מקומות `6–10`: `-0.19` |
-| שעת כניסה | חיובי בכל חלון | חיובי רק `09:35–09:44` (`+0.04`, t `0.4`), שלילי אחרי `10:00` |
-| מרווח / מרחק סטופ | הכי טוב מתחת ל־`0.10` (`+0.39`) | הכי טוב ב־`0.20–0.25` (`+0.14`) |
-| תנודתיות (ATR / מחיר) | מתחת ל־`3%`: `+0.52` | מתחת ל־`3%`: `+0.01` |
-| צד | לונג `+0.25`, שורט `+0.13` | לונג `-0.07`, שורט `+0.01` |
+| Opening relative volume (quintiles) | Q2 +0.47, Q4 +0.72, Q3 −0.24 | Q2 −0.27, Q4 0.00, Q1 +0.15 |
+| Rank in the top 20 | ranks 6–10: +0.60 | ranks 6–10: −0.19 |
+| Entry time | positive in every window | positive only 09:35–09:44 (+0.04, t 0.4), negative after 10:00 |
+| Spread / stop distance | best below 0.10 (+0.39) | best at 0.20–0.25 (+0.14) |
+| Volatility (ATR / price) | below 3%: +0.52 | below 3%: +0.01 |
+| Side | long +0.25, short +0.13 | long −0.07, short +0.01 |
 
-- הכיוון של כל חיתוך התהפך או נעלם. זה מה שמצפים לראות כשהתבניות בפיתוח הן רעש.
-- הצד ההפוך (אותו מילוי, כיוון הפוך) מפסיד בשתי התקופות: `-0.37R` ו־`-0.44R`. כלומר כיוון הנר הראשון כן נושא
-  מידע, אבל לא מספיק כדי לכסות עלות של `0.21R`.
-- אין ריכוז במניות: אף מניה לא תרמה יותר מ־`25` עסקאות בתקופה.
+- Every cut flipped or vanished, which is what noise in the development patterns looks like.
+- The opposite side (same fill, other direction) loses in both periods: −0.37R and −0.44R. The first candle's direction
+  does carry information, but not enough to cover a 0.21R cost.
+- No ticker concentration: no stock has more than 25 trades in a period.
 
-## 2. השערות (לא מוכחות מהקבצים)
+## 2. Hypotheses (not proven by the files)
 
-1. **תלות במשטר שוק.** `2021` (שיעור זנב `5.0%`) ו־`2026` (`12.5%`) קיצוניות. ייתכן שהשיטה עובדת רק כשיש מגמות יום
-   חזקות בשוק כולו. אין בקבצים נתוני `SPY` או `VIX`, ולכן לא נבדק.
-2. **חדשות בתקופות שונות הן לא אותו דבר.** כיסוי החדשות ב־`2016–2018` דליל יותר (`50%` מימי המניה נפסלו בלי ידיעה, מול
-   `44%`), והסימולים תויגו לפי אז. ייתכן שתנאי N בוחר תמהיל אחר בכל תקופה. נגד ההשערה: השנים עם פחות חדשות
-   (`2016`, `2018`) דווקא הצליחו.
-3. **כניסות מאוחרות חלשות יותר.** ב־holdout הכניסות אחרי `10:00` שליליות גם לפני עלויות. בפיתוח לא. המדגמים קטנים
-   (`225–298` עסקאות לחלון, t בין `-0.9` ל־`-1.5`), ולכן זו השערה בלבד, ואסור לבחור לפיה כלל על סמך ה־holdout.
-4. **הטיית שורדים.** ביקום של שתי התקופות חסרות מניות שנמחקו אחר כך, יותר ב־holdout (`14.0`). הכיוון של ההטיה לא ידוע.
+1. **Market regime.** 2021 (tail share 5.0%) and 2026 (12.5%) are extremes. The method may work only when the whole
+   market has strong intraday trends. The files hold no SPY or VIX data, so this was not tested.
+2. **News is not the same thing across periods.** News coverage is thinner in 2016–2018 (50% of ticker-days skipped
+   for no news, against 44%), and symbols were tagged as they were then. The N condition may select a different mix in
+   each period. Against it: the thinner-news years (2016, 2018) did better.
+3. **Later entries are weaker.** In the holdout, entries after 10:00 are negative even before costs; in development
+   they were not. The samples are small (225–298 trades a window, t between −0.9 and −1.5), so this is a hypothesis
+   only, and no rule may be chosen from it on the strength of the holdout.
+4. **Survivorship.** Both periods' universes lack stocks that later delisted, more so in the holdout (spec 14.0). The
+   direction of the bias is unknown.
 
-## 3. מידע חסר (לא נשמר, ולכן לא נותח)
+## 3. Missing data (not saved, so not analysed)
 
-- **סוג החדשות:** נשמר רק אם הייתה ידיעה (כן או לא), ולא התוכן, הקטגוריה או שעת הפרסום. אי אפשר לנתח לפי סוג חדשות.
-- **ערך הנפח לפי שעה** (התנאי `T2`): נבדק אם עבר את `2`, אבל הערך עצמו לא נשמר בשורת העסקה.
-- **נזילות בדולרים:** נשמרו מחיר וכמות, לא מחזור יומי ממוצע.
-- **משטר שוק:** אין `SPY`, `VIX` או רוחב שוק בקבצים.
-- **מסלול העסקה בתוך היום:** אין רווח מקסימלי ונסיגה מקסימלית בדרך, רק סוג היציאה והתוצאה.
-- **המועמדים שלא נסחרו:** נשמרו רק ספירות של סיבות דילוג, לא השורות עצמן.
-- **שורות מודל הנרות של ה־holdout:** נשמרו רק השורות של המילוי ברמת עסקה.
-- **החלקה אמיתית:** המודל מניח מילוי בעסקה הבאה ובחצי מרווח. אין בקבצים נתון שבודק את ההנחה מול ביצוע אמיתי.
+- **News type:** only whether there was an item (yes / no) was kept, not its content, category or publication time. No
+  analysis by news type is possible.
+- **Time-of-day volume value** (the T2 condition): whether it passed 2 was checked, but the value itself is not in the
+  trade row.
+- **Dollar liquidity:** price and share count were kept, not the average daily dollar volume.
+- **Market regime:** no SPY, VIX or breadth data in the files.
+- **Intraday path:** no maximum favourable or adverse excursion, only the exit type and the result.
+- **Candidates not traded:** only counts of skip reasons were kept, not the rows.
+- **The holdout's bar-model rows:** only the tick-level rows were saved.
+- **Real slippage:** the model assumes a fill at the next trade and half the spread; nothing in the files tests that
+  assumption against real execution.
 
-## 4. כיווני מחקר להמשך (עד שלושה)
+## 4. Research directions (at most three)
 
-כל כיוון נבנה על נתוני הפיתוח בלבד, נרשם מראש, ונבדק רק על נתונים חדשים (מעקב צל קדימה). שום דבר כאן לא נבחר
-לפי ה־holdout.
+Each direction is built on development data only, registered in advance, and tested only on new data (the forward
+shadow tracker). Nothing here is chosen from the holdout.
 
-1. **שיעור הזנב כמשתנה המטרה.** במקום ממוצע ה־R, לחקור אילו נתונים ידועים לפני הפתיחה (משטר שוק לפי `SPY` ו־`VIX`,
-   פער פתיחה, רוחב שוק) מנבאים את שיעור עסקאות הזנב, שם נקבעת התוצאה. ההשערה נבנית על `2022–2026`, נרשמת מראש,
-   ונבדקת קדימה.
-2. **העלות כמנוף.** העלות (`0.21R`) גדולה כמו כל היתרון שנמדד בפיתוח. כדאי למדוד במסחר נייר את המרווח וההחלקה
-   האמיתיים מול הנחות המודל, ולבדוק מבנים שמורידים עלות ב־R (כמו סטופ רחב יותר, שכבר נבדק בסעיף `12`) רק כהשערה
-   רשומה מראש.
-3. **תשתית לאבחון הבא.** בכל ריצה עתידית לשמור לכל מועמד את כל המאפיינים: סוג החדשות ושעת הפרסום, ערך הנפח לפי
-   שעה, נזילות, משטר שוק, ומסלול העסקה בתוך היום. במקביל לבנות יקום בלי הטיית שורדים, מרשימת מניות שנמחקו ממקור
-   חינמי (למשל דיווחי `SEC`), לפני שבודקים שוב תקופה היסטורית.
+1. **The tail share as the target.** Instead of mean R, study which data known before the open (market regime from SPY
+   and VIX, the opening gap, market breadth) predicts the share of tail trades, where the result is decided. Build the
+   hypothesis on 2022–2026, register it, and test it forward.
+2. **Cost as the lever.** The cost (0.21R) is as large as the whole edge measured in development. Measure real spread
+   and slippage in paper trading against the model's assumptions, and test structures that lower cost in R (such as a
+   wider stop, already tested in section 12) only as a pre-registered hypothesis.
+3. **Infrastructure for the next diagnosis.** In every future run, keep all features of every candidate: news type and
+   publication time, the time-of-day volume value, liquidity, market regime, and the intraday path. Build a
+   survivorship-free universe from a free list of delisted stocks (for example SEC filings) before testing a
+   historical period again.
 
 ## Data
 
 - Inputs: the two realistic CSVs above (X5 rows, filled trades only). Script: `docs/backtest/zba-v2-forensics.py`
   (stdlib, no network). Tables: `docs/backtest/zba-v2-forensics-tables.md`.
-- Tail share at breakeven: `-rest / (tail - rest)` with the period's own means (development 7.3%, holdout 7.8%).
-  Counterfactual: holdout magnitudes with the development tail share give +0.130R. Standard error of the tail-share
+- Tail share at breakeven: `-rest / (tail - rest)` with each period's own means (development 7.3%, holdout 7.8%).
+  Counterfactual: the holdout's magnitudes with development's tail share give +0.130R. Standard error of the tail-share
   difference: √(0.088·0.912/2046 + 0.075·0.925/2971) ≈ 0.78 points, so 1.3 points ≈ 1.7 SE.
