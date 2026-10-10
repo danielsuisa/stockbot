@@ -182,7 +182,7 @@ class Bars(unittest.TestCase):
 
 def series(dates, close=10.0, volume=2_000_000, raw_close=None, raw_volume=None):
     n = len(dates)
-    rc = raw_close if raw_close is not None else [close] * n
+    rc = raw_close if raw_close is not None else (close if isinstance(close, list) else [close] * n)
     x = {"dates": list(dates), "close": [close] * n if not isinstance(close, list) else close,
          "volume": [volume] * n if not isinstance(volume, list) else volume,
          "raw_close": rc if isinstance(rc, list) else [rc] * n,
@@ -226,6 +226,140 @@ class Universe(unittest.TestCase):
     def test_top_half_by_liquidity(self):
         u = {"A": 30e6, "B": 20e6, "C": 20e6, "D": 10e6, "E": 50e6}
         self.assertEqual(pe.liquidity_top_half(u), {"E", "A", "B"})  # ceil(5 / 2) = 3, the tie B / C by symbol
+
+
+
+def buy(owner, filed, value=40_000.0, trade=None, shares=None, price=10.0, issuer="100", symbol="ACME"):
+    return {"filed": filed, "issuer": issuer, "symbol": symbol, "owner": owner, "trade_date": trade or filed,
+            "shares": shares if shares is not None else value / price, "price": price, "value": value}
+
+
+class S1(unittest.TestCase):
+    S = Bars.S
+
+    def test_people_and_dollars(self):
+        S = self.S
+        two = [buy("1", S[300]), buy("2", S[301], value=70_000)]
+        self.assertEqual(pe.s1_firings(two, S), [])
+        three = two + [buy("3", S[302])]
+        self.assertEqual(pe.s1_firings(three, S), [(S[302], "ACME")])
+        short = [buy("1", S[300], 33_333), buy("2", S[300], 33_333, price=10.01), buy("3", S[301], 33_333)]  # $99,999
+        self.assertEqual(pe.s1_firings(short, S), [])
+        self.assertEqual(pe.s1_firings(short[:2] + [buy("3", S[301], 33_334)], S), [(S[301], "ACME")])  # $100,000
+
+    def test_identical_lines_count_as_one_person(self):
+        S = self.S
+        joint = [buy("1", S[300], trade=S[299], shares=5000, value=50_000), buy("2", S[300], trade=S[299], shares=5000,
+                 value=50_000), buy("3", S[301], value=60_000)]
+        self.assertEqual(pe.s1_firings(joint, S), [])  # owners 1 and 2 report the same purchase: two people, $110k
+        self.assertEqual(pe.s1_firings(joint + [buy("4", S[302])], S), [(S[302], "ACME")])  # $150k with the line once
+
+    def test_trade_window_and_the_21_session_gap(self):
+        import datetime as dt
+        S = self.S
+        old = (dt.date.fromisoformat(S[302]) - dt.timedelta(31)).isoformat()
+        stale = [buy("1", S[300], trade=old), buy("2", S[301]), buy("3", S[302])]
+        self.assertEqual(pe.s1_firings(stale, S), [])  # owner 1's trade is 31 days before the third filing
+        first = [buy("1", S[300], 40_000), buy("2", S[300], 40_001), buy("3", S[300], 40_002)]
+        blocked = first + [buy(o, S[321], 40_010 + int(o)) for o in "456"]  # 21 sessions later: within the gap
+        self.assertEqual(pe.s1_firings(blocked, S), [(S[300], "ACME")])
+        again = first + [buy(o, S[322], 40_010 + int(o)) for o in "456"]  # 22 sessions later
+        self.assertEqual(pe.s1_firings(again, S), [(S[300], "ACME"), (S[322], "ACME")])
+
+
+def bars_for(n, close, volume, raw_close=None, high=None, low=None):
+    s = series(Bars.S[:n], close=close, volume=volume, raw_close=raw_close)
+    if high is not None:
+        s["raw_high"], s["raw_low"] = high, low
+    s["segment"] = pd.segments(s["dates"], s["close"], Bars.S)
+    return s
+
+
+class S2(unittest.TestCase):
+    S = Bars.S
+
+    def make(self, jump, vol, close_pos=0.75):
+        n = 30
+        close = [100.0] * (n - 1) + [100.0 * jump]
+        volume = [1000] * (n - 1) + [vol]
+        hi, lo = [101.0] * n, [99.0] * n
+        lo[-1], hi[-1] = close[-1] - 10 * close_pos, close[-1] + 10 * (1 - close_pos)
+        return bars_for(n, close, volume, raw_close=close, high=hi, low=lo)
+
+    def test_price_volume_range_and_the_8k(self):
+        D, S = self.S[29], self.S
+        rel = {"A": {D}}
+        self.assertEqual(pe.s2_firings(D, {"A": self.make(1.05, 2000)}, rel, True), {"A"})
+        self.assertEqual(pe.s2_firings(D, {"A": self.make(1.0499, 2000)}, rel, True), set())
+        self.assertEqual(pe.s2_firings(D, {"A": self.make(1.05, 1999)}, rel, True), set())
+        self.assertEqual(pe.s2_firings(D, {"A": self.make(1.05, 2000, close_pos=0.5)}, rel, True), {"A"})  # midpoint in
+        self.assertEqual(pe.s2_firings(D, {"A": self.make(1.05, 2000, close_pos=0.49)}, rel, True), set())
+        self.assertEqual(pe.s2_firings(D, {"A": self.make(1.05, 2000)}, {"A": {S[28]}}, True), set())  # not its session
+        self.assertEqual(pe.s2_firings(D, {"A": self.make(1.05, 2000)}, {}, False), {"A"})  # the fallback: no 8-K
+
+
+class S3S4(unittest.TestCase):
+    S = Bars.S
+
+    def ramp(self, start, end, n=300):
+        return [start + (end - start) * k / (n - 1) for k in range(n)]
+
+    def test_s3_state_near_high_and_top_fifth(self):
+        D = self.S[299]
+        ser = {sym: bars_for(300, self.ramp(10, top), 1_000_000) for sym, top in
+               (("A", 30), ("B", 25), ("C", 20), ("D", 15), ("E", 12))}
+        ser["F"] = bars_for(300, self.ramp(10, 60)[:290] + [30.0] * 10, 1_000_000)  # the strongest D-147 -> D-21, far from its high
+        u = {k: 1.0 for k in ser}
+        self.assertEqual(pe.s3_state(D, ser, u), {"A"})  # top 20% of 6 = 2 (A, F); F is not within 5% of its high
+
+    def test_transitions(self):
+        S = self.S
+        states = [(S[i], {"A"} if i in (0, 22) else set()) for i in range(23)]
+        self.assertEqual(pe.transitions(states, 21), [(S[0], "A"), (S[22], "A")])  # 21 sessions outside before S[22]
+        states = [(S[i], {"A"} if i in (0, 21) else set()) for i in range(22)]
+        self.assertEqual(pe.transitions(states, 21), [(S[0], "A")])  # only 20 outside
+        states = [(S[i], {"A"} if i in (1, 2, 4) else set()) for i in range(5)]
+        self.assertEqual(pe.transitions(states, 1), [(S[1], "A"), (S[4], "A")])
+
+    def test_s4_state(self):
+        S, D = self.S, self.S[299]
+        base = [10.0] * 294
+        ser = {"A": bars_for(300, base + [10.0] * 5 + [8.99], 3_000_000),  # -10.1%
+               "B": bars_for(300, base + [10.0] * 5 + [9.0], 3_000_000),  # -10.0%: in
+               "C": bars_for(300, base + [10.0] * 5 + [9.5], 3_000_000)}
+        for i in range(37):
+            ser[f"Z{i:02d}"] = bars_for(300, base + [10.0] * 6, 3_000_000)
+        u = {k: 30e6 for k in ser}
+        u.update({"A": 99e6, "B": 98e6})
+        self.assertEqual(pe.s4_state(D, ser, u, {}, S), {"A", "B"})  # bottom 5% of 40 = 2
+        self.assertEqual(pe.s4_state(D, ser, u, {"A": {S[295]}}, S), {"B"})  # a reaction session 4 sessions back
+        self.assertEqual(pe.s4_state(D, ser, u, {"A": {S[294]}}, S), {"A", "B"})  # 5 sessions back: outside
+        u.update({"A": 1e6})
+        self.assertEqual(pe.s4_state(D, ser, u, {}, S), {"B"})  # A is not in the top half by liquidity
+
+
+class Ranks(unittest.TestCase):
+    def test_rank_cut_ties_and_small(self):
+        v = {"G": 1, "F": 5, "E": 5, "D": 3, "C": 2, "B": 9, "A": 0}
+        self.assertEqual(pe.rank_cut(v, 0.20, True), {"B", "E"})  # ceil(1.4) = 2; E before F on the tie
+        self.assertEqual(pe.rank_cut(v, 0.05, False), {"A"})
+        self.assertEqual(pe.rank_cut({}, 0.2, True), set())
+
+    def test_no_look_ahead(self):
+        S = Bars.S
+        D = S[299]
+        ser = {sym: bars_for(330, [10 + k * 0.01 * (j + 1) for k in range(330)], 1_000_000) for j, sym in enumerate("ABCDE")}
+        u = {k: 1.0 for k in ser}
+        cut = pe.through(ser, D)
+        self.assertEqual(len(cut["A"]["dates"]), 300)
+        for f in (lambda x: pe.s2_firings(D, x, {}, False), lambda x: pe.s3_state(D, x, u),
+                  lambda x: pe.s4_state(D, x, u, {}, S), lambda x: pe.universe(D, x, {k: [S[200]] for k in x})):
+            full = f(ser)
+            for s in ser.values():  # poison every bar after D
+                for k in ("close", "raw_close", "volume", "raw_volume", "raw_high", "raw_low"):
+                    s[k][300:] = [float("nan")] * 30
+            self.assertEqual(f(ser), full)
+            self.assertEqual(f(pe.through(ser, D)), full)
 
 
 if __name__ == "__main__":
