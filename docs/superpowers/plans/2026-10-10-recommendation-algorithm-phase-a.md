@@ -28,7 +28,7 @@ methodology and phase A only, section 1.1).
 - Signal days: 2017-01-03 → 2026-03-31. Bars start 2016-01-04.
 - Universe on day D: the symbol appears as the issuer's trading symbol in a Form 3/4/5 filed in the 365 days before
   D; an Alpaca bar on D; raw close ≥ $5; 20-session average dollar volume ≥ $10M; ≥ 252 earlier sessions of bars.
-- Bad prices: a one-day close ratio ≥ 4, or a gap of more than 10 sessions without bars, ends a symbol's series (a
+- Bad prices: a one-day close ratio ≥ 4 (on the split-adjusted series: owner's decision 2026-10-10), or a gap of more than 10 sessions without bars, ends a symbol's series (a
   different security afterwards). Downward one-day moves are kept.
 - Fallback (section 2): if item 2.02 is available for fewer than 90% of universe stock-years, S2 drops the 8-K
   condition and keeps its price and volume conditions.
@@ -127,12 +127,17 @@ methodology and phase A only, section 1.1).
 - Consumes: `alpaca.daily(symbols, start, end)` (raw), `probe_insider.split_daily(symbols, start, end)`
   (split-adjusted, cached), `alpaca.calendar`.
 - Produces:
-  - `Series = dict` with keys `"dates"` (ascending ISO), `"raw_close"`, `"close"`, `"high"`, `"low"`, `"volume"`
-    (split-adjusted except `raw_close`), `"segment"` (int per bar: segment id after the bad-price rule).
+  - `Series = dict` with keys `"dates"` (ascending ISO), `"raw_close"`, `"raw_high"`, `"raw_low"`, `"raw_volume"`,
+    `"close"`, `"volume"` (split-adjusted), `"segment"` (int per bar: segment id after the bad-price rule).
   - `load_series(symbols: list[str], start: str, end: str, sessions: list[str]) -> dict[str, Series]`: joins the
     two feeds by date (a date missing from either feed is dropped) and applies the bad-price rule.
-  - `segments(dates: list[str], raw_close: list[float], sessions: list[str]) -> list[int]`: a new segment starts
-    after a raw close ratio close / previous close ≥ 4, or after more than 10 sessions without a bar.
+  - `segments(dates: list[str], close: list[float], sessions: list[str]) -> list[int]`: a new segment starts after a
+    **split-adjusted** close ratio close / previous close ≥ 4, or after more than 10 sessions without a bar. (Owner's
+    decision 2026-10-10: the ratio is on the split-adjusted series, so a real reverse split does not end a series;
+    the rule catches data errors such as a reused symbol or a missed split.)
+  - `earlier_in_segment(segment: list[int], i: int) -> int`: bars before index i in the same segment.
+  - Range position (S2's "upper half") uses the raw high, low and close of the day (a split scales a day's prices
+    together); close / previous close, volumes and returns used by signals use the split-adjusted series.
 
 - [ ] **Step 1: Write the failing tests** — `test_bad_price_breaks`: ratios 3.99 (same segment), 4.0 (new),
   0.2 (same: downward kept), a gap of 10 sessions (same) and of 11 sessions (new). `test_history_restarts_after_break`:
