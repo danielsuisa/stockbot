@@ -95,6 +95,192 @@
     }
    ],
    "gaps": 0
+  },
+  "2026-10-09": {
+   "top": [
+    "HUM",
+    "CCI",
+    "AMT",
+    "VZ",
+    "RCI",
+    "NN",
+    "CHDN",
+    "ERAS",
+    "TENB",
+    "TMUS",
+    "VEEA",
+    "TEVA",
+    "MLTX",
+    "SIRI",
+    "EQPT",
+    "VSAT",
+    "ECHO",
+    "MO",
+    "COHR",
+    "TTMI"
+   ],
+   "reasons": {
+    "spread": 9,
+    "trigger": 5
+   },
+   "dropped": {
+    "Rule 201": 2
+   },
+   "trades": [
+    {
+     "t": "CCI",
+     "rank": 2,
+     "side": 1,
+     "at": "15:57",
+     "level": 79.42,
+     "R": 0.1791,
+     "shares": 558,
+     "spread": 0.02,
+     "fill": 79.415,
+     "kinds": "eod",
+     "gross_r": 1.2842,
+     "cost_r": 0.1508,
+     "net_r": 1.1334
+    },
+    {
+     "t": "AMT",
+     "rank": 3,
+     "side": 1,
+     "at": "11:29",
+     "level": 180.44,
+     "R": 0.364,
+     "shares": 274,
+     "spread": 0.05,
+     "fill": 180.47,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1566,
+     "net_r": -1.1566
+    },
+    {
+     "t": "VZ",
+     "rank": 4,
+     "side": -1,
+     "at": "11:09",
+     "level": 42.3342,
+     "R": 0.0797,
+     "shares": 1254,
+     "spread": 0.01,
+     "fill": 42.34,
+     "kinds": "stop",
+     "gross_r": -0.8783,
+     "cost_r": 0.2133,
+     "net_r": -1.0916
+    },
+    {
+     "t": "VEEA",
+     "rank": 11,
+     "side": 1,
+     "at": "09:35",
+     "level": 6.05,
+     "R": 0.0891,
+     "shares": 1122,
+     "spread": 0.01,
+     "fill": 6.05,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1908,
+     "net_r": -1.1908
+    }
+   ],
+   "optimistic": [
+    {
+     "t": "CCI",
+     "rank": 2,
+     "side": 1,
+     "at": "15:57",
+     "level": 79.42,
+     "R": 0.1791,
+     "shares": 558,
+     "spread": 0.02,
+     "fill": 79.42,
+     "kinds": "eod",
+     "gross_r": 1.2563,
+     "cost_r": 0.1508,
+     "net_r": 1.1055
+    },
+    {
+     "t": "AMT",
+     "rank": 3,
+     "side": 1,
+     "at": "11:29",
+     "level": 180.44,
+     "R": 0.364,
+     "shares": 274,
+     "spread": 0.05,
+     "fill": 180.46,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1566,
+     "net_r": -1.1566
+    },
+    {
+     "t": "VZ",
+     "rank": 4,
+     "side": -1,
+     "at": "11:09",
+     "level": 42.3342,
+     "R": 0.0797,
+     "shares": 1254,
+     "spread": 0.01,
+     "fill": 42.3342,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2133,
+     "net_r": -1.2133
+    },
+    {
+     "t": "TMUS",
+     "rank": 10,
+     "side": -1,
+     "at": "10:39",
+     "level": 153.6101,
+     "R": 0.3648,
+     "shares": 274,
+     "spread": 0.04,
+     "fill": 153.6101,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1288,
+     "net_r": -1.1288
+    },
+    {
+     "t": "VEEA",
+     "rank": 11,
+     "side": 1,
+     "at": "09:35",
+     "level": 6.05,
+     "R": 0.0891,
+     "shares": 1122,
+     "spread": 0.01,
+     "fill": 6.05,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1908,
+     "net_r": -1.1908
+    },
+    {
+     "t": "EQPT",
+     "rank": 15,
+     "side": -1,
+     "at": "09:47",
+     "level": 14.635,
+     "R": 0.1408,
+     "shares": 710,
+     "spread": 0.02,
+     "fill": 14.635,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1918,
+     "net_r": -1.1918
+    }
+   ],
+   "gaps": 0
   }
  }
 }
