@@ -18,6 +18,7 @@ SOURCE = ("⚠️ כרטיס מחושב בלבד, לא ייעוץ השקעות: 
 LABEL = "ללא יתרון מוכח"
 REASONS = {
     "fewer than 15 bars": "פחות מ-15 ימי מסחר בנתונים",
+    "no bar on the signal day": "אין נר ליום האות (המסחר הושעה, המניה ירדה מהמסחר או שהנתון עוד לא פורסם)",
     "shares below 2": "בסיכון שנקבע יוצאות פחות מ-2 מניות",
     "size above 1% of dollar volume": "הפוזיציה גדולה מ-1% ממחזור הדולרים היומי הממוצע",
     "no usable quote": "אין ציטוט שמיש 5 דקות לפני סגירת יום האות",
@@ -57,6 +58,8 @@ def build(symbol, now=None):
     start = (dt.date.fromisoformat(day) - dt.timedelta(HISTORY_DAYS)).isoformat()
     bars = alpaca.daily([symbol], start, day).get(symbol) or []
     t = levels.plan(symbol, bars, day, risk=common.env("TICKET_RISK_USD", 100.0))
+    if t.get("reason") == "no bar on the signal day":  # a fetch before D's bar existed must not stay cached
+        (alpaca.CACHE / "1d" / f"{start}_{day}" / f"{symbol}.json.gz").unlink(missing_ok=True)
     if t["ok"]:
         t = levels.guard(t, alpaca.quote_full(symbol, levels.guard_time(day, cal)))
     t.update(symbol=symbol, day=day)
@@ -70,8 +73,9 @@ def build(symbol, now=None):
     return t
 
 
-def _p(x):
-    return code(price(x))
+def _p(x, ref=None):
+    """A price for the message: 4 decimals for a stock below $1 (as ordered), else common.price."""
+    return code(f"{x:,.4f}$" if ref is not None and ref < 1 else price(x))
 
 
 def message(t):
@@ -80,6 +84,7 @@ def message(t):
     if not t["ok"]:
         return f"אין כרטיס ל-{sym} ליום {il_date(t['day'])}: {REASONS[t['reason']]}"
     a, b = t["legs"]
+    P = t["planned_entry"]
     valid = ", ".join(il_date(d) for d in t["valid_sessions"])
     first = t["valid_sessions"][0] if t["valid_sessions"] else None
     exit_line = f"יציאה בזמן: בסגירה של יום המסחר ה-{code(t['horizon'])} אחרי הכניסה"
@@ -88,11 +93,11 @@ def message(t):
     lines = [
         f"🎫 כרטיס ל-{sym} · יום האות {il_date(t['day'])}",
         "מקור: בקשה ידנית · אותות: אין אות תומך",
-        f"כניסה: קניית פריצה — סטופ {_p(t['entry_stop'])} · לימיט {_p(t['limit'])} · בתוקף ב-{valid}",
-        f"סטופ לוס (שתי המנות): {_p(t['stop_loss'])} · יעד מנה א': {_p(t['target'])} · "
-        f"טריילינג מנה ב': {_p(t['trail'])}",
-        f"המחירים מחושבים ממחיר הכניסה המתוכנן ויזוזו עם הכניסה בפועל (כניסה פחות {_p(t['trail'])}, "
-        f"כניסה ועוד {_p(levels.px(levels.TARGET_R * t['R']))})",
+        f"כניסה: קניית פריצה — סטופ {_p(t['entry_stop'], P)} · לימיט {_p(t['limit'], P)} · בתוקף ב-{valid}",
+        f"סטופ לוס (שתי המנות): {_p(t['stop_loss'], P)} · יעד מנה א': {_p(t['target'], P)} · "
+        f"טריילינג מנה ב': {_p(t['trail'], P)}",
+        f"המחירים מחושבים ממחיר הכניסה המתוכנן ויזוזו עם הכניסה בפועל (כניסה פחות {_p(t['trail'], P)}, "
+        f"כניסה ועוד {_p(levels.px(levels.TARGET_R * t['R'], ref=P), P)})",
         exit_line,
         f"מניות: מנה א' {code(a)} · מנה ב' {code(b)} · שווי פוזיציה {_p(t['shares'] * t['planned_entry'])} · "
         f"סיכון {_p(t['shares'] * t['R'])}",

@@ -16,9 +16,11 @@ UNIVERSE_PRICE, UNIVERSE_ADV, UNIVERSE_HISTORY = 5.0, 10_000_000.0, 252  # spec 
 EPS = 1e-9
 
 
-def px(x):
-    """An order price: a cent from $1 up, $0.0001 below (plan decision 3)."""
-    return round(x + (EPS if x >= 0 else -EPS), 2 if abs(x) >= 1 else 4)
+def px(x, ref=None):
+    """An order price or amount: a cent for a stock from $1 up, $0.0001 below (plan decision 3). `ref` is the stock's
+    price when x is an amount (a trail), so the amount follows the stock's scale (review m1)."""
+    scale = x if ref is None else ref
+    return round(x + (EPS if x >= 0 else -EPS), 2 if abs(scale) >= 1 else 4)
 
 
 def _through(bars, day):
@@ -45,6 +47,8 @@ def plan(symbol, bars, day, mode=DEFAULT_MODE, horizon=DEFAULT_H, risk=100.0):
     atr = atr_through(bars, day)
     if len(upto) < MIN_BARS or atr is None:
         return {"ok": False, "reason": "fewer than 15 bars"}
+    if upto[-1][0] != day:  # halted, delisted or not yet published: never levels from an older session (review M1)
+        return {"ok": False, "reason": "no bar on the signal day"}
     R = R_ATR * atr
     shares = int(risk / R + EPS) if R > 0 else 0
     if shares < MIN_SHARES:
@@ -66,7 +70,7 @@ def plan(symbol, bars, day, mode=DEFAULT_MODE, horizon=DEFAULT_H, risk=100.0):
         return {"ok": False, "reason": "size above 1% of dollar volume"}
     P = t["planned_entry"]
     t.update(shares=shares, legs=(shares // 2, shares - shares // 2), stop_loss=px(P - R),
-             target=px(P + TARGET_R * R), trail=px(R))
+             target=px(P + TARGET_R * R), trail=px(R, ref=P))
     return t
 
 

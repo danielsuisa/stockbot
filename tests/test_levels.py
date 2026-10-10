@@ -67,6 +67,20 @@ class Levels(unittest.TestCase):
         bars = daily(20)
         self.assertEqual(levels.plan("X", bars, bars[-1][0], risk=200.0)["shares"], 100)
 
+    def test_no_bar_on_the_signal_day(self):
+        # review M1: a halted, delisted or not-yet-published D must not get levels from an older session
+        bars = daily(20)
+        self.assertEqual(levels.plan("X", bars, "2099-01-02"), {"ok": False, "reason": "no bar on the signal day"})
+
+    def test_px_with_reference(self):
+        # review m1: an order amount follows the stock's price scale (a trail of a $1.76 stock is in cents)
+        self.assertEqual(levels.px(0.17715, ref=1.76), 0.18)
+        self.assertEqual(levels.px(0.17715), 0.1772)
+        self.assertEqual(levels.px(0.4651, ref=0.47), 0.4651)
+        bars = daily(20, close=1.75, rng=0.0886, vol=50_000_000)
+        t = levels.plan("X", bars, bars[-1][0])
+        self.assertEqual(t["trail"], round(t["trail"], 2))  # a cent amount on a stock above $1
+
     def test_px(self):
         self.assertEqual(levels.px(50.7651), 50.77)
         self.assertEqual(levels.px(0.123456), 0.1235)

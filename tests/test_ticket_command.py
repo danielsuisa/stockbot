@@ -82,6 +82,19 @@ class Build(unittest.TestCase):
         t, _ = self.run_build(env={"TICKET_RISK_USD": "200"})
         self.assertEqual(t["shares"], 100)
 
+    def test_missing_signal_day_bar_is_not_cached(self):
+        # review M1: a fetch made before D's bar exists must not stay cached for the listener's whole run
+        import tempfile
+        import pathlib
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(alpaca, "CACHE", pathlib.Path(d)):
+                stale = alpaca.CACHE / "1d" / "2025-02-02_2026-03-09" / "AAPL.json.gz"
+                stale.parent.mkdir(parents=True)
+                stale.write_bytes(b"x")
+                t, _ = self.run_build(bars=bars_until("2026-03-06", 300))
+                self.assertEqual(t["reason"], "no bar on the signal day")
+                self.assertFalse(stale.exists())
+
     def test_refusals_pass_through(self):
         t, calls = self.run_build(bars=bars_until("2026-03-09", 14))
         self.assertEqual((t["ok"], t["reason"], t["symbol"]), (False, "fewer than 15 bars", "AAPL"))
@@ -128,8 +141,18 @@ class Message(unittest.TestCase):
         msgrules.check(self, text)
         self.assertIn("כבר במסחר", text)
 
+    def test_sub_dollar_prices_keep_four_decimals(self):
+        # review m1: a $0.47 stock's levels are shown as ordered (4 decimals), not rounded to cents
+        bars = bars_until("2026-03-09", 300, close=0.45, rng=0.3, vol=200_000_000)  # R 0.6: 166 shares
+        t = levels.guard(levels.plan("SUB", bars, "2026-03-09"), (0.45, 0.4502, 1, 1, 3))
+        t.update(valid_sessions=["2026-03-10"], time_exit_if_first=None, universe=[], first_session_started=False)
+        text = tc.message(t)
+        msgrules.check(self, text)
+        self.assertIn(f"<code>{t['entry_stop']:.4f}$</code>", text)
+        self.assertIn(f"<code>{t['stop_loss']:.4f}$</code>", text)
+
     def test_message_refusals(self):
-        for reason in ("fewer than 15 bars", "shares below 2", "size above 1% of dollar volume", "no usable quote",
+        for reason in ("fewer than 15 bars", "no bar on the signal day", "shares below 2", "size above 1% of dollar volume", "no usable quote",
                        "cost above 10% of risk"):
             text = tc.message({"ok": False, "reason": reason, "symbol": "AAPL", "day": "2026-03-09"})
             msgrules.check(self, text)
