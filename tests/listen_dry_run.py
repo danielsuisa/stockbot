@@ -22,12 +22,18 @@ SYNTHETIC_E = 12_345.67  # synthetic, never an account's equity
 SYNTHETIC_MARK = "[E סינתטי לבדיקה]"
 
 
+def _command(text):
+    """The command as the listener reads it ("/EQUITY@Bot 1" -> "equity"), or None for plain text."""
+    word = (text.split() or [""])[0]
+    return word[1:].split("@")[0].lower() if word.startswith("/") else None
+
+
 def main(texts, synthetic=False):
     texts = [texts] if isinstance(texts, str) else list(texts)
     if common.env("TG_TOKEN"):
         print("refused: a dry run never runs with a Telegram token (it could read the real pinned equity)")
         return 2
-    if synthetic and any(t.split()[:1] == ["/equity"] and t.split()[1:] and
+    if synthetic and any(_command(t) == "equity" and t.split()[1:] and
                          equity.parse_amount(" ".join(t.split()[1:])) != SYNTHETIC_E for t in texts):
         print(f"refused: a synthetic dry run takes only the synthetic E ({SYNTHETIC_E:,.2f})")
         return 2

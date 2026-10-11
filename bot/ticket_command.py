@@ -76,11 +76,8 @@ def build(symbol, now=None, sizing=None):
     risk = common.env("TICKET_RISK_USD", 100.0)
     if sizing:
         risk = levels.p_used(sizing["p_raw"])[0] * sizing["E"]
-    t = levels.plan(symbol, bars, day, risk=risk)
-    if sizing and t["ok"]:
-        size = levels.equity_size(sizing["E"], levels.p_used(sizing["p_raw"])[0], t["R"], t["planned_entry"])
-        if size["position_capped"]:  # one position is at most 20% of the equity
-            t = levels.plan(symbol, bars, day, risk=risk, max_shares=size["shares"])
+    cap = levels.POSITION_CAP * sizing["E"] if sizing else None  # one position is at most 20% of the equity
+    t = levels.plan(symbol, bars, day, risk=risk, max_position_value=cap)
     info = sizing_info(sizing, t)
     if t.get("reason") == "no bar on the signal day":  # a fetch before D's bar existed must not stay cached
         (alpaca.CACHE / "1d" / f"{start}_{day}" / f"{symbol}.json.gz").unlink(missing_ok=True)

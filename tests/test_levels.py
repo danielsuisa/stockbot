@@ -282,6 +282,14 @@ class EquitySizing(unittest.TestCase):
         t = levels.plan("X", bars, bars[-1][0], risk=156.69, max_shares=60)
         self.assertEqual((t["shares"], t["legs"]), (60, (30, 30)))
 
+    def test_dollar_volume_refusal_applies_to_the_capped_shares(self):
+        # review major 1: the 20% cap comes first, then the 1% refusal on the final shares (spec section 10 rule 4)
+        bars = daily(20, close=50.0, rng=0.1, vol=440_000)  # R 0.2; ADV 22M: 1% is 220,000
+        size = levels.equity_size(1_000_000, 0.005, 0.2, 50.06)  # 25,000 by risk; cap floor(200,000 / 50.06) = 3,995
+        t = levels.plan("X", bars, bars[-1][0], risk=size["risk"], max_position_value=0.20 * 1_000_000)
+        self.assertTrue(t["ok"])
+        self.assertEqual(t["shares"], 3995)
+
     def test_small_equity_cost_refusal(self):
         size = levels.equity_size(3_000, 0.005, 2.0, 50.51)  # risk 15: 7 shares
         bars = daily(20)

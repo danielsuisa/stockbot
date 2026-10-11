@@ -142,6 +142,13 @@ class SyntheticDryRun(unittest.TestCase):
             self.assertEqual(listen_dry_run.main(["/ticket AAPL"], synthetic=True), 2)
             self.assertEqual(listen_dry_run.main("/ticket AAPL"), 2)
 
+    def test_dry_run_synthetic_guard_reads_the_command_like_the_listener(self):
+        # review minor 5: "/EQUITY" and "/equity@Bot" are /equity to the listener, so the guard must refuse them too
+        from tests import listen_dry_run
+        with mock.patch.dict(os.environ, {"TG_TOKEN": ""}), mock.patch("builtins.print"):
+            for text in ("/EQUITY 50000", "/equity@SomeBot 50000", "/Equity 50,000"):
+                self.assertEqual(listen_dry_run.main([text], synthetic=True), 2, text)
+
 
 if __name__ == "__main__":
     unittest.main()
