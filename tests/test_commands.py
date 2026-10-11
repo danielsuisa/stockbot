@@ -352,8 +352,8 @@ class Commands(unittest.TestCase):
         with (mock.patch.object(common, "tickers", return_value={"AAPL": (1, "Apple"), "BRK-B": (2, "Berkshire")}),
               mock.patch.object(ticket_command, "build", side_effect=lambda s: {"symbol": s}),
               mock.patch.object(ticket_command, "message", side_effect=lambda t: f"🎫 כרטיס ל-{code(t['symbol'])}"),
-              mock.patch("builtins.print") as out):
-            self.assertEqual(listen_dry_run.main("/ticket AAPL BRK.B ZZZZZ"), 0)
+              mock.patch.dict("os.environ", {"TG_TOKEN": ""}), mock.patch("builtins.print") as out):
+            self.assertEqual(listen_dry_run.main("/ticket AAPL BRK.B ZZZZZ"), 0)  # refused with a token set
         printed = "\n".join(str(c.args[0]) for c in out.call_args_list if c.args)
         for part in (code("AAPL"), code("BRK.B"), code("ZZZZZ"), "answers: 3, failed: 0"):
             self.assertIn(part, printed)
