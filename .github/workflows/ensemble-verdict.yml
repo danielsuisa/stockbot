@@ -33,10 +33,11 @@ concurrency:
 
 env:
   HTTP_CACHE: .cache/http
+  PYTHONHASHSEED: "0"  # the verdict reproduces the blind report: same hash seed, same image (ubuntu-24.04)
 
 jobs:
   verdict:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 340
     environment: ensemble-verdict
     steps:

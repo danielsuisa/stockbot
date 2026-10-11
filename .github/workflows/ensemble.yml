@@ -13,10 +13,11 @@ permissions:
 
 env:
   HTTP_CACHE: .cache/http  # SEC pages (index pages) are inputs: cached on disk
+  PYTHONHASHSEED: "0"  # the verdict reproduces the blind report: same hash seed, same image (ubuntu-24.04)
 
 jobs:
   prefetch1:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +47,7 @@ jobs:
 
   prefetch2:
     needs: prefetch1
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +77,7 @@ jobs:
 
   prefetch3:
     needs: prefetch2
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
@@ -106,7 +107,7 @@ jobs:
 
   prefetch4:
     needs: prefetch3
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
@@ -135,7 +136,7 @@ jobs:
 
   blind:
     needs: prefetch4
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
