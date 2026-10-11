@@ -2,7 +2,7 @@
 
 Date: 2026-10-10 · Status: revision 7 (proposed; clarified 2026-10-11 for phase B: quote times relative to the
 session, a partial universe mark on `/ticket`, the position value in the message; section 10, sizing by equity, added
-2026-10-11 and approved as phase B.1; rule 6 of section 3 added 2026-10-11; section 4.2, phase C's clarifications, ruled 2026-10-11). Phases A and A.1 ran under revisions 5 and 6
+2026-10-11 and approved as phase B.1; rule 6 of section 3 added 2026-10-11; section 4.2, phase C's clarifications, ruled 2026-10-11 and extended the same day). Phases A and A.1 ran under revisions 5 and 6
 (`docs/backtest/ensemble-phaseA-2026-10-10.md`, `docs/backtest/survivorship-phaseA1-2026-10-10.md`). Revision 7
 records their results and fixes, before any return is computed, what they left open: the final rename rule, the
 survivorship allowance and its multiplier K. It needs the owner's approval; approval covers phase B only
@@ -241,6 +241,21 @@ choices C1-C25), before anything ran on market data in phase C.
   exception with `common.trace` (type and frames only).
 - **Stops.** After the K measurement, the quote measurement follows at once when b_max <= 0.03 R; otherwise the
   work stops there. The build starts only after the owner has reviewed both reports.
+- **Rulings on the build's open choices (owner, 2026-10-11, on reviewing `ac59868`).**
+  1. Gates 3 and 4 use x without b, as written: b enters gate 1, and gate 5 through gate 1.
+  2. The top 1% of gate 4 is ceil(n / 100) tickets.
+  3. Known property: the rename rule finds the CIK's other symbol over all the insider filings, also those after D.
+     Later filings are used only to find under which ticker the same company's bars are stored (a renamed
+     company's new symbol first appears in filings after the rename, so a point-in-time lookup could not recover
+     it); f and K were measured with it; no price or signal after D is read.
+  4. Known property: an order's validity and the time exit count the symbol's own bars (as 4.1's lags do), not
+     calendar sessions; they differ only when a stock has no bar on a session.
+  5. Known property: two bar-less symbols of one CIK may take the same other symbol in the rename rule.
+  6. Refusals are reported per signal only.
+- **The r_s check (replaces the exact comparison).** In the blind and verdict runs, for each signal, max(1, r_s) of
+  the run must be within 1% (relative) of the K report's max(1, r_s); otherwise the run stops (RsMismatch). Bars
+  fetched again can move a firing for a benign reason (a later split, a vendor correction). The run's own r_s and K
+  are the ones reported and used.
 
 ## 5. Costs (how "actual costs" are computed)
 
