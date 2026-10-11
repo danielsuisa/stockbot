@@ -74,7 +74,7 @@ def gate1(x, b, blocks10):
     xb = mean(xs)
     t10 = xb / s10 if s10 else math.inf
     t5 = xb / s5 if s5 else math.inf
-    return {"pass": xb > 0 and t10 >= CRIT_T10 and t5 >= CRIT_T5, "t10": t10, "t5": t5}
+    return {"pass": xb > 0 and t10 >= CRIT_T10 and t5 >= CRIT_T5, "x_bar_minus_b": xb, "t10": t10, "t5": t5}
 
 
 def gate3(x, blocks10):
@@ -86,7 +86,8 @@ def gate3(x, blocks10):
     positive = sum(1 for vals in by if vals and mean(vals) > 0)
     halves = [[v for b in range(lo, lo + 5) for v in by[b]] for lo in (0, 5)]
     ok_halves = all(h and mean(h) > 0 for h in halves)
-    return {"pass": positive >= 7 and ok_halves, "blocks_positive": positive}
+    return {"pass": positive >= 7 and ok_halves, "blocks_positive": positive,
+            "block_means": [mean(v) if v else None for v in by], "half_means": [mean(h) if h else None for h in halves]}
 
 
 def top_count(n):
@@ -99,11 +100,13 @@ def gate4(x, signals_of):
     turn."""
     rest = sorted(x)[:len(x) - top_count(len(x))]
     without_top = bool(rest) and mean(rest) > 0
-    each = {}
+    each, means = {}, {}
     for s in sorted(set(signals_of)):
         kept = [v for v, g in zip(x, signals_of) if g != s]
-        each[s] = bool(kept) and mean(kept) > 0
-    return {"pass": without_top and all(each.values()), "without_top_1pct": without_top, "each_signal_removed": each}
+        means[s] = mean(kept) if kept else None
+        each[s] = bool(kept) and means[s] > 0
+    return {"pass": without_top and all(each.values()), "without_top_1pct": without_top, "each_signal_removed": each,
+            "mean_without_top_1pct": mean(rest) if rest else None, "mean_each_signal_removed": means}
 
 
 def outcome(confirmable, comparable, gates, b=None):

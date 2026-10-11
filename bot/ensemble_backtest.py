@@ -53,13 +53,14 @@ def run_ticket(t, rows, guard_spread, entry_spread=None):
     f = levels.fill(t, rows)
     if f is None:
         end = rows[min(_valid(t["mode"]), len(rows)) - 1][0] if rows else t["day"]
-        return {"filled": False, "gross_r": 0.0, "cost_r": 0.0, "cost_r_stress": 0.0, "end": end}
+        return {"filled": False, "gross_r": 0.0, "cost_r": 0.0, "cost_r_stress": 0.0, "end": end, "exits": None}
     k, F = f
     ex = levels.exits(t, F, k, rows, close_at_end=True)
     spread = entry_spread(rows[k][0]) if entry_spread else None
     spread = guard_spread if spread is None else spread
     return {"filled": True, "gross_r": levels.gross_r(t, F, ex), "cost_r": levels.cost_r(t, spread),
-            "cost_r_stress": levels.cost_r(t, spread, stress=True), "end": rows[max(x[2] for x in ex)][0]}
+            "cost_r_stress": levels.cost_r(t, spread, stress=True), "end": rows[max(x[2] for x in ex)][0],
+            "exits": [x[0] for x in ex]}  # exit types, in memory for the verdict run only
 
 
 def issue(fired, inp, renamed, quote):
@@ -100,6 +101,18 @@ def exclusions(day, fired_by_day, tickets):
     """Symbols with a ticket of any signal firing or open on D (6.2): that day's firings and the issued tickets
     whose window (signal day through end) covers D."""
     return set(fired_by_day.get(day, ())) | {t["symbol"] for t in tickets if t["day"] <= day <= t["end"]}
+
+
+def open_by_day(tickets, sessions):
+    """{day: symbols with an issued ticket open or pending that day} -- exclusions() for every day at once (the
+    blind run's scale: built once, not scanned per pool)."""
+    out = {}
+    for t in tickets:
+        k = bisect.bisect_left(sessions, t["day"])
+        while k < len(sessions) and sessions[k] <= t["end"]:
+            out.setdefault(sessions[k], set()).add(t["symbol"])
+            k += 1
+    return out
 
 
 def pool(day, decile, mode, horizon, inp, day_members, renamed, excl):
@@ -167,14 +180,15 @@ def compare(tickets, inp, renamed, day_members, fired_by_day):
     """The pools of every issued ticket (shared per key (D, decile, mode, H)) -> (kept tickets with "pool" and "m",
     pools {key: results}, the number dropped for a pool under 20)."""
     pools, kept, small = {}, [], 0
-    dec_of = {}
+    dec_of, open_map = {}, open_by_day(tickets, inp.sessions)
     for t in tickets:
         syms, decs = day_members[t["day"]]
         if t["day"] not in dec_of:
             dec_of[t["day"]] = dict(zip(syms, decs))
         key = (t["day"], dec_of[t["day"]].get(t["symbol"]), t["mode"], t["horizon"])
         if key not in pools:
-            members = pool(*key, inp, day_members, renamed, exclusions(t["day"], fired_by_day, tickets))
+            excl = set(fired_by_day.get(t["day"], ())) | open_map.get(t["day"], set())
+            members = pool(*key, inp, day_members, renamed, excl)
             pools[key] = pool_results(*key, members, inp, renamed) if pool_ok(members) else None
         if pools[key] is None:
             small += 1

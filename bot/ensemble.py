@@ -22,11 +22,12 @@ import time
 import urllib.request
 
 from bot import (alpaca, blind, common, ensemble_backtest as bt, ensemble_counts as ec, ensemble_data as ed,
-                 ensemble_stats as st, levels, signals)
+                 ensemble_stats as st, ensemble_verdict as ev, levels, signals)
 
 BARS_END = "2026-07-31"  # outcomes only (ruling C17); the universe, the detectors and the signal days end on SIGNAL_END
 REPORT_PATH = "ensemble-blind-report.json"
-VERDICT_PATH = "ensemble-verdict-report.json"
+VERDICT_PATH, TICKETS_PATH = ev.VERDICT_PATH, ev.TICKETS_PATH
+TODAY = ev.today
 K_REPORT = pathlib.Path(__file__).resolve().parent.parent / "docs/backtest/ensemble-phaseC-measurements-2026-10-11.json"
 
 
@@ -181,29 +182,38 @@ def blind_report():
                         _counts(got["firings"], tickets, refusals, small, idx, len(days)), K, r_s, w_s)
 
 
-def verdict_report():
-    """The single verdict run (phase D; never run in phase C): check 1, comparability, the five gates, the outcome."""
+class FingerprintMismatch(Exception):
+    """The verdict's inputs are not the blind run's (6.4 point 4)."""
+
+
+def verdict_report(expected_fp=None, commit=""):
+    """The single verdict run (phase D; never run in phase C) -> (report, kept tickets or None). Stops before any
+    return statistic when b > 0.03 R, check 1 or comparability fails (6.4); otherwise every number of
+    ensemble_verdict.numbers."""
     inp, got = prepare()
     FINGERPRINT[0] = ed.fingerprint(inp)
+    if expected_fp and FINGERPRINT[0] != expected_fp:
+        raise FingerprintMismatch("the inputs' fingerprint differs from the blind run's")
     tickets, refusals, kept, pools, small, K, r_s, w_s, blocks10, idx, days = _run(inp, got)
+    if not kept:
+        raise ValueError("no ticket kept")
     x = [(t["g"] - t["m"]) - t["c"] for t in kept]
-    x_stress = [(t["g"] - t["m"]) - t["cost_r_stress"] for t in kept]
     s10, s5 = st.ses(x, blocks10)
-    b = st.b_allowance(K)
+    b, mu = st.b_allowance(K), st.mu_min(s10, s5)
     counts = _counts(got["firings"], tickets, refusals, small, idx, len(days))
     comp = bt.comparability(counts["quote_refused"], counts["passing_quote_free"], small, len(tickets))
-    confirm = st.confirmable(st.mu_min(s10, s5), b)
+    confirm = st.confirmable(mu, b)
+    rep = {"inputs": FINGERPRINT[0], "commit": commit, "K": K, "r_s": r_s, "w_s": w_s,
+           "check_1": {"pass": confirm, "mu_min": mu, "b_R": b, "se_t10": s10, "se_t5": s5},
+           "comparability": comp, "counts": counts}
     gates = None
-    out = {"check_1": confirm, "comparable": comp["comparable"]}
-    if confirm and comp["comparable"]:
-        A, A_k = bt.A(kept), bt.draws(kept, pools)
-        g1 = st.gate1(x, b, blocks10)
-        gates = {"1": g1["pass"], "2": st.above_950th(A, A_k), "3": st.gate3(x, blocks10)["pass"],
-                 "4": st.gate4(x, [t["signal"] for t in kept])["pass"], "5": st.gate1(x_stress, b, blocks10)["pass"]}
-        out.update(A=A, p=st.p_value(A, A_k), gates=gates, t10=g1["t10"], t5=g1["t5"])
-    out["outcome"] = st.outcome(confirm, comp["comparable"], gates, b=b)
-    out["inputs"] = FINGERPRINT[0]
-    return out
+    if b <= st.B_DATA_MAX and confirm and comp["comparable"]:
+        for t, blk in zip(kept, blocks10):
+            t["block"] = blk
+        rep.update(ev.numbers(kept, bt.draws(kept, pools), b, blocks10, counts["refusals"]))
+        gates = {k: g["pass"] for k, g in rep["gates"].items()}
+    rep["outcome"] = st.outcome(confirm, comp["comparable"], gates, b=b)
+    return rep, (kept if gates is not None else None)
 
 
 def head():
@@ -219,6 +229,7 @@ def main(argv=None):
     ap.add_argument("--verdict", action="store_true")
     ap.add_argument("--blind-commit", default="")
     ap.add_argument("--owner-go-ahead", action="store_true")
+    ap.add_argument("--fingerprint", default="", help="the blind run's input fingerprint (the verdict refuses others)")
     a = ap.parse_args(argv)
     common.install_excepthooks()
     try:
@@ -229,11 +240,14 @@ def main(argv=None):
                 print("verdict refused: it needs --blind-commit <the checked-out commit of the blind run> and "
                       "--owner-go-ahead")
                 return 2
-            with offline():
-                rep = verdict_report()
-            with open(VERDICT_PATH, "w", encoding="utf-8") as fh:
-                json.dump(rep, fh, indent=1)
-            print(f"verdict report written: {VERDICT_PATH}")
+            try:
+                with offline():
+                    rep, kept = verdict_report(a.fingerprint, a.blind_commit)
+            except FingerprintMismatch:
+                print("verdict refused: the inputs' fingerprint differs from the blind run's; nothing was computed")
+                return 2
+            paths = ev.write(rep, kept, TODAY())
+            print(f"verdict written: {', '.join(paths)}")
             return 0
         if a.blind:
             with offline():

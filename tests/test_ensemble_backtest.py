@@ -78,6 +78,8 @@ class RunTicket(unittest.TestCase):
         self.assertAlmostEqual(with_entry["cost_r"], levels.cost_r(t, 0.04))
         self.assertAlmostEqual(fallback["cost_r"], levels.cost_r(t, 0.02))
         self.assertAlmostEqual(with_entry["cost_r_stress"], levels.cost_r(t, 0.04, stress=True))
+        self.assertEqual(with_entry["exits"], ["target", "trail"])  # kept in memory for the verdict run
+        self.assertIsNone(bt.run_ticket(t, [], 0.02)["exits"])
 
 
 class Issue(unittest.TestCase):
@@ -144,6 +146,15 @@ class Comparison(unittest.TestCase):
         tickets = [{"day": S[290], "end": D, "symbol": "P05"}, {"day": S[290], "end": S[299], "symbol": "P06"}]
         fired_by_day = {D: {"P07"}}
         self.assertEqual(bt.exclusions(D, fired_by_day, tickets), {"P05", "P07"})
+
+    def test_open_by_day_equals_exclusions(self):
+        tickets = [{"day": S[290], "end": D, "symbol": "P05"}, {"day": S[290], "end": S[299], "symbol": "P06"},
+                   {"day": D, "end": S[305], "symbol": "P08"}]
+        fired_by_day = {D: {"P07"}, S[302]: {"P09"}}
+        open_map = bt.open_by_day(tickets, S)
+        for day in S[285:310]:
+            self.assertEqual(open_map.get(day, set()) | fired_by_day.get(day, set()),
+                             bt.exclusions(day, fired_by_day, tickets), day)
 
     def test_small_pool_dropped(self):
         for n, kept in ((19, False), (20, True)):
