@@ -7,6 +7,8 @@ When check 1 or comparability fails, or b > 0.03 R, the verdict holds no return 
 import collections
 import csv
 import datetime as dt
+import json
+import math
 import os
 
 from bot import blind, ensemble_backtest as bt, ensemble_stats as st
@@ -79,7 +81,33 @@ ASSUMPTIONS = (
     "הטיית השרידות: b = K כפול 0.41% כפול 1R, עם K מחושב בריצה (6.4, 4.2).",
     "תכונות ידועות: חיפוש הסימול האחר של ה-CIK בכל ההגשות; ספירה לפי נרות הסימול; סימול אחר אחד לשני סימולים;"
     " סירובים לפי אות בלבד (4.2).",
+    "שערים 3 ו-4 על x בלי b; b נכנס לשער 1, ולשער 5 דרך שער 1; 1% העליונים של שער 4 הם ceil(n/100) כרטיסים (4.2).",
+    "כרטיס פתוח אחד לכל אות וסימול (C14); שבר בסדרה אחרי יום האות יוצא בסגירה האחרונה (C15); כרטיס שחורג מסוף"
+    " הנתונים נשמט (C17).",
+    "תרחיש הלחץ משתמש באותם כרטיסים ובאותם מאגרים, ורק העלויות גדלות (סעיף 5).",
+    "היקף הטענה: GO מניח שאף אות לא נשאר בטובה או מחוצה לה יותר משנה בערך; תרחיש E מחוץ להיקף (6.3, 6.4).",
+    "GO אינו המלצה סופית: הוא נשאר מותנה במעקב קדימה (6.5).",
 )
+
+
+def _f(v, fmt):
+    """A number for the summary: None as a dash, an infinite t as the sign of infinity."""
+    if v is None:
+        return "—"
+    if isinstance(v, float) and math.isinf(v):
+        return "∞" if v > 0 else "-∞"
+    return format(v, fmt)
+
+
+def _finite(v):
+    """The JSON report has no Infinity (not JSON): an infinite t is written as the string "inf"."""
+    if isinstance(v, float) and not math.isfinite(v):
+        return str(v)
+    if isinstance(v, dict):
+        return {k: _finite(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [_finite(x) for x in v]
+    return v
 
 
 def summary_md(rep, today):
@@ -92,8 +120,8 @@ def summary_md(rep, today):
              f"קלטים: `{rep['inputs']}` · קומיט: `{rep['commit']}`", "",
              "## בדיקה 1 והשוואות", "",
              "| מדד | ערך |", "|---|---|",
-             f"| μ_min | `{c1['mu_min']:.4f}` |", f"| b | `{c1['b_R']:.4f}` |",
-             f"| SE של T10 / T5 | `{c1['se_t10']:.4f}` / `{c1['se_t5']:.4f}` |",
+             f"| μ_min | `{_f(c1['mu_min'], '.4f')}` |", f"| b | `{_f(c1['b_R'], '.4f')}` |",
+             f"| SE של T10 / T5 | `{_f(c1['se_t10'], '.4f')}` / `{_f(c1['se_t5'], '.4f')}` |",
              f"| ציטוטים שנדחו | `{rep['comparability']['quote_share']:.2%}` |",
              f"| מאגרים קטנים | `{rep['comparability']['small_pool_share']:.2%}` |", ""]
     if "gates" in rep:
@@ -101,15 +129,20 @@ def summary_md(rep, today):
         ok = lambda v: "עבר" if v else "נכשל"  # noqa: E731
         lines += ["## השערים (6.4)", "",
                   "| שער | מה נבדק | ערך | תוצאה |", "|---|---|---|---|",
-                  f"| שער 1 | x̄ פחות b, t10, t5 | `{g['1']['x_bar_minus_b']:.4f}`, `{g['1']['t10']:.2f}`, "
-                  f"`{g['1']['t5']:.2f}` | {ok(g['1']['pass'])} |",
-                  f"| שער 2 | A מול ה-950 מתוך 1,000 | `{g['2']['A']:.4f}` מול `{g['2']['A_950th']:.4f}`, p "
-                  f"`{g['2']['p']:.4f}` | {ok(g['2']['pass'])} |",
-                  f"| שער 3 | בלוקים חיוביים, חצאים | `{g['3']['blocks_positive']}` מתוך `10` | {ok(g['3']['pass'])} |",
-                  f"| שער 4 | בלי 1% העליונים, בלי כל אות | `{g['4']['mean_without_top_1pct']:.4f}` | {ok(g['4']['pass'])} |",
-                  f"| שער 5 | שער 1 בתרחיש לחץ | `{g['5']['x_bar_minus_b']:.4f}`, `{g['5']['t10']:.2f}`, "
-                  f"`{g['5']['t5']:.2f}` | {ok(g['5']['pass'])} |", "",
-                  f"מספר כרטיסים: `{rep['n']}` · x̄: `{rep['x_bar']:.4f}` · x̄ פחות b: `{rep['x_bar_minus_b']:.4f}`", "",
+                  f"| שער 1 | x̄ פחות b, t10, t5 | `{_f(g['1']['x_bar_minus_b'], '.4f')}`, "
+                  f"`{_f(g['1']['t10'], '.2f')}`, `{_f(g['1']['t5'], '.2f')}` | {ok(g['1']['pass'])} |",
+                  f"| שער 2 | A מול ה-950 מתוך 1,000 | `{_f(g['2']['A'], '.4f')}` מול `{_f(g['2']['A_950th'], '.4f')}`, p "
+                  f"`{_f(g['2']['p'], '.4f')}` | {ok(g['2']['pass'])} |",
+                  f"| שער 3 | בלוקים חיוביים, חצאים | `{g['3']['blocks_positive']}` מתוך `10`; חצאים "
+                  f"`{_f(g['3']['half_means'][0], '.4f')}`, `{_f(g['3']['half_means'][1], '.4f')}` "
+                  f"| {ok(g['3']['pass'])} |",
+                  f"| שער 4 | בלי 1% העליונים, בלי כל אות | `{_f(g['4']['mean_without_top_1pct'], '.4f')}`; "
+                  + ", ".join(f"{s}: `{_f(v, '.4f')}`" for s, v in sorted(g['4']['mean_each_signal_removed'].items()))
+                  + f" | {ok(g['4']['pass'])} |",
+                  f"| שער 5 | שער 1 בתרחיש לחץ | `{_f(g['5']['x_bar_minus_b'], '.4f')}`, `{_f(g['5']['t10'], '.2f')}`, "
+                  f"`{_f(g['5']['t5'], '.2f')}` | {ok(g['5']['pass'])} |", "",
+                  f"מספר כרטיסים: `{rep['n']}` · x̄: `{_f(rep['x_bar'], '.4f')}` · x̄ פחות b: "
+                  f"`{_f(rep['x_bar_minus_b'], '.4f')}`", "",
                   "הדיווחים שאינם שערים (כל אות לבד, שנים, כרטיסים שמולאו, סוגי יציאה, עלויות, סירובים) נמצאים"
                   f" ב-`{VERDICT_PATH}`, והכרטיסים ב-`{TICKETS_PATH}`.", ""]
     else:
@@ -121,10 +154,9 @@ def summary_md(rep, today):
 def write(rep, kept, today):
     """The verdict's files: the JSON report, the ticket CSV (only when the gates were computed) and the Hebrew
     summary -> [paths]."""
-    import json
     paths = [VERDICT_PATH]
     with open(VERDICT_PATH, "w", encoding="utf-8") as fh:
-        json.dump(rep, fh, indent=1, ensure_ascii=False)
+        json.dump(_finite(rep), fh, indent=1, ensure_ascii=False, allow_nan=False)
     if "gates" in rep and kept is not None:
         with open(TICKETS_PATH, "w", encoding="utf-8", newline="") as fh:
             w = csv.writer(fh)

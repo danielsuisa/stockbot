@@ -13,7 +13,6 @@ import argparse
 import collections
 import datetime as dt
 import json
-import math
 import os
 import pathlib
 import subprocess
@@ -136,6 +135,10 @@ def _run(inp, got):
     """Everything the blind and verdict runs share, in memory -> (tickets, refusals, kept, pools, small, K, r_s, w_s,
     blocks10)."""
     fired, renamed = got["firings"], got["renamed"]
+    counts = ec.k_counts(fired, got["members"], ec.ended(inp, start=ed.SIGNAL_START, end=ed.SIGNAL_END), inp.sessions,
+                         start=ed.SIGNAL_START, end=ed.SIGNAL_END)
+    r_s = {s: counts[s]["r_s"] for s in signals.SIGNALS}
+    check_r_s(r_s)  # before the hours of issuing and pools: r_s needs the firings and members only
     tickets, refusals = bt.issue(fired, inp, renamed, alpaca.quote_full)
     fired_by_day = collections.defaultdict(set)
     for d, _, sym in fired:
@@ -144,10 +147,6 @@ def _run(inp, got):
     days = [d for d in inp.sessions if ed.SIGNAL_START <= d <= ed.SIGNAL_END]
     idx = {d: i for i, d in enumerate(days)}
     blocks10 = [st.block(idx[t["day"]], len(days)) for t in kept]
-    counts = ec.k_counts(fired, got["members"], ec.ended(inp, start=ed.SIGNAL_START, end=ed.SIGNAL_END), inp.sessions,
-                         start=ed.SIGNAL_START, end=ed.SIGNAL_END)
-    r_s = {s: counts[s]["r_s"] for s in signals.SIGNALS}
-    check_r_s(r_s)
     issued = collections.Counter(t["signal"] for t in tickets)
     w_s = {s: issued[s] / len(tickets) for s in signals.SIGNALS} if tickets else {s: 0.0 for s in signals.SIGNALS}
     K = ec.k_value(r_s, w_s)[0]
@@ -170,11 +169,7 @@ def _counts(fired, tickets, refusals, small, idx, n_days):
             "issued_total": len(tickets)}
 
 
-def blind_report():
-    """The blind run: everything in memory; returns only the whitelisted report."""
-    inp, got = prepare()
-    FINGERPRINT[0] = ed.fingerprint(inp)
-    tickets, refusals, kept, pools, small, K, r_s, w_s, blocks10, idx, days = _run(inp, got)
+def _blind(got, tickets, refusals, kept, small, K, r_s, w_s, blocks10, idx, days):
     if not kept:
         raise ValueError("no ticket kept")
     x = [(t["g"] - t["m"]) - t["c"] for t in kept]
@@ -182,21 +177,35 @@ def blind_report():
                         _counts(got["firings"], tickets, refusals, small, idx, len(days)), K, r_s, w_s)
 
 
+def blind_report():
+    """The blind run: everything in memory; returns only the whitelisted report."""
+    inp, got = prepare()
+    FINGERPRINT[0] = ed.fingerprint(inp)
+    tickets, refusals, kept, pools, small, K, r_s, w_s, blocks10, idx, days = _run(inp, got)
+    return _blind(got, tickets, refusals, kept, small, K, r_s, w_s, blocks10, idx, days)
+
+
 class FingerprintMismatch(Exception):
     """The verdict's inputs are not the blind run's (6.4 point 4)."""
 
 
-def verdict_report(expected_fp=None, commit=""):
+class BlindMismatch(Exception):
+    """The blind report recomputed by the verdict differs from the one the owner reviewed: other inputs (the cached
+    quotes, which the fingerprint does not cover) or another computation (6.4 point 4)."""
+
+
+def verdict_report(expected_fp, commit, blind_path):
     """The single verdict run (phase D; never run in phase C) -> (report, kept tickets or None). Stops before any
     return statistic when b > 0.03 R, check 1 or comparability fails (6.4); otherwise every number of
     ensemble_verdict.numbers."""
     inp, got = prepare()
     FINGERPRINT[0] = ed.fingerprint(inp)
-    if expected_fp and FINGERPRINT[0] != expected_fp:
+    if not expected_fp or FINGERPRINT[0] != expected_fp:
         raise FingerprintMismatch("the inputs' fingerprint differs from the blind run's")
     tickets, refusals, kept, pools, small, K, r_s, w_s, blocks10, idx, days = _run(inp, got)
-    if not kept:
-        raise ValueError("no ticket kept")
+    again = json.loads(blind.serialize(_blind(got, tickets, refusals, kept, small, K, r_s, w_s, blocks10, idx, days)))
+    if again != json.loads(pathlib.Path(blind_path).read_text("utf-8")):
+        raise BlindMismatch("the recomputed blind report differs from the blind run's")
     x = [(t["g"] - t["m"]) - t["c"] for t in kept]
     s10, s5 = st.ses(x, blocks10)
     b, mu = st.b_allowance(K), st.mu_min(s10, s5)
@@ -230,21 +239,31 @@ def main(argv=None):
     ap.add_argument("--blind-commit", default="")
     ap.add_argument("--owner-go-ahead", action="store_true")
     ap.add_argument("--fingerprint", default="", help="the blind run's input fingerprint (the verdict refuses others)")
+    ap.add_argument("--blind-report", default="", help="the blind run's report (the verdict must reproduce it)")
     a = ap.parse_args(argv)
     common.install_excepthooks()
     try:
         if a.prefetch:
             return prefetch(a.deadline_min, a.require_complete)
         if a.verdict:
+            if not a.blind_report:
+                print("verdict refused: it needs --blind-report <the blind run's report>")
+                return 2
+            if not a.fingerprint:
+                print("verdict refused: it needs --fingerprint <the blind run's input fingerprint>")
+                return 2
             if not (a.owner_go_ahead and a.blind_commit and a.blind_commit == head()):
                 print("verdict refused: it needs --blind-commit <the checked-out commit of the blind run> and "
                       "--owner-go-ahead")
                 return 2
             try:
                 with offline():
-                    rep, kept = verdict_report(a.fingerprint, a.blind_commit)
+                    rep, kept = verdict_report(a.fingerprint, a.blind_commit, a.blind_report)
             except FingerprintMismatch:
                 print("verdict refused: the inputs' fingerprint differs from the blind run's; nothing was computed")
+                return 2
+            except BlindMismatch:
+                print("verdict refused: the recomputed blind report differs from the blind run's; nothing was written")
                 return 2
             paths = ev.write(rep, kept, TODAY())
             print(f"verdict written: {', '.join(paths)}")
@@ -258,7 +277,7 @@ def main(argv=None):
         ap.print_usage()
         return 2
     except MissingInput:
-        print("blind: an input is missing from the cache; nothing was computed")
+        print("an input is missing from the cache; nothing was computed")
         return 3
     except Exception:  # noqa: BLE001 - the type and frames only, never a value
         common.trace()

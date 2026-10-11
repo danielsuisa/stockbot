@@ -3,9 +3,10 @@ name: Ensemble verdict run (spec 6.4, phase D)
 # Started ONLY by the owner's explicit act: a manual dispatch on the run branch ensemble-run-blind, never by a push.
 # It runs the commit of the blind run on the blind run's inputs: it fails unless the ref is ensemble-run-blind, the
 # checked-out commit is the blind run's, the typed confirmation matches, the blind run's input cache (branch-scoped,
-# kept 7 days) is restored, and the inputs' fingerprint equals the blind run's. The environment ensemble-verdict
-# carries a required reviewer (the owner), so even a dispatch waits for a second explicit approval. Inputs reach the
-# shell only through env, never interpolated into a script.
+# kept 7 days) is restored, the inputs' fingerprint equals the blind run's, and the blind report recomputed from those
+# inputs equals the one the blind run uploaded (which also covers the cached quotes). The environment ensemble-verdict
+# must be created with the owner as required reviewer before phase D, so even a dispatch waits for a second explicit
+# approval; one run at a time. Inputs reach the shell only through env, never interpolated into a script.
 on:
   workflow_dispatch:
     inputs:
@@ -24,6 +25,11 @@ on:
 
 permissions:
   contents: read
+  actions: read  # to download the blind run's report
+
+concurrency:
+  group: ensemble-verdict
+  cancel-in-progress: false
 
 env:
   HTTP_CACHE: .cache/http
@@ -40,10 +46,12 @@ jobs:
           SHA: ${{ github.sha }}
           BLIND_COMMIT: ${{ inputs.blind_commit }}
           CONFIRM: ${{ inputs.confirm }}
+          FINGERPRINT: ${{ inputs.fingerprint }}
         run: |
           test "$REF" = "refs/heads/ensemble-run-blind" || { echo "verdict refused: not the run branch"; exit 1; }
           test "$SHA" = "$BLIND_COMMIT" || { echo "verdict refused: not the blind run's commit"; exit 1; }
           test "$CONFIRM" = "run the verdict once" || { echo "verdict refused: confirmation"; exit 1; }
+          test -n "$FINGERPRINT" || { echo "verdict refused: no fingerprint"; exit 1; }
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -56,11 +64,18 @@ jobs:
           path: .cache
           key: ensemble-inputs-${{ inputs.blind_run_id }}-4
           fail-on-cache-miss: true
+      - name: Download the blind run's report (the verdict must reproduce it)
+        uses: actions/download-artifact@v4
+        with:
+          name: ensemble-blind-report
+          path: blind
+          run-id: ${{ inputs.blind_run_id }}
+          github-token: ${{ github.token }}
       - name: The verdict run (network closed; writes its report files only)
         env:
           BLIND_COMMIT: ${{ inputs.blind_commit }}
           FINGERPRINT: ${{ inputs.fingerprint }}
-        run: python -m bot.ensemble --verdict --blind-commit "$BLIND_COMMIT" --owner-go-ahead --fingerprint "$FINGERPRINT"
+        run: python -m bot.ensemble --verdict --blind-commit "$BLIND_COMMIT" --owner-go-ahead --fingerprint "$FINGERPRINT" --blind-report blind/ensemble-blind-report.json
       - name: Upload the verdict files
         uses: actions/upload-artifact@v4
         with:
@@ -68,4 +83,4 @@ jobs:
           path: |
             ensemble-verdict-report.json
             ensemble-tickets.csv
-            docs/backtest/ensemble-*.md
+            docs/backtest/ensemble-2*.md

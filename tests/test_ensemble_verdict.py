@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from bot import ensemble as en, ensemble_data as ed, ensemble_stats as st, ensemble_verdict as ev
+from bot import blind, ensemble as en, ensemble_data as ed, ensemble_stats as st, ensemble_verdict as ev
 from tests.test_ensemble_backtest import GOOD_QUOTE, flat
 from tests.test_ensemble_signals import inputs
 from tests.test_equity_privacy import Leaks
@@ -33,7 +33,7 @@ HAND = [tk("S1", "2017-03-01", 0, 1.0, 0.2, 0.05, 0.07, True, ["target", "trail"
         tk("S4", "2020-09-04", 6, 2.0, 0.3, 0.06, 0.09, True, ["target", "time"]),
         tk("S3", "2021-11-05", 8, 0.4, 0.0, 0.03, 0.045, True, ["time", "time"]),
         tk("S4", "2022-12-06", 9, -0.2, 0.1, 0.02, 0.03, True, ["stop", "trail"])]
-A_K = [k / 1000 for k in range(1000)]
+A_K = [(k + 0.5) / 1000 for k in range(1000)]  # no A_k ties A = 0.35
 
 
 class HandCase(unittest.TestCase):
@@ -56,8 +56,8 @@ class HandCase(unittest.TestCase):
         self.assertAlmostEqual(r["se_t10"], se10)
         self.assertAlmostEqual(r["se_t5"], se5)
         self.assertAlmostEqual(r["A"], 2.1 / 6)
-        self.assertAlmostEqual(r["A_950th"], 0.949)
-        self.assertAlmostEqual(r["p"], 651 / 1001)  # A_k >= 0.35: k = 350 .. 999
+        self.assertAlmostEqual(r["A_950th"], 0.9495)
+        self.assertAlmostEqual(r["p"], 651 / 1001)  # A_k >= 0.35: k = 350 .. 999 (650 of them)
 
     def test_gates(self):
         g = self.rep["gates"]
@@ -133,24 +133,40 @@ def scenario(kind):
 
 
 @contextlib.contextmanager
-def verdict_env(kind, quote=None):
+def verdict_env(kind, quote=None, K=None):
     inp, got = scenario(kind)
-    with mock.patch.object(en, "prepare", return_value=(inp, got)), mock.patch.object(en, "check_r_s"), \
-            mock.patch.object(en.ec, "ended", return_value={}), \
-            mock.patch.object(en.alpaca, "quote_full", side_effect=quote or (lambda s, at: GOOD_QUOTE)), \
-            mock.patch.object(ed, "SIGNAL_START", S[260]), mock.patch.object(ed, "SIGNAL_END", S[359]), \
-            mock.patch.object(en, "head", return_value="c0ffee"):
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(mock.patch.object(en, "prepare", return_value=(inp, got)))
+        stack.enter_context(mock.patch.object(en, "check_r_s"))
+        stack.enter_context(mock.patch.object(en.ec, "ended", return_value={}))
+        stack.enter_context(mock.patch.object(en.alpaca, "quote_full",
+                                              side_effect=quote or (lambda s, at: GOOD_QUOTE)))
+        stack.enter_context(mock.patch.object(ed, "SIGNAL_START", S[260]))
+        stack.enter_context(mock.patch.object(ed, "SIGNAL_END", S[359]))
+        stack.enter_context(mock.patch.object(en, "head", return_value="c0ffee"))
+        if K is not None:
+            stack.enter_context(mock.patch.object(en.ec, "k_value", return_value=(K, None)))
         yield inp, got
 
 
-def run_verdict(kind, quote=None, extra=()):
+def run_verdict(kind, quote=None, extra=(), fingerprint=None, blind_edit=None, K=None):
+    """The blind run first (its report file, as the owner has it), then --verdict on the same inputs."""
     leaks = Leaks()
-    with tempfile.TemporaryDirectory() as d, verdict_env(kind, quote):
+    with tempfile.TemporaryDirectory() as d, verdict_env(kind, quote, K) as (inp, _):
+        blind_path = os.path.join(d, "blind", "ensemble-blind-report.json")
+        os.makedirs(os.path.dirname(blind_path))
+        with en.offline():
+            rep = json.loads(blind.serialize(en.blind_report()))
+        if blind_edit:
+            blind_edit(rep)
+        pathlib.Path(blind_path).write_text(json.dumps(rep), "utf-8")
+        fp = ed.fingerprint(inp) if fingerprint is None else fingerprint
         old = os.getcwd()
         os.chdir(d)
         try:
             with leaks.watch():
-                code = en.main(["--verdict", "--blind-commit", "c0ffee", "--owner-go-ahead", *extra])
+                code = en.main(["--verdict", "--blind-commit", "c0ffee", "--owner-go-ahead", "--fingerprint", fp,
+                                "--blind-report", blind_path, *extra])
         finally:
             os.chdir(old)
     files, content, cur = [], {}, None
@@ -218,10 +234,48 @@ class EndToEnd(unittest.TestCase):
         self.assertRegex(printed[0], r"^verdict written: ")
 
     def test_fingerprint_must_match(self):
-        code, files, _, leaks = run_verdict("go", extra=("--fingerprint", "0000000000000000"))
+        code, files, _, leaks = run_verdict("go", fingerprint="0000000000000000")
         self.assertEqual(code, 2)
         self.assertEqual(files, [])
         self.assertIn("fingerprint", leaks.out.getvalue())
+
+    def test_fingerprint_is_required(self):
+        code, files, _, leaks = run_verdict("go", fingerprint="")
+        self.assertEqual(code, 2)
+        self.assertEqual(files, [])
+        self.assertIn("fingerprint", leaks.out.getvalue())
+
+    def test_blind_report_must_match(self):
+        """Inputs the fingerprint misses (the cached quotes) still change the blind report: the verdict recomputes it
+        and refuses unless it equals the file the owner reviewed."""
+        def tamper(rep):
+            rep["pools_dropped_small"] += 1
+        code, files, _, leaks = run_verdict("go", blind_edit=tamper)
+        self.assertEqual(code, 2)
+        self.assertEqual(files, [])
+        self.assertIn("blind report", leaks.out.getvalue())
+        out = io.StringIO()
+        with mock.patch.object(en, "verdict_report") as run, mock.patch.object(en, "head", return_value="c0ffee"), \
+                contextlib.redirect_stdout(out):  # --blind-report is required
+            code = en.main(["--verdict", "--blind-commit", "c0ffee", "--owner-go-ahead", "--fingerprint", "f"])
+        self.assertEqual(code, 2)
+        self.assertIn("--blind-report", out.getvalue())
+        run.assert_not_called()
+
+    def test_b_above_data_limit_has_no_return_statistic(self):
+        code, files, content, _ = run_verdict("go", K=8.0)  # b = 8 x 0.0041 = 0.0328 > 0.03
+        rep = self.report(content)
+        self.assertEqual(rep["outcome"], "NO-GO (data)")
+        self.assert_no_statistic(rep, files, content)
+
+    def test_degenerate_numbers_still_summarize(self):
+        rep = {"outcome": "NO-GO", "inputs": "f", "commit": "c", "comparability": {"quote_share": 0.0,
+               "small_pool_share": 0.0, "comparable": True},
+               "check_1": {"pass": True, "mu_min": 0.0, "b_R": 0.0041, "se_t10": 0.0, "se_t5": 0.0}}
+        rep.update(ev.numbers(HAND[:1], A_K, 0.0041, [0], {}))
+        md = ev.summary_md(rep, "2026-10-11")  # n = 1: no mean without the top 1%; SE 0: t = inf
+        self.assertIn("שער 4", md)
+        self.assertIn("—", md)
 
 
 class Workflow(unittest.TestCase):
@@ -239,6 +293,14 @@ class Workflow(unittest.TestCase):
         self.assertIn("--verdict", wf)
         self.assertIn("--fingerprint", wf)
         self.assertIn("environment: ensemble-verdict", wf)
+        self.assertIn("concurrency:", wf)
+        self.assertIn('test -n "$FINGERPRINT"', wf)
+        self.assertIn("actions/download-artifact", wf)  # the blind report the owner reviewed
+        self.assertIn("run-id: ${{ inputs.blind_run_id }}", wf)
+        self.assertIn("--blind-report", wf)
+        upload = wf[wf.index("uses: actions/upload-artifact"):]
+        self.assertNotIn("ensemble-*.md", upload)  # the committed phase reports are not verdict files
+        self.assertIn("docs/backtest/ensemble-2*.md", upload)
         lines, scripts = wf.splitlines(), []
         for i, line in enumerate(lines):  # every run: script with its indented continuation
             if line.strip().startswith("run:"):
