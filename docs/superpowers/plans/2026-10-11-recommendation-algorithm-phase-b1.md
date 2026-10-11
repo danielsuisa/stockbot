@@ -29,6 +29,33 @@
 - **Open risk.** floor(3% / p) positions, shown and not enforced.
 - **Small account.** The cost guard is not loosened. Its refusal adds the small-account reason when E is set and the risk is under $20.
 
+## Owner's changes on approving `4f5a319` (2026-10-11)
+
+Decisions 1–5 are approved as written. These changes are binding and override the text below where they differ.
+
+1. **Private chat only.** `equity.store` and `equity.load` work only when `getChat(TG_CHAT_ID).type == "private"`, because a pin is visible to every member of a chat. Otherwise `/equity` stores nothing and replies that sizing by equity needs a private chat, and `/ticket` falls back to `TICKET_RISK_USD`.
+   - Tests: `test_store_refuses_a_non_private_chat`, `test_ticket_falls_back_in_a_non_private_chat`.
+2. **Task 0, a live probe before Task 3.** One run with the Telegram secrets:
+   - send a short test message with no number in it;
+   - pin it silently;
+   - call `getChat`;
+   - unpin and delete the message.
+
+   It prints only three booleans: the chat is private; the pin succeeded; `pinned_message` is that message and its `from.id` is the bot's. If any is false: stop, report, and do not build the store.
+3. **Traceback inventory.**
+   - `bot/listen.py` has five `traceback.print_exc()` calls (lines 89, 176, 208, 280, 360). Modules the listener imports have seven more: `check` 1, `scan` 2, `shadow` 1, `squeeze_live` 3. All twelve are replaced by `common.trace`. This changes only what those modules print on an exception: the type, the frames and an HTTP status, never the message.
+   - Test `test_no_raw_traceback_in_the_listener_closure`: scans the source of every `bot` module in the listener's import closure (computed with `ast`) for `print_exc`, `format_exc` and `print_exception`, and finds none.
+   - `sys.excepthook` and `threading.excepthook` are set to the same printer at the listener's entry point (the listener's `/check` and `/scan` paths use threads).
+     - Tests: `test_excepthook_prints_no_message`, `test_thread_excepthook_prints_no_message`.
+   - `common.trace` may print an `urllib.error.HTTPError`'s integer status code, never its URL, headers or body.
+     - Test: `test_trace_prints_http_status_only`.
+4. **Stale pin.** `load()` returns `(E, date set)`, where the date is the pinned message's date in Israel. `/equity` without an amount, and the sizing line of every ticket, show the date E was set.
+   - Test `test_older_equity_pin_surfaces_with_its_date`: the newest equity message is unpinned and an older one is still pinned, so the older E and the older date are shown.
+5. **`TICKET_RISK_PCT` is in percent** (`0.5` means 0.5%). This is stated in the workflow comment and in the `/equity` reply. An unset, non-numeric or ≤ 0 value gives the default 0.5% and a note in the message.
+   - Tests: `test_p_setting_unset`, `test_p_setting_non_numeric`, `test_p_setting_not_positive`, `test_p_setting_percent_unit`.
+6. **Only the synthetic E** (`12,345.67` in dry runs, `31,337.17` in tests, both marked as synthetic) appears in the phase B.1 report and in every example in the repository.
+7. **Live check without `gh`.** The owner opens the run's log page on GitHub (Actions → Telegram listener → the run → the "Answer Telegram messages" step) and searches it with the browser's find for their own E in both forms, plain (`25000`) and with thousands commas (`25,000`). Expected: no match in either form.
+
 ## The store for E: a pinned bot message (accepted in principle)
 
 - `/equity 25000` makes the bot send `💼 הון לחישוב גודל: <code>25,000.00$</code>` ("equity for sizing") to `TG_CHAT_ID` and pin it silently (`pinChatMessage`, `disable_notification`).
@@ -109,6 +136,18 @@
 
 ---
 
+### Task 0: Live probe of the Telegram behaviours (owner's change 2)
+
+**Files:** Create `bot/equity.py` with `probe() -> (private: bool, pinned: bool, pinned_is_ours: bool)` and `main(["--probe"])`. Throwaway branch `probe-ensemble` with a workflow that runs `python -m bot.equity --probe` with `TG_TOKEN` and `TG_CHAT_ID`.
+
+- [ ] **Step 1: Write the failing test** `test_probe_prints_three_booleans_only`, with `common.tg` mocked:
+  - `probe()` calls, in order, `getMe`, `getChat`, `sendMessage` (a text with no digit), `pinChatMessage` (`disable_notification`), `getChat`, `unpinChatMessage` and `deleteMessage`;
+  - it returns the three booleans;
+  - `main` prints exactly three lines of the form `name: True|False` and nothing else;
+  - the message is deleted even when a step fails.
+- [ ] **Step 2: Run.** Expect FAIL. **Step 3: Implement.** **Step 4: Run the full suite.** Expect OK. **Step 5: Commit.**
+- [ ] **Step 6: Live probe.** Run once on GitHub. If any boolean is false: stop and report to the owner, and do not build the store.
+
 ### Task 1: Sizing from equity (pure)
 
 **Files:** Modify `bot/levels.py`; Test `tests/test_levels.py`.
@@ -131,7 +170,7 @@
 
 ### Task 2: Listener log hardening (condition 2)
 
-**Files:** Modify `bot/common.py` (`trace`) and `bot/listen.py` (three `print_exc` calls); Test `tests/test_serve.py`, `tests/test_commands.py`.
+**Files:** Modify `bot/common.py` (`trace`, `install_excepthooks`), `bot/listen.py` (five `print_exc` calls, the hooks at `main`), `bot/check.py`, `bot/scan.py`, `bot/shadow.py`, `bot/squeeze_live.py` (seven more; change 3); Test `tests/test_serve.py`, `tests/test_commands.py`.
 
 - [ ] **Step 1: Write the failing tests.**
   - `test_trace_prints_no_message`.
