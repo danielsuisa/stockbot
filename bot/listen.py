@@ -174,9 +174,16 @@ def ticket_cmd(rest):
         common.send(f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}." if unknown else
                     f"כתבו טיקר אחרי הפקודה, למשל {code('/ticket AAPL')}.")
         return 0
+    sizing = None  # section 10: E from the owner's private chat, read once per command; none -> TICKET_RISK_USD
+    got = equity.load()
+    if got:
+        p_raw, p_note = equity.p_setting()
+        sizing = {"E": got[0], "date": got[1], "p_raw": p_raw, "p_note": p_note}
     for sym in known[:TICKET_MAX]:  # one symbol's failure is its own line; the others still get their ticket
         try:
-            text = ticket_command.message(ticket_command.build(sym.replace("-", ".")))
+            sym = sym.replace("-", ".")
+            t = ticket_command.build(sym, sizing=sizing) if sizing else ticket_command.build(sym)
+            text = ticket_command.message(t)
         except Exception as e:  # noqa: BLE001 - missing keys, network, bad data: never out of the command
             common.trace()
             text = f"לא הצלחתי להכין כרטיס ל-{code(sym)}: תקלה בקריאת הנתונים ({code(type(e).__name__)})."

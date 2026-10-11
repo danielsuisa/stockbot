@@ -319,6 +319,32 @@ class Commands(unittest.TestCase):
         store.assert_not_called()
         load.assert_not_called()
 
+    def test_ticket_loads_equity_once_and_passes_it(self):
+        from bot import equity, ticket_command
+        calls = []
+        with (mock.patch.object(common, "tickers", return_value={"AAPL": (1, "A"), "MSFT": (2, "M")}),
+              mock.patch.object(common, "send"), mock.patch.object(common, "tg"),
+              mock.patch.object(equity, "load", return_value=(31337.17, "2026-10-01")) as load,
+              mock.patch.object(ticket_command, "build", side_effect=lambda s, sizing=None: calls.append(sizing) or {}),
+              mock.patch.object(ticket_command, "message", return_value="🎫 כרטיס")):
+            listen.handle("/ticket aapl msft")
+        load.assert_called_once()
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0]["E"], 31337.17)
+        self.assertEqual(calls[0]["date"], "2026-10-01")
+
+    def test_ticket_falls_back_in_a_non_private_chat(self):
+        from bot import ticket_command
+        from tests.test_equity import FakeTelegram
+        calls = []
+        with (mock.patch.object(common, "tickers", return_value={"AAPL": (1, "A")}),
+              mock.patch.object(common, "send"), mock.patch.object(common, "tg", side_effect=FakeTelegram("group")),
+              mock.patch.object(ticket_command, "build", side_effect=lambda s, sizing=None: calls.append(sizing) or {}),
+              mock.patch.object(ticket_command, "message", return_value="🎫 כרטיס"),
+              mock.patch.dict("os.environ", {"TG_CHAT_ID": "7"})):
+            listen.handle("/ticket aapl")
+        self.assertEqual(calls, [None])  # the fixed TICKET_RISK_USD
+
     def test_ticket_dry_run_through_the_listener(self):
         # tests/listen_dry_run.py feeds one fake update to listen.answer (the listener's own path) and prints
         from bot import ticket_command

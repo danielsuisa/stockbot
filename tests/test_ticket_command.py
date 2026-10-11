@@ -32,12 +32,13 @@ def ny(day, hhmm):
     return dt.datetime.fromisoformat(f"{day}T{hhmm}").replace(tzinfo=alpaca.NY)
 
 
+SIZING = {"E": 31_337.17, "date": "2026-10-01", "p_raw": 0.005, "p_note": None}  # synthetic equity
 CAL = weekday_calendar("2025-01-01", "2026-12-31", half=("2026-11-27",), holidays=("2026-01-19", "2026-11-26"))
 QUOTE = (50.50, 50.52, 1, 1, 3)
 
 
 class Build(unittest.TestCase):
-    def run_build(self, day="2026-03-09", now=None, bars=None, quote=QUOTE, env=None):
+    def run_build(self, day="2026-03-09", now=None, bars=None, quote=QUOTE, env=None, sizing=None):
         calls = []
 
         def quote_full(symbol, at):
@@ -47,8 +48,29 @@ class Build(unittest.TestCase):
                 mock.patch.object(alpaca, "daily", return_value={"AAPL": bars or bars_until(day, 300)}), \
                 mock.patch.object(alpaca, "quote_full", side_effect=quote_full), \
                 mock.patch.dict(os.environ, env or {}, clear=False):
-            t = tc.build("AAPL", now or ny(day, "17:00"))
+            t = tc.build("AAPL", now or ny(day, "17:00"), sizing=sizing)
         return t, calls
+
+    # ---------- sizing by equity (phase B.1; synthetic E) ----------
+    def test_build_with_equity(self):
+        t, _ = self.run_build(sizing=SIZING)
+        self.assertEqual(t["shares"], 78)  # floor(0.005 x 31,337.17 / 2)
+        self.assertEqual(t["sizing"]["position_capped"], False)
+        self.assertEqual(t["sizing"]["open_positions"], 6)
+
+    def test_build_position_capped(self):
+        bars = bars_until("2026-03-09", 300, rng=0.5)  # R 1.0: 156 shares by risk, cap floor(6267.43 / 50.26) = 124
+        t, _ = self.run_build(bars=bars, sizing=SIZING)
+        self.assertEqual((t["shares"], t["sizing"]["position_capped"]), (124, True))
+
+    def test_build_without_equity_keeps_the_fixed_risk(self):
+        t, _ = self.run_build()
+        self.assertEqual((t["shares"], t["sizing"]), (50, None))
+
+    def test_small_account_refusal_keeps_the_sizing(self):
+        t, _ = self.run_build(sizing={**SIZING, "E": 3_000.0})  # risk 15: 7 shares, cost 11% of risk
+        self.assertEqual(t["reason"], "cost above 10% of risk")
+        self.assertAlmostEqual(t["sizing"]["risk"], 15.0)
 
     def test_signal_day(self):
         self.assertEqual(tc.signal_day(ny("2026-03-09", "16:20"), CAL), "2026-03-09")
@@ -111,6 +133,48 @@ class Message(unittest.TestCase):
                  universe=[], first_session_started=False)
         t.update(over)
         return t
+
+    def sized(self, **over):
+        bars = bars_until("2026-03-09", 300)
+        sizing = {**SIZING, **over}
+        t = levels.plan("AAPL", bars, "2026-03-09", risk=0.005 * sizing["E"])
+        t = levels.guard(t, QUOTE)
+        t.update(valid_sessions=["2026-03-10"], time_exit_if_first="2026-04-09", universe=[], first_session_started=False,
+                 sizing=tc.sizing_info(sizing, t))
+        return t
+
+    def test_message_with_equity(self):
+        text = tc.message(self.sized())
+        msgrules.check(self, text)
+        for part in (common.code(common.price(78 * 2.0)), common.code("0.5%"), common.code(common.price(78 * 50.51)),
+                     common.code("12.6%"), common.code(6), "1.10.2026"):
+            self.assertIn(part, text)
+        self.assertNotIn("לא קשור לחשבון", text)
+
+    def test_message_caps_noted(self):
+        capped = self.sized(p_raw=0.01)
+        text = tc.message(capped)
+        msgrules.check(self, text)
+        self.assertIn("הוגבל ל-", text)
+        t = self.sized()
+        t["sizing"]["position_capped"] = True
+        self.assertIn("20%", tc.message(t))
+        t = self.sized(p_note="non-numeric")
+        self.assertIn("ברירת המחדל", tc.message(t))
+
+    def test_ticket_fallback_line(self):
+        text = tc.message(self.ticket(sizing=None))
+        msgrules.check(self, text)
+        self.assertIn("הגודל לא קשור לחשבון", text)
+
+    def test_small_account_refusal_reason(self):
+        t = {"ok": False, "reason": "cost above 10% of risk", "symbol": "AAPL", "day": "2026-03-09",
+             "sizing": {"E": 3_000.0, "risk": 15.0}}
+        text = tc.message(t)
+        msgrules.check(self, text)
+        self.assertIn("חשבון קטן", text)
+        t["reason"] = "shares below 2"
+        self.assertIn("חשבון קטן", tc.message(t))  # never a bare "shares below 2" for a small account
 
     def test_message_full(self):
         text = tc.message(self.ticket())

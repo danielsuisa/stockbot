@@ -89,6 +89,13 @@ class Serve(unittest.TestCase):
         for line in ("ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}", "ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}"):
             self.assertIn(line, step)
 
+    def test_workflow_has_the_p_variable(self):
+        wf = (Path(__file__).resolve().parent.parent / ".github/workflows/telegram-listen.yml").read_text("utf-8")
+        step = wf[wf.index("run: python -m bot.listen --serve"):]
+        line = next(x for x in step.splitlines() if "TICKET_RISK_PCT" in x)
+        self.assertIn("TICKET_RISK_PCT: ${{ vars.TICKET_RISK_PCT }}", line)
+        self.assertIn("percent", line)  # 0.5 means 0.5%
+
     def test_stop_file_ends_the_loop_before_the_next_poll(self):
         with tempfile.TemporaryDirectory() as d:
             stop = Path(d, "listen.stop")
