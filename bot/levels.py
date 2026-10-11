@@ -182,7 +182,7 @@ def fill(t, after):
     return None
 
 
-def exits(t, F, k, after):
+def exits(t, F, k, after, close_at_end=False):
     """Both legs' exits after a fill at F on session k -> [(type, price, session index)] for leg A then leg B, or
     None when the bars end with a leg still open. Rules 1-5 of section 3: a stop fills at the stop or at a lower open
     (never at an open before the fill: the entry session uses the stop); stop before target in one bar; the trail
@@ -215,6 +215,10 @@ def exits(t, F, k, after):
             prev_level = level
         if j == last:
             out = [x or ("time", c, j) for x in out]
+    if None in out and close_at_end and after and k < len(after):
+        # section 2: the series ends (a bad-price break or a delisting) -> what is open exits at the last close
+        j = len(after) - 1
+        out = [x or ("end", after[j][4], j) for x in out]
     return None if None in out else out
 
 

@@ -237,6 +237,15 @@ class FillModel(unittest.TestCase):
         self.assertEqual(levels.exits(self.t, 50.51, 2, bars), [("time", 50.6, 23), ("time", 50.6, 23)])
         self.assertIsNone(levels.exits(self.t, 50.51, 2, bars[:-1]))
 
+    def test_close_at_the_end_of_the_bars(self):
+        # section 2: when the series ends (a break or a delisting), what is open exits at the last close before it
+        bars = after(FILL0, (50.6, 51.0, 50.5, 50.9), (50.9, 51.2, 50.7, 51.1))
+        self.assertIsNone(levels.exits(self.t, 50.51, 0, bars))  # the default: still open, no answer
+        self.assertEqual(levels.exits(self.t, 50.51, 0, bars, close_at_end=True), [("end", 51.1, 2), ("end", 51.1, 2)])
+        done = after(FILL0, (54.0, 54.5, 53.8, 54.2), (53.0, 53.0, 52.0, 52.2))
+        self.assertEqual(levels.exits(self.t, 50.51, 0, done, close_at_end=True),
+                         levels.exits(self.t, 50.51, 0, done))  # nothing open at the end: unchanged
+
     def test_unfilled_is_zero(self):
         quiet = (50.0, 50.4, 49.9, 50.0)
         self.assertEqual(levels.simulate(self.t, after(quiet, quiet, quiet), 0.02),
