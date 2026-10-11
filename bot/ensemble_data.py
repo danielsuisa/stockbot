@@ -4,12 +4,14 @@ releases with their acceptance times, the calendar. Inputs only: nothing here ho
 inputs are ever cached."""
 import bisect
 import collections
+import hashlib
 
 from bot import alpaca, common, probe_ensemble as pe, probe_ensemble_data as pd, probe_insider as pi
 
 INPUT_FIELDS = ("sessions", "cal", "rows", "filed", "ciks", "of_cik", "by_sym", "purchases", "prices_by_cik", "series",
                 "releases", "rename_pool")
 SIGNAL_START, SIGNAL_END, BARS_FROM = pe.SIGNAL_START, pe.SIGNAL_END, pe.BARS_FROM
+LAST_QUARTER = (2026, 1)  # spec 6.1: the insider data sets end at 2026Q1; pinned so the inputs do not move
 
 
 class Inputs:
@@ -59,8 +61,10 @@ def load(today, bars_end=SIGNAL_END, symbols=None):
     """Every input from the network or its cache. `bars_end` reaches past SIGNAL_END only for outcomes (spec 4.2,
     C17); the universe, the detectors and the signal days end on SIGNAL_END."""
     rows, buys, prices = [], [], collections.defaultdict(list)
-    for y in range(2015, today.year + 1):
+    for y in range(2015, min(today.year, LAST_QUARTER[0]) + 1):
         for q in range(1, 5):
+            if (y, q) > LAST_QUARTER:
+                break
             z = pi.quarter_zip(y, q)
             if z is None:
                 continue
@@ -79,6 +83,19 @@ def load(today, bars_end=SIGNAL_END, symbols=None):
                                  SIGNAL_END)
     return make_inputs(sessions, {d: cal_all[d] for d in sessions}, rows, buys, prices, series,
                        pd.Releases(found, rows))
+
+
+def fingerprint(inp):
+    """A short hash of the inputs (filings, prices, bars, sessions), printed by the prefetch and the blind run so the
+    verdict run can show it used the same inputs (6.4 point 4). It carries no result."""
+    h = hashlib.sha256()
+    for part in (inp.sessions, sorted(inp.rows), sorted((c, len(v), v[-1]) for c, v in inp.prices_by_cik.items())):
+        h.update(repr(part).encode())
+    for sym in sorted(inp.series):
+        s = inp.series[sym]
+        h.update(repr((sym, s["dates"][0], s["dates"][-1], len(s["dates"]), list(s["raw_close"]), list(s["close"]),
+                       list(s["raw_volume"]))).encode())
+    return h.hexdigest()[:16]
 
 
 def session_on_or_after(sessions, day):

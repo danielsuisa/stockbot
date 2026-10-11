@@ -2,6 +2,7 @@
 outcomes. Synthetic numbers only."""
 import math
 import unittest
+import unittest.mock
 
 from bot import ensemble_stats as st
 
@@ -94,6 +95,29 @@ class Gates(unittest.TestCase):
         self.assertTrue(g2["each_signal_removed"]["S3"])  # without S3 the mean is positive
         self.assertFalse(g2["each_signal_removed"]["S1"])  # without S1: (5 - 15) / 60 < 0
         self.assertFalse(g2["pass"])
+
+    def test_gate1_at_the_critical_values(self):
+        blocks10 = list(range(10))
+        x = [1.0, -1.0] * 5  # one ticket per block: mean 0
+        g = st.gate1([v + 0.0 for v in x], 0.0, blocks10)
+        self.assertFalse(g["pass"])  # x-bar = 0 is not > 0
+        with unittest.mock.patch.object(st, "ses", return_value=(0.1, 0.1)):
+            base = [0.2262] * 10  # t10 = 2.262 exactly, t5 = 2.262 < 2.776
+            self.assertFalse(st.gate1(base, 0.0, blocks10)["pass"])
+            exact = [0.2776] * 10  # t10 = 2.776 >= 2.262 and t5 = 2.776 >= 2.776: both at or above
+            self.assertTrue(st.gate1(exact, 0.0, blocks10)["pass"])
+
+    def test_gate3_exactly_seven_passes(self):
+        blocks10 = [g for g in range(10) for _ in range(2)]
+        seven = [1.0] * 2 + [-0.1] * 2 + [1.0] * 4 + [-0.1] * 2 + [1.0] * 4 + [-0.1] * 2 + [1.0] * 4
+        # blocks 1, 4 and 7 negative: 7 of 10, both halves positive
+        g = st.gate3(seven, blocks10)
+        self.assertEqual(g["blocks_positive"], 7)
+        self.assertTrue(g["pass"])
+
+    def test_outcome_data(self):
+        self.assertEqual(st.outcome(True, True, {g: True for g in "12345"}, b=0.0300001), "NO-GO (data)")
+        self.assertEqual(st.outcome(True, True, {g: True for g in "12345"}, b=0.03), "GO")
 
     def test_outcome(self):
         self.assertEqual(st.outcome(confirmable=False, comparable=True, gates=None), "NO-GO (not confirmable)")

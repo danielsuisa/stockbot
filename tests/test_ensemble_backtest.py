@@ -178,6 +178,19 @@ class Comparison(unittest.TestCase):
         kept, pools, small = bt.compare(tickets, self.inp, {}, few, fired_by_day)
         self.assertEqual((len(kept), small, pools), (0, 2, {}))
 
+    def test_kept_in_c25_order(self):
+        # review M1: draws go over the tickets in (signal day, symbol, signal) order
+        fired = [(D, "S4", "P03"), (D, "S2", "P09"), (D, "S3", "P01")]
+        tickets, _ = bt.issue(fired, self.inp, {}, quote_ok)
+        kept, _, _ = bt.compare(tickets, self.inp, {}, self.day_members, {D: {"P01", "P03", "P09"}})
+        self.assertEqual([(t["day"], t["symbol"], t["signal"]) for t in kept],
+                         [(D, "P01", "S3"), (D, "P03", "S4"), (D, "P09", "S2")])
+
+    def test_rows_after_capped(self):
+        s = flat(after=[QUIET] * 40)
+        self.assertEqual(len(bt.rows_after(s, D, limit=7)), 7)
+        self.assertEqual(len(bt.rows_after(s, D)), 40)
+
     def test_comparability_shares(self):
         self.assertEqual(bt.comparability(quote_refused=5, passing=100, small_pool=2, issued=100),
                          {"quote_share": 0.05, "small_pool_share": 0.02, "comparable": True})

@@ -14,6 +14,7 @@ import collections
 import datetime as dt
 import json
 import math
+import os
 import pathlib
 import subprocess
 import sys
@@ -42,17 +43,34 @@ def _refuse(*a, **k):
     raise MissingInput("an input is not cached")
 
 
+DUMMY_ENV = ("SEC_UA", "ALPACA_KEY_ID", "ALPACA_SECRET_KEY")  # the blind job has no secrets: a miss must reach urlopen
+
+
 class offline:
-    """Close the network: every urllib request raises MissingInput (cached inputs are read without it)."""
+    """Close the network: every urllib request raises MissingInput (cached inputs are read without it). Without the
+    secrets (the blind job), placeholder values let a cache miss reach the closed network and surface as
+    MissingInput instead of a missing-key error."""
 
     def __enter__(self):
         self.saved = urllib.request.urlopen
+        self.env = {k: os.environ.get(k) for k in DUMMY_ENV}
+        for k in DUMMY_ENV:
+            if not os.environ.get(k):
+                os.environ[k] = "offline"
         urllib.request.urlopen = _refuse
         return self
 
     def __exit__(self, *exc):
         urllib.request.urlopen = self.saved
+        for k, v in self.env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
         return False
+
+
+FINGERPRINT = [None]
 
 
 def prepare(today=None):
@@ -81,18 +99,23 @@ def candidates(fired, inp, renamed):
     return out
 
 
-def prefetch(deadline_min):
-    t0 = time.time()
+def prefetch(deadline_min, require_complete=False):
+    """Fetch and cache the inputs; counts only. With require_complete (the last prefetch job) it fails unless every
+    wanted quote was read and no index page is missing, so the blind job never starts on incomplete inputs."""
+    t0 = time.monotonic()
     inp, got = prepare()
+    FINGERPRINT[0] = ed.fingerprint(inp)
     wanted = candidates(got["firings"], inp, got["renamed"])
     read = 0
     for sym, at in wanted:
-        if time.time() - t0 > deadline_min * 60:
+        if time.monotonic() - t0 >= deadline_min * 60:
             break
         alpaca.quote_full(sym, at)
         read += 1
-    print(f"prefetch: {len(wanted)} quotes wanted, {read} read")
-    return 0
+    missing = getattr(inp.releases, "missing", 0)
+    print(f"prefetch: {len(wanted)} quotes wanted, {read} read, {missing} index pages missing; "
+          f"inputs {FINGERPRINT[0]}")
+    return 4 if require_complete and (read < len(wanted) or missing) else 0
 
 
 def check_r_s(r_s, path=K_REPORT):
@@ -143,6 +166,7 @@ def _counts(fired, tickets, refusals, small, idx, n_days):
 def blind_report():
     """The blind run: everything in memory; returns only the whitelisted report."""
     inp, got = prepare()
+    FINGERPRINT[0] = ed.fingerprint(inp)
     tickets, refusals, kept, pools, small, K, r_s, w_s, blocks10, idx, days = _run(inp, got)
     if not kept:
         raise ValueError("no ticket kept")
@@ -154,6 +178,7 @@ def blind_report():
 def verdict_report():
     """The single verdict run (phase D; never run in phase C): check 1, comparability, the five gates, the outcome."""
     inp, got = prepare()
+    FINGERPRINT[0] = ed.fingerprint(inp)
     tickets, refusals, kept, pools, small, K, r_s, w_s, blocks10, idx, days = _run(inp, got)
     x = [(t["g"] - t["m"]) - t["c"] for t in kept]
     x_stress = [(t["g"] - t["m"]) - t["cost_r_stress"] for t in kept]
@@ -170,7 +195,8 @@ def verdict_report():
         gates = {"1": g1["pass"], "2": st.above_950th(A, A_k), "3": st.gate3(x, blocks10)["pass"],
                  "4": st.gate4(x, [t["signal"] for t in kept])["pass"], "5": st.gate1(x_stress, b, blocks10)["pass"]}
         out.update(A=A, p=st.p_value(A, A_k), gates=gates, t10=g1["t10"], t5=g1["t5"])
-    out["outcome"] = st.outcome(confirm, comp["comparable"], gates)
+    out["outcome"] = st.outcome(confirm, comp["comparable"], gates, b=b)
+    out["inputs"] = FINGERPRINT[0]
     return out
 
 
@@ -182,6 +208,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="The ensemble's runs (inputs, blind, verdict)")
     ap.add_argument("--prefetch", action="store_true")
     ap.add_argument("--deadline-min", type=int, default=300)
+    ap.add_argument("--require-complete", action="store_true")
     ap.add_argument("--blind", action="store_true")
     ap.add_argument("--verdict", action="store_true")
     ap.add_argument("--blind-commit", default="")
@@ -190,7 +217,7 @@ def main(argv=None):
     common.install_excepthooks()
     try:
         if a.prefetch:
-            return prefetch(a.deadline_min)
+            return prefetch(a.deadline_min, a.require_complete)
         if a.verdict:
             if not (a.owner_go_ahead and a.blind_commit and a.blind_commit == head()):
                 print("verdict refused: it needs --blind-commit <the checked-out commit of the blind run> and "
@@ -206,7 +233,7 @@ def main(argv=None):
             with offline():
                 rep = blind_report()
             blind.write(rep, REPORT_PATH)
-            print(f"blind report written: {REPORT_PATH}")
+            print(f"blind report written: {REPORT_PATH}; inputs {FINGERPRINT[0]}")
             return 0
         ap.print_usage()
         return 2

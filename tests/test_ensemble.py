@@ -61,7 +61,8 @@ class Blind(unittest.TestCase):
         self.assertEqual(leaks.logs, [])
         self.assertEqual(leaks.summaries, [])
         printed = leaks.out.getvalue().strip().splitlines()
-        self.assertEqual(printed, [f"blind report written: {en.REPORT_PATH}"])  # no number on stdout or stderr
+        self.assertEqual(len(printed), 1)  # no result on stdout or stderr: the path and the input fingerprint only
+        self.assertRegex(printed[0], rf"^blind report written: {en.REPORT_PATH}; inputs [0-9a-f]{{16}}$")
 
     def test_blind_report_content_is_the_whitelist(self):
         with tempfile.TemporaryDirectory() as d, synthetic_run():
@@ -94,6 +95,35 @@ class Blind(unittest.TestCase):
         self.assertNotIn("0.0123456", buf.getvalue())
 
 
+class CacheMissInCI(unittest.TestCase):
+    def test_a_cache_miss_without_keys_is_a_missing_input(self):
+        # review M3: in the blind job there are no keys; a quote missing from the cache must surface as MissingInput
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(en.alpaca, "CACHE", pathlib.Path(d)), \
+                mock.patch.dict(os.environ, {"ALPACA_KEY_ID": "", "ALPACA_SECRET_KEY": "", "SEC_UA": ""}), \
+                mock.patch.object(en.alpaca, "GAP", 0):
+            with en.offline():
+                with self.assertRaises(en.MissingInput):
+                    en.alpaca.quote_full("AAA", "2026-01-05T20:55:00Z")
+
+
+class Fingerprint(unittest.TestCase):
+    def test_same_inputs_same_fingerprint(self):
+        a, _ = scenario()
+        b, _ = scenario()
+        self.assertEqual(ed.fingerprint(a), ed.fingerprint(b))
+        b.series["P00"]["raw_close"][5] += 0.01
+        self.assertNotEqual(ed.fingerprint(a), ed.fingerprint(b))
+
+    def test_insider_quarters_pinned(self):
+        import datetime as dt
+        asked = []
+        with mock.patch.object(ed.pi, "quarter_zip", side_effect=lambda y, q: asked.append((y, q))), \
+                mock.patch.object(ed.alpaca, "calendar", side_effect=RuntimeError("stop here")):
+            with self.assertRaises(RuntimeError):
+                ed.load(dt.date(2027, 6, 1))
+        self.assertEqual(max(asked), ed.LAST_QUARTER)  # 2026Q1: the insider data sets end there (6.1)
+
+
 class Prefetch(unittest.TestCase):
     def test_prefetch_is_outcome_free(self):
         inp, got = scenario()
@@ -114,12 +144,21 @@ class Prefetch(unittest.TestCase):
         with mock.patch.object(en, "prepare", return_value=(inp, got)), \
                 mock.patch.object(en.alpaca, "quote_full", return_value=GOOD_QUOTE), contextlib.redirect_stdout(buf):
             self.assertEqual(en.main(["--prefetch", "--deadline-min", "1"]), 0)
-        self.assertRegex(buf.getvalue().strip(), r"^prefetch: \d+ quotes wanted, \d+ read$")
+        self.assertRegex(buf.getvalue().strip(), r"^prefetch: \d+ quotes wanted, \d+ read, 0 index pages missing; "
+                                                  r"inputs [0-9a-f]{16}$")
+
+    def test_require_complete(self):
+        inp, got = scenario()
+        with mock.patch.object(en, "prepare", return_value=(inp, got)), \
+                mock.patch.object(en.alpaca, "quote_full", return_value=GOOD_QUOTE), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(en.main(["--prefetch", "--deadline-min", "0", "--require-complete"]), 4)
+            self.assertEqual(en.main(["--prefetch", "--deadline-min", "60", "--require-complete"]), 0)
 
 
 class Verdict(unittest.TestCase):
     def test_verdict_refuses_without_its_flags(self):
-        with mock.patch.object(en, "head", return_value="abc123"), mock.patch.object(en, "blind_report") as run:
+        with mock.patch.object(en, "head", return_value="abc123"), mock.patch.object(en, "verdict_report") as run:
             self.assertEqual(en.main(["--verdict"]), 2)
             self.assertEqual(en.main(["--verdict", "--blind-commit", "abc123"]), 2)
             self.assertEqual(en.main(["--verdict", "--blind-commit", "zzz", "--owner-go-ahead"]), 2)
@@ -138,6 +177,8 @@ class Workflow(unittest.TestCase):
         self.assertNotIn("--verdict", wf)
         self.assertIn("--prefetch", wf)
         self.assertIn("--blind", wf)
+        self.assertIn("--require-complete", wf)  # the last prefetch fails unless every input is cached
+        self.assertGreaterEqual(wf.count("fail-on-cache-miss: true"), 4)  # prefetch 2-4 and the blind job
 
 
 if __name__ == "__main__":

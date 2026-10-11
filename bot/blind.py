@@ -48,7 +48,7 @@ def report(x, c, filled, signal_of, blocks10, counts, K, r_s, w_s):
            "cost_r_percentiles": {s: percentiles(v) for s, v in sorted(costs.items())},
            "n": n, "se_t10": s10, "se_t5": s5, "sd_c": se_max * math.sqrt(n), "design_effect": st.design_effect(x, se_max),
            "largest_abs_deviation": max(abs(v - xb) for v in x), "mu_min": mu, "K": K, "r_s": r_s, "w_s": w_s,
-           "b_R": b, "check_1": check, "continue": check and comp["comparable"]}
+           "b_R": b, "check_1": check, "continue": check and comp["comparable"] and b <= st.B_DATA_MAX}
     return check_whitelist(rep)
 
 

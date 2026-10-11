@@ -4,7 +4,7 @@ Pure functions over arrays; they print nothing. Until the verdict run (phase D) 
 import math
 
 CRIT_T10, CRIT_T5 = 2.262, 2.776  # Student's t, one-sided 2.5%, 9 and 4 degrees of freedom
-MU_CONST, F, LIMIT_R = 4.1, 0.0041, 0.10
+MU_CONST, F, LIMIT_R, B_DATA_MAX = 4.1, 0.0041, 0.10, 0.03
 LABELS = {"GO": "עבר מבחן היסטורי, במעקב קדימה", "NO-GO": "ללא יתרון מוכח"}
 
 
@@ -106,9 +106,11 @@ def gate4(x, signals_of):
     return {"pass": without_top and all(each.values()), "without_top_1pct": without_top, "each_signal_removed": each}
 
 
-def outcome(confirmable, comparable, gates):
-    """6.4 and 6.6: NO-GO when check 1 or comparability fails (no return statistic is computed then); otherwise GO
-    only if every gate holds."""
+def outcome(confirmable, comparable, gates, b=None):
+    """6.4 and 6.6: NO-GO ("data") when b > 0.03 R; NO-GO when check 1 or comparability fails (no return statistic
+    is computed then); otherwise GO only if every gate holds."""
+    if b is not None and b > B_DATA_MAX:
+        return "NO-GO (data)"
     if not confirmable:
         return "NO-GO (not confirmable)"
     if not comparable:

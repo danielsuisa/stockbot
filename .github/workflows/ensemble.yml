@@ -1,9 +1,9 @@
 name: Ensemble blind run (spec 6.4)
 
-# Started ONLY by a push to the run branch ensemble-run-blind, after the owner's go-ahead (spec 1.1). Three chained
+# Started ONLY by a push to the run branch ensemble-run-blind, after the owner's go-ahead (spec 1.1). Four chained
 # --prefetch jobs fetch and cache INPUTS only (bars, filings, index pages, quotes); the --blind job restores the input
 # cache, closes the network, computes everything in memory and writes one file, the blind report, which is the only
-# artifact. No result is cached, logged or uploaded. The verdict run (phase D) is not in this workflow.
+# artifact; the last prefetch fails unless every input is cached. No result is cached, logged or uploaded. The verdict run (phase D) is not in this workflow.
 on:
   push:
     branches: [ensemble-run-blind]
@@ -60,6 +60,7 @@ jobs:
         with:
           path: .cache
           key: ensemble-inputs-${{ github.run_id }}-1
+          fail-on-cache-miss: true
       - name: Fetch inputs (counts only)
         run: python -m bot.ensemble --prefetch --deadline-min 290
         env:
@@ -89,6 +90,7 @@ jobs:
         with:
           path: .cache
           key: ensemble-inputs-${{ github.run_id }}-2
+          fail-on-cache-miss: true
       - name: Fetch inputs (counts only)
         run: python -m bot.ensemble --prefetch --deadline-min 290
         env:
@@ -102,7 +104,7 @@ jobs:
           path: .cache
           key: ensemble-inputs-${{ github.run_id }}-3
 
-  blind:
+  prefetch4:
     needs: prefetch3
     runs-on: ubuntu-latest
     timeout-minutes: 340
@@ -118,6 +120,36 @@ jobs:
         with:
           path: .cache
           key: ensemble-inputs-${{ github.run_id }}-3
+          fail-on-cache-miss: true
+      - name: Fetch the rest of the inputs; fail unless every input is cached
+        run: python -m bot.ensemble --prefetch --deadline-min 290 --require-complete
+        env:
+          SEC_UA: ${{ secrets.SEC_UA }}
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Save the input cache
+        uses: actions/cache/save@v4
+        with:
+          path: .cache
+          key: ensemble-inputs-${{ github.run_id }}-4
+
+  blind:
+    needs: prefetch4
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Restore the input cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache
+          key: ensemble-inputs-${{ github.run_id }}-4
+          fail-on-cache-miss: true
       - name: The blind run (network closed; writes the report only)
         run: python -m bot.ensemble --blind
       - name: Upload the blind report (the only artifact)

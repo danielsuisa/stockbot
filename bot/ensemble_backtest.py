@@ -23,12 +23,13 @@ def _valid(mode):
     return 1 if mode == "open" else levels.BREAKOUT_DAYS
 
 
-def rows_after(s, day):
+def rows_after(s, day, limit=None):
     """The bars after D in D's segment, in D's raw money (section 2: the split-adjusted series rescaled by
-    raw close(D) / split-adjusted close(D)) -> [(date, o, h, l, c, 0)]. A bad-price break ends them (C15)."""
+    raw close(D) / split-adjusted close(D)) -> [(date, o, h, l, c, 0)]. A bad-price break ends them (C15). `limit`
+    caps the rows (a ticket never needs more than its validity + H + 1)."""
     i = pe._i(s, day)
     scale, seg, out = s["raw_close"][i] / s["close"][i], s["segment"][i], []
-    for j in range(i + 1, len(s["dates"])):
+    for j in range(i + 1, len(s["dates"]) if limit is None else min(len(s["dates"]), i + 1 + limit)):
         if s["segment"][j] != seg:
             break
         f = s["close"][j] / s["raw_close"][j] * scale
@@ -87,7 +88,7 @@ def issue(fired, inp, renamed, quote):
         if not g["ok"]:
             refuse(sig, g["reason"])
             continue
-        res = run_ticket(g, rows_after(s, d), g["guard_spread"],
+        res = run_ticket(g, rows_after(s, d, _valid(mode) + horizon + 1), g["guard_spread"],
                          lambda day, b=bars_of: levels.spread(quote(b, levels.entry_time(day, inp.cal))))
         tickets.append({"day": d, "signal": sig, "symbol": sym, "bars_of": bars_of, "mode": mode, "horizon": horizon,
                         **res})
@@ -126,7 +127,7 @@ def pool_results(day, decile, mode, horizon, members, inp, renamed):
     for sym in members:
         s = inp.series[renamed.get((day, sym), sym)]
         t = levels.plan(sym, plan_rows(s, day), day, mode=mode, horizon=horizon, risk=RISK)
-        out.append(run_ticket(t, rows_after(s, day), 0.0)["gross_r"])
+        out.append(run_ticket(t, rows_after(s, day, _valid(mode) + horizon + 1), 0.0)["gross_r"])
     return out
 
 
@@ -179,4 +180,5 @@ def compare(tickets, inp, renamed, day_members, fired_by_day):
             small += 1
             continue
         kept.append({**t, "pool": key, "m": m(pools[key]), "g": t["gross_r"], "c": t["cost_r"]})
+    kept.sort(key=lambda t: (t["day"], t["symbol"], t["signal"]))  # C25: the draws' order
     return kept, {k: v for k, v in pools.items() if v is not None}, small
