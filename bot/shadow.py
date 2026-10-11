@@ -6,7 +6,6 @@ tally. No order is sent and no money is used; the method has not passed a pre-re
     python -m bot.shadow --dry     # print the messages, write nothing"""
 import argparse
 import collections
-import traceback
 import datetime as dt
 import json
 import os
@@ -352,7 +351,7 @@ def main(argv=None):
         try:
             text = live(now_ny(), hours, sessions)
         except Exception as e:  # the journal part above is done; the live part just says it is unavailable
-            traceback.print_exc()
+            common.trace()
             text = f"⚠️ התצוגה החיה של היום לא זמינה כרגע: {code(str(e)[:120])}"
         if a.dry:
             print(text)

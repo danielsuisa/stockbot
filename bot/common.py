@@ -7,10 +7,12 @@ import html
 import http.client
 import json
 import os
+import pathlib
 import re
 import sys
 import threading
 import time
+import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -204,6 +206,31 @@ def send(text, chat_id=None, signal=False, source=None):
                 raise
             tg("sendMessage", chat_id=chat, text=html.unescape(re.sub(r"<[^>]+>", "", part)))  # bad HTML -> plain
         _sent[0] = time.monotonic()
+
+
+def trace(e=None):
+    """Print an exception for the public Actions log: its type, its frames (file, line, function) and, for an HTTP
+    error, the integer status -- never its message, arguments, URL, headers or body, which can quote a message's
+    text or a private number (spec section 10). Chained causes are named by type only. Without `e`: the exception
+    being handled."""
+    e = e if e is not None else sys.exc_info()[1]
+    if e is None:
+        return
+    lines, seen, cur = [], set(), e
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        status = f" (HTTP {cur.code})" if isinstance(cur, urllib.error.HTTPError) and isinstance(cur.code, int) else ""
+        lines.append(f"{'caused by ' if lines else ''}{type(cur).__module__}.{type(cur).__qualname__}{status}")
+        for fr in traceback.extract_tb(cur.__traceback__):
+            lines.append(f"  at {pathlib.Path(fr.filename).name}:{fr.lineno} in {fr.name}")
+        cur = cur.__cause__ or cur.__context__
+    print("\n".join(lines), file=sys.stderr, flush=True)
+
+
+def install_excepthooks():
+    """Uncaught exceptions (main thread and other threads) go through `trace` too."""
+    sys.excepthook = lambda t, v, tb: trace(v)
+    threading.excepthook = lambda args: trace(args.exc_value)
 
 
 def log(event, **fields):

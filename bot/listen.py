@@ -8,7 +8,6 @@ import re
 import subprocess
 import sys
 import time
-import traceback
 import urllib.error
 from pathlib import Path
 
@@ -86,7 +85,7 @@ def reports(text, loose=False):
             common.send(check.report(t), signal=True)
         except Exception as e:  # one failed ticker must not block the others
             failed += 1
-            traceback.print_exc()
+            common.trace()
             common.send(f"⚠️ הדוח על {code(t)} נכשל. {common.failure(e)}")
     return failed
 
@@ -173,7 +172,7 @@ def ticket_cmd(rest):
         try:
             text = ticket_command.message(ticket_command.build(sym.replace("-", ".")))
         except Exception as e:  # noqa: BLE001 - missing keys, network, bad data: never out of the command
-            traceback.print_exc()
+            common.trace()
             text = f"לא הצלחתי להכין כרטיס ל-{code(sym)}: תקלה בקריאת הנתונים ({code(type(e).__name__)})."
         common.send(text, source=ticket_command.SOURCE)
     if unknown:
@@ -205,7 +204,7 @@ def squeeze_cmd(rest):
     try:
         common.send(squeeze_live.ticker_report(known[0]), signal=True, source=squeeze_live.SOURCE)
     except Exception as e:  # a failed lookup must be answered, not swallowed
-        traceback.print_exc()
+        common.trace()
         common.send(f"⚠️ בדיקת הסקוויז של {code(known[0])} נכשלה. נסו שוב מאוחר יותר.", source=squeeze_live.SOURCE)
         return 1
     return 0
@@ -277,7 +276,7 @@ def answer(ups):
             failed += handle(m.get("text") or m.get("caption") or "")
         except (Exception, SystemExit) as e:  # e.g. SEC down: tell the owner, keep going
             failed += 1
-            traceback.print_exc()
+            common.trace()
             common.send(f"⚠️ לא הצלחתי לטפל בהודעה ({code(type(e).__name__)}): {common.failure(e)}")
     return failed
 
@@ -357,7 +356,7 @@ def serve(seconds=None, stop_file=None, offset=None):
         try:  # the timed runs (bot/clock.py); a clock problem must never stop the replies
             clock.tick(done)
         except Exception:
-            traceback.print_exc()
+            common.trace()
         try:
             ups = updates(timeout=max(0, min(POLL, int(left))), allowed_updates=["message"],
                           **({} if offset is None else {"offset": offset}))
@@ -386,6 +385,7 @@ def serve(seconds=None, stop_file=None, offset=None):
 
 
 def main(argv=None):
+    common.install_excepthooks()  # an uncaught exception prints its type and frames only (spec section 10)
     argv = sys.argv[1:] if argv is None else argv
     if not (common.env("TG_TOKEN") and common.env("TG_CHAT_ID")):
         sys.exit("TG_TOKEN / TG_CHAT_ID secret is missing or misnamed")
