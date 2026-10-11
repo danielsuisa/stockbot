@@ -95,6 +95,33 @@ class Blind(unittest.TestCase):
         self.assertNotIn("0.0123456", buf.getvalue())
 
 
+class RsCheck(unittest.TestCase):
+    def write_report(self, d, r):
+        import json
+        path = pathlib.Path(d, "k.json")
+        path.write_text(json.dumps({"k": {"k_counts": {s: {"r_s": v} for s, v in r.items()}}}), "utf-8")
+        return path
+
+    def test_within_one_percent_of_max_1_r(self):
+        report = {"S1": 0.439, "S2": 0.759, "S3": 1.630, "S4": 0.671}
+        with tempfile.TemporaryDirectory() as d:
+            path = self.write_report(d, report)
+            en.check_r_s({**report, "S1": 0.30, "S2": 0.99}, path)  # max(1, r) = 1 on both sides: no difference
+            en.check_r_s({**report, "S3": 1.630 * 1.0099}, path)  # 0.99% above
+            en.check_r_s({**report, "S3": 1.630 * 0.9901}, path)
+            with self.assertRaises(en.RsMismatch):
+                en.check_r_s({**report, "S3": 1.630 * 1.0101}, path)  # 1.01% above
+            with self.assertRaises(en.RsMismatch):
+                en.check_r_s({**report, "S4": 1.02}, path)  # max(1, r) moves from 1 to 1.02
+
+    def test_mismatch_names_no_value(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self.write_report(d, {"S1": 1.0, "S2": 1.0, "S3": 1.630, "S4": 1.0})
+            with self.assertRaises(en.RsMismatch) as cm:
+                en.check_r_s({"S1": 1.0, "S2": 1.0, "S3": 2.0, "S4": 1.0}, path)
+            self.assertNotIn("1.63", str(cm.exception))
+
+
 class CacheMissInCI(unittest.TestCase):
     def test_a_cache_miss_without_keys_is_a_missing_input(self):
         # review M3: in the blind job there are no keys; a quote missing from the cache must surface as MissingInput

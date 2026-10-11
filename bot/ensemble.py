@@ -118,11 +118,17 @@ def prefetch(deadline_min, require_complete=False):
     return 4 if require_complete and (read < len(wanted) or missing) else 0
 
 
+RS_TOLERANCE = 0.01
+
+
 def check_r_s(r_s, path=K_REPORT):
-    """The run's r_s must equal the K report's (spec 4.2, C6)."""
+    """Spec 4.2: for each signal, max(1, r_s) of the run within 1% (relative) of the K report's max(1, r_s) --
+    bars fetched again can move a firing for a benign reason. The run's own r_s and K are the ones used."""
     want = json.loads(pathlib.Path(path).read_text("utf-8"))["k"]["k_counts"]
-    if any(not math.isclose(r_s[s], want[s]["r_s"], rel_tol=1e-9, abs_tol=1e-12) for s in signals.SIGNALS):
-        raise RsMismatch("r_s differ from the K report")
+    for s in signals.SIGNALS:
+        run, rep = max(1.0, r_s[s]), max(1.0, want[s]["r_s"])
+        if abs(run - rep) > RS_TOLERANCE * rep:
+            raise RsMismatch("max(1, r_s) moved more than 1% from the K report")
 
 
 def _run(inp, got):
