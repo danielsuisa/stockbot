@@ -79,7 +79,10 @@ this spec on returns, real-fill bookkeeping (a later `/fill` command; until then
   another security's bars.
 - **Survivorship is not symmetric.** S4 buys stocks that have just fallen hard and S1 buys where insiders buy into
   weakness; such stocks are delisted more often than a random stock of the same liquidity. Missing delisted names
-  therefore flatter the signals more than the pool. Section 6.4 charges for it.
+  therefore flatter the signals more than the pool. Section 6.4 charges for it. Measured in phase C (counts only,
+  `docs/backtest/ensemble-phaseC-measurements-2026-10-11.md`): in the 12 months before a symbol's bars end, S4 and
+  S1 fire less often than on an average stock (r 0.671 and 0.439), S2 too (0.759), and only S3 fires more (1.630).
+  The rule for b is unchanged.
 
 ## 3. Levels engine (`bot/levels.py`, pure functions; one code path for backtest, shadow and live)
 
@@ -186,7 +189,11 @@ choices C1-C25), before anything ran on market data in phase C.
   symbol; the universe applies the rename rule; S1's issuer is the CIK and insider prices are matched by CIK.
 - **Bars end for good (C3).** At L, the date of a symbol's last raw Alpaca bar through 2026-03-31, when L <
   2025-04-01 and on the first session after L the rename rule does not recover it (a renamed symbol has not ended).
-  A bad-price break is not an end. A symbol that ended before 2017-01-03 contributes nothing.
+  A bad-price break is not an end. A symbol that ended before 2017-01-03 contributes nothing. A symbol has not
+  ended when its CIK's one other symbol has a bar on the first session after L within a factor of 2 of the CIK's
+  latest market price, also when that other symbol is already in the universe (the company goes on under it). This
+  was fixed in the code of `18ff0b7`, before the measurement run; the run's saved output does not hold the number of
+  symbols it kept out of the ended set, and it was not re-run for it.
 - **r_s (C4).** The window is the sessions in (L - 365 days, L], clipped to 2017-01-03 .. 2026-03-31. A universe
   stock-month is a (symbol, calendar month) with the symbol in the universe on at least one session of that month;
   in the window, the months it touches with such a session inside the window. r_s is computed both per stock-month
