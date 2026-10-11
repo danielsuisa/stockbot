@@ -9,7 +9,6 @@ import re
 import statistics
 import sys
 import time
-import traceback
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -859,7 +858,7 @@ def run(a):
         try:
             res = scan_day(day, state, today, stats, rescan=day in rescans)
         except Exception as e:  # e.g. SEC outage: this day is retried next run and must not block the later days
-            traceback.print_exc()
+            common.trace()
             common.log("day_failed", day=day, error=f"{type(e).__name__}: {e}")
             failed.append(day)
             continue
@@ -955,7 +954,7 @@ def main(argv=None):
         try:
             alarm(reason)
         except BaseException:
-            traceback.print_exc()
+            common.trace()
         raise
 
 

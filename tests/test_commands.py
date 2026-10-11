@@ -204,7 +204,7 @@ class Commands(unittest.TestCase):
     def test_help_and_menu(self):
         names = [c for c, _ in listen.COMMANDS]
         self.assertEqual(names, ["check", "scan", "status", "stats", "journal", "verify", "health", "squeeze", "shadow",
-                                 "ticket", "help"])
+                                 "ticket", "equity", "help"])
         self.assertTrue(all(1 <= len(d) <= 256 for _, d in listen.COMMANDS))
         for c in names:  # /help itself is the menu entry and the HELP text's own title, so it is not listed inside
             if c != "help":
@@ -264,6 +264,87 @@ class Commands(unittest.TestCase):
         self.assertIn(code("AAPL"), sent[0])
         self.assertEqual(sent[1], f"🎫 כרטיס ל-{code('MSFT')}")
 
+    # ---------- /equity (phase B.1; synthetic E = 31,337.17) ----------
+    def run_equity(self, text, **patches):
+        from bot import equity
+        sent = []
+        with (mock.patch.object(common, "send", side_effect=lambda t, **k: sent.append(t)),
+              mock.patch.object(common, "tg"),
+              mock.patch.object(equity, "store", **patches.get("store", {"return_value": True})) as store,
+              mock.patch.object(equity, "load", **patches.get("load", {"return_value": None}))):
+            self.assertEqual(listen.handle(text), 0)
+        for t in sent:
+            msgrules.check(self, t)
+        return sent, store
+
+    def test_equity_set(self):
+        sent, store = self.run_equity("/equity 31,337.17")
+        store.assert_called_once_with(31337.17)
+        self.assertIn(code(common.price(31337.17)), sent[0])
+
+    def test_equity_show(self):
+        sent, store = self.run_equity("/equity", load={"return_value": (31337.17, "2026-10-01")})
+        store.assert_not_called()
+        self.assertIn("1.10.2026", sent[0])  # the date E was set
+        sent, _ = self.run_equity("/equity")
+        self.assertIn("לא נקבע", sent[0])
+
+    def test_equity_usage_does_not_echo(self):
+        for text in ("/equity abc123x", "/equity 25000 30000", "/equity 1e5", "/equity 77"):  # 77: below the $100 bound
+            sent, store = self.run_equity(text)
+            store.assert_not_called()
+            self.assertNotIn(text.split(maxsplit=1)[1], sent[0])
+            self.assertIn("/equity 25000", sent[0])
+
+    def test_equity_needs_a_private_chat(self):
+        sent, _ = self.run_equity("/equity 31337.17", store={"return_value": False})
+        self.assertIn("צ'אט פרטי", sent[0])
+        self.assertNotIn("31", sent[0])
+
+    def test_equity_store_failure_is_answered(self):
+        from bot import equity
+        sent, _ = self.run_equity("/equity 31337.17", store={"side_effect": equity.EquityStoreError("store unavailable")})
+        self.assertIn("לא הצלחתי", sent[0])
+
+    def test_equity_from_another_chat_is_ignored(self):
+        from bot import equity
+        calls, sent = [], []
+        with (mock.patch.object(common, "tg", side_effect=lambda m, **p: calls.append(m) or []),
+              mock.patch.object(common, "send", side_effect=lambda t, **k: sent.append(t)),
+              mock.patch.object(equity, "store") as store, mock.patch.object(equity, "load") as load,
+              mock.patch.dict("os.environ", {"TG_CHAT_ID": "7"})):
+            listen.answer([{"update_id": 5, "message": {"chat": {"id": 999}, "text": "/equity 31337.17"}}])
+        self.assertEqual(calls, ["getUpdates"])  # the ACK only: no getChat, no sendMessage, no pin
+        self.assertEqual(sent, [])
+        store.assert_not_called()
+        load.assert_not_called()
+
+    def test_ticket_loads_equity_once_and_passes_it(self):
+        from bot import equity, ticket_command
+        calls = []
+        with (mock.patch.object(common, "tickers", return_value={"AAPL": (1, "A"), "MSFT": (2, "M")}),
+              mock.patch.object(common, "send"), mock.patch.object(common, "tg"),
+              mock.patch.object(equity, "load", return_value=(31337.17, "2026-10-01")) as load,
+              mock.patch.object(ticket_command, "build", side_effect=lambda s, sizing=None: calls.append(sizing) or {}),
+              mock.patch.object(ticket_command, "message", return_value="🎫 כרטיס")):
+            listen.handle("/ticket aapl msft")
+        load.assert_called_once()
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0]["E"], 31337.17)
+        self.assertEqual(calls[0]["date"], "2026-10-01")
+
+    def test_ticket_falls_back_in_a_non_private_chat(self):
+        from bot import ticket_command
+        from tests.test_equity import FakeTelegram
+        calls = []
+        with (mock.patch.object(common, "tickers", return_value={"AAPL": (1, "A")}),
+              mock.patch.object(common, "send"), mock.patch.object(common, "tg", side_effect=FakeTelegram("group")),
+              mock.patch.object(ticket_command, "build", side_effect=lambda s, sizing=None: calls.append(sizing) or {}),
+              mock.patch.object(ticket_command, "message", return_value="🎫 כרטיס"),
+              mock.patch.dict("os.environ", {"TG_CHAT_ID": "7"})):
+            listen.handle("/ticket aapl")
+        self.assertEqual(calls, [None])  # the fixed TICKET_RISK_USD
+
     def test_ticket_dry_run_through_the_listener(self):
         # tests/listen_dry_run.py feeds one fake update to listen.answer (the listener's own path) and prints
         from bot import ticket_command
@@ -271,8 +352,8 @@ class Commands(unittest.TestCase):
         with (mock.patch.object(common, "tickers", return_value={"AAPL": (1, "Apple"), "BRK-B": (2, "Berkshire")}),
               mock.patch.object(ticket_command, "build", side_effect=lambda s: {"symbol": s}),
               mock.patch.object(ticket_command, "message", side_effect=lambda t: f"🎫 כרטיס ל-{code(t['symbol'])}"),
-              mock.patch("builtins.print") as out):
-            self.assertEqual(listen_dry_run.main("/ticket AAPL BRK.B ZZZZZ"), 0)
+              mock.patch.dict("os.environ", {"TG_TOKEN": ""}), mock.patch("builtins.print") as out):
+            self.assertEqual(listen_dry_run.main("/ticket AAPL BRK.B ZZZZZ"), 0)  # refused with a token set
         printed = "\n".join(str(c.args[0]) for c in out.call_args_list if c.args)
         for part in (code("AAPL"), code("BRK.B"), code("ZZZZZ"), "answers: 3, failed: 0"):
             self.assertIn(part, printed)

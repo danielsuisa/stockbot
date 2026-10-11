@@ -15,7 +15,6 @@ import datetime as dt
 import json
 import os
 import statistics
-import traceback
 from pathlib import Path
 
 from bot import common, market, movers, screen, sessions, shorts, squeeze
@@ -350,7 +349,7 @@ def main(argv=None):
     try:
         res = build(today)
     except Exception as e:  # the owner hears about it once per session (every time on a manual run)
-        traceback.print_exc()
+        common.trace()
         if not a.dry:
             if manual or sessions.first(state, f"build:{session}", today):
                 common.send(f"⚠️ רשימת הסקוויז לא רצה: {code(str(e)[:120])}", source=SOURCE)
@@ -360,7 +359,7 @@ def main(argv=None):
     try:
         filled = followup(j, today)
     except Exception:  # a follow-up problem must not hold back the list; it is retried next run
-        traceback.print_exc()
+        common.trace()
         filled = 0
     scr, list_text, added, static = None, "", 0, None
     kind = "pre" if session == "pre" else "day" if manual or session in ("regular", "post") else None
@@ -374,7 +373,7 @@ def main(argv=None):
             else:
                 scr = screen.screen(res["short"], screen.connect())
         except Exception as e:
-            traceback.print_exc()
+            common.trace()
             if manual or sessions.first(state, f"screen:{session}", today):
                 list_text = f"⚠️ רשימת הסקוויז לא רצה: {code(str(e)[:120])}. אנסה שוב בריצה הבאה."
     if scr:

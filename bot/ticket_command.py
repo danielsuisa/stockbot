@@ -7,7 +7,7 @@ is computed here: the simulation in `levels` is never called from this module.""
 import datetime as dt
 import sys
 
-from bot import alpaca, common, levels
+from bot import alpaca, common, equity, levels
 from bot.common import code, il_date, price
 
 LIVE_LAG_MIN = 15  # minutes: the free Alpaca plan gives SIP data only after this
@@ -47,9 +47,25 @@ def sessions_after(day, cal, n):
     return [d for d in sorted(cal) if d > day][:n]
 
 
-def build(symbol, now=None):
+def sizing_info(sizing, t):
+    """What the message needs from section 10's sizing (E, the date it was set, p after its cap, the notes, the risk
+    p x E, whether the 20% position cap cut the size, the open-risk positions); None without E."""
+    if not sizing:
+        return None
+    p, cut = levels.p_used(sizing["p_raw"])
+    capped = False
+    if t.get("R") and t.get("planned_entry"):
+        capped = levels.equity_size(sizing["E"], p, t["R"], t["planned_entry"])["position_capped"]
+    return {"E": sizing["E"], "date": sizing["date"], "p": p, "p_raw": sizing["p_raw"], "p_capped": cut,
+            "p_note": sizing.get("p_note"), "risk": p * sizing["E"], "position_capped": capped,
+            "open_positions": levels.open_positions(p)}
+
+
+def build(symbol, now=None, sizing=None):
     """The guarded ticket for `symbol` on the latest closed session, with its valid sessions, the time-exit date of a
-    fill on the first of them and the partial universe mark -> dict ("ok" False with "reason" on a refusal)."""
+    fill on the first of them and the partial universe mark -> dict ("ok" False with "reason" on a refusal).
+    `sizing` ({"E", "date", "p_raw", "p_note"}, from the listener's /equity store) sizes it by section 10; without it
+    the risk is TICKET_RISK_USD. The dry run never passes it."""
     now = now or dt.datetime.now(alpaca.NY)
     today = now.date()
     cal = alpaca.calendar((today - dt.timedelta(HISTORY_DAYS)).isoformat(),
@@ -57,12 +73,17 @@ def build(symbol, now=None):
     day = signal_day(now, cal)
     start = (dt.date.fromisoformat(day) - dt.timedelta(HISTORY_DAYS)).isoformat()
     bars = alpaca.daily([symbol], start, day).get(symbol) or []
-    t = levels.plan(symbol, bars, day, risk=common.env("TICKET_RISK_USD", 100.0))
+    risk = common.env("TICKET_RISK_USD", 100.0)
+    if sizing:
+        risk = levels.p_used(sizing["p_raw"])[0] * sizing["E"]
+    cap = levels.POSITION_CAP * sizing["E"] if sizing else None  # one position is at most 20% of the equity
+    t = levels.plan(symbol, bars, day, risk=risk, max_position_value=cap)
+    info = sizing_info(sizing, t)
     if t.get("reason") == "no bar on the signal day":  # a fetch before D's bar existed must not stay cached
         (alpaca.CACHE / "1d" / f"{start}_{day}" / f"{symbol}.json.gz").unlink(missing_ok=True)
     if t["ok"]:
         t = levels.guard(t, alpaca.quote_full(symbol, levels.guard_time(day, cal)))
-    t.update(symbol=symbol, day=day)
+    t.update(symbol=symbol, day=day, sizing=info)
     if not t["ok"]:
         return t
     valid = sessions_after(day, cal, levels.BREAKOUT_DAYS)
@@ -78,11 +99,41 @@ def _p(x, ref=None):
     return code(f"{x:,.4f}$" if ref is not None and ref < 1 else price(x))
 
 
+SMALL_ACCOUNT = (f"חשבון קטן: סיכון של פחות מ-{code(price(levels.SMALL_RISK))} לעסקה נדחה כמעט תמיד בשומר העלות "
+                 f"(עמלות של לפחות {code(price(1.40))} על ארבע פקודות).")
+NOT_TIED = "הגודל לא קשור לחשבון: לא נקבע הון (/equity), ולכן הסיכון קבוע."
+
+
+def _share(x, E):
+    return code(f"{x / E * 100:.1f}%")
+
+
+def _sizing_lines(t):
+    """Section 10's lines: risk and position value in $ and as % of E, the date E was set, p, the open-risk positions
+    and the notes; without E, the line saying the size is not tied to the account."""
+    a, b = t["legs"]
+    risk, value, s = t["shares"] * t["R"], t["shares"] * t["planned_entry"], t.get("sizing")
+    if not s:
+        return [f"מניות: מנה א' {code(a)} · מנה ב' {code(b)} · שווי פוזיציה {_p(value)} · סיכון {_p(risk)}", NOT_TIED]
+    lines = [f"מניות: מנה א' {code(a)} · מנה ב' {code(b)} · סיכון {_p(risk)} ({_share(risk, s['E'])} מההון) · "
+             f"שווי פוזיציה {_p(value)} ({_share(value, s['E'])} מההון)",
+             f"גודל לפי הון שנקבע ב-{il_date(s['date'])}: סיכון של {code(equity.pct(s['p']))} לעסקה · עד "
+             f"{code(s['open_positions'])} פוזיציות פתוחות בבת אחת ({code(equity.pct(levels.OPEN_RISK))} מההון)"]
+    lines += equity.p_notes(s["p_raw"], s.get("p_note"))[1]
+    if s["position_capped"]:
+        lines.append(f"שים לב: הגודל הוגבל כך שהפוזיציה לא תעלה על {code(equity.pct(levels.POSITION_CAP))} מההון.")
+    return lines
+
+
 def message(t):
     """Section 8's Hebrew message (every line Hebrew first, numbers in <code>)."""
     sym = code(t["symbol"])
     if not t["ok"]:
-        return f"אין כרטיס ל-{sym} ליום {il_date(t['day'])}: {REASONS[t['reason']]}"
+        text = f"אין כרטיס ל-{sym} ליום {il_date(t['day'])}: {REASONS[t['reason']]}"
+        s = t.get("sizing")
+        if s and s["risk"] < levels.SMALL_RISK and t["reason"] in ("cost above 10% of risk", "shares below 2"):
+            text += "\n" + SMALL_ACCOUNT
+        return text
     a, b = t["legs"]
     P = t["planned_entry"]
     valid = ", ".join(il_date(d) for d in t["valid_sessions"])
@@ -99,8 +150,7 @@ def message(t):
         f"המחירים מחושבים ממחיר הכניסה המתוכנן ויזוזו עם הכניסה בפועל (כניסה פחות {_p(t['trail'], P)}, "
         f"כניסה ועוד {_p(levels.px(levels.TARGET_R * t['R'], ref=P), P)})",
         exit_line,
-        f"מניות: מנה א' {code(a)} · מנה ב' {code(b)} · שווי פוזיציה {_p(t['shares'] * t['planned_entry'])} · "
-        f"סיכון {_p(t['shares'] * t['R'])}",
+        *_sizing_lines(t),
         f"עלות משוערת: {code(format(t['cost_r'] * 100, '.1f') + '%')} "
         "מהסיכון (מרווח 5 דקות לפני סגירת יום האות, ועמלות)",
         "ב-IBKR: פקודת bracket אחת לכל מנה, בכמויות שבשורת המניות — א': כניסה, יעד לימיט וסטופ · "

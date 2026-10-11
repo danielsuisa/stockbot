@@ -253,6 +253,51 @@ class FillModel(unittest.TestCase):
         self.assertAlmostEqual(got["cost_r"], (1.40 + 1.00) / 100)
 
 
+class EquitySizing(unittest.TestCase):
+    """Spec section 10 (phase B.1), with a synthetic equity of 31,337.17."""
+
+    def test_equity_size(self):
+        got = levels.equity_size(31_337.17, 0.005, 2.0, 50.51)
+        self.assertAlmostEqual(got["risk"], 156.68585)
+        self.assertEqual((got["shares"], got["position_capped"]), (78, False))  # cap floor(6267.43 / 50.51) = 124
+
+    def test_position_cap_threshold(self):
+        self.assertEqual(levels.equity_size(10_000, 0.005, 0.10, 4.00)["shares"], 500)  # cap 500: not binding
+        self.assertFalse(levels.equity_size(10_000, 0.005, 0.10, 4.00)["position_capped"])
+        got = levels.equity_size(10_000, 0.005, 0.10, 4.01)  # cap floor(2000 / 4.01) = 498
+        self.assertEqual((got["shares"], got["position_capped"]), (498, True))
+
+    def test_p_cap_by_label(self):
+        self.assertEqual(levels.p_used(0.01), (0.005, True))
+        self.assertEqual(levels.p_used(0.004), (0.004, False))
+        self.assertEqual(levels.p_used(0.005), (0.005, False))
+        self.assertEqual(levels.p_used(0.02, edge_proven=True), (0.01, True))
+        self.assertFalse(levels.EDGE_PROVEN)
+
+    def test_open_positions(self):
+        self.assertEqual([levels.open_positions(p) for p in (0.005, 0.004, 0.01)], [6, 7, 3])
+
+    def test_plan_with_max_shares(self):
+        bars = daily(20)
+        t = levels.plan("X", bars, bars[-1][0], risk=156.69, max_shares=60)
+        self.assertEqual((t["shares"], t["legs"]), (60, (30, 30)))
+
+    def test_dollar_volume_refusal_applies_to_the_capped_shares(self):
+        # review major 1: the 20% cap comes first, then the 1% refusal on the final shares (spec section 10 rule 4)
+        bars = daily(20, close=50.0, rng=0.1, vol=440_000)  # R 0.2; ADV 22M: 1% is 220,000
+        size = levels.equity_size(1_000_000, 0.005, 0.2, 50.06)  # 25,000 by risk; cap floor(200,000 / 50.06) = 3,995
+        t = levels.plan("X", bars, bars[-1][0], risk=size["risk"], max_position_value=0.20 * 1_000_000)
+        self.assertTrue(t["ok"])
+        self.assertEqual(t["shares"], 3995)
+
+    def test_small_equity_cost_refusal(self):
+        size = levels.equity_size(3_000, 0.005, 2.0, 50.51)  # risk 15: 7 shares
+        bars = daily(20)
+        t = levels.plan("X", bars, bars[-1][0], risk=size["risk"], max_shares=size["shares"])
+        self.assertEqual(t["shares"], 7)
+        self.assertEqual(levels.guard(t, (50.0, 50.02, 1, 1, 1))["reason"], "cost above 10% of risk")  # 1.54 / 14
+
+
 class UniverseMark(unittest.TestCase):
     """The partial universe mark of phase B (owner 2026-10-11): price, dollar volume, history; never a refusal."""
 

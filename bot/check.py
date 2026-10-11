@@ -1,7 +1,6 @@
 """On-demand forensic one-page report for a US ticker -> one Telegram message (Hebrew)."""
 import datetime as dt
 import sys
-import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from bot import common, form4, fundamentals, market, tenk
@@ -77,7 +76,7 @@ def report(ticker):
         try:
             lines += build()
         except Exception as e:  # one broken section must not kill the report
-            traceback.print_exc()
+            common.trace()
             lines.append(f"⚠️ לא הצלחתי להביא את החלק \"{title}\".")
     return "\n".join(lines)
 

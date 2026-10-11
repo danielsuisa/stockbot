@@ -40,9 +40,12 @@ def adv(bars):
     return sum(b[4] * b[5] for b in bars[-ADV_SESSIONS:]) / ADV_SESSIONS
 
 
-def plan(symbol, bars, day, mode=DEFAULT_MODE, horizon=DEFAULT_H, risk=100.0):
+def plan(symbol, bars, day, mode=DEFAULT_MODE, horizon=DEFAULT_H, risk=100.0, max_shares=None,
+         max_position_value=None):
     """Section 3's ticket for `symbol` on signal day `day` -> {"ok": True, ...levels, size} or {"ok": False,
-    "reason"}. Stop loss and target are from the planned entry P; the orders move them with the fill F."""
+    "reason"}. Stop loss and target are from the planned entry P; the orders move them with the fill F.
+    `max_position_value` (section 10's 20% of E) caps the shares at floor(value / P) before any refusal, so every
+    refusal sees the final shares."""
     upto = _through(bars, day)
     atr = atr_through(bars, day)
     if len(upto) < MIN_BARS or atr is None:
@@ -50,10 +53,15 @@ def plan(symbol, bars, day, mode=DEFAULT_MODE, horizon=DEFAULT_H, risk=100.0):
     if upto[-1][0] != day:  # halted, delisted or not yet published: never levels from an older session (review M1)
         return {"ok": False, "reason": "no bar on the signal day"}
     R = R_ATR * atr
+    _, o, h, l, c, v = upto[-1]
+    entry = px(h + BREAKOUT_TICK) if mode == "breakout" else c
     shares = int(risk / R + EPS) if R > 0 else 0
+    if max_shares is not None:
+        shares = min(shares, max_shares)
+    if max_position_value is not None and entry > 0:  # section 10's position cap, before the refusals
+        shares = min(shares, int(max_position_value / entry + EPS))
     if shares < MIN_SHARES:
         return {"ok": False, "reason": "shares below 2"}
-    _, o, h, l, c, v = upto[-1]
     t = {"ok": True, "symbol": symbol, "day": day, "mode": mode, "horizon": horizon, "atr": atr, "R": R}
     if mode == "breakout":
         t["entry_stop"] = px(h + BREAKOUT_TICK)
@@ -226,3 +234,28 @@ def simulate(t, after, spr):
     if ex is None:
         return None
     return {"filled": True, "gross_r": gross_r(t, F, ex), "cost_r": cost_r(t, spr)}
+
+
+# ---------- sizing by equity (spec section 10, phase B.1; live tickets only) ----------
+P_DEFAULT, P_CAP_UNPROVEN, P_CAP_PROVEN = 0.005, 0.005, 0.01
+POSITION_CAP, OPEN_RISK, SMALL_RISK = 0.20, 0.03, 20.0
+EDGE_PROVEN = False  # the label stays "ללא יתרון מוכח" until section 6 gives a GO and the forward check holds
+
+
+def p_used(p, edge_proven=EDGE_PROVEN):
+    """The risk share after the cap of the current label -> (p, whether the cap cut it)."""
+    cap = P_CAP_PROVEN if edge_proven else P_CAP_UNPROVEN
+    return (cap, True) if p > cap + EPS else (p, False)
+
+
+def equity_size(E, p, R, P):
+    """risk = p x E; shares = floor(risk / R), at most floor(20% x E / P) (one position <= 20% of the equity)."""
+    risk = p * E
+    by_risk = int(risk / R + EPS) if R > 0 else 0
+    cap = int(POSITION_CAP * E / P + EPS) if P > 0 else 0
+    return {"risk": risk, "shares": min(by_risk, cap), "position_capped": cap < by_risk}
+
+
+def open_positions(p):
+    """How many positions the open-risk limit (3% of E) allows at risk share p."""
+    return int(OPEN_RISK / p + EPS) if p > 0 else 0

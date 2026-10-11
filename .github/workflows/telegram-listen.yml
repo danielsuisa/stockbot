@@ -53,6 +53,7 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}  # /ticket reads Alpaca bars and quotes (as shadow.yml)
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          TICKET_RISK_PCT: ${{ vars.TICKET_RISK_PCT }}  # percent of the equity per trade: 0.5 means 0.5% (unset: 0.5)
           INSIDER_DAYS: ${{ vars.INSIDER_DAYS }}
           MIN_INSIDERS: ${{ vars.MIN_INSIDERS }}  # same tuning as daily-scan.yml, so /status shows the real rules
           MIN_CLUSTER_USD: ${{ vars.MIN_CLUSTER_USD }}
