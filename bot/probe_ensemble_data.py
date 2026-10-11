@@ -292,7 +292,7 @@ def earlier_in_segment(segment, i):
 
 def load_series(symbols, start, end, sessions):
     """Raw and split-adjusted daily bars joined by date (a date missing from either feed is dropped) -> {symbol:
-    {"dates", "raw_close", "raw_high", "raw_low", "raw_volume", "close", "volume", "segment"}}."""
+    {"dates", "raw_open", "raw_close", "raw_high", "raw_low", "raw_volume", "close", "volume", "segment"}}."""
     raw, adj = {}, {}
     for i in range(0, len(symbols), alpaca.CHUNK):
         part = symbols[i:i + alpaca.CHUNK]
@@ -305,7 +305,8 @@ def load_series(symbols, start, end, sessions):
         if not rows:
             continue
         f = lambda vals: array.array("d", vals)  # noqa: E731  (compact: ~15k symbols x ~2,600 days)
-        x = {"dates": [b[0] for b, _ in rows], "raw_high": f(b[2] for b, _ in rows), "raw_low": f(b[3] for b, _ in rows),
+        x = {"dates": [b[0] for b, _ in rows], "raw_open": f(b[1] for b, _ in rows), "raw_high": f(b[2] for b, _ in rows),
+             "raw_low": f(b[3] for b, _ in rows),
              "raw_close": f(b[4] for b, _ in rows), "raw_volume": f(b[5] for b, _ in rows),
              "close": f(c for _, (o, c, v) in rows), "volume": f(v for _, (o, c, v) in rows)}
         x["segment"] = array.array("i", segments(x["dates"], x["close"], sessions))

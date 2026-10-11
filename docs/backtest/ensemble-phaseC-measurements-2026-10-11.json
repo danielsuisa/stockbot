@@ -1,0 +1,520 @@
+{
+ "k": {
+  "firings_per_signal": {
+   "S1": 1558,
+   "S2": 8015,
+   "S3": 13438,
+   "S4": 14774
+  },
+  "phase_a_firings": {
+   "S1": 1511,
+   "S2": 7979,
+   "S3": 13355,
+   "S4": 14679
+  },
+  "difference_vs_phase_a": {
+   "S1": 0.031105228325612178,
+   "S2": 0.004511843589422233,
+   "S3": 0.006214900786222389,
+   "S4": 0.00647183050616527
+  },
+  "diagnostics": {
+   "S1 fired on the CIK's other universe symbol": 38,
+   "S2 fired on a renamed symbol": 43,
+   "S3 fired on a renamed symbol": 89,
+   "S4 fired on a renamed symbol": 76,
+   "S1 fired on a renamed symbol": 17
+  },
+  "warm_up": {
+   "S3": 369,
+   "S4": 4
+  },
+  "ended_symbols": 3470,
+  "k_counts": {
+   "S1": {
+    "firings_end": 20,
+    "stock_sessions_end": 121205,
+    "stock_months_end": 6927,
+    "firings_all": 1558,
+    "stock_sessions_all": 4142387,
+    "stock_months_all": 211660,
+    "r_month": 0.39224385314446475,
+    "r_session": 0.43872529693404466,
+    "r_s": 0.43872529693404466
+   },
+   "S2": {
+    "firings_end": 178,
+    "stock_sessions_end": 121205,
+    "stock_months_end": 6927,
+    "firings_all": 8015,
+    "stock_sessions_all": 4142387,
+    "stock_months_all": 211660,
+    "r_month": 0.6785941006203091,
+    "r_session": 0.7590084482029756,
+    "r_s": 0.7590084482029756
+   },
+   "S3": {
+    "firings_end": 641,
+    "stock_sessions_end": 121205,
+    "stock_months_end": 6927,
+    "firings_all": 13438,
+    "stock_sessions_all": 4142387,
+    "stock_months_all": 211660,
+    "r_month": 1.4575283032095838,
+    "r_session": 1.6302474404356966,
+    "r_s": 1.6302474404356966
+   },
+   "S4": {
+    "firings_end": 290,
+    "stock_sessions_end": 121205,
+    "stock_months_end": 6927,
+    "firings_all": 14774,
+    "stock_sessions_all": 4142387,
+    "stock_months_all": 211660,
+    "r_month": 0.5997821095428865,
+    "r_session": 0.6708571262377828,
+    "r_s": 0.6708571262377828
+   }
+  },
+  "w_provisional": {
+   "S1": 0.04026756209359343,
+   "S2": 0.21263724549621577,
+   "S3": 0.3559055537789148,
+   "S4": 0.391189638631276
+  },
+  "K": 1.2243085643060103,
+  "K_max": 1.6302474404356966,
+  "f": 0.0041,
+  "b_R": 0.0050196651136546425,
+  "b_max_R": 0.006684014505786357,
+  "limit_R": 0.03,
+  "continue_to_quotes": true
+ },
+ "quotes": {
+  "sample_size": 2000,
+  "strata": {
+   "S1 2017": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 140
+   },
+   "S1 2018": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 2,
+    "population": 188
+   },
+   "S1 2019": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 1,
+    "cost_guard": 0,
+    "no_entry_quote": 2,
+    "population": 166
+   },
+   "S1 2020": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 279
+   },
+   "S1 2021": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 3,
+    "population": 127
+   },
+   "S1 2022": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 1
+    },
+    "passing": 49,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 163
+   },
+   "S1 2023": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 3
+    },
+    "passing": 47,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 160
+   },
+   "S1 2024": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 2
+    },
+    "passing": 48,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 95
+   },
+   "S1 2025": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 1
+    },
+    "passing": 49,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 189
+   },
+   "S1 2026": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 1
+    },
+    "passing": 49,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 51
+   },
+   "S2 2017": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 703
+   },
+   "S2 2018": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 856
+   },
+   "S2 2019": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 871
+   },
+   "S2 2020": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 624
+   },
+   "S2 2021": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 1
+    },
+    "passing": 49,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 695
+   },
+   "S2 2022": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 2
+    },
+    "passing": 48,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 795
+   },
+   "S2 2023": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 1001
+   },
+   "S2 2024": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 3
+    },
+    "passing": 47,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 1109
+   },
+   "S2 2025": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 1058
+   },
+   "S2 2026": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 1
+    },
+    "passing": 49,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 303
+   },
+   "S3 2017": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 1361
+   },
+   "S3 2018": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 2,
+    "population": 1332
+   },
+   "S3 2019": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 1,
+    "no_entry_quote": 3,
+    "population": 1516
+   },
+   "S3 2020": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 1356
+   },
+   "S3 2021": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 1
+    },
+    "passing": 49,
+    "no_guard_quote": 1,
+    "cost_guard": 0,
+    "no_entry_quote": 3,
+    "population": 1729
+   },
+   "S3 2022": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 1,
+    "cost_guard": 0,
+    "no_entry_quote": 3,
+    "population": 1312
+   },
+   "S3 2023": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 1470
+   },
+   "S3 2024": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 2,
+    "no_entry_quote": 5,
+    "population": 1531
+   },
+   "S3 2025": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 1
+    },
+    "passing": 49,
+    "no_guard_quote": 0,
+    "cost_guard": 1,
+    "no_entry_quote": 1,
+    "population": 1471
+   },
+   "S3 2026": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 2
+    },
+    "passing": 48,
+    "no_guard_quote": 0,
+    "cost_guard": 2,
+    "no_entry_quote": 0,
+    "population": 360
+   },
+   "S4 2017": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 674
+   },
+   "S4 2018": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 1187
+   },
+   "S4 2019": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 867
+   },
+   "S4 2020": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 1
+    },
+    "passing": 49,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 1857
+   },
+   "S4 2021": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 1
+    },
+    "passing": 49,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 2213
+   },
+   "S4 2022": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 2405
+   },
+   "S4 2023": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 1352
+   },
+   "S4 2024": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 1
+    },
+    "passing": 49,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 1470
+   },
+   "S4 2025": {
+    "sampled": 50,
+    "refused_quote_free": {},
+    "passing": 50,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 0,
+    "population": 1898
+   },
+   "S4 2026": {
+    "sampled": 50,
+    "refused_quote_free": {
+     "shares below 2": 2
+    },
+    "passing": 48,
+    "no_guard_quote": 0,
+    "cost_guard": 0,
+    "no_entry_quote": 1,
+    "population": 851
+   }
+  },
+  "weighted_share": 0.0053316231094008865,
+  "weighted_share_se": 0.0019673889935862957,
+  "per_signal": {
+   "S1": 0.002160698712692152,
+   "S2": 0.0,
+   "S3": 0.01468606844516303,
+   "S4": 0.0
+  },
+  "per_year": {
+   "2017": 0.0,
+   "2018": 0.0,
+   "2019": 0.009836257309941521,
+   "2020": 0.0,
+   "2021": 0.00740271361474206,
+   "2022": 0.005655245541968216,
+   "2023": 0.0,
+   "2024": 0.014917447372395415,
+   "2025": 0.006419656105437724,
+   "2026": 0.009539709038874314
+  },
+  "entry_quote_missing": 0.018218623481781375,
+  "limit": 0.05,
+  "stop": false,
+  "quote_requests": 3946
+ },
+ "requests_and_runtime": {
+  "alpaca": 7117,
+  "sec zips": 48,
+  "index pages": 13766,
+  "runtime_s": 4642
+ }
+}

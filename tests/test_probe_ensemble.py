@@ -191,6 +191,7 @@ class Bars(unittest.TestCase):
         got = {k: list(s[k]) for k in ("raw_close", "close", "volume", "raw_volume", "raw_high", "raw_low", "segment")}
         self.assertEqual(got, {"raw_close": [10, 10], "close": [1.0, 1.0], "volume": [1000, 1000], "raw_volume": [100, 100],
                                "raw_high": [2, 2], "raw_low": [0.5, 0.5], "segment": [0, 0]})
+        self.assertEqual(list(s["raw_open"]), [1, 1])  # phase C: the simulation needs the open
 
 
     def test_split_cache_is_keyed_by_symbols(self):
