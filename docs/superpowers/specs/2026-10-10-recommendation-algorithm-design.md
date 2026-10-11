@@ -2,7 +2,7 @@
 
 Date: 2026-10-10 · Status: revision 7 (proposed; clarified 2026-10-11 for phase B: quote times relative to the
 session, a partial universe mark on `/ticket`, the position value in the message; section 10, sizing by equity, added
-2026-10-11 and approved as phase B.1; rule 6 of section 3 added 2026-10-11). Phases A and A.1 ran under revisions 5 and 6
+2026-10-11 and approved as phase B.1; rule 6 of section 3 added 2026-10-11; section 4.2, phase C's clarifications, ruled 2026-10-11). Phases A and A.1 ran under revisions 5 and 6
 (`docs/backtest/ensemble-phaseA-2026-10-10.md`, `docs/backtest/survivorship-phaseA1-2026-10-10.md`). Revision 7
 records their results and fixes, before any return is computed, what they left open: the final rename rule, the
 survivorship allowance and its multiplier K. It needs the owner's approval; approval covers phase B only
@@ -174,6 +174,66 @@ Settled in revision 6:
   before it.
 - **Known property, not changed:** tickets weigh equally, so signals weigh by how often they fire. In phase A's
   counts S3 and S4 are 75% of the tickets and S1 is 4%; gate 4 (each signal removed in turn) is the check on that.
+
+### 4.2 Clarifications fixed in phase C, before any return
+
+Ruled by the owner on 2026-10-11 (plan `docs/superpowers/plans/2026-10-11-recommendation-algorithm-phase-c.md`,
+choices C1-C25), before anything ran on market data in phase C.
+
+- **Order (C1, C2).** The universe with the rename rule and the four detectors (`bot/signals.py`) are built first:
+  they compute counts only, and K is measured with the detectors and universe of the test. The detectors are
+  phase A's, with section 4.1: 8-K only; S2 needs a bar on the session before D; S1 and S2 count only on a universe
+  symbol; the universe applies the rename rule; S1's issuer is the CIK and insider prices are matched by CIK.
+- **Bars end for good (C3).** At L, the date of a symbol's last raw Alpaca bar through 2026-03-31, when L <
+  2025-04-01 and on the first session after L the rename rule does not recover it (a renamed symbol has not ended).
+  A bad-price break is not an end. A symbol that ended before 2017-01-03 contributes nothing.
+- **r_s (C4).** The window is the sessions in (L - 365 days, L], clipped to 2017-01-03 .. 2026-03-31. A universe
+  stock-month is a (symbol, calendar month) with the symbol in the universe on at least one session of that month;
+  in the window, the months it touches with such a session inside the window. r_s is computed both per stock-month
+  and per stock-session (which corrects the partial months at the window's edges); neither is chosen afterwards:
+  **r_s = the larger of the two ratios**, and K = sum over s of w_s x max(1, r_s) with that r_s. Both ratios and
+  the counts behind them are reported.
+- **Firings for K (C5).** The detectors' firings on universe symbols, 2017-01-03 .. 2026-03-31, before the
+  one-open-ticket rule and the refusals.
+- **Provisional K (C6).** w_s = phase A's firing shares (S1 1,511, S2 7,979, S3 13,355, S4 14,679 of 37,524); K,
+  K_max = the largest max(1, r_s), b = K x 0.41% x 1 R and b_max. The final K uses the issued-ticket shares,
+  computed in the blind run by the same code, which also recomputes r_s and checks them against the K report.
+- **Quote coverage (C7-C10).** A sample drawn with `random.Random(20261011)`: up to 50 firings per (signal, year),
+  2017 .. 2026Q1, from the firing list sorted by (day, symbol). Counted per sampled firing, with section 3's plan
+  at $100 risk and the signal's mode and H on bars through D: the quote-free refusals; of the passing firings, no
+  usable guard quote; of those with one, the cost guard above 10%; separately, no usable quote 5 minutes after the
+  next session's open. The quote-based refusal share is estimated for the population by weighting each stratum by
+  its firing count, with its standard error; the run stops if the weighted overall share is above 5%. Per-signal
+  and per-year shares are reported only.
+- **Universe (C11-C13).** The rename rule applies after a first pass of the universe without it. The CIK's latest
+  market-price transaction: codes P, S, F, price > 0, original Forms 4 and 5, filed in [D - 365 days, D), latest
+  by filing date, then trade date, then accession. Liquidity decile: ranks of the 20-session average dollar volume
+  within D's universe, ascending, ties by symbol; decile = floor(10 x rank / n).
+- **One open ticket (C14).** A ticket is open or pending from its signal day through its last exit session if
+  filled, else the last session its order was valid. A firing of signal s on a symbol with an open or pending
+  ticket of s is not issued and is counted. Known property, recorded in the phase report: this count depends on
+  how long earlier tickets stayed open; it is one of the refusal counts of the whitelist and no rule depends on it.
+- **Series breaks (C15).** A break inside an open ticket exits what is open at the last close before it (section
+  2). There is no refusal for a break after D: the ticket is issued, and with no session of its segment inside the
+  order's validity it is unfilled and counts 0 with no cost. The same holds for pool members and drawn members.
+- **Price scale (C16).** The split-adjusted series is rescaled by raw close(D) / split-adjusted close(D), for the
+  ticket and every pool member.
+- **The end of the data (C17).** Bars are loaded through 2026-07-31 for outcomes only (the universe, the detectors
+  and the signal days end on 2026-03-31). A ticket or pool member is dropped only when its latest possible
+  time-exit session (the last session its order is valid, plus H) is after the last loaded session: a rule on
+  dates, the same whatever happened to it. The expected count is 0, and it is reported.
+- **Statistics and report (C18-C21).** Block = floor(10 x index of the signal session / number of sessions) over
+  2017-01-03 .. 2026-03-31; the five long blocks are the pairs. Cost percentiles: nearest rank. Design effect =
+  (the larger SE)^2 / (s^2 / n). The blind report never contains x-bar.
+- **Journal, pools, gates, draws (C22-C25).** The journal is built and tested on synthetic tickets; the blind run
+  writes none. Pool results are held in memory only, per key (D, decile, mode, H). The gates of 6.4 and the
+  outcomes of 6.6 are in the blind run's commit, tested on synthetic data; `--verdict` refuses without the blind
+  run's commit and the owner's go-ahead. Draw k uses `random.Random(20261010 + k)` over the tickets in (signal day,
+  symbol, signal) order and each pool sorted by symbol.
+- **Crashes print no value.** The ensemble driver installs `common.install_excepthooks()` and prints every caught
+  exception with `common.trace` (type and frames only).
+- **Stops.** After the K measurement, the quote measurement follows at once when b_max <= 0.03 R; otherwise the
+  work stops there. The build starts only after the owner has reviewed both reports.
 
 ## 5. Costs (how "actual costs" are computed)
 

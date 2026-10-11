@@ -19,6 +19,20 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-10-recommendation-algorithm-design.md` on `main` at `90411ed`, sections 2–7 and 9 (the owner's approval of 2026-10-11 covers phase C up to and excluding the blind run).
 
+## Owner's rulings (2026-10-11, on approving `1ace2f2`)
+
+Recorded in spec section 4.2. They override the text below where it differs.
+
+- **Approved as proposed:** C1-C3, C5-C13, C16, C18-C25.
+- **C4.** r_s = the larger of the per-stock-month and per-stock-session ratios, and K uses that r_s. Both ratios and their counts are reported.
+- **C15.** There is no "series break" refusal: it would use the next session to decide on D. The ticket is issued. With no session of its segment inside the order's validity it is unfilled, counts 0 and has no cost. The same holds for pool and drawn members. A break inside an open ticket still exits at the last close before it.
+- **C17.** Bars are loaded through 2026-07-31, for outcomes only; the universe, the detectors and the signal days end on 2026-03-31. A ticket or pool member is dropped only when its latest possible time-exit session (last valid session + H) is after the last loaded session. Expected 0, and reported.
+- **C14 stands.** Its count of firings not issued is recorded as a known property in the phase report.
+- **Stops.** After 1a, go straight on to 1b when b_max ≤ 0.03 R; otherwise stop. Then one stop with both reports. Part 2 starts only after the owner's review.
+- **1a report adds** the firing totals per signal from `bot/signals.py` beside phase A's (1,511 / 7,979 / 13,355 / 14,679), with the reason for every difference above 5%.
+- **1b report adds** the standard error of the weighted share.
+- **`bot/ensemble.py`** installs `common.install_excepthooks()` and uses `common.trace` for every caught exception. Test: an exception carrying a sentinel prints no value.
+
 ## Global Constraints
 
 - **Blind discipline, from the first commit.**
