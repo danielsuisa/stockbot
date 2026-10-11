@@ -1,0 +1,29 @@
+{
+ "frozen": "2026-10-09",
+ "finalists": [
+  "X5"
+ ],
+ "params": {
+  "X5": {
+   "news": true,
+   "tod_min": 2.0,
+   "dq": true
+  }
+ },
+ "base": {
+  "stop_atr": 0.1,
+  "spread_d": 0.25
+ },
+ "dev": {
+  "X5": {
+   "n": 2046,
+   "mean": 0.1985353276923422,
+   "t": 2.140752732816875
+  }
+ },
+ "holdout": [
+  "2016-01-04",
+  "2021-12-31"
+ ],
+ "spec": "docs/superpowers/specs/2026-10-08-ticket-backtest-design.md section 14"
+}

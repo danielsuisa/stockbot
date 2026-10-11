@@ -1,0 +1,323 @@
+name: ZBA v2 backtest (spec section 14)
+
+# Started by a push to zba-v2-run-dev (the development grid) or zba-v2-run-holdout (the single holdout run). The
+# Alpaca keys are GitHub secrets. Six chained jobs of at most 5.5 hours each carry the request cache, so the run
+# resumes where the previous job stopped; a job that finds the report already written does nothing.
+on:
+  push:
+    branches: [zba-v2-run-dev, zba-v2-run-holdout]
+
+permissions:
+  contents: write  # commit the report back to the run branch
+
+concurrency:
+  group: zba-v2-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  MODE: ${{ github.ref_name == 'zba-v2-run-holdout' && 'holdout' || 'dev' }}
+
+jobs:
+  part1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - name: Already finished?
+        id: done
+        run: |
+          git fetch -q origin "${{ github.ref_name }}"
+          if git log "origin/${{ github.ref_name }}" --format=%s | grep -q "^ZBA v2 $MODE report"; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.done.outputs.done != 'true'
+        with:
+          python-version: "3.12"
+      - name: Restore the request cache
+        uses: actions/cache/restore@v4
+        if: steps.done.outputs.done != 'true'
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-1
+          restore-keys: zba-v2-${{ env.MODE }}-
+      - name: Run (stops after 320 minutes; the next job resumes)
+        id: run
+        if: steps.done.outputs.done != 'true'
+        timeout-minutes: 320
+        continue-on-error: true
+        run: python -m bot.zba_v2 --mode "$MODE"
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Save the request cache
+        if: always() && steps.done.outputs.done != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-1
+      - name: Commit the report when it exists
+        id: report
+        if: always() && steps.done.outputs.done != 'true'
+        run: |
+          if [ -z "$(git status --porcelain docs/backtest)" ]; then echo "not finished yet"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/backtest
+          git commit -m "ZBA v2 $MODE report (run ${{ github.run_id }}, part 1)"
+          git pull --rebase -q origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"
+
+  part2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part1
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Already finished?
+        id: done
+        run: |
+          git fetch -q origin "${{ github.ref_name }}"
+          if git log "origin/${{ github.ref_name }}" --format=%s | grep -q "^ZBA v2 $MODE report"; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.done.outputs.done != 'true'
+        with:
+          python-version: "3.12"
+      - name: Restore the request cache
+        uses: actions/cache/restore@v4
+        if: steps.done.outputs.done != 'true'
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-2
+          restore-keys: zba-v2-${{ env.MODE }}-
+      - name: Run (stops after 320 minutes; the next job resumes)
+        id: run
+        if: steps.done.outputs.done != 'true'
+        timeout-minutes: 320
+        continue-on-error: true
+        run: python -m bot.zba_v2 --mode "$MODE"
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Save the request cache
+        if: always() && steps.done.outputs.done != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-2
+      - name: Commit the report when it exists
+        id: report
+        if: always() && steps.done.outputs.done != 'true'
+        run: |
+          if [ -z "$(git status --porcelain docs/backtest)" ]; then echo "not finished yet"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/backtest
+          git commit -m "ZBA v2 $MODE report (run ${{ github.run_id }}, part 2)"
+          git pull --rebase -q origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"
+
+  part3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part2
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Already finished?
+        id: done
+        run: |
+          git fetch -q origin "${{ github.ref_name }}"
+          if git log "origin/${{ github.ref_name }}" --format=%s | grep -q "^ZBA v2 $MODE report"; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.done.outputs.done != 'true'
+        with:
+          python-version: "3.12"
+      - name: Restore the request cache
+        uses: actions/cache/restore@v4
+        if: steps.done.outputs.done != 'true'
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-3
+          restore-keys: zba-v2-${{ env.MODE }}-
+      - name: Run (stops after 320 minutes; the next job resumes)
+        id: run
+        if: steps.done.outputs.done != 'true'
+        timeout-minutes: 320
+        continue-on-error: true
+        run: python -m bot.zba_v2 --mode "$MODE"
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Save the request cache
+        if: always() && steps.done.outputs.done != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-3
+      - name: Commit the report when it exists
+        id: report
+        if: always() && steps.done.outputs.done != 'true'
+        run: |
+          if [ -z "$(git status --porcelain docs/backtest)" ]; then echo "not finished yet"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/backtest
+          git commit -m "ZBA v2 $MODE report (run ${{ github.run_id }}, part 3)"
+          git pull --rebase -q origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"
+
+  part4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part3
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Already finished?
+        id: done
+        run: |
+          git fetch -q origin "${{ github.ref_name }}"
+          if git log "origin/${{ github.ref_name }}" --format=%s | grep -q "^ZBA v2 $MODE report"; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.done.outputs.done != 'true'
+        with:
+          python-version: "3.12"
+      - name: Restore the request cache
+        uses: actions/cache/restore@v4
+        if: steps.done.outputs.done != 'true'
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-4
+          restore-keys: zba-v2-${{ env.MODE }}-
+      - name: Run (stops after 320 minutes; the next job resumes)
+        id: run
+        if: steps.done.outputs.done != 'true'
+        timeout-minutes: 320
+        continue-on-error: true
+        run: python -m bot.zba_v2 --mode "$MODE"
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Save the request cache
+        if: always() && steps.done.outputs.done != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-4
+      - name: Commit the report when it exists
+        id: report
+        if: always() && steps.done.outputs.done != 'true'
+        run: |
+          if [ -z "$(git status --porcelain docs/backtest)" ]; then echo "not finished yet"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/backtest
+          git commit -m "ZBA v2 $MODE report (run ${{ github.run_id }}, part 4)"
+          git pull --rebase -q origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"
+
+  part5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part4
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Already finished?
+        id: done
+        run: |
+          git fetch -q origin "${{ github.ref_name }}"
+          if git log "origin/${{ github.ref_name }}" --format=%s | grep -q "^ZBA v2 $MODE report"; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.done.outputs.done != 'true'
+        with:
+          python-version: "3.12"
+      - name: Restore the request cache
+        uses: actions/cache/restore@v4
+        if: steps.done.outputs.done != 'true'
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-5
+          restore-keys: zba-v2-${{ env.MODE }}-
+      - name: Run (stops after 320 minutes; the next job resumes)
+        id: run
+        if: steps.done.outputs.done != 'true'
+        timeout-minutes: 320
+        continue-on-error: true
+        run: python -m bot.zba_v2 --mode "$MODE"
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Save the request cache
+        if: always() && steps.done.outputs.done != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-5
+      - name: Commit the report when it exists
+        id: report
+        if: always() && steps.done.outputs.done != 'true'
+        run: |
+          if [ -z "$(git status --porcelain docs/backtest)" ]; then echo "not finished yet"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/backtest
+          git commit -m "ZBA v2 $MODE report (run ${{ github.run_id }}, part 5)"
+          git pull --rebase -q origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"
+
+  part6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part5
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Already finished?
+        id: done
+        run: |
+          git fetch -q origin "${{ github.ref_name }}"
+          if git log "origin/${{ github.ref_name }}" --format=%s | grep -q "^ZBA v2 $MODE report"; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.done.outputs.done != 'true'
+        with:
+          python-version: "3.12"
+      - name: Restore the request cache
+        uses: actions/cache/restore@v4
+        if: steps.done.outputs.done != 'true'
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-6
+          restore-keys: zba-v2-${{ env.MODE }}-
+      - name: Run (stops after 320 minutes; the next job resumes)
+        id: run
+        if: steps.done.outputs.done != 'true'
+        timeout-minutes: 320
+        continue-on-error: true
+        run: python -m bot.zba_v2 --mode "$MODE"
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Save the request cache
+        if: always() && steps.done.outputs.done != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/alpaca
+          key: zba-v2-${{ env.MODE }}-${{ github.run_id }}-6
+      - name: Commit the report when it exists
+        id: report
+        if: always() && steps.done.outputs.done != 'true'
+        run: |
+          if [ -z "$(git status --porcelain docs/backtest)" ]; then echo "not finished yet"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/backtest
+          git commit -m "ZBA v2 $MODE report (run ${{ github.run_id }}, part 6)"
+          git pull --rebase -q origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"

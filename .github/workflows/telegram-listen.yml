@@ -51,6 +51,8 @@ jobs:
           SEC_UA: ${{ secrets.SEC_UA }}
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}  # /ticket reads Alpaca bars and quotes (as shadow.yml)
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
           INSIDER_DAYS: ${{ vars.INSIDER_DAYS }}
           MIN_INSIDERS: ${{ vars.MIN_INSIDERS }}  # same tuning as daily-scan.yml, so /status shows the real rules
           MIN_CLUSTER_USD: ${{ vars.MIN_CLUSTER_USD }}

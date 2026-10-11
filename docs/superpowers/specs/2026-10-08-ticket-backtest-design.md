@@ -200,3 +200,240 @@ These are corrections to the fill model, not new variants: nothing is re-selecte
 - **Realistic verdict** for K10s on 2024-02-01 onward, the four checks of section 12 on the corrected trades. If it
   fails, the conclusion is NO-GO for the whole ZBA line (every other variant was already negative on 2024+ under the
   optimistic model).
+
+## 14. ZBA v2: the owner's improvements to K10s, developed on seen data, judged once on unseen 2016–2021 (pre-registered 2026-10-09, before any run)
+
+Why: section 13 failed K10s's realistic verdict (2024 below zero). The owner listed improvements (2026-10-09) and
+decided: apply them to K10s only; develop on the already-seen 2022-01-03 → 2026-10-08; judge with a single run on
+2016-01-04 → 2021-12-31, which nobody has looked at, plus the forward shadow tracker. Both sides (long and short).
+Nothing here sends a ticket; a GO only allows a second shadow line (section 14.8).
+
+### 14.0 Measured before designing (STEP 0, `bot/probe_v2.py` on GitHub Actions, 2026-10-09)
+
+Run 37917832860 (1,416 Alpaca requests), 12 sample sessions (the first on/after March 15 and September 15 of
+2016–2021, 240 top-20 ticker-days computed with section 11's code):
+
+- **a) News:** Alpaca's news API reaches back to 2015-01-01. 89 of the 240 top-20 ticker-days (37.1%) had an item
+  between the previous close (16:00) and 09:35. Per day it ranged 0–13 of 20; two days had none (2017-09-15 and
+  2019-03-15, both quarterly expiration and index-rebalancing Fridays). Enough to test #4.
+- **b) Quote sizes:** historical SIP quotes carry bid and ask sizes in 2016 (AAPL 2016-03-01: bs 4, as 1). The unit
+  (round lots or shares) is checked on a 2016 and a 2025 sample before #3's depth rule is used; the rule is written
+  in round lots of 100 shares.
+- **c) Survivorship — poor, stated plainly:** all 9 known 2016–2018 delistings checked (LinkedIn, Yahoo, Whole Foods,
+  Monsanto, Time Warner, Sears, Staples, Panera, Cabela's) still have daily bars at Alpaca, but **none is in
+  Alpaca's asset list as that company**: 7 are absent, and 2 symbols (SHLD, SPLS) now belong to ETFs, which the fund
+  filter drops. Universe C is built from the asset list, so stocks that later delisted are missing from the holdout.
+  The universe with a bar on the sample day grows from 3,455 (2016-03) to 4,709 (2021-09), +36%, while US listings
+  grew far less. Our estimate: roughly 10–25% of the 2016 names are missing, fewer each later year. The exact
+  share is unknown with free data.
+- **d) Trades:** SIP trades exist for 2016 (5 trades in the 5 seconds probed), so the tick-level fill minute works in
+  the holdout.
+- **e) Sectors:** 205 of the 240 top-20 tickers (85%) are in today's SEC ticker map and 184 (77%) have a SIC code;
+  the missing ones are mostly renamed or delisted. The sector rule is used only in the forward risk layer, not
+  gated in the backtest.
+
+### 14.1 Base: K10s as in sections 11–13
+
+Universe C, top 20 by opening relative volume, the first candle's side, stop order at its high/low, D = 0.10 × ATR14,
+spread at the trigger ≤ 0.25 × D, out at the close, costs of section 6, the tick-level fill minute and Rule 201 of
+section 13, the 20-seed random-side benchmark. Every variant below changes only what it names. A variant that
+changes D also moves the spread gate (0.25 × its D) and the share count ($100 / D, 10-share minimum).
+
+### 14.2 The rules (numbers fixed here)
+
+- **#2 Time-of-day relative volume (T15, T2, T3).** At the trigger minute m: the ticker's volume from 09:30 through
+  m (inclusive) / the mean of the same window over the 14 previous sessions (a session without bars counts 0) ≥
+  1.5 / 2 / 3. The opening-bar relative volume stays the universe ranking.
+- **#3 Liquidity (L10, L25).** The 14-day average dollar volume (mean of close × volume of the 14 daily bars before
+  D) ≥ $10M / $25M. **Q5 (depth):** the top-of-book size on the trigger side (the ask for a long, the bid for a short) at the trigger,
+  from the same SIP quote as the spread, ≥ 5 round lots (500 shares).
+- **#4 Catalyst (N).** Require an Alpaca news item for the ticker between the previous session's close (16:00) and 09:35 of D.
+  Variants: require (N) / ignore (the base).
+- **#5 Breakout confirmation (C15, C2).** Instead of the touch entry: the first minute from 09:35 whose close is
+  beyond the first candle's high (long) / low (short), with that minute's volume ≥ k × the mean minute volume since
+  09:30 (k = 1.5 / 2). Entry at the next minute's open (bar model: that open plus half the spread; tick level: the
+  first round-lot trade of that minute). The stop distance is measured from that fill.
+- **#6 Candle filter (F).** The first 5-minute candle's range / ATR14 in [0.10, 0.60] and its body / range ≥ 0.50.
+- **#7 Volatility stop (V10, V25).** D = max(k × ATR14, the distance from the fill to the far side of the first
+  candle: its low for a long, its high for a short), k = 0.10 / 0.25.
+- **#11 Reward-to-risk (RR).** Skip unless the room from the entry level to (the 09:30 open + 1.0 × ATR14) for a long
+  — (open − 1.0 × ATR14) for a short — is ≥ 2 × D.
+- **#12 Slippage guard (SL).** A stop-limit entry, limit = level ± max(0.25 × D, $0.01). Tick level: the fill trade
+  beyond the limit → no trade (counted). Bar model: a fill minute that opens beyond the limit → no trade.
+- **#16 Quality ranking (QR).** Among the session's candidates (universe C after the open > $5 and relative volume ≥ 1
+  checks), the score = the equal-weight sum of z-scores (across that session's candidates) of opening relative
+  volume, 14-day dollar volume, first-candle body / range and the catalyst (1 with a news item as in #4, else 0). The top 20 by this score are traded instead of
+  the top 20 by relative volume. Weights are fixed at 1; never tuned.
+- **#17 Data quality (DQ).** Skip a ticker-day, counted per reason, when: a minute bar is missing in the 5 minutes
+  before the trigger minute or in the trigger minute itself; the quote used for the spread is older than 60 s at the
+  trigger; any regular-session minute's VWAP is outside that minute's low–high; a regular-session minute has zero
+  volume while its high ≠ its low.
+
+### 14.3 The grid (22 variants, all reported)
+
+K10s itself; the singles T15, T2, T3, L10, L25, Q5, N, C15, C2, F, V10, V25, RR, SL, QR, DQ; and the
+combinations declared now: **X1** = T2 + L10 + DQ · **X2** = C2 + V25 + DQ · **X3** = F + RR + SL + DQ · **X4** = QR + T2
++ V25 + SL + DQ · **X5** = N + T2 + DQ.
+
+### 14.4 Development and selection (2022-01-03 → 2026-10-08, seen data)
+
+1. Screen every variant with the bar model (section 11's fills).
+2. Re-run the 3 variants with the highest bar-model mean net R (among those with ≥ 500 trades) with the tick-level
+   fill minute and Rule 201 (section 13).
+3. Select on the tick-level numbers: the highest mean net R among those 3 with ≥ 500 trades, t ≥ 2, and mean net R > 0
+   in each of 2022, 2023, 2024, 2025 and 2026 separately. The runner-up, if it qualifies too, is the second finalist
+   (at most 2). If none qualifies: **NO-GO** for ZBA v2, stop, report — the holdout is not run.
+4. Freeze: the finalists' parameters are committed (`docs/backtest/zba-v2-frozen.json`) before the holdout runs.
+
+### 14.5 Holdout verdict (2016-01-04 → 2021-12-31, one run of the frozen finalists, both reported)
+
+A finalist is **GO** only if all hold:
+
+1. ≥ 300 trades;
+2. mean net R > 0 with t ≥ 2 — with 2 finalists, t ≥ 2.24 for each (the same 5% split in two);
+3. mean net R above the 95th percentile of the 20 random-side means;
+4. mean net R > 0 in at least 5 of the 6 years;
+5. t ≥ 2 still holds with an extra $0.005 a share of slippage on each side;
+6. mean net R > 0 after removing the top 1% of trades by net R.
+
+Also reported, not gated (#19): win rate, average win, average loss, expectancy, the maximum drawdown of a book that
+risks 1% a trade (section 11's portfolio), trade count, and every skip reason. The holdout is single-shot: once run,
+no rule in this section changes and it is not run again.
+
+### 14.6 Data honesty
+
+- The holdout misses stocks that later delisted (14.0 c). The verdict is reported with that caveat. A GO on a universe
+  without them is weaker evidence, and the forward shadow line remains the deciding test.
+- 2022–2023 was section 12's selection period and 2024–2026 section 13's verdict period: the development period is
+  seen data, which is why the decision rests on 2016–2021.
+- News items, quote sizes and SIC codes are free sources with uneven coverage; a missing value counts as "no news",
+  "fails the depth rule" or "no sector", never as an estimate.
+
+### 14.7 Implementation constraints
+
+The filters are ctx options of `ticket._zba` / `ticket_backtest`; with none set, K10s's results and every existing test
+stay byte-identical. The 2016–2021 download runs detached with the existing disk cache and request pacing. Stdlib
+only; free data only; keys from the environment only.
+
+### 14.8 Forward layer (only if a finalist passes 14.4; built after the holdout, no orders)
+
+A second shadow line next to K10s; a journal of every candidate with the reason it was picked or rejected (#15);
+shorts only when Alpaca flags the asset shortable and easy to borrow (#8, counted); a risk layer with these
+configurable defaults (#9, #10, #20): $100 risk a trade, at most 5 open positions, at most $500 total open risk, at
+most 2 in the same SIC 2-digit sector or in a cluster with 60-day return correlation > 0.7, no new entries after a
+−$300 day, and a kill switch (no entries, a Telegram alert) when SPY's bars are missing or stale; #19 metrics in the
+weekly tally.
+
+### 14.9 Not in this section (follow-ups for the owner)
+
+Live `/ticket` and IBKR orders (only after a holdout GO and the owner's approval). The squeeze list's relative volume
+compares part-day volume with a full day's average; matching it by time of day is a separate change to the live list.
+
+### 14.10 Clarifications recorded before any run (2026-10-09, from STEP 0 and the implementation)
+
+- **Planned entry.** #7's distance, #11's room, the share count and the stop are measured from the planned entry:
+  the level for the touch entry, the confirming minute's close for #5. A live order needs its size before it
+  fills; the simulation then places the stop at the fill ∓ D, as in sections 11–13.
+- **Quote sizes.** Alpaca's historical SIP sizes are in round lots (100 shares) up to 2025-10-31 and in shares from
+  2025-11-03 (probed: AAPL 1–4 on 2025-10-31, 100–400 on 2025-11-04). #3's depth rule converts to shares by that
+  date and needs ≥ 500 shares on the trigger side.
+- **News volume.** A session's pre-open window holds 256–530 items (6–11 pages of 50); the news set is fetched once
+  per session for all symbols.
+- **#5's mean minute volume** is over the minutes from 09:30 to the minute before the confirming one.
+- **#17 without look-ahead.** The data-quality checks look only at minutes from 09:30 through the entry minute; a
+  bad minute later in the day is not used to skip a trade that would already be open.
+- **Where it runs.** The keys exist only as GitHub secrets, so both runs happen on GitHub Actions: one workflow run
+  per mode, six chained jobs of at most 5½ hours, the request cache carried from job to job. This replaces the
+  detached local downloader; the result is the same (resumable, paced, cached).
+
+### 14.11 Correction after the first development run, before the holdout (2026-10-10, owner's decision)
+
+The first development run (run 37921278500, report kept as `docs/backtest/ticket-zba-v2-2026-10-09-superseded.md`)
+selected X5 (N + T2 + DQ: 2,048 tick-level trades, +0.197R, t 2.13). Before the holdout, a look-ahead was found: #2
+counted the trigger minute's own volume, but the order fills inside that minute, before most of its volume exists;
+#17 likewise checked the trigger minute's bar. A live order can only see the minutes before. Owner's decision: fix
+and re-select; the holdout has not been run.
+
+- **#2:** the cumulative volume from 09:30 through the minute **before** the trigger minute / the same window's
+  mean over the 14 previous sessions.
+- **#17:** the bars of the 5 minutes before the entry minute, and the VWAP / zero-volume checks on the minutes from
+  09:30 to the minute before the entry minute.
+- Nothing else changes: the same 22 variants, thresholds, selection rule and holdout gates. The development period
+  is re-run from the cache and the selection is made again; its result, whatever it is, is the one that counts.
+
+### 14.12 Before the holdout (2026-10-10): what the code will see, recorded before the run
+
+- Alpaca has no bars of any kind before 2016-01-04 (probed: AAPL and F, daily and 5-minute, November–December 2015).
+  The prefilter needs 15 daily bars, so the holdout's first possible trade is on its 16th session, 2016-01-26; the
+  14-session means are then built from real sessions only. The 2016 year gate uses 2016-01-26 → 2016-12-30.
+- Caveats for the report (not changed): news symbols are as tagged at the time, the universe uses today's symbols
+  (a renamed ticker fails N; a reused one could match old news); Rule 201 uses regular-session lows only; a quote
+  older than 60 s shows as "spread", not "dq".
+- A pre-holdout review (fresh reviewer, most capable model) found no blocking defect and no look-ahead in X5's
+  path.
+
+### 14.13 Result (2026-10-10): NO-GO for ZBA v2
+
+The holdout ran once (run 38003155445): X5, 2,971 trades, mean −0.033R, t −0.47; positive in 3 of 6 years (2016
++0.207, 2017 −0.120, 2018 +0.148, 2019 +0.018, 2020 −0.071, 2021 −0.348); −0.267R without the top 1%; it fails gates
+2, 4, 5 and 6. Gate 3 passed only because the opposite side loses more (−0.44R a trade). Costs were the same in both
+periods (0.21R a trade); the gross edge fell from +0.41R (development) to +0.18R. A final review found no defect that
+could explain the gap and confirmed the protocol (freeze before the holdout, one run). Per 14.5 nothing is re-run and
+no variant is tried on 2016–2021; 14.8 (the second shadow line and its risk layer) is not built. K10s stays in the
+shadow tracker as before.
+
+Follow-ups for the owner (not done here): live `/ticket` and IBKR orders only after some rule set passes a
+pre-registered test; the squeeze list's relative volume should be matched by time of day (a change to the live list).
+
+### 14.14 Closing analysis and decision (2026-10-10): the ZBA line is closed
+
+A pooled analysis of the two saved realistic CSVs (X5, 5,017 trades, 2016-01-26 → 2026-10-08; script
+`docs/backtest/zba-v2-closing-analysis.py`, no new run, no parameter changed). The gate was fixed before the files
+were opened: continue with ZBA only if a cut by spread / stop distance alone has mean net R ≥ +0.20, a day-clustered
+t ≥ 2.5 and mean net R > 0 in at least 8 of the 11 years.
+
+- No cut passes. All trades: +0.061R, clustered t 1.08, 95% interval (bootstrap over days) −0.04R to +0.18R; without
+  2026: +0.028R. The nearest cut (spread ≤ 0.05 × D): 136 trades, +0.52R, t 1.80, 61% of its total from 3 trades,
+  +1.17R in development against +0.07R in the holdout.
+- Gross +0.275R (clustered t 4.8); cost 0.214R = spread 0.154R + commission 0.060R. An extra $0.005 a share each
+  side gives −0.024R; $0.01 gives −0.110R. Without the top 1% of trades: −0.184R.
+- Trades on the same day are close to independent (design effect 1.02), so the reported t values stand.
+- Per-trade SD 4.0R at about 469 trades a year: confirming a true +0.20R forward (80% power, 5% one-sided) takes
+  about 5.4 years; +0.13R about 12.7 years; +0.06R about 60 years.
+- $100 of risk is a median position of about $27,000 (the stop is 0.37% of the price).
+
+**Decision (the owner delegated it to the analyst, 2026-10-10): the ZBA line is closed.** No further variant, filter
+or stop width of the 5-minute ORB is tested on 2016–2026. K10s's shadow line may keep logging candidates as data for
+future diagnoses (forensics direction 3), but it is no longer a decision input: its forward record cannot settle the
+question in a usable time. Reopening ZBA needs a new pre-registered section that first passes section 15.
+
+## 15. Power gate (applies to every later rule set; added 2026-10-10)
+
+Why: X5 was selected as the best of 22 variants with t 2.1, and three sections in a row (12, 13, 14) ended in a
+forward test that could not have been decided in years. A structure whose edge cannot be confirmed forward in a
+usable time is not tested at all.
+
+- **Quantities.** SD = the day-clustered standard deviation of net R per trade (standard error of the mean × √n);
+  N = filled trades per year; both from the development period. μ = the planning edge = half the development mean
+  net R of the selected variant (the selection shrinkage: X5 went from +0.199R to +0.061R pooled).
+- **Required forward sample.** n = (2.49 × SD / μ)² trades (80% power, 5% one-sided); years = n / N.
+- **Check 1, at design, before any data is downloaded:** with SD and N estimated from the payoff shape (stop
+  distance, target, expected win rate, expected trades a day) and μ = the smallest edge worth trading after costs,
+  years must be ≤ 1.5. Otherwise the structure is redesigned or dropped.
+- **Check 2, after selection, before the holdout runs:** with the measured SD, N and μ as defined above, years must
+  be ≤ 1.5. Otherwise NO-GO ("not confirmable"), and the holdout is not spent.
+- **For reference, X5 fails both:** SD 4.0R, N 469, μ 0.10R → n ≈ 9,900 trades ≈ 21 years (with the unshrunk
+  +0.199R: about 2,500 trades, 5.3 years).
+- What passes in practice: more trades a year, a smaller SD per trade (a wider stop, a target instead of an open
+  tail), or a larger edge net of costs. Live `/ticket` stays blocked until a rule set passes this gate, a
+  pre-registered holdout and the forward shadow test.
+
+### 15.1 Amendment (2026-10-10, before any candidate was measured): what counts as evidence
+
+Section 15 as written counts forward trades only. With a 1.5-year limit that requires an annual Sharpe ratio of
+about 2.0 at the planning edge (2.49 / √1.5), which no candidate we can name reaches: the gate would reject
+everything, not only the unconfirmable. Corrected rule, for both checks: evidence years E = the years of a holdout
+nobody has looked at for this rule set + at most 1.5 forward years; required n / N ≤ E, which is the same as a
+planning annual Sharpe ratio ≥ 2.49 / √E. SD is clustered by the unit in which trades overlap (the day for intraday
+trades, the entry month for multi-week holds). The forward period must also show realized costs within a tolerance
+registered per rule set. X5 still fails: about 9,900 trades, 21 years, against E = 7.5.

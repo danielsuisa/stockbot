@@ -8,6 +8,7 @@ import unittest
 from unittest import mock
 
 from bot import check, common, health, journal, listen, market, scan
+from bot.common import code
 import msgrules
 from test_signals import doc, tx
 
@@ -202,12 +203,85 @@ class Commands(unittest.TestCase):
 
     def test_help_and_menu(self):
         names = [c for c, _ in listen.COMMANDS]
-        self.assertEqual(names, ["check", "scan", "status", "stats", "journal", "verify", "health", "squeeze", "shadow", "help"])
+        self.assertEqual(names, ["check", "scan", "status", "stats", "journal", "verify", "health", "squeeze", "shadow",
+                                 "ticket", "help"])
         self.assertTrue(all(1 <= len(d) <= 256 for _, d in listen.COMMANDS))
         for c in names:  # /help itself is the menu entry and the HELP text's own title, so it is not listed inside
             if c != "help":
                 self.assertIn(f"/{c}", listen.HELP)
         msgrules.check(self, listen.HELP)
+
+    def test_ticket_command(self):
+        from bot import ticket_command
+        with mock.patch.object(ticket_command, "build", return_value={"ok": True}) as build,                 mock.patch.object(ticket_command, "message", return_value="🎫 כרטיס"):
+            sent = self.run_handle("/ticket aapl")
+        build.assert_called_once_with("AAPL")
+        self.assertEqual(sent, [("🎫 כרטיס", {"source": ticket_command.SOURCE})])
+
+    def test_ticket_class_share_spelling(self):
+        from bot import ticket_command
+        with mock.patch.object(common, "tickers", return_value={"BRK-B": (1067983, "Berkshire")}),                 mock.patch.object(common, "send"), mock.patch.object(common, "tg"),                 mock.patch.object(ticket_command, "build", return_value={"ok": True}) as build,                 mock.patch.object(ticket_command, "message", return_value="🎫 כרטיס"):
+            listen.handle("/ticket brk.b")
+        build.assert_called_once_with("BRK.B")  # Alpaca spells class shares with a dot
+
+    def test_ticket_unknown_and_empty(self):
+        from bot import ticket_command
+        with mock.patch.object(ticket_command, "build") as build:
+            self.assertIn("/ticket AAPL", self.run_handle("/ticket")[0][0])
+            self.assertIn("לא מצאתי ברשימת החברות של SEC", self.run_handle("/ticket ZZZZ")[0][0])
+        build.assert_not_called()
+
+    def run_ticket(self, text, tick, build):
+        from bot import ticket_command
+        sent = []
+        with (mock.patch.object(common, "tickers", return_value=tick),
+              mock.patch.object(common, "send", side_effect=lambda t, **k: sent.append(t)),
+              mock.patch.object(common, "tg"), mock.patch.object(ticket_command, "build", side_effect=build) as b,
+              mock.patch.object(ticket_command, "message", side_effect=lambda t: f"🎫 כרטיס ל-{code(t['symbol'])}")):
+            self.assertEqual(listen.handle(text), 0)
+        for t in sent:
+            msgrules.check(self, t)
+        return sent, b
+
+    def test_ticket_at_most_three_and_the_rest_named(self):
+        tick = {s: (i, s) for i, s in enumerate(("AAPL", "MSFT", "TSLA", "NVDA", "AMD"))}
+        sent, build = self.run_ticket("/ticket aapl msft tsla nvda amd", tick, lambda s: {"symbol": s})
+        self.assertEqual(build.call_count, 3)
+        self.assertEqual(len(sent), 4)
+        self.assertIn("לא טופלו", sent[-1])
+        self.assertIn(code("NVDA"), sent[-1])
+        self.assertIn(code("AMD"), sent[-1])
+
+    def test_ticket_failure_is_one_line_and_the_others_continue(self):
+        def build(s):
+            if s == "AAPL":
+                raise RuntimeError("ALPACA_KEY_ID / ALPACA_SECRET_KEY are not set")
+            return {"symbol": s}
+        tick = {"AAPL": (1, "Apple"), "MSFT": (2, "Microsoft")}
+        sent, _ = self.run_ticket("/ticket aapl msft", tick, build)
+        self.assertEqual(len(sent), 2)
+        self.assertIn("לא הצלחתי להכין כרטיס", sent[0])
+        self.assertIn(code("AAPL"), sent[0])
+        self.assertEqual(sent[1], f"🎫 כרטיס ל-{code('MSFT')}")
+
+    def test_ticket_dry_run_through_the_listener(self):
+        # tests/listen_dry_run.py feeds one fake update to listen.answer (the listener's own path) and prints
+        from bot import ticket_command
+        from tests import listen_dry_run
+        with (mock.patch.object(common, "tickers", return_value={"AAPL": (1, "Apple"), "BRK-B": (2, "Berkshire")}),
+              mock.patch.object(ticket_command, "build", side_effect=lambda s: {"symbol": s}),
+              mock.patch.object(ticket_command, "message", side_effect=lambda t: f"🎫 כרטיס ל-{code(t['symbol'])}"),
+              mock.patch("builtins.print") as out):
+            self.assertEqual(listen_dry_run.main("/ticket AAPL BRK.B ZZZZZ"), 0)
+        printed = "\n".join(str(c.args[0]) for c in out.call_args_list if c.args)
+        for part in (code("AAPL"), code("BRK.B"), code("ZZZZZ"), "answers: 3, failed: 0"):
+            self.assertIn(part, printed)
+
+    def test_ticket_every_symbol_answered(self):
+        sent, _ = self.run_ticket("/ticket aapl zzzzz", {"AAPL": (1, "Apple")}, lambda s: {"symbol": s})
+        self.assertEqual(sent[0], f"🎫 כרטיס ל-{code('AAPL')}")
+        self.assertIn("לא מצאתי ברשימת החברות של SEC", sent[1])
+        self.assertIn(code("ZZZZZ"), sent[1])
 
     def test_check_reply_has_prompt(self):
         with mock.patch.object(check, "report", return_value="📊 דוח"):
