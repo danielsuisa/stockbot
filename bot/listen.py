@@ -1,4 +1,4 @@
-"""Telegram listener: /help /check /scan /status /stats /journal /verify /health /ticket and free-text tickers -> Hebrew
+"""Telegram listener: /help /check /scan /status /stats /journal /verify /health /ticket /equity and free-text tickers -> Hebrew
 replies. `--serve` (Actions): one long-poll consumer for ~5h20m, then the workflow starts the next one; without it,
 one pass over the waiting messages."""
 import datetime as dt
@@ -11,7 +11,8 @@ import time
 import urllib.error
 from pathlib import Path
 
-from bot import check, clock, common, fundamentals, health, journal, market, scan, shadow, squeeze_live, ticket_command
+from bot import (check, clock, common, equity, fundamentals, health, journal, market, scan, shadow, squeeze_live,
+                 ticket_command)
 from bot.common import code
 
 MAX = 3  # reports per message
@@ -26,7 +27,8 @@ COMMANDS = (("check", "דוח על מניה, למשל /check AAPL"), ("scan", "�
             ("health", "בדיקה שהכול עובד"),
             ("squeeze", "סקוויז: /squeeze, /squeeze now, /squeeze GME, /squeeze stats"),
             ("shadow", "מעקב הצל: מה השיטה עושה היום, מה־pre market"),
-            ("ticket", "כרטיס מסחר למניה: כניסה, סטופ, יעד וגודל, למשל /ticket AAPL"), ("help", "רשימת הפקודות"))
+            ("ticket", "כרטיס מסחר למניה: כניסה, סטופ, יעד וגודל, למשל /ticket AAPL"),
+            ("equity", "ההון לחישוב גודל הכרטיסים, למשל /equity 25000"), ("help", "רשימת הפקודות"))
 HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, או עם דולר, {code('$msft')} (עד {code(MAX)} בהודעה)."
         f" לרשימת הפקודות: {code('/help')}.")
 HELP = "\n".join((
@@ -50,6 +52,8 @@ HELP = "\n".join((
     f"👻 מעקב הצל של שיטת הכניסה (נשלח לבד כל בוקר אחרי יום מסחר). מה היא עושה היום, מה־pre market: {code('/shadow')}",
     "",
     f"🎫 כרטיס מסחר למניה (כניסה, סטופ לוס, יעד, טריילינג, גודל ועלות; ללא יתרון מוכח): {code('/ticket AAPL')}",
+    "",
+    f"💼 ההון לחישוב גודל הכרטיסים (נשמר רק בטלגרם, בהודעה נעוצה): {code('/equity 25000')}; בלי סכום: ההגדרה הנוכחית",
     "",
     f"🩺 בדיקה שהכול עובד: {code('/health')}"))
 
@@ -148,6 +152,8 @@ def handle(text):
         return shadow_now()
     if cmd == "ticket":
         return ticket_cmd(rest)
+    if cmd == "equity":
+        return equity_cmd(rest)
     common.send(HELP)  # /help, /start and any unknown command
     common.tg("setMyCommands", commands=[{"command": c, "description": d} for c, d in COMMANDS])  # Telegram's "/" menu
     return 0
@@ -179,6 +185,36 @@ def ticket_cmd(rest):
         common.send(f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}.")
     if known[TICKET_MAX:]:
         common.send(f"לא טופלו (עד {code(TICKET_MAX)} בהודעה): {', '.join(map(code, known[TICKET_MAX:]))}.")
+    return 0
+
+
+EQUITY_USAGE = (f"כתבו סכום אחד אחרי הפקודה, למשל {code('/equity 25000')} או {code('/equity 25,000')}, "
+                f"בין {code('100$')} ל-{code('100,000,000$')}. ההון לא השתנה.")
+EQUITY_UNSET = ("💼 הון לחישוב גודל: לא נקבע (לא נשלח /equity, ההודעה הנעוצה הוחלפה או הוסרה, או שהצ'אט אינו פרטי)."
+                " בינתיים הכרטיסים מחושבים לפי סיכון קבוע.")
+EQUITY_PRIVATE = "גודל לפי הון דורש צ'אט פרטי עם הבוט: הודעה נעוצה גלויה לכל חברי הצ'אט. ההון לא נשמר."
+EQUITY_FAILED = "⚠️ לא הצלחתי לקרוא או לשמור את ההון בטלגרם. נסו שוב בעוד כמה דקות."
+
+
+def equity_cmd(rest):
+    """/equity AMOUNT: pin E in the owner's private chat and answer with what follows from it; /equity: the current
+    setting and the date it was set (spec section 10). Never prints a value and never raises."""
+    try:
+        if not rest.strip():
+            got = equity.load()
+            common.send(EQUITY_UNSET if got is None else equity.reply(got[0], got[1], *equity.p_setting()))
+            return 0
+        E = equity.parse_amount(rest)
+        if E is None:
+            common.send(EQUITY_USAGE)  # the input is not echoed
+            return 0
+        if not equity.store(E):
+            common.send(EQUITY_PRIVATE)
+            return 0
+        common.send(equity.reply(E, dt.datetime.now(common.IL).date().isoformat(), *equity.p_setting()))
+    except Exception:  # noqa: BLE001 - common.trace prints the type and frames only
+        common.trace()
+        common.send(EQUITY_FAILED)
     return 0
 
 
