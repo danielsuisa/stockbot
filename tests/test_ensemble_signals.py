@@ -157,8 +157,9 @@ class Detectors(unittest.TestCase):
     def test_firings_end_to_end_with_warm_up(self):
         inp = inputs({"AAA": liquid(n=400)}, {"AAA": [S[200]]})
         got = signals.firings(inp, S[300], S[330])
-        self.assertEqual(set(got), {"firings", "members", "renamed", "warm_up", "diagnostics"})
+        self.assertEqual(set(got), {"firings", "members", "renamed", "deciles", "warm_up", "diagnostics"})
         self.assertEqual(got["members"][S[300]], frozenset({"AAA"}))
+        self.assertEqual(got["deciles"][S[300]], (("AAA",), bytes([0])))  # (sorted symbols, their deciles)
         self.assertTrue(all(sig in ("S1", "S2", "S3", "S4") for _, sig, _ in got["firings"]))
 
     def test_no_look_ahead_detectors(self):

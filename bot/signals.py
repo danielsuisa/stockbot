@@ -168,12 +168,15 @@ def s1(inp, members, diag=None):
 
 def firings(inp, start, end):
     """Every test firing from `start` to `end` -> {"firings": [(day, signal, symbol)], "members": {day: frozenset},
-    "renamed": {(day, symbol): bars_of}, "warm_up", "diagnostics"} (counts only)."""
+    "renamed": {(day, symbol): bars_of}, "deciles": {day: (sorted symbols, bytes of their deciles)}, "warm_up",
+    "diagnostics"} (counts only)."""
     diag = collections.Counter()
-    members, renamed, s2f, s3s, s4s = {}, {}, [], [], []
+    members, renamed, deciles_by_day, s2f, s3s, s4s = {}, {}, {}, [], [], []
     for d in [d for d in inp.sessions if start <= d <= end]:
         u = universe(d, inp)
         members[d] = frozenset(u)
+        syms = tuple(sorted(u))
+        deciles_by_day[d] = (syms, bytes(u[s]["decile"] for s in syms))  # compact: the pools need the deciles
         for sym, v in u.items():
             if v["bars_of"] != sym:
                 renamed[(d, sym)] = v["bars_of"]
@@ -187,5 +190,6 @@ def firings(inp, start, end):
     for d, sig, sym in fired:
         if (d, sym) in renamed:
             diag[f"{sig} fired on a renamed symbol"] += 1
-    return {"firings": fired, "members": members, "renamed": renamed, "warm_up": {"S3": w3, "S4": w4},
+    return {"firings": fired, "members": members, "renamed": renamed, "deciles": deciles_by_day,
+            "warm_up": {"S3": w3, "S4": w4},
             "diagnostics": dict(diag)}
