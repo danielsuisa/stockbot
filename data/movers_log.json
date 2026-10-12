@@ -55,6 +55,17 @@
    "gain": 0.1514,
    "vol_ratio": 0.2228,
    "si_pct": 0.4925
+  },
+  {
+   "date": "2026-10-12",
+   "session": "post",
+   "t": "SUGP",
+   "manual": false,
+   "price": 2.04,
+   "ref": 1.81,
+   "gain": 0.1271,
+   "vol_ratio": 0.2168,
+   "si_pct": 0.2838
   }
  ]
 }
