@@ -446,6 +446,12 @@ below the backtest's x̄ by more than 2 forward standard errors (6.3's formula w
 - The test confirms the rule over all issued tickets. An owner who takes a few of them gets a noisier sample of the
   same rule.
 
+**Result (2026-10-12): NO-GO.** The verdict run 38198348913 (commit `64a8faf`, inputs `e0464cacaf105656`) gave
+x̄ = -0.0531 R over n = 35,083 issued tickets. Gates 1, 3, 4 and 5 failed; gate 2 passed (A = +0.0079 R against the
+950th draw 0.0068 R, p = 0.029). The cost was 0.0610 R per issued ticket. Files:
+`docs/backtest/ensemble-verdict-2026-10-12/` and `docs/backtest/ensemble-2026-10-12.md`. There is no second attempt on
+this period, and the label stays "ללא יתרון מוכח".
+
 ## 7. Phases (each ends in a report; the next starts only on the owner's go-ahead, section 1.1; a plan per phase)
 
 - **A — data probe (no returns): done 2026-10-10.** Item 2.02 coverage 95.0% (8-K/A counted); universe 1,591 to
@@ -458,9 +464,14 @@ below the backtest's x̄ by more than 2 forward standard errors (6.3's formula w
 - **B — levels engine + `/ticket`:** section 3 and the cost guard, live for any symbol, labelled unproven.
 - **B.1 — sizing by equity (section 10):** `/equity`, the risk of live tickets from p × E with its caps, E kept in
   a private store; the backtest keeps the fixed $100 risk.
-- **C — K (section 6.4) first; then signals, journal, statistics with their tests, review, blind run, check 1.**
-  Insider prices are matched by CIK, not by symbol.
-- **D — the single verdict run** (only after check 1 passes, from the blind run's commit).
+- **C — K (section 6.4) first; then signals, journal, statistics with their tests, review, blind run, check 1:
+  done 2026-10-12.** Insider prices are matched by CIK, not by symbol. Measurements and build:
+  `docs/backtest/ensemble-phaseC-measurements-2026-10-11.md`, `docs/backtest/ensemble-phaseC-build-2026-10-11.md`.
+  PR #17 merged as `64a8faf` (2026-10-11). Blind run 38137946310 on `ensemble-run-blind` at `64a8faf` (2026-10-11
+  to 2026-10-12), inputs `e0464cacaf105656`: n 35,083, μ_min + b = 0.0199 ≤ 0.10 R, comparable, continue
+  (`docs/backtest/ensemble-blind-report-2026-10-12.md`).
+- **D — the single verdict run** (only after check 1 passes, from the blind run's commit): **done 2026-10-12.** Run
+  38198348913 from `64a8faf` on the blind run's inputs, approved by the owner. Outcome NO-GO (section 6.6, Result).
 - **E — daily scan live + forward shadow** (section 6.5).
 
 ## 8. Output
