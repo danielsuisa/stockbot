@@ -37889,12 +37889,13 @@
   ],
   "2026-10-12": [
    "pre1",
-   "pre2"
+   "pre2",
+   "post1"
   ]
  },
  "intraday": {
-  "at": "2026-10-12 13:15 UTC",
-  "slot": "pre2",
+  "at": "2026-10-12 20:30 UTC",
+  "slot": "post1",
   "filings": 0,
   "parsed": 0,
   "alerts": 0
