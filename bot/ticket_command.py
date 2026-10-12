@@ -16,6 +16,11 @@ SOURCE = ("⚠️ כרטיס מחושב בלבד, לא ייעוץ השקעות: 
           f"מקור: נרות יומיים וציטוט SIP של {code('Alpaca')} (באיחור של {code(LIVE_LAG_MIN)} דקות) · "
           "מנוע הרמות של האלגוריתם")
 LABEL = "ללא יתרון מוכח"
+# The verdict run's measured fact (spec 6.6, run 38198348913): n from
+# docs/backtest/ensemble-verdict-2026-10-12/ensemble-verdict-report.json; the means of gross_r (+0.00038) and cost_r
+# (0.06105) over every issued ticket from docs/backtest/ensemble-verdict-2026-10-12/ensemble-tickets.csv.
+VERDICT_N, VERDICT_YEARS = 35_083, (2017, 2026)
+VERDICT_GROSS_R, VERDICT_COST_R = 0.0004, 0.0610
 REASONS = {
     "fewer than 15 bars": "פחות מ-15 ימי מסחר בנתונים",
     "no bar on the signal day": "אין נר ליום האות (המסחר הושעה, המניה ירדה מהמסחר או שהנתון עוד לא פורסם)",
@@ -125,6 +130,13 @@ def _sizing_lines(t):
     return lines
 
 
+def measured_line():
+    """The verdict's measured fact, shown next to the label on every issued ticket (never on a refusal)."""
+    return (f"נמדד על {code(f'{VERDICT_N:,}')} כרטיסים היסטוריים ({code(VERDICT_YEARS[0])} עד {code(VERDICT_YEARS[1])}): "
+            f"לפני עלויות התוצאה הממוצעת הייתה כמעט אפס ({code(f'{VERDICT_GROSS_R * 100:.2f}%')} מהסיכון), "
+            f"והעלות הממוצעת הייתה כ-{code(f'{VERDICT_COST_R * 100:.0f}%')} מהסיכון לכרטיס")
+
+
 def message(t):
     """Section 8's Hebrew message (every line Hebrew first, numbers in <code>)."""
     sym = code(t["symbol"])
@@ -161,6 +173,7 @@ def message(t):
     if t.get("universe"):
         lines.append("מחוץ ליקום שנבדק: " + ", ".join(UNIVERSE[u] for u in t["universe"])
                      + " (תנאי דיווחי בעלי העניין ייבדק בשלב הבא)")
+    lines.append(measured_line())
     lines.append(f"תווית: {LABEL}")
     return "\n".join(lines)
 

@@ -452,6 +452,14 @@ x̄ = -0.0531 R over n = 35,083 issued tickets. Gates 1, 3, 4 and 5 failed; gate
 `docs/backtest/ensemble-verdict-2026-10-12/` and `docs/backtest/ensemble-2026-10-12.md`. There is no second attempt on
 this period, and the label stays "ללא יתרון מוכח".
 
+**After the result (owner's decision, 2026-10-12).** The search for an edge stops; the bot stays a tool for levels,
+sizing and cost. `/ticket` and `/equity` stay as they are, with the label "ללא יתרון מוכח". Every issued ticket
+carries one line with the measured fact: over 35,083 historical tickets (2017-2026) the mean result before costs was
+about zero (+0.0004 R) and the mean cost 0.0610 R per issued ticket (no line on a refusal). Research reopens only
+under a new spec whose hypothesis expects a gross edge per ticket above that measured cost (0.0610 R per issued
+ticket), passes the power gate, and is tested on data this test did not use. The ensemble code and the verdict files
+stay in the repository as the record.
+
 ## 7. Phases (each ends in a report; the next starts only on the owner's go-ahead, section 1.1; a plan per phase)
 
 - **A — data probe (no returns): done 2026-10-10.** Item 2.02 coverage 95.0% (8-K/A counted); universe 1,591 to
@@ -472,7 +480,9 @@ this period, and the label stays "ללא יתרון מוכח".
   (`docs/backtest/ensemble-blind-report-2026-10-12.md`).
 - **D — the single verdict run** (only after check 1 passes, from the blind run's commit): **done 2026-10-12.** Run
   38198348913 from `64a8faf` on the blind run's inputs, approved by the owner. Outcome NO-GO (section 6.6, Result).
-- **E — daily scan live + forward shadow** (section 6.5).
+- **E — daily scan live + forward shadow** (section 6.5): **cancelled 2026-10-12** after the NO-GO. No daily
+  scan of tickets and no forward check are built (6.5 applies to a GO only), and the signals are not shown in
+  messages.
 
 ## 8. Output
 
