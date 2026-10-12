@@ -1,15 +1,15 @@
 {
  "date": "2026-10-12",
  "kind": "day",
- "at": "14:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ב׳ <code>12.10.2026</code> · מצב ב־<code>21:30</code>\n\nמקום <code>1</code>: <code>MMED</code> · <code>19.25$</code> <code>2.3%▼</code>\nשורט <code>63.9%</code> מהמניות הצפות · <code>5.8</code> ימים לכיסוי · מחזור פי <code>5.6</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
+ "at": "15:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ב׳ <code>12.10.2026</code> · מצב ב־<code>22:30</code>\n\nמקום <code>1</code>: <code>MMED</code> · <code>19.25$</code> <code>2.4%▼</code>\nשורט <code>63.9%</code> מהמניות הצפות · <code>5.8</code> ימים לכיסוי · מחזור פי <code>6.3</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
  "rows": [
   {
    "t": "MMED",
-   "price": 19.255,
-   "chg": -0.0231,
+   "price": 19.245,
+   "chg": -0.0236,
    "avg_vol": 3112309,
-   "rel_vol": 5.5865,
+   "rel_vol": 6.2578,
    "short_ratio": 5.8471,
    "float": 28466986,
    "short_float": 0.6393,
