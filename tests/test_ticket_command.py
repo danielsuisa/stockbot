@@ -189,6 +189,28 @@ class Message(unittest.TestCase):
         self.assertNotIn("בחצי כמות", text)
         self.assertNotIn("כבר במסחר", text)
 
+    def test_measured_line_on_every_issued_ticket(self):
+        """The verdict's measured fact (spec 6.6, "After the result"), next to the label, with and without E."""
+        line = (f"נמדד על {common.code('35,083')} כרטיסים היסטוריים ({common.code(2017)} עד {common.code(2026)}): "
+                f"לפני עלויות התוצאה הממוצעת הייתה כמעט אפס ({common.code('0.04%')} מהסיכון), "
+                f"והעלות הממוצעת הייתה כ-{common.code('6%')} מהסיכון לכרטיס")
+        self.assertEqual(tc.measured_line(), line)
+        for t in (self.ticket(), self.ticket(sizing=None), self.sized()):
+            text = tc.message(t)
+            msgrules.check(self, text)
+            lines = text.splitlines()
+            self.assertIn(line, lines)
+            self.assertEqual(lines.index(line) + 1, lines.index(f"תווית: {tc.LABEL}"))  # next to the label
+        self.assertEqual((tc.VERDICT_N, tc.VERDICT_GROSS_R, tc.VERDICT_COST_R), (35_083, 0.0004, 0.0610))
+
+    def test_no_measured_line_on_a_refusal(self):
+        for reason in tc.REASONS:
+            for sizing in (None, {"E": 3_000.0, "risk": 15.0}):
+                text = tc.message({"ok": False, "reason": reason, "symbol": "AAPL", "day": "2026-03-09",
+                                   "sizing": sizing})
+                self.assertNotIn("נמדד על", text)
+                self.assertNotIn(tc.measured_line(), text)
+
     def test_position_value(self):
         text = tc.message(self.ticket())
         self.assertIn("שווי פוזיציה", text)
