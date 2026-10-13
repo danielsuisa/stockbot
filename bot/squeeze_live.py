@@ -377,7 +377,7 @@ def main(argv=None):
     except Exception:  # a follow-up problem must not hold back the list; it is retried next run
         common.trace()
         filled = 0
-    scr, list_text, added, static, old = None, "", 0, None, None
+    scr, list_text, added, static, old, other = None, "", 0, None, None, None
     kind = "pre" if session == "pre" else "day" if manual or session in ("regular", "post") else None
     if kind:
         try:
@@ -396,6 +396,7 @@ def main(argv=None):
         date = scr["date"] or today
         full, last = message(res, scr, now, static), load(LAST, {})
         old = last.get("rows") if (last.get("date"), last.get("kind")) == (date, kind) else None  # no kind: replaced method
+        other = last.get("rows") if last.get("date") == date and last.get("kind") != kind else None  # the day's other list
         if manual or old is None:
             list_text = full
         elif {r["t"] for r in scr["rows"]} != {r["t"] for r in old}:
@@ -412,12 +413,12 @@ def main(argv=None):
     # each part is saved right after it goes out, so a failure later in the run (or the twin's retry) never re-sends it
     if list_text:
         common.send(list_text, signal=bool(scr), source=SOURCE)
-    counts = {"names": 0, "issued": 0, "journaled": 0}
+    counts = {"names": 0, "journaled": 0}
     if list_text and scr:  # spec 2: a list went out -> one message with the tickets of its new names
         try:
-            tickets_text, counts = list_tickets.run(scr["rows"], old, str(path(TICKETS)))
-            if tickets_text:
-                common.send(tickets_text, source=ticket_command.SOURCE)
+            ticket_parts, counts = list_tickets.run(scr["rows"], old, other, str(path(TICKETS)))
+            for part in ticket_parts:  # one message, in parts that break between tickets
+                common.send(part, source=ticket_command.SOURCE)
         except Exception:  # never holds back the rest of the run; the type and frames only
             common.trace()
     if scr:
@@ -435,7 +436,7 @@ def main(argv=None):
         common.send(note, source=SOURCE)
     common.log("squeeze", session=session, manual=manual, rows=len(rows), screened=scr and scr.get("screened", scr.get("checked")),
                movers=len(found), sent=sum(bool(t) for t in (list_text, movers_text, note)), added=added,
-               filled=filled, ticket_names=counts["names"], tickets=counts["issued"], tickets_journaled=counts["journaled"],
+               filled=filled, ticket_names=counts["names"], tickets_journaled=counts["journaled"],
                ticket_outcomes=tickets_filled)  # counts only: no number derived from the equity
     return 0
 

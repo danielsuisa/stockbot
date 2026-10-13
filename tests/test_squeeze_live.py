@@ -259,7 +259,7 @@ class Sessions(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.dir = tmp.name
         # the list tickets are their own test below; here they send nothing
-        self.tickets_run = mock.Mock(return_value=("", {"names": 0, "issued": 0, "journaled": 0}))
+        self.tickets_run = mock.Mock(return_value=([], {"names": 0, "journaled": 0}))
 
     def run_at(self, when, res=LIVE, argv=(), quotes=AAA_UP, send=None, scr=SCR, pre=PRE, cands=STATIC):
         """One squeeze_live.main run at New York time `when`, with everything but its logic mocked."""
@@ -328,8 +328,9 @@ class Sessions(unittest.TestCase):
         msgrules.check(self, sent[1])
         tickets = self.file(squeeze_live.TICKETS)["tickets"]
         self.assertEqual([(r["symbol"], r["source"], r["rank"]) for r in tickets], [("AAA", "squeeze", 1)])
-        self.assertEqual({k: logs[-1][k] for k in ("ticket_names", "tickets", "tickets_journaled")},
-                         {"ticket_names": 2, "tickets": 1, "tickets_journaled": 1})
+        self.assertEqual({k: logs[-1][k] for k in ("ticket_names", "tickets_journaled")},
+                         {"ticket_names": 2, "tickets_journaled": 1})
+        self.assertNotIn("tickets", logs[-1])  # no count that depends on the equity's refusals
         with mock.patch.object(list_tickets.ticket_command, "build", side_effect=lambda s, **k: built[s]), \
                 mock.patch.object(list_tickets.equity, "load", return_value=None):
             self.assertEqual(self.run_at("2026-09-28T11:31", scr={**SCR, "rows": [ROW, ROW2]})[1], [])  # no list, none
