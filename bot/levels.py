@@ -10,6 +10,7 @@ from bot import alpaca, ticket
 MODES = ("open", "breakout")
 DEFAULT_MODE, DEFAULT_H = "breakout", 21
 R_ATR, OPEN_LIMIT_ATR, BREAKOUT_LIMIT_ATR, TARGET_R = 2.0, 0.5, 0.25, 1.5
+STOP_CAP = 0.10  # owner 2026-10-13 (docs/superpowers/specs/2026-10-13-list-tickets-design.md): R <= 10% of P
 BREAKOUT_TICK, BREAKOUT_DAYS = 0.01, 3
 MIN_BARS, MIN_SHARES, MAX_ADV_SHARE, ADV_SESSIONS = 15, 2, 0.01, 20
 UNIVERSE_PRICE, UNIVERSE_ADV, UNIVERSE_HISTORY = 5.0, 10_000_000.0, 252  # spec section 2 (owner 2026-10-11: partial)
@@ -40,10 +41,17 @@ def adv(bars):
     return sum(b[4] * b[5] for b in bars[-ADV_SESSIONS:]) / ADV_SESSIONS
 
 
+def r_of(atr, P):
+    """The owner's stop cap: R = min(2 x ATR14, 0.10 x P) -> (R, whether the cap applied)."""
+    capped = STOP_CAP * P < R_ATR * atr - EPS
+    return (STOP_CAP * P if capped else R_ATR * atr), capped
+
+
 def plan(symbol, bars, day, mode=DEFAULT_MODE, horizon=DEFAULT_H, risk=100.0, max_shares=None,
          max_position_value=None):
     """Section 3's ticket for `symbol` on signal day `day` -> {"ok": True, ...levels, size} or {"ok": False,
-    "reason"}. Stop loss and target are from the planned entry P; the orders move them with the fill F.
+    "reason"}. R = min(2 x ATR14, 10% of the planned entry P) (the owner's stop cap, 2026-10-13); stop loss and
+    target are from P; the orders move them with the fill F.
     `max_position_value` (section 10's 20% of E) caps the shares at floor(value / P) before any refusal, so every
     refusal sees the final shares."""
     upto = _through(bars, day)
@@ -52,9 +60,9 @@ def plan(symbol, bars, day, mode=DEFAULT_MODE, horizon=DEFAULT_H, risk=100.0, ma
         return {"ok": False, "reason": "fewer than 15 bars"}
     if upto[-1][0] != day:  # halted, delisted or not yet published: never levels from an older session (review M1)
         return {"ok": False, "reason": "no bar on the signal day"}
-    R = R_ATR * atr
     _, o, h, l, c, v = upto[-1]
     entry = px(h + BREAKOUT_TICK) if mode == "breakout" else c
+    R, capped = r_of(atr, entry)  # the planned entry P first: R = min(2 x ATR, 10% of P)
     shares = int(risk / R + EPS) if R > 0 else 0
     if max_shares is not None:
         shares = min(shares, max_shares)
@@ -62,7 +70,8 @@ def plan(symbol, bars, day, mode=DEFAULT_MODE, horizon=DEFAULT_H, risk=100.0, ma
         shares = min(shares, int(max_position_value / entry + EPS))
     if shares < MIN_SHARES:
         return {"ok": False, "reason": "shares below 2"}
-    t = {"ok": True, "symbol": symbol, "day": day, "mode": mode, "horizon": horizon, "atr": atr, "R": R}
+    t = {"ok": True, "symbol": symbol, "day": day, "mode": mode, "horizon": horizon, "atr": atr, "R": R,
+         "stop_capped": capped}
     if mode == "breakout":
         t["entry_stop"] = px(h + BREAKOUT_TICK)
         t["limit"] = px(t["entry_stop"] + BREAKOUT_LIMIT_ATR * atr)

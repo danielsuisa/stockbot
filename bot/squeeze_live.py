@@ -17,7 +17,8 @@ import os
 import statistics
 from pathlib import Path
 
-from bot import common, market, movers, screen, sessions, shorts, squeeze
+from bot import (common, list_tickets, market, movers, screen, sessions, shorts, squeeze, ticket_command,
+                 ticket_journal)
 from bot.common import code
 
 SCREEN = "screen-2026-10-08"  # the journal's name for the owner's screen
@@ -27,6 +28,7 @@ BACKTEST = {"hit": 0.068, "crash": 0.071, "base": 0.010, "years": "2024–2026"}
 CRASH = 1 / squeeze.HIT - 1  # -33%: the fall that mirrors the +50% spike
 MOVERS_SI = 0.20  # the movers' stocks: short interest of at least 20% of shares outstanding (SEC)
 LAST, JOURNAL = "squeeze_last.json", "squeeze_journal.json"
+TICKETS = "ticket_journal.json"  # the list tickets' paper journal (docs/superpowers/specs/2026-10-13-list-tickets-design.md)
 STATE, MOVERS_LOG = "squeeze_state.json", "movers_log.json"
 FRAMES = 6  # quarters of SEC frames: facts sit within ~45 days of a quarter end, so 6 cover the 400-day age limit
 FIELDS = ("float", "short_float", "short_ratio", "avg_vol", "rel_vol", "pre_vol", "price", "chg")
@@ -254,7 +256,7 @@ def _summary(entries):
             f"חציון אחרי {code(squeeze.WINDOW)} ימי מסחר: {common.change(med, 0)}."]
 
 
-def stats_text(j):
+def stats_text(j, tickets=None):
     """/squeeze stats: the screen's closed outcomes, and the replaced list's apart, next to its own backtest."""
     new = [e for e in j["entries"] if e.get("variant") == SCREEN]
     pre = [e for e in j["entries"] if e.get("variant") == SCREEN_PRE]
@@ -266,6 +268,9 @@ def stats_text(j):
         hit, crash = (code(format(BACKTEST[k], ".1%")) for k in ("hit", "crash"))
         lines.append(f"בבדיקה ההיסטורית שלה ({code(BACKTEST['years'])}): {hit} עלו {code('50%')} ומעלה, ו־{crash} ירדו"
                      f" {code('33%')} ומעלה.")
+    if tickets is None:
+        tickets = ticket_journal.load(str(path(TICKETS)))
+    lines += [""] + list_tickets.stats_lines(tickets)  # the list tickets' paper journal (information only)
     from bot import squeeze_forward  # the forward test's one line (docs/superpowers/specs/2026-10-13-squeeze-forward-test.md)
     lines += ["", squeeze_forward.line(j["entries"])]
     return "\n".join(lines)
@@ -358,12 +363,21 @@ def main(argv=None):
             save(STATE, state)
         return 0  # reported above; exit 1 would add the workflow alarm on every run of an outage
     j = load(JOURNAL, {"v": 1, "entries": []})
+    tickets_filled = 0
+    if not a.dry:  # the list tickets' outcomes (the backtest's functions on completed daily bars)
+        try:
+            tj = ticket_journal.load(str(path(TICKETS)))
+            tickets_filled = list_tickets.followup(tj, today)
+            if tickets_filled:
+                list_tickets.save(str(path(TICKETS)), tj)
+        except Exception:  # a ticket follow-up problem must not hold back the list; retried next run
+            common.trace()
     try:
         filled = followup(j, today)
     except Exception:  # a follow-up problem must not hold back the list; it is retried next run
         common.trace()
         filled = 0
-    scr, list_text, added, static = None, "", 0, None
+    scr, list_text, added, static, old, other = None, "", 0, None, None, None
     kind = "pre" if session == "pre" else "day" if manual or session in ("regular", "post") else None
     if kind:
         try:
@@ -382,6 +396,7 @@ def main(argv=None):
         date = scr["date"] or today
         full, last = message(res, scr, now, static), load(LAST, {})
         old = last.get("rows") if (last.get("date"), last.get("kind")) == (date, kind) else None  # no kind: replaced method
+        other = last.get("rows") if last.get("date") == date and last.get("kind") != kind else None  # the day's other list
         if manual or old is None:
             list_text = full
         elif {r["t"] for r in scr["rows"]} != {r["t"] for r in old}:
@@ -398,6 +413,14 @@ def main(argv=None):
     # each part is saved right after it goes out, so a failure later in the run (or the twin's retry) never re-sends it
     if list_text:
         common.send(list_text, signal=bool(scr), source=SOURCE)
+    counts = {"names": 0, "journaled": 0}
+    if list_text and scr:  # spec 2: a list went out -> one message with the tickets of its new names
+        try:
+            ticket_parts, counts = list_tickets.run(scr["rows"], old, other, str(path(TICKETS)))
+            for part in ticket_parts:  # one message, in parts that break between tickets
+                common.send(part, source=ticket_command.SOURCE)
+        except Exception:  # never holds back the rest of the run; the type and frames only
+            common.trace()
     if scr:
         save(LAST, {"date": date, "kind": kind, "at": f"{now:%H:%M}", "text": full,
                     "rows": [{k: _round(v) for k, v in r.items()} for r in scr["rows"]]})
@@ -413,7 +436,8 @@ def main(argv=None):
         common.send(note, source=SOURCE)
     common.log("squeeze", session=session, manual=manual, rows=len(rows), screened=scr and scr.get("screened", scr.get("checked")),
                movers=len(found), sent=sum(bool(t) for t in (list_text, movers_text, note)), added=added,
-               filled=filled)
+               filled=filled, ticket_names=counts["names"], tickets_journaled=counts["journaled"],
+               ticket_outcomes=tickets_filled)  # counts only: no number derived from the equity
     return 0
 
 

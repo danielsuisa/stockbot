@@ -12,7 +12,7 @@ on:
         default: manual
 
 permissions:
-  contents: write  # commit the squeeze list, journal, state and movers log
+  contents: write  # commit the squeeze list, journal, state, movers log and the list tickets' journal
 
 concurrency:
   group: squeeze
@@ -37,12 +37,15 @@ jobs:
           SEC_UA: ${{ secrets.SEC_UA }}
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}  # the list tickets read Alpaca bars and quotes (as /ticket)
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          TICKET_RISK_PCT: ${{ vars.TICKET_RISK_PCT }}  # the same risk share as /ticket (unset: 0.5%)
       - name: Commit the list, journal, state and movers log
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          for f in data/squeeze_last.json data/squeeze_journal.json data/squeeze_state.json data/movers_log.json; do
+          for f in data/squeeze_last.json data/squeeze_journal.json data/squeeze_state.json data/movers_log.json data/ticket_journal.json; do
             if [ -f "$f" ]; then git add "$f"; fi
           done
           if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
