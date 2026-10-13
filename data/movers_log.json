@@ -99,6 +99,28 @@
    "gain": 2.1091,
    "vol_ratio": 1.557,
    "si_pct": 0.917
+  },
+  {
+   "date": "2026-10-13",
+   "session": "post",
+   "t": "ENVX",
+   "manual": false,
+   "price": 2.8,
+   "ref": 2.51,
+   "gain": 0.1155,
+   "vol_ratio": 0.1827,
+   "si_pct": 0.2418
+  },
+  {
+   "date": "2026-10-13",
+   "session": "post",
+   "t": "BKYI",
+   "manual": false,
+   "price": 3.14,
+   "ref": 2.83,
+   "gain": 0.1095,
+   "vol_ratio": 0.198,
+   "si_pct": 0.917
   }
  ]
 }
