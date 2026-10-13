@@ -262,6 +262,10 @@ the pattern of `.github/workflows/ensemble-verdict.yml`.
   - **`test_verdict_end_to_end_synthetic`:**
     - with a synthetic path where TREND avoids a synthetic crash, the outcome is TIMING;
     - with a flat path, the outcome is STATIC.
+    - **Correction found in phase 2:** a flat path gives TIMING, not STATIC, under the spec as written. TREND sits
+      in the cash leg (C is not above SMA10) and earns the bill rate. STATIC holds 60% in a flat SPY. So TREND's
+      growth exceeds STATIC's by about 0.6 × the bill rate, above 7.2b's 1.0 point at a 2% rate. The test for
+      STATIC uses a steady rise instead, and a separate test pins the flat-market property.
   - **`test_no_daily_series_in_report`:** no list longer than the number of years.
   - **`test_hebrew_summary_states_outcome`:** the summary states the outcome, STATIC included.
   - **`test_determinism`:** identical bytes under PYTHONHASHSEED 0, 1 and 4242.

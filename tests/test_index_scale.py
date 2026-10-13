@@ -20,6 +20,12 @@ class Measures(unittest.TestCase):
         self.assertEqual((peak, trough), ("2020-01-02", "2020-01-05"))
         self.assertEqual(ie.max_drawdown(days[:3], [1, 2, 3]), (0.0, None, None))
 
+    def test_drawdown_counts_a_fall_on_the_first_day(self):
+        """6.3 (review finding 1): the account holds e0 at the close before the window, so a fall on the first day
+        is a drawdown from it."""
+        days = ["2020-01-02", "2020-01-03"]
+        self.assertEqual(ie.max_drawdown(days, [5_000.0, 6_000.0], e0=10_000.0), (0.5, None, "2020-01-02"))
+
     def test_calendar_years(self):
         days = ["2020-06-01", "2020-12-31", "2021-03-01", "2021-12-31"]
         got = ie.calendar_year_returns(10_000, days, [10_500, 11_000, 9_000, 12_100])
@@ -63,7 +69,7 @@ class Scale(unittest.TestCase):
         cash = {d: 0.0 for d in days}
         a = ie.fit_scale(rows, cash, ALWAYS, "2006-01-03", "2006-01-04")
         self.assertEqual(a["mdds"][9], ie.max_drawdown(*(lambda r: (r["days"], r["equity"]))(
-            ie.run_window(rows, cash, ALWAYS, 0.10, ie.BASE, "2006-01-03", "2006-01-04")))[0])
+            ie.run_window(rows, cash, ALWAYS, 0.10, ie.BASE, "2006-01-03", "2006-01-04")), 10_000.0)[0])
 
 
 if __name__ == "__main__":

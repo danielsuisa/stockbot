@@ -106,7 +106,7 @@ def _p_numbers(rows, cash, ch, scale):
     for name, costs in (("base", ie.BASE), ("stress", ie.STRESS)):
         res = ie.run_window(rows, cash, ch, scale, costs, *P)
         out[name] = (ie.growth_rate(res["e0"], res["final"], res["days"][0], res["days"][-1]),
-                     ie.max_drawdown(res["days"], res["equity"])[0])
+                     ie.max_drawdown(res["days"], res["equity"], res["e0"])[0])
     return {"growth_p": out["base"][0], "mdd_p": out["base"][1], "growth_p_stress": out["stress"][0]}
 
 
@@ -135,14 +135,16 @@ def decide(rows, cash, params=DEFAULT):
         else:
             elig[p] = ix.eligible(numbers[p], numbers["STATIC"])
     out, sel = ix.outcome(elig, {p: n["growth_p"] for p, n in numbers.items() if n})
+    # the spec does not cover a STATIC excluded by the scale search: flagged in the report, not settled here
     return {"overlays": overlays, "passing": passing, "policies": pols, "scales": scales, "p_numbers": numbers,
-            "eligibility": elig, "outcome": out, "selected": sel, "_changes": ch, "_held": held}
+            "eligibility": elig, "outcome": out, "selected": sel, "static_excluded": scales["STATIC"]["excluded"],
+            "_changes": ch, "_held": held}
 
 
 # ---------- 8.3 ----------
 def _metrics(res):
     years = ie.calendar_year_returns(res["e0"], res["days"], res["equity"])
-    depth, peak, trough = ie.max_drawdown(res["days"], res["equity"])
+    depth, peak, trough = ie.max_drawdown(res["days"], res["equity"], res["e0"])
     return {"growth": ie.growth_rate(res["e0"], res["final"], res["days"][0], res["days"][-1]),
             "final_equity": res["final"], "max_drawdown": {"depth": depth, "peak": peak, "trough": trough},
             "worst_year": min(years.items(), key=lambda kv: kv[1]) if years else None,
@@ -160,7 +162,7 @@ def _window(rows, cash, ch, scale, w):
 def _brief(d):
     return {"outcome": d["outcome"], "selected": d["selected"], "passing_overlays": d["passing"],
             "scales": {p: {"fitted": s["fitted"], "scale": s["scale"]} for p, s in d["scales"].items()},
-            "p_numbers": d["p_numbers"], "eligibility": d["eligibility"]}
+            "p_numbers": d["p_numbers"], "eligibility": d["eligibility"], "static_excluded": d["static_excluded"]}
 
 
 def verdict_report(rows, cash, fingerprint, params=DEFAULT):
@@ -186,13 +188,15 @@ def verdict_report(rows, cash, fingerprint, params=DEFAULT):
     overlays = {r: {k: v for k, v in o.items()} for r, o in d["overlays"].items()}
     rep = {"fingerprint": fingerprint, "windows": _windows(), "overlays": overlays, "policies": pols,
            "references": refs, "eligibility": d["eligibility"], "p_numbers": d["p_numbers"],
-           "outcome": d["outcome"], "selected": d["selected"]}
+           "outcome": d["outcome"], "selected": d["selected"], "static_excluded": d["static_excluded"]}
     # E4: the information items, after the decision, in their own section; they decide nothing
     info = {"no_crash_cap": _brief(decide(rows, cash, {**params, "cap": 1.0})),
             "budget_15": _brief(decide(rows, cash, {**params, "budget": 0.15})),
             "budget_17": _brief(decide(rows, cash, {**params, "budget": 0.17})),
-            "t_8_months": _brief(decide(rows, cash, {**params, "t_months": 8})),
-            "t_12_months": _brief(decide(rows, cash, {**params, "t_months": 12})),
+            "t_8_months": {**_brief(decide(rows, cash, {**params, "t_months": 8})),
+                           "first_trend_state": rules.trend_states(rows, 8)[0][0]},
+            "t_12_months": {**_brief(decide(rows, cash, {**params, "t_months": 12})),
+                            "first_trend_state": rules.trend_states(rows, 12)[0][0]},  # cold before this day
             "d_rsi_5": _brief(decide(rows, cash, {**params, "d_rsi": 5.0})),
             "d_rsi_15": _brief(decide(rows, cash, {**params, "d_rsi": 15.0})),
             "t_timing_statistic": _overlay(rows, cash, ch["TREND"], d["_held"]["TREND"])}
@@ -204,8 +208,9 @@ def summary_md(rep, today):
     """The Hebrew summary of 8.3: the outcome stated plainly (also when it is STATIC), then the numbers."""
     out = rep["outcome"]
     if out == "STATIC":
-        head = ("**תוצאה: STATIC.** אף מדיניות תזמון אינה זכאית לפי 7.2. ההמלצה היא התמהיל הקבוע בסקאלה התפעולית, "
-                "שאינו צריך אלגוריתם, והמחקר על הכללים האלה מסתיים.")
+        op = rep["policies"]["STATIC"]["scale_operating"]["scale"]
+        head = (f"**תוצאה: STATIC.** אף מדיניות תזמון אינה זכאית לפי 7.2. ההמלצה היא התמהיל הקבוע בסקאלה התפעולית "
+                f"{op}, שאינו צריך אלגוריתם, והמחקר על הכללים האלה מסתיים.")
     else:
         sel = rep["selected"]
         op = rep["policies"][sel]["scale_operating"]["scale"]

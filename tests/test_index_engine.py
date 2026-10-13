@@ -75,6 +75,23 @@ class Accounting(unittest.TestCase):
         self.assertAlmostEqual(res["weights"][0], 6_600 / 10_600)
 
 
+class FirstDay(unittest.TestCase):
+    def test_tom_carried_into_the_window(self):
+        """Plan review focus 2: a TOM position bought at a close before the window is taken at the window's first
+        open (with costs) and sold at its planned close inside the window."""
+        rws = rows(("2008-12-30", 90, 90), ("2008-12-31", 90, 100), ("2009-01-02", 101, 103), ("2009-01-05", 103, 104),
+                   ("2009-01-06", 104, 105), ("2009-01-07", 105, 99))
+        changes = [("2008-12-30", "close", True), ("2009-01-06", "close", False)]
+        res = ie.run_window(rws, {r[0]: 0.0 for r in rws}, changes, 1.0, ie.Costs(0.35, 1.0), "2009-01-02", "2009-01-07")
+        self.assertEqual([t[:3] for t in res["trades"]], [("2009-01-02", "open", "in"), ("2009-01-06", "close", "out")])
+        self.assertEqual(res["tickets"], 4)
+        self.assertAlmostEqual(res["equity"][-1], res["equity"][-2])  # in cash after the close of 01-06
+
+    def test_rule_event_on_the_first_day(self):
+        res = run([("2020-01-03", "open", False), ("2019-12-31", "close", True)], start="2020-01-03")
+        self.assertEqual(res["tickets"], 0)  # ON before the window, OFF at its first open: it never buys
+
+
 class Rebalance(unittest.TestCase):
     YR = rows(("2020-12-30", 100, 100), ("2020-12-31", 100, 150), ("2021-01-04", 150, 150))
 

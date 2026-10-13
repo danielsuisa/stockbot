@@ -96,10 +96,12 @@ def growth_rate(e0, e_end, first_day, last_day):
     return (e_end / e0) ** (365.25 / days) - 1
 
 
-def max_drawdown(days, equity):
+def max_drawdown(days, equity, e0=None):
     """6.3: the largest fall of the closing equity from its highest earlier close in the window -> (depth, peak
-    day, trough day); (0.0, None, None) when it never falls."""
-    best, peak, peak_day = (0.0, None, None), float("-inf"), None
+    day, trough day); (0.0, None, None) when it never falls. The account's equity at the close before the window
+    (`e0`) counts as the first earlier close, so a fall on the window's first day is a drawdown (its peak day is
+    then None: the close before the window)."""
+    best, peak, peak_day = (0.0, None, None), float("-inf") if e0 is None else e0, None
     for d, e in zip(days, equity):
         if e > peak:
             peak, peak_day = e, d
@@ -137,5 +139,5 @@ def fit_scale(rows, cash_r, changes, fit_start, fit_end, budget=BUDGET, cap=CAP)
     mdds = []
     for s in STEPS:
         res = run_window(rows, cash_r, changes, s, BASE, fit_start, fit_end)
-        mdds.append(max_drawdown(res["days"], res["equity"])[0])
+        mdds.append(max_drawdown(res["days"], res["equity"], res["e0"])[0])
     return {**scale_from(mdds, budget, cap), "mdds": mdds}

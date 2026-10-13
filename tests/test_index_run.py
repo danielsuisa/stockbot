@@ -4,6 +4,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 import tempfile
 import unittest
 from unittest import mock
@@ -34,7 +35,8 @@ class Blind(unittest.TestCase):
         rows = path("rise")
         with short_windows():
             rep = ir.blind_report(rows, "f" * 16)
-        self.assertEqual(tuple(rep), ir.BLIND_KEYS)
+        self.assertEqual(tuple(rep), ("fingerprint", "trading_days_per_year", "entries_per_year", "pi",
+                                      "trend_order_tickets_per_year", "tom_days_held_p"))  # 8.2 only
         self.assertEqual(set(rep["pi"]), {"TREND", "TOM", "D"})
         self.assertEqual(set(rep["pi"]["TOM"]), {"P", "FIT_P", "H"})
         self.assertEqual(rep["trend_order_tickets_per_year"], {"2006": 2})  # a steady rise: one entry at H's first open
@@ -93,6 +95,30 @@ class Verdict(unittest.TestCase):
                     yield from lists(x)
         self.assertLessEqual(max(len(x) for x in lists(rep)), 10)  # E2, B5: no daily or monthly series
 
+        def dicts(v):
+            if isinstance(v, dict):
+                yield v
+                for x in v.values():
+                    yield from dicts(x)
+            elif isinstance(v, list):
+                for x in v:
+                    yield from dicts(x)
+        dated = [k for x in dicts(rep) for k in x if isinstance(k, str) and re.match(r"\d{4}-\d{2}", k)]
+        self.assertEqual(dated, [])  # no series keyed by day or month either (per-year keys are allowed by B5)
+
+    def test_information_notes_cold_trend_variants(self):
+        rows = path("crash")
+        with short_windows():
+            rep = ir.verdict_report(rows, syn.cash(rows), "f" * 16)
+        note = rep["information, no decision"]["t_12_months"]["first_trend_state"]
+        self.assertEqual(note, ir.rules.trend_states(rows, 12)[0][0])  # review finding 5: when T(12) is first warm
+
+    def test_static_excluded_is_flagged(self):
+        rows = syn.rows("2005-02-25", "2008-12-31", syn.crash(at=240, length=40, depth=0.3))  # a fall in 2006
+        with short_windows():
+            d = ir.decide(rows, syn.cash(rows), {**ir.DEFAULT, "budget": 0.0})  # any drawdown is above 0
+        self.assertTrue(d["static_excluded"])  # review finding 6: the spec does not cover it; flagged, not settled
+
     def test_hebrew_summary_states_outcome(self):
         for kind, word in (("rise", "STATIC"), ("crash", "TIMING")):
             rows = path(kind)
@@ -100,6 +126,8 @@ class Verdict(unittest.TestCase):
                 rep = ir.verdict_report(rows, syn.cash(rows), "f" * 16)
             md = ir.summary_md(rep, "2026-10-13")
             self.assertIn(word, md)
+            if word == "STATIC":  # 7.3: the static mix at its operating scale
+                self.assertIn(str(rep["policies"]["STATIC"]["scale_operating"]["scale"]), md)
             self.assertIn("תוצאה", md)
 
 
@@ -143,6 +171,28 @@ class Main(unittest.TestCase):
         files = [w[6:-1] for w in leaks.writes if w.startswith("[file ")]
         self.assertEqual(files, [ir.BLIND_PATH])
         self.assertEqual(len(leaks.out.getvalue().strip().splitlines()), 1)
+
+    def test_verdict_writes_only_its_two_files(self):
+        rows = path("crash")
+        leaks = Leaks()
+        with tempfile.TemporaryDirectory() as d, short_windows(), mock.patch.object(ir, "head", return_value="c0ffee"):
+            stooq, h15, man = self.files(d, rows)
+            old = os.getcwd()
+            os.chdir(d)
+            try:
+                with contextlib.redirect_stdout(open(os.devnull, "w")):
+                    ir.main(["--blind", "--stooq", stooq, "--h15", h15, "--manifest", man])
+                with leaks.watch():
+                    code = ir.main(["--verdict", "--commit", "c0ffee", "--owner-go-ahead", "--blind-report",
+                                    ir.BLIND_PATH, "--stooq", stooq, "--h15", h15, "--manifest", man])
+            finally:
+                os.chdir(old)
+        self.assertEqual(code, 0)
+        files = [w[6:-1].replace("\\", "/") for w in leaks.writes if w.startswith("[file ")]
+        self.assertEqual(len(files), 2)
+        self.assertEqual(files[0], ir.VERDICT_PATH)
+        self.assertTrue(files[1].startswith("docs/backtest/index-"))  # E2: no daily equity file anywhere
+        self.assertEqual(leaks.logs, [])
 
     def test_verdict_refusals(self):
         rows = path("rise")

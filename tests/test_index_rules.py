@@ -23,6 +23,8 @@ def rows_of(days, closes, opens=None):
 class Averages(unittest.TestCase):
     def test_sma(self):
         self.assertEqual(ir.sma([1, 2, 3, 4], 2), [None, 1.5, 2.5, 3.5])
+        self.assertEqual(ir.sma([100.2] * 5, 5)[-1], sum([100.2] * 5) / 5)  # the mean of the slice: no running drift
+        self.assertFalse(100.2 > ir.sma([100.0, 100.2, 100.2, 100.2, 100.2, 100.2], 5)[-1])  # a tie is not "above"
 
     def test_rsi2_by_hand(self):
         got = ir.rsi2([10, 11, 10.5, 10.5, 12])

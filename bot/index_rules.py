@@ -18,13 +18,7 @@ T_MONTHS, D_RSI_MAX, D_LONG, D_SHORT = 10, 10.0, 200, 5
 
 def sma(closes, n):
     """The mean of the last n closes, day t included (None before n closes)."""
-    out, s = [], 0.0
-    for k, c in enumerate(closes):
-        s += c
-        if k >= n:
-            s -= closes[k - n]
-        out.append(s / n if k >= n - 1 else None)
-    return out
+    return [sum(closes[k - n + 1:k + 1]) / n if k >= n - 1 else None for k in range(len(closes))]  # no running drift
 
 
 def rsi2(closes):
