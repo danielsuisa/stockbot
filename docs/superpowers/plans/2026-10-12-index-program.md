@@ -42,7 +42,13 @@ the pattern of `.github/workflows/ensemble-verdict.yml`.
 | E2, daily equity | E2: kept in memory only, saved nowhere; B5 governs the public report | 8.3's "daily equity CSV per policy"; A5's second sentence |
 | E3, TACT | E3: in SPY when either passing overlay holds a position; it trades only when that combined state changes | 6.1's TACT row, made precise |
 | E4, smaller rules | E4: a signal on a window's last day is not executed; P's fitting account starts in cash at the close of 2005-12-30 with $10,000 and base costs; 8.3's information items come after the decision, in their own section; a yearly rebalance is two order tickets | — |
-| E5, phase 3 to phase 4 | E5: merge to `main` with the owner's approval; the blind run is a push of that merge commit to `index-run-blind`; the verdict runs on the same commit and must reproduce the blind report; no time limit | Plan question 8's 7-day limit |
+| E5, phase 3 to phase 4 | Replaced by F3. E5 said: merge to `main` with the owner's approval; the blind run is a push of that merge commit to `index-run-blind`; the verdict runs on the same commit and must reproduce the blind report; no time limit | Plan question 8's 7-day limit |
+| F1, reviews | F1: an independent review replaces the owner's stops after phases 2 and 3; every finding fixed or answered in writing first | The stops for the owner's review |
+| F2, merging | F2: the owner merges; the implementer marks the pull request ready | — |
+| F3, blind and verdict runs | F3: both on the head commit of `index-program`; blind = push to `index-run-blind`; verdict = push of the same commit to `index-run-verdict`, job in environment `index-verdict` (owner as required reviewer); the verdict refuses unless it reproduces the blind report, and refuses when a verdict report already exists on the branch; one repeat only as F3 allows; afterwards the JSON report and the Hebrew summary are committed and nothing else changes | E5; plan tasks 7 and 8 |
+| F4, decisions | F4: literal text, then the later amendment, then the option less favourable to the timing policies and to passing a gate; recorded in `docs/backtest/index-decisions.md` before the verdict | — |
+| F5, the end | F5: the verdict report and summary on the branch, the pull request ready; phase 5 not built | — |
+| F6, blocked | F6: stop and report (sha256 mismatch, a blind count other than 851 no code error explains, a missing permission, a test that passes only by changing the spec) | — |
 
 ## Global constraints
 
@@ -275,45 +281,48 @@ the pattern of `.github/workflows/ensemble-verdict.yml`.
 
 ## Phase 3: the blind run (real files, counts only)
 
-### Task 7: the blind workflow
+### Task 7: the blind workflow (F3)
 
 **Files:**
 - Create `.github/workflows/index-blind.yml`.
+- Test `tests/test_index_workflows.py`.
 
 **The workflow:**
-- It runs on a push to `index-run-blind` only, with `contents: read`, on `ubuntu-24.04`, with
+- **Trigger:** a push to `index-run-blind` only (never `pull_request`), with `contents: read`, `ubuntu-24.04` and
   `PYTHONHASHSEED: "0"`.
-- **Private checkout:** `DATA_REPO_KEY` is written to `$RUNNER_TEMP/data_key` with mode 600, and
-  `stockbot-data` is cloned with `GIT_SSH_COMMAND="ssh -i … -o IdentitiesOnly=yes"`. The key file is deleted
-  right after the clone.
-- **Run:** `python -m bot.index_run --blind --stooq $RUNNER_TEMP/private/spy_us_d.csv`. `load_prices` and
-  `load_h15` check both sha256 against `data/index/manifest.json` and stop on a mismatch (exit 2).
-- **Upload:** only the blind report, which holds no price.
-- **Test:** a workflow test, as `tests/test_ensemble.Workflow`, checks:
-  - push only;
-  - `fail` on a missing key;
-  - no `${{ }}` inside `run:`;
-  - one upload.
-- **After the run:** the owner reviews 8.2. Any TOM count other than 851 is explained before phase 4.
+- **Private checkout:** `DATA_REPO_KEY` is written to `$RUNNER_TEMP/data_key` with mode 600. `stockbot-data` is
+  cloned with `GIT_SSH_COMMAND`, and the key file is deleted right after the clone.
+- **Run:** `python -m bot.index_run --blind --stooq "$RUNNER_TEMP/private/spy_us_d.csv"`. Both sha256 are checked
+  against `data/index/manifest.json`; a mismatch exits 2.
+- **Upload:** the blind report only (`index-blind-report.json`), which holds counts and no price.
+- **Check:** the TOM count `tom_days_held_p` must be 851 (8.2). Any other count is fixed only if a code error
+  explains it; otherwise the run is blocked (F6).
 
-## Phase 4: the verdict (one run)
+## Phase 4: the verdict (one run, F3)
 
-### Task 8: the verdict workflow (pattern of `ensemble-verdict.yml`)
+### Task 8: the verdict workflow (pattern of `ensemble-verdict.yml`, triggered as F3 says)
 
 **Files:**
 - Create `.github/workflows/index-verdict.yml`.
+- Test `tests/test_index_workflows.py`.
 
 **The workflow:**
-- **Trigger:** `workflow_dispatch` only. The inputs are `blind_run_id`, `blind_commit` and a typed `confirm`.
-- **Environment:** `environment: index-verdict`, with the owner as required reviewer, to be created and read back
-  as for `ensemble-verdict`.
-- **Settings:** `concurrency` with one run at a time, `ubuntu-24.04`, `PYTHONHASHSEED: "0"`.
-- **First step:** checks the ref, that `github.sha` equals `blind_commit`, and the confirmation, with inputs
-  passed only through `env`.
+- **Trigger:** a push to `index-run-verdict` only, of the same commit as the blind run.
+- **Environment and settings:** the job runs in the environment `index-verdict`, whose required reviewer is the
+  owner and which deploys only from `index-run-verdict`. The owner's approval of the waiting run is his approval
+  of the single verdict run. Settings: `concurrency` with one run at a time, `ubuntu-24.04`,
+  `PYTHONHASHSEED: "0"`, permissions `contents: read` and `actions: read`.
+- **Refusals:**
+  - when a verdict report already exists on the branch: a file `docs/backtest/index-verdict-*.json` in the
+    checkout (F3);
+  - unless the recomputed blind report equals the blind run's: the workflow downloads the artifact of the latest
+    successful `index-blind.yml` run for the same commit, and the driver compares (F3).
 - **Data:** the same private checkout and sha256 checks as task 7.
-- **Blind reproduction:** the verdict recomputes the blind report and refuses unless it equals the blind run's
-  artifact, as the ensemble did.
-- **Upload:** the JSON report and the Hebrew summary `docs/backtest/index-<date>.md`. Aggregated numbers only (B5).
+- **Run:** `python -m bot.index_run --verdict --commit "$SHA" --owner-go-ahead --blind-report …`. The owner's
+  go-ahead is the environment's approval.
+- **Upload:** the JSON report and the Hebrew summary (aggregated numbers only, B5).
+- **Afterwards:** the two files are committed to `index-program`, as `docs/backtest/index-verdict-<date>.json`
+  and `docs/backtest/index-<date>.md`.
 
 ## Open questions: all eight settled by Amendment 5 (2026-10-13)
 

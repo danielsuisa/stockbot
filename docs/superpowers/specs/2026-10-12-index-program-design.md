@@ -538,3 +538,44 @@ combined state changes.
 approval. The blind run is a push of that merge commit to the branch `index-run-blind`. The verdict is
 dispatched on the same commit and refuses to run unless its recomputed blind report equals the blind run's.
 There is no time limit between the two, because the inputs are fixed by their sha256.
+
+## Amendment 6 (2026-10-13, before any return was computed): running to the end, and who decides what
+
+**Reason.** The owner asked that the remaining phases run to their end with as few stops as possible, and that
+the implementer decide open points alone. This amendment says what the implementer decides and what stays with
+the owner.
+
+**F1. Reviews.** The stops for the owner's review at the end of phases 2 and 3 are replaced by an independent
+review: a reviewer that did not write the code checks it against the spec with its amendments. Every finding is
+fixed or answered in writing before the next phase starts.
+
+**F2. Merging stays with the owner.** Rule 4 of section 0 stands. The implementer prepares the pull request,
+marks it ready, and does not merge.
+
+**F3. The blind run and the verdict run come before the merge** (replaces E5, and changes the plan's tasks 7
+and 8). Both run on the head commit of the branch `index-program`:
+- the blind run is a push of that commit to the branch `index-run-blind`;
+- the verdict run is a push of the same commit to the branch `index-run-verdict`. Its job runs in the GitHub
+  environment `index-verdict`, whose required reviewer is the owner. His approval of the waiting run is his
+  approval of the single verdict run;
+- the verdict workflow refuses to run unless its recomputed blind report equals the blind run's, and refuses
+  when a verdict report already exists on the branch;
+- if the run fails before it uploads a report, and its log shows no result of any rule or policy, a cause that
+  lies outside sections 4 to 7 may be fixed and the run repeated once, with the owner's approval of the new
+  waiting run; this is recorded. In every other case there is no second run;
+- after the verdict, the JSON report and the Hebrew summary are committed to `index-program`. Nothing else on
+  the branch changes after the verdict, except the record of the run.
+
+**F4. Decisions.** Where the spec with its amendments leaves a choice open, the implementer decides, before the
+verdict run, in this order: (1) the literal text; (2) the later amendment over the earlier text; (3) the option
+less favourable to the timing policies and to passing a gate. No choice is made by looking at a return on real
+prices. No choice changes sections 4 to 7, a threshold, a window, a cost or an acceptance check. Each choice is
+recorded in `docs/backtest/index-decisions.md`: the question, the options, the choice, the reason. After the
+verdict run nothing is decided or changed.
+
+**F5. The end.** This run ends when the verdict report and the Hebrew summary are on the branch and the pull
+request is ready for the owner to merge. Phase 5 is not built in this run. Real money stays outside this spec.
+
+**F6. Blocked.** If a step cannot be done inside these rules (a sha256 mismatch; a blind count other than 851
+that no code error explains; a missing permission; a test that passes only by changing the spec), the run stops
+at that step and reports it.
