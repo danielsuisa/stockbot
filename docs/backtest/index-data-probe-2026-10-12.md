@@ -103,3 +103,101 @@ the analyst to read in full:
   transiently.
 - **On this reading,** both B1's committed fingerprint and B5's public report conflict with the free plan's
   terms. This is Claude Code's reading of a summary, not legal advice, and the analyst should check the full text.
+
+## Third round (Amendment 3, 2026-10-13): stopped by C3, checks 2 and 3 failed
+
+The run was `38409938767`, on the temporary branch `index-data-probe`, triggered by a push only:
+- the Stooq file was read from `danielsuisa/stockbot-data` with the deploy key;
+- Alpaca's raw and adjusted SPY bars were held in memory only;
+- H.15 was downloaded from the Board;
+- the artifact holds `probe.json` (no price), the H.15 file and the manifest.
+
+The run ended with exit 5: a calendar difference that no documented closure explains.
+
+### Sources
+
+| Source | State |
+|---|---|
+| Stooq `spy_us_d.csv` (private repository) | sha256 equals C1's (`3493247f…ca6f`); 5,440 rows, 5,432 used (2005-02-25 to 2026-09-30) |
+| Alpaca SPY, raw and adjusted (memory only) | 200; 2,701 rows each, 2016-01-04 to 2026-09-30 |
+| H.15 zip (Board) | 200; zip sha256 `bb2e439536b7312483db8dafd4770509e1c34dcef692e14e4797bd16d051f24a` |
+
+### C3, check by check
+
+| Check | Numbers | Result |
+|---|---|---|
+| 1. Integrity (relative tolerance 1e-9) | 5,432 rows; 0 non-positive; 0 days with open or close outside [low, high]; dates in order | **Pass** |
+| 2. Calendar, 2005-02-25 to 2026-09-30 | File 5,432 days, exchange calendar 5,433. In the calendar, not in the file: **2011-02-17** (a Thursday; no documented closure). In the file, not in the calendar: none | **Fail** (1 unexplained) |
+| 3. Dividend adjustment, against Alpaca, 2016-01-04 to 2026-09-30 | The file's change over the span differs from Alpaca's adjusted change by **0.87%** relative (need at most 1%: holds). Ex-dividend days (raw and adjusted changes differ by more than 0.001): **41**, all quarterly, from 2016-06-17 to 2026-09-18. On **35 of 41 (85.4%)** the file's change is nearer the adjusted change (need 90%) | **Fail** |
+| 4. Gross errors, against Alpaca's adjusted bars | The same 2,701 trading days. Close-to-close change within 0.005 on **99.74%**; open-to-close ratio within 0.005 on **99.81%** (need 99% each) | **Pass** |
+| 5. H.15 (as A3.4) | 1993-12-01 to 2026-09-30: **8,566 rows, 352 missing** (the same counts as the FRED copy) | Reported |
+
+The 10 largest differences of check 4:
+
+| Close-to-close change | Open-to-close ratio |
+|---|---|
+| 2020-03-13: 0.026875 | 2020-03-12: 0.028829 |
+| 2020-03-12: 0.026312 | 2020-03-18: 0.018037 |
+| 2020-03-18: 0.022107 | 2020-03-09: 0.007655 |
+| 2020-03-19: 0.018462 | 2020-03-17: 0.005237 |
+| 2020-03-10: 0.007983 | 2020-03-16: 0.005205 |
+| 2020-03-09: 0.007190 | 2020-03-24: 0.004600 |
+| 2016-03-18: 0.005297 | 2020-03-13: 0.003225 |
+| 2020-03-25: 0.004763 | 2020-03-20: 0.002876 |
+| 2018-06-15: 0.004627 | 2020-03-27: 0.002273 |
+| 2020-03-24: 0.003835 | 2018-02-20: 0.002178 |
+
+### Information (C3.6)
+
+**Close-to-close changes above 5% in size** (35 days):
+- **2008:** 2008-09-29 −7.85%, 10-06 −5.10%, 10-09 −6.98%, 10-13 +14.52%, 10-15 −9.84%, 10-20 +6.01%,
+  10-22 −5.45%, 10-24 −5.07%, 10-28 +11.69%, 11-06 −5.54%, 11-13 +6.23%, 11-19 −6.41%, 11-20 −7.42%, 11-21 +5.40%,
+  11-24 +6.93%, 12-01 −8.86%.
+- **2009:** 2009-01-20 −5.28%, 03-10 +5.96%, 03-23 +7.18%.
+- **2011:** 2011-08-08 −6.53%.
+- **2018:** 2018-12-26 +5.05%.
+- **2020:** 2020-03-09 −7.82%, 03-10 +5.18%, 03-12 −9.56%, 03-13 +8.55%, 03-16 −10.95%, 03-17 +5.41%,
+  03-18 −5.07%, 03-24 +9.06%, 03-26 +5.84%, 04-06 +6.72%, 06-11 −5.76%.
+- **2022:** 2022-11-10 +5.49%.
+- **2025:** 2025-04-04 −5.85%, 04-09 +10.50%.
+
+**Share of days whose open equals the previous close, per year:**
+
+| Year | Share |
+|---|---|
+| 2005 | 2.34% |
+| 2006 | 4.78% |
+| 2007 | 1.59% |
+| 2008 | 0.40% |
+| 2009 | 0 |
+| 2010 | 0.40% |
+| 2011 | 0.80% |
+| 2012 | 1.60% |
+| 2013 | 0.79% |
+| 2014 | 1.19% |
+| 2015 | 0 |
+| 2016 | 0.40% |
+| 2017 | 0.40% |
+| 2018 | 0 |
+| 2019 | 0.40% |
+| 2020 | 0 |
+| 2021 | 0 |
+| 2022 | 0 |
+| 2023 | 0.40% |
+| 2024 | 1.19% |
+| 2025 | 0 |
+| 2026 | 0 |
+
+### Files
+
+| File | Rows | First | Last | sha256 | Where |
+|---|---|---|---|---|---|
+| `spy_us_d.csv` (Stooq) | 5,440 (5,432 used) | 2005-02-25 | 2026-10-12 | `3493247f082c56292780c23c9f9272f39da5459b0eb10525e66b7b3ab6baca6f` | private repository `danielsuisa/stockbot-data` |
+| `h15-3m-tbill.csv` (Board, H.15) | 8,566 | 1993-12-01 | 2026-09-30 | `9306eed722fe9627e56ab097eb53cead1932e7f831a6186eaaf036a2b4b877cf` | `data/index/` in this repository, with `manifest.json` |
+
+**Stop (C3: "If check 1, 2, 3 or 4 fails, stop and report").** The plan for phases 2 to 4 is not written. The two
+failures are for the owner to decide:
+1. **Check 2:** one trading day, 2011-02-17, is missing from the Stooq file.
+2. **Check 3:** the file follows the adjusted series over the span (within 0.87%), but on 6 of the 41 ex-dividend
+   days its change is nearer Alpaca's raw change. The probe does not list which 6 days. Listing them is a
+   price-agreement diagnostic that could be added on request.
