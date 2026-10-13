@@ -201,3 +201,55 @@ failures are for the owner to decide:
 2. **Check 3:** the file follows the adjusted series over the span (within 0.87%), but on 6 of the 41 ex-dividend
    days its change is nearer Alpaca's raw change. The probe does not list which 6 days. Listing them is a
    price-agreement diagnostic that could be added on request.
+
+## Fourth round (Amendment 4, 2026-10-13): checks 1 to 4 pass
+
+Run `38414306529` on the temporary branch `index-data-probe`, with the same sources and safeguards as the third
+round. Exit 0.
+
+| Check | Numbers | Result |
+|---|---|---|
+| 1. Integrity | 5,432 rows; 0 non-positive; 0 outside [low, high] (tolerance 1e-9); dates in order | **Pass** |
+| 2. Calendar, with D1 | File 5,432 days against 5,433 on the exchange calendar. The only difference is 2011-02-17, absent from the file and accepted by D1. Nothing else | **Pass** |
+| 3. Dividend adjustment (D2), 2016-01-04 to 2026-09-30 | The file's r against the r of Alpaca's adjusted bars: **−0.6791%** (need at most 1% in size). Against the r of Alpaca's raw bars: **+16.9757%** (need more than 5% in size). Signs are (file's r / other r) − 1 | **Pass** |
+| 4. Gross errors | The same 2,701 trading days. Change within 0.005 on 99.7407%; open-to-close within 0.005 on 99.8149% | **Pass** |
+| 5. H.15 | 8,566 rows, 352 missing. The file is unchanged: sha256 `9306eed7…77cf`, as committed | Reported |
+
+### D2, information (decides nothing)
+
+**Per calendar year, the file's change less the change of Alpaca's adjusted bars:**
+
+| Year | Difference |
+|---|---|
+| 2016 | +0.005780 |
+| 2017 | −0.000317 |
+| 2018 | +0.003926 |
+| 2019 | +0.000856 |
+| 2020 | −0.001175 |
+| 2021 | +0.001317 |
+| 2022 | +0.000033 |
+| 2023 | −0.000010 |
+| 2024 | +0.000009 |
+| 2025 | −0.010161 |
+| 2026 (to 2026-09-30) | −0.008793 |
+
+**The ex-dividend days on which the file was nearer Alpaca's raw change** (6 of 41), each with the sum over the
+five trading days centred on it of (file's change − adjusted change):
+
+| Day | Five-day sum |
+|---|---|
+| 2025-06-20 | −0.002945 |
+| 2025-09-19 | −0.002777 |
+| 2025-12-19 | −0.002982 |
+| 2026-03-20 | −0.002735 |
+| 2026-06-18 | −0.002586 |
+| 2026-09-18 | −0.002485 |
+
+These are the six most recent ex-dividend days, one after another, and each sum is about the size of a quarterly
+dividend. Together with the 2025 and 2026 rows of the yearly table, this suggests the file is not adjusted for the
+dividends paid since mid-2025. This is an observation, not a check. The 2016 and 2018 rows include ex-dividend
+days on which Alpaca's own adjustment is in doubt (Amendment 4, the reason, on 2016-03-18).
+
+The two lists of C3.6 are unchanged from the third round.
+
+All four checks pass, so the plan for phases 2 to 4 was written: `docs/superpowers/plans/2026-10-12-index-program.md`.
