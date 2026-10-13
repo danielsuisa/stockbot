@@ -322,3 +322,100 @@ classes; any search over rules or parameters; machine learning; any change to th
 - Overnight returns and costs (why that rule is not here): https://alphaarchitect.com/trading-costs-wipe-out-the-overnight-return-anomaly/
 - Commissions: https://www.interactivebrokers.com/en/pricing/commissions-stocks.php
 - Treasury-bill rate: https://www.slickcharts.com/treasury/3-month
+
+## Amendment 1 (2026-10-12, after the phase 1 probe, before any return was computed)
+
+**Reason.** The phase 1 probe (`docs/backtest/index-data-probe-2026-10-12.md`) found three things. (a) Alpaca's
+daily SPY bar differs from another source's close by more than 0.0005 on 6.4% of days, mostly volatile days, so
+it cannot be the reference for the official close. That reference was this spec's untested assumption. (b) The
+terms of FRED and of Yahoo do not allow storing their data. (c) Stooq cannot be fetched by a program.
+Sections 4 to 7 (rules, parameters, costs, windows, tests, decision rules) are unchanged, except A4.
+
+**A1. Sources** (replaces the sources named in sections 3 and 8.1).
+- **SPY, primary:** Tiingo's end-of-day API with the owner's free key: raw and adjusted open, high, low and
+  close, cash dividends and split factors, 1993-01-29 to 2026-09-30. Its licence is the owner's personal use;
+  the data are never shown or shared.
+- **SPY, second source:** Stooq's daily CSV, downloaded by the owner in a browser.
+- **Bill rate:** the Federal Reserve Board's H.15 release (3-month Treasury bill, secondary market, discount
+  basis, business days), from the Board's Data Download Program. It replaces FRED. The series and the cash-leg
+  formula of section 3 are unchanged.
+- **BIL** (information only): Tiingo.
+- Yahoo's endpoint and FRED are not used again. Alpaca is information only (A3.5).
+
+**A2. Where the data live** (replaces the "Data files" bullet of section 3).
+- Price files live only in the owner's private repository `danielsuisa/stockbot-data`. They are never committed
+  to the public repository, never uploaded as a workflow artifact and never printed in a log. The public
+  repository holds a manifest for each file: source, download time, rows, first day, last day, sha256.
+- The H.15 file is committed to the public repository if the Board's terms allow it. Otherwise it lives in the
+  private repository.
+- Every later run reads the files from the private repository, checks each sha256 against its manifest and
+  stops on a mismatch.
+- Logs and public reports may show counts, dates, shares of days, relative differences and test results. They
+  do not show price series.
+
+**A3. Acceptance** (replaces the acceptance block of 8.1).
+1. **Integrity of the primary.** On raw prices: all positive, low <= open <= high and low <= close <= high on
+   every day. On adjusted prices: the same, with a relative tolerance of 1e-9. The number of dividends per
+   year is reported, and every year whose count is not 4 is listed.
+2. **Same trading days** in the primary and in the second source over 1993-01-29 to 2026-09-30. Every day found
+   in only one of them is listed.
+3. **Agreement of the primary with the second source,** on like prices (adjusted with adjusted if Stooq's file
+   is dividend-adjusted, otherwise raw with raw): the close-to-close change within 0.0005 on at least 99.5% of
+   days, and the same day's open-to-close ratio within 0.0015 on at least 99% of days. Both must hold over the
+   whole period and over window P. The two shares are also reported for 1993-1999, 2000-2008, 2009-2015 and
+   2016-2026, with the 10 largest differences of each measure (date and relative difference).
+4. **H.15:** 1993-12-01 to 2026-09-30; a missing day takes the previous value. The row count and the number
+   of missing days are reported (the FRED copy had 8,566 and 352).
+5. **Alpaca,** for information: its adjusted daily bars over 2016-01-04 to 2026-09-30 against the primary, by
+   the two measures of check 3. Which price the live phase uses for its signals is decided before phase 5.
+
+If check 1, 2 or 3 fails, stop and report. Nothing is relaxed without a new amendment.
+
+**A4. Section 6.2, clarification.** The search over s runs from 0.01 up to 1.00 (there is no leverage). The
+fitted value is the result of that search. The crash cap is applied after it.
+
+**A5. Section 8.3, change.** No daily series is published. The daily equity files go to the private repository.
+The public report gives, for each policy and window, the return of each calendar year, in addition to the
+numbers already listed.
+
+## Amendment 2 (2026-10-13, before any return was computed)
+
+**Reason.** (a) As Claude Code read Tiingo's terms, the free plan allows its data only in memory during a run
+and forbids saving them to any lasting storage. (b) The Stooq file the owner could download starts on
+2005-02-25, not in 1993. Sections 4 to 7 are unchanged.
+
+**B1. Tiingo data are never saved** (replaces, for Tiingo, the first and third bullets of A2, and the second
+sentence of A5).
+- Each run downloads SPY and BIL from Tiingo into memory and drops them when it ends. Nothing from Tiingo is
+  written to a disk cache, an artifact, a repository or a log.
+- **Fingerprint.** A run computes one sha256 per calendar year over the raw rows (date, open, high, low, close,
+  cash dividend, split factor) of 1993-01-29 to 2026-09-30, in a fixed text form. The first accepted run commits
+  these hashes to the public repository. Every later run recomputes them and stops on any difference, naming
+  the years.
+- Daily equity series are not saved anywhere.
+- The Stooq file stays in the private repository. The H.15 file is committed to the public repository, with
+  the Board named as its source.
+
+**B2. The program builds the adjusted series itself** (adds to section 3). From raw prices and cash dividends up
+to 2026-09-30: for each ex-dividend day d with dividend D, every price before d is multiplied by
+1 - D / (raw close of the trading day before d). A split factor other than 1 stops the run. Tiingo's own
+adjusted columns are compared with this series for information.
+
+**B3. Acceptance** (replaces checks 2 and 3 of A3; checks 1, 4 and 5 stand).
+- **Two-source period, 2005-02-25 to 2026-09-30** (it holds all of windows S and P): the same trading days in
+  Tiingo and in the Stooq file, every difference listed; and the two tolerances of A3.3, which must hold over
+  this period and over window P. The shares are also reported for 2005-2008, 2009-2015 and 2016-2026, with the
+  10 largest differences of each measure.
+- **Single-source period, 1993-01-29 to 2005-02-24:** the owner accepts one source, as 8.1 allowed. These years
+  serve only the warm-up of the signals and the fitting periods. Checks: integrity (A3.1); and the trading
+  days equal the New York Stock Exchange calendar (weekdays less holidays and documented special closures).
+  Every difference is listed, and one that no documented closure explains stops the run. Reported for
+  information: the days whose close-to-close change is above 5% in size (date and change), and, per year, the
+  share of days whose raw open equals the previous raw close.
+
+**B4. Information only** (adds to 8.3). If the Stooq file is dividend-adjusted, the overlay tests of 7.1 are
+computed a second time over P with the Stooq file as the price source. They decide nothing.
+
+**B5. Public report** (replaces the rest of A5). Aggregated numbers only: test statistics, gates, scales, growth
+rates, drawdowns with their dates, counts, and the calendar-year returns of each policy. No daily or monthly
+series and no price.
