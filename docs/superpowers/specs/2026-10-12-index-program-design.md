@@ -481,3 +481,30 @@ If check 1, 2, 3 or 4 fails, stop and report.
   drawdown limit on the falls of 2020 and 2022 only.
 - **Stooq's terms were not read** (they are behind its bot check). The price file stays private, and public
   reports hold aggregated numbers only.
+
+## Amendment 4 (2026-10-13, before any return was computed)
+
+**Reason.** The third round of the probe passed checks 1 and 4 of C3 and failed checks 2 and 3. (a) One
+ordinary trading day, 2011-02-17, is absent from the Stooq file. (b) On 35 of 41 ex-dividend days the file
+moved like Alpaca's adjusted bars, below the 90% asked. But the same run shows that Alpaca is not a sound
+reference day by day: on 2016-03-18, an ex-dividend day, Alpaca's raw and adjusted changes do not differ, while
+the file differs from both by the size of the dividend. The day-by-day rule of C3.3 therefore measured Alpaca
+as much as the file. The file's 35 changes above 5% in size agree in date and size with the known history of
+SPY (the analyst's check from memory, not a second source).
+
+**D1. The missing day** (changes C3.2). 2011-02-17 is not a trading day of the program. The file is used as it
+is, and the change from 2011-02-16 to 2011-02-18 counts as one day. Any other calendar difference still stops
+the run.
+
+**D2. Dividend adjustment** (replaces C3.3). Over 2016-01-04 to 2026-09-30, with r = last close / first close:
+the file passes if its r is within 1% of the r of Alpaca's adjusted bars, and differs by more than 5% from the r
+of Alpaca's raw bars. Both differences are reported with their sign. Reported for information, and deciding
+nothing:
+- for each calendar year, the file's change less the change of Alpaca's adjusted bars;
+- for each of the 41 ex-dividend days on which the file was nearer to Alpaca's raw change: the date, and the
+  sum over the five trading days centred on it of (the file's change less Alpaca's adjusted change).
+
+**D3. Limits added to section 11.**
+- The file's dividend adjustment is not exact: on about one ex-dividend day in seven it differs from Alpaca's.
+  Over 2016 to 2026 the whole effect is inside the 1% of D2. Before 2016 nothing checks it.
+- One trading day is missing from the file (D1).
