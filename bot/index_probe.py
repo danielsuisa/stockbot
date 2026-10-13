@@ -154,14 +154,14 @@ def fingerprint_diff(new, old):
     return sorted(y for y in set(new) | set(old) if new.get(y) != old.get(y))
 
 
-def adjust(rows, end=LAST):
+def adjust(rows, end=LAST, symbol=""):
     """B2: from raw prices and cash dividends up to `end`, every price before an ex-dividend day d with dividend D
     is multiplied by 1 - D / (raw close of the trading day before d) -> [(date, o, h, l, c)]. A split factor other
     than 1 stops the run."""
     rows = [r for r in rows if r[0] <= end]
     for r in rows:
         if r[6] != 1.0:
-            raise SplitFound(r[0])
+            raise SplitFound(f"{symbol} {r[0]}".strip())
     out, f = [], 1.0
     for k in range(len(rows) - 1, -1, -1):
         d, o, h, lo, c = rows[k][:5]
@@ -371,8 +371,8 @@ def run(stooq_path, out_dir, committed_fp=None):
         if any(diff.values()):
             code = 7
     try:
-        adj = adjust(spy, LAST)
-        adj_bil = adjust(bil, LAST) if bil else []
+        adj = adjust(spy, LAST, "SPY")
+        adj_bil = adjust(bil, LAST, "BIL") if bil else []
     except SplitFound as e:
         rep["split_found"] = str(e)
         return 6, rep

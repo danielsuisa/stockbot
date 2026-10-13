@@ -83,8 +83,9 @@ class B1B2(unittest.TestCase):
         self.assertAlmostEqual(adj[0][1], rows[0][1] * 0.99 * 0.98)  # every price of the day, not only the close
 
     def test_split_stops_the_run(self):
-        with self.assertRaises(ip.SplitFound):
-            ip.adjust([tiingo_row("2020-01-01", 10.0), tiingo_row("2020-01-02", 5.0, split=2.0)])
+        with self.assertRaises(ip.SplitFound) as e:
+            ip.adjust([tiingo_row("2020-01-01", 10.0), tiingo_row("2020-01-02", 5.0, split=2.0)], symbol="BIL")
+        self.assertEqual(str(e.exception), "BIL 2020-01-02")  # the stop names the symbol and the day
 
 
 class Checks(unittest.TestCase):
