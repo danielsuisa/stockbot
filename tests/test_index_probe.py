@@ -1,4 +1,4 @@
-"""Index program phase 1 (spec 2026-10-12, Amendments 1 to 3: C1 sources, C3 acceptance): the probe's parsers and
+"""Index program phase 1 (spec 2026-10-12, Amendments 1 to 4: C1 sources, C3 acceptance with D1 and D2): the probe's parsers and
 checks on SYNTHETIC prices only. Network mocked; no return of any rule is computed."""
 import hashlib
 import io
@@ -71,6 +71,11 @@ class C31C32(unittest.TestCase):
     def test_calendar_check(self):
         days, _ = ip.nyse_days("2012-10-22", "2012-11-09")
         self.assertTrue(ip.calendar_check(days, "2012-10-22", "2012-11-09")["pass"])
+        d1 = [d for d in ip.nyse_days("2011-02-14", "2011-02-25")[0] if d != "2011-02-17"]
+        got = ip.calendar_check(d1, "2011-02-14", "2011-02-25")  # D1: accepted by name, still listed
+        self.assertTrue(got["pass"])
+        self.assertEqual(got["in_calendar_not_file"][0][0], "2011-02-17")
+        self.assertIn("D1", got["in_calendar_not_file"][0][1])
         bad = ip.calendar_check(days[:-1] + ["2012-10-29"], "2012-10-22", "2012-11-09")
         self.assertEqual(bad["in_file_not_calendar"], [["2012-10-29", "Hurricane Sandy"]])
         self.assertEqual(bad["in_calendar_not_file"], [["2012-11-09", None]])
@@ -86,15 +91,33 @@ class C33C34(unittest.TestCase):
         adj = [(d, o * f, h * f, lo * f, c * f) if d < "2020-01-06" else (d, o, h, lo, c) for d, o, h, lo, c in raw]
         return raw, adj
 
-    def test_dividend_check_by_hand(self):
+    def test_dividend_check_d2_by_hand(self):
         raw, adj = self.series()
-        got = ip.dividend_check(adj, raw, adj, "2020-01-01", "2020-12-31")  # a file equal to the adjusted bars
-        self.assertEqual((got["ex_dividend_days"], got["ex_days"], got["nearer_share"]), (1, ["2020-01-06"], 1.0))
-        self.assertEqual(got["span_relative_difference"], 0.0)
+        # r: adjusted 102 / (100 x f), raw 102 / 100, f = 1 - 1/101; a file equal to the adjusted bars
+        got = ip.dividend_check(adj, raw, adj, "2020-01-01", "2020-12-31")
+        self.assertEqual(got["r_vs_adjusted"], 0.0)
+        self.assertAlmostEqual(got["r_vs_raw"], round(1 / (1 - 1 / 101) - 1, 6))  # about +0.0100: not > 5%
+        self.assertFalse(got["pass"])  # with one dividend of 1%, raw and adjusted are not 5% apart
+        self.assertEqual((got["ex_dividend_days"], got["nearer_raw"]), (1, 0))
+        # a file nearer the raw change on the ex-day: listed with the sum of the five days around it
+        got = ip.dividend_check(raw, raw, adj, "2020-01-01", "2020-12-31")
+        self.assertEqual(got["nearer_raw"], 1)
+        day, total = got["nearer_raw_five_day_sums"][0]
+        self.assertEqual(day, "2020-01-06")
+        self.assertAlmostEqual(total, round((100 / 101 - 1) - (100 / (101 * (1 - 1 / 101)) - 1), 6))  # only the ex-day differs
+        self.assertAlmostEqual(got["r_vs_adjusted"], round((1 - 1 / 101) - 1, 6))  # the file's r is the raw r
+
+    def test_dividend_check_d2_thresholds(self):
+        days = [f"2020-01-{d:02d}" for d in (2, 3, 6, 7)]
+        adj = [ohlc(d, c) for d, c in zip(days, (100.0, 101.0, 102.0, 110.0))]
+        raw = [ohlc(d, c) for d, c in zip(days, (100.0 / 0.94, 101.0 / 0.94, 102.0, 110.0))]  # raw r 6% apart
+        ok = [ohlc(d, c) for d, c in zip(days, (100.0, 101.0, 102.0, 110.0 * 1.0099))]  # r 0.99% above adjusted
+        got = ip.dividend_check(ok, raw, adj, "2020-01-01", "2020-12-31")
+        self.assertAlmostEqual(got["r_vs_adjusted"], 0.0099)
         self.assertTrue(got["pass"])
-        bad = ip.dividend_check(raw, raw, adj, "2020-01-01", "2020-12-31")  # a raw file: nearer the raw change
-        self.assertEqual(bad["nearer_share"], 0.0)
-        self.assertFalse(bad["pass"])
+        far = [ohlc(d, c) for d, c in zip(days, (100.0, 101.0, 102.0, 110.0 * 1.0101))]
+        self.assertFalse(ip.dividend_check(far, raw, adj, "2020-01-01", "2020-12-31")["pass"])  # 1.01%: fails
+        self.assertEqual(set(got["per_year_file_less_adjusted"]), {"2020"})
 
     def test_gross_errors_by_hand(self):
         _, adj = self.series()
@@ -141,7 +164,7 @@ class Run(unittest.TestCase):
         self.assertTrue(rep["checks"]["1_integrity"]["pass"])
         self.assertTrue(rep["checks"]["2_calendar"]["pass"])
         self.assertIn("4_gross_errors", rep["checks"])
-        self.assertIn(code, (0, 4))  # synthetic: no ex-dividend day, so check 3 cannot pass
+        self.assertIn(code, (0, 4))  # synthetic: raw and adjusted r are equal, so D2 cannot pass
         self.assertNotIn("201.0;", written)  # no price of the file leaves the run
         with tempfile.TemporaryDirectory() as d, mock.patch("builtins.print"):
             path = os.path.join(d, "spy_us_d.csv")

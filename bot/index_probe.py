@@ -1,12 +1,12 @@
 """Index program, phase 1: the data probe (docs/superpowers/specs/2026-10-12-index-program-design.md sections 3 and
-8.1 with Amendments 1 to 3; C1 sources, C3 acceptance). Integrity, the exchange calendar and price agreement with
+8.1 with Amendments 1 to 4; C1 sources, C3 acceptance with D1 and D2). Integrity, the exchange calendar and price agreement with
 Alpaca only: nothing here computes a return, profit, equity curve or drawdown of any rule or policy (standing rule
 2).
 
 - SPY: the owner's Stooq file, read from the private repository's checkout (`;` or `,` separated); its sha256
   must equal C1's. Rows from 2005-02-25 to 2026-09-30 are used.
 - Alpaca SPY daily bars, raw and adjusted (adjustment "all"), held in memory only (no disk cache): checks C3.3 and
-  C3.4.
+  C3.4 (D2 replaces C3.3).
 - H.15 (`RIFSGFSM03_N.B`, 3-month Treasury bill, secondary market, discount basis, business days) from the Federal
   Reserve Board's Data Download Program: public domain, written with the Board named as its source.
 
@@ -42,7 +42,7 @@ ALPACA_FIRST = "2016-01-04"  # C3.3, C3.4
 H15_FIRST = "1993-12-01"  # A3.4 (C3.5)
 REL_TOL = 1e-9  # C3.1
 EX_DIV_GAP = 0.001  # C3.3: raw and adjusted changes differ by more than this on an ex-dividend day
-SPAN_TOL, NEARER_SHARE = 0.01, 0.90  # C3.3
+R_ADJ_TOL, R_RAW_MIN = 0.01, 0.05  # D2: r within 1% of the adjusted bars' r, more than 5% from the raw bars' r
 GROSS_TOL, GROSS_SHARE = 0.005, 0.99  # C3.4, both measures
 BIG_MOVE = 0.05  # C3.6
 
@@ -195,16 +195,20 @@ def nyse_days(start, end):
     return out, closed
 
 
+ACCEPTED_MISSING = {"2011-02-17": "absent from the Stooq file; not a trading day of the program (Amendment 4, D1)"}
+
+
 def calendar_check(days, start, end):
-    """C3.2: the file's trading days against the exchange calendar. Every difference is listed with its
-    explanation (None when no documented closure explains it)."""
+    """C3.2 with D1: the file's trading days against the exchange calendar. Every difference is listed with its
+    explanation (None when neither a documented closure nor D1 explains it)."""
     want, closed = nyse_days(start, end)
     have = {d for d in days if start <= d <= end}
     extra, missing = sorted(have - set(want)), sorted(set(want) - have)
     out = {"days": len(have), "calendar_days": len(want),
            "in_file_not_calendar": [[d, closed.get(d)] for d in extra],
-           "in_calendar_not_file": [[d, None] for d in missing],
-           "unexplained": len(missing) + sum(1 for d in extra if d not in closed)}
+           "in_calendar_not_file": [[d, ACCEPTED_MISSING.get(d)] for d in missing],
+           "unexplained": sum(1 for d in missing if d not in ACCEPTED_MISSING)
+           + sum(1 for d in extra if d not in closed)}
     out["pass"] = out["unexplained"] == 0
     return out
 
@@ -215,23 +219,37 @@ def _changes(rows):
 
 
 def dividend_check(file_rows, raw, adj, start, end):
-    """C3.3. Ex-dividend days: Alpaca's raw and adjusted close-to-close changes differ by more than 0.001. Passes if
-    the file's change over the span is within 1% (relative) of Alpaca's adjusted change over the span, and on at
-    least 90% of the ex-dividend days the file's change is nearer to Alpaca's adjusted change than to its raw
-    change. Only the relative difference of the two span changes is reported, not the changes."""
+    """D2 (replaces C3.3). With r = last close / first close over the span: the file passes if its r is within 1%
+    of the r of Alpaca's adjusted bars and differs by more than 5% from the r of Alpaca's raw bars. Both
+    differences are reported with their sign (r_file / r_other - 1); r itself is not reported. For information,
+    deciding nothing: per calendar year, the file's change less the adjusted bars' change; and for each
+    ex-dividend day (Alpaca's raw and adjusted changes differ by more than 0.001) on which the file's change is
+    nearer the raw change, the sum over the five trading days centred on it of (file change - adjusted change)."""
     f = [r for r in file_rows if start <= r[0] <= end]
     a = [r for r in adj if start <= r[0] <= end]
-    fc, rc, ac = _changes(f), _changes([r for r in raw if start <= r[0] <= end]), _changes(a)
+    w = [r for r in raw if start <= r[0] <= end]
+    ratio = lambda rows: rows[-1][4] / rows[0][4]  # noqa: E731
+    d_adj, d_raw = ratio(f) / ratio(a) - 1, ratio(f) / ratio(w) - 1
+    fc, rc, ac = _changes(f), _changes(w), _changes(a)
     ex = sorted(d for d in set(rc) & set(ac) if abs(rc[d] - ac[d]) > EX_DIV_GAP)
-    usable = [d for d in ex if d in fc]
-    nearer = sum(1 for d in usable if abs(fc[d] - ac[d]) < abs(fc[d] - rc[d]))
-    span_f = f[-1][4] / f[0][4] - 1
-    span_a = a[-1][4] / a[0][4] - 1
-    rel = abs(span_f - span_a) / abs(span_a) if span_a else float("inf")
-    out = {"span": [f[0][0], f[-1][0]], "span_relative_difference": round(rel, 6), "ex_dividend_days": len(ex),
-           "ex_days_in_file": len(usable), "nearer_adjusted": nearer,
-           "nearer_share": round(nearer / len(usable), 4) if usable else 0.0, "ex_days": ex}
-    out["pass"] = rel <= SPAN_TOL and bool(usable) and nearer / len(usable) >= NEARER_SHARE
+    nearer_raw = [d for d in ex if d in fc and abs(fc[d] - rc[d]) <= abs(fc[d] - ac[d])]
+    common = sorted(set(fc) & set(ac))
+    around = []
+    for d in nearer_raw:
+        k = common.index(d)
+        win = common[max(0, k - 2):k + 3]
+        around.append([d, round(sum(fc[x] - ac[x] for x in win), 6)])
+    years = {}
+    for y in sorted({r[0][:4] for r in f}):
+        fy = [r for r in f if r[0][:4] <= y]
+        ay = [r for r in a if r[0][:4] <= y]
+        f0 = [r for r in f if r[0][:4] < y] or f[:1]
+        a0 = [r for r in a if r[0][:4] < y] or a[:1]
+        years[y] = round((fy[-1][4] / f0[-1][4]) - (ay[-1][4] / a0[-1][4]), 6)
+    out = {"span": [f[0][0], f[-1][0]], "r_vs_adjusted": round(d_adj, 6), "r_vs_raw": round(d_raw, 6),
+           "ex_dividend_days": len(ex), "nearer_raw": len(nearer_raw), "nearer_raw_five_day_sums": around,
+           "per_year_file_less_adjusted": years}
+    out["pass"] = abs(d_adj) <= R_ADJ_TOL and abs(d_raw) > R_RAW_MIN
     return out
 
 
