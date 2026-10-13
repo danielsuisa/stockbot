@@ -132,13 +132,25 @@ def _sizing_lines(t):
 
 def measured_line():
     """The verdict's measured fact, shown next to the label on every issued ticket (never on a refusal)."""
-    return (f"נמדד על {code(f'{VERDICT_N:,}')} כרטיסים היסטוריים ({code(VERDICT_YEARS[0])} עד {code(VERDICT_YEARS[1])}): "
+    return (f"נמדד על {code(f'{VERDICT_N:,}')} כרטיסים היסטוריים בסטופ של 2×ATR ({code(VERDICT_YEARS[0])} עד "
+            f"{code(VERDICT_YEARS[1])}): "
             f"לפני עלויות התוצאה הממוצעת הייתה כמעט אפס ({code(f'{VERDICT_GROSS_R * 100:.2f}%')} מהסיכון), "
             f"והעלות הממוצעת הייתה כ-{code(f'{VERDICT_COST_R * 100:.0f}%')} מהסיכון לכרטיס")
 
 
-def message(t):
-    """Section 8's Hebrew message (every line Hebrew first, numbers in <code>)."""
+def stop_text(t):
+    """The stop as a percentage below the planned entry P, and the owner's cap when it applied (list-tickets spec
+    section 1)."""
+    P = t["planned_entry"]
+    pct = (P - t["stop_loss"]) / P * 100
+    text = f"{code(f'{pct:.1f}%')} מתחת לכניסה"
+    return text + (" · סטופ מוגבל ל-10%" if t.get("stop_capped") else "")
+
+
+def message(t, measured=True, origin="בקשה ידנית"):
+    """Section 8's Hebrew message (every line Hebrew first, numbers in <code>). `measured=False` leaves out the
+    35,083-ticket line (the squeeze list's message carries its own measured fact once); `origin` names where the
+    ticket came from."""
     sym = code(t["symbol"])
     if not t["ok"]:
         text = f"אין כרטיס ל-{sym} ליום {il_date(t['day'])}: {REASONS[t['reason']]}"
@@ -155,9 +167,9 @@ def message(t):
         exit_line += f" (כניסה ב-{il_date(first)} ← יציאה ב-{il_date(t['time_exit_if_first'])})"
     lines = [
         f"🎫 כרטיס ל-{sym} · יום האות {il_date(t['day'])}",
-        "מקור: בקשה ידנית · אותות: אין אות תומך",
+        f"מקור: {origin} · אותות: אין אות תומך",
         f"כניסה: קניית פריצה — סטופ {_p(t['entry_stop'], P)} · לימיט {_p(t['limit'], P)} · בתוקף ב-{valid}",
-        f"סטופ לוס (שתי המנות): {_p(t['stop_loss'], P)} · יעד מנה א': {_p(t['target'], P)} · "
+        f"סטופ לוס (שתי המנות): {_p(t['stop_loss'], P)} ({stop_text(t)}) · יעד מנה א': {_p(t['target'], P)} · "
         f"טריילינג מנה ב': {_p(t['trail'], P)}",
         f"המחירים מחושבים ממחיר הכניסה המתוכנן ויזוזו עם הכניסה בפועל (כניסה פחות {_p(t['trail'], P)}, "
         f"כניסה ועוד {_p(levels.px(levels.TARGET_R * t['R'], ref=P), P)})",
@@ -173,7 +185,8 @@ def message(t):
     if t.get("universe"):
         lines.append("מחוץ ליקום שנבדק: " + ", ".join(UNIVERSE[u] for u in t["universe"])
                      + " (תנאי דיווחי בעלי העניין ייבדק בשלב הבא)")
-    lines.append(measured_line())
+    if measured:
+        lines.append(measured_line())
     lines.append(f"תווית: {LABEL}")
     return "\n".join(lines)
 

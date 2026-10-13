@@ -191,7 +191,8 @@ class Message(unittest.TestCase):
 
     def test_measured_line_on_every_issued_ticket(self):
         """The verdict's measured fact (spec 6.6, "After the result"), next to the label, with and without E."""
-        line = (f"נמדד על {common.code('35,083')} כרטיסים היסטוריים ({common.code(2017)} עד {common.code(2026)}): "
+        line = (f"נמדד על {common.code('35,083')} כרטיסים היסטוריים בסטופ של 2×ATR ({common.code(2017)} עד "
+                f"{common.code(2026)}): "
                 f"לפני עלויות התוצאה הממוצעת הייתה כמעט אפס ({common.code('0.04%')} מהסיכון), "
                 f"והעלות הממוצעת הייתה כ-{common.code('6%')} מהסיכון לכרטיס")
         self.assertEqual(tc.measured_line(), line)
@@ -202,6 +203,27 @@ class Message(unittest.TestCase):
             self.assertIn(line, lines)
             self.assertEqual(lines.index(line) + 1, lines.index(f"תווית: {tc.LABEL}"))  # next to the label
         self.assertEqual((tc.VERDICT_N, tc.VERDICT_GROSS_R, tc.VERDICT_COST_R), (35_083, 0.0004, 0.0610))
+
+    def test_stop_as_a_percentage_of_the_entry(self):
+        """List-tickets spec section 1: the stop line shows the stop as a percentage of P; the cap is named."""
+        calm = self.ticket()  # R = 2.0 on P = 50.51: the stop is 3.96% below the entry
+        text = tc.message(calm)
+        msgrules.check(self, text)
+        pct = (calm["planned_entry"] - calm["stop_loss"]) / calm["planned_entry"] * 100
+        self.assertIn(f"{common.code(f'{pct:.1f}%')} מתחת לכניסה", text)
+        self.assertNotIn("סטופ מוגבל", text)
+        bars = bars_until("2026-03-09", 300, rng=12.0)  # 2 x ATR = 24, about 43% of P: the cap applies
+        capped = levels.guard(levels.plan("AAPL", bars, "2026-03-09"), QUOTE)
+        capped.update(valid_sessions=["2026-03-10"], time_exit_if_first=None, universe=[], first_session_started=False)
+        text = tc.message(capped)
+        msgrules.check(self, text)
+        self.assertIn(f"{common.code('10.0%')} מתחת לכניסה", text)
+        self.assertIn("סטופ מוגבל ל-10%", text)
+
+    def test_message_without_the_measured_line(self):
+        text = tc.message(self.ticket(), measured=False)  # the list message carries its own fact once
+        self.assertNotIn(tc.measured_line(), text)
+        self.assertIn(f"תווית: {tc.LABEL}", text)
 
     def test_no_measured_line_on_a_refusal(self):
         for reason in tc.REASONS:
@@ -231,8 +253,12 @@ class Message(unittest.TestCase):
 
     def test_sub_dollar_prices_keep_four_decimals(self):
         # review m1: a $0.47 stock's levels are shown as ordered (4 decimals), not rounded to cents
-        bars = bars_until("2026-03-09", 300, close=0.45, rng=0.3, vol=200_000_000)  # R 0.6: 166 shares
-        t = levels.guard(levels.plan("SUB", bars, "2026-03-09"), (0.45, 0.4502, 1, 1, 3))
+        bars = bars_until("2026-03-09", 300, close=0.45, rng=0.3, vol=200_000_000)  # R capped at 10% of P: 0.061
+        t = levels.plan("SUB", bars, "2026-03-09")
+        # the stop cap makes R <= $0.10 below $1, so a one-cent spread is >= 10% of R and the guard always refuses a
+        # sub-dollar ticket; this test is about the message's decimals, so it sets the guard's fields directly
+        self.assertEqual(levels.guard(t, (0.45, 0.4502, 1, 1, 3))["reason"], "cost above 10% of risk")
+        t = {**t, "guard_spread": 0.0002, "cost_r": 0.05}
         t.update(valid_sessions=["2026-03-10"], time_exit_if_first=None, universe=[], first_session_started=False)
         text = tc.message(t)
         msgrules.check(self, text)
