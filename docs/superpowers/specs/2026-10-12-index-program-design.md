@@ -377,3 +377,45 @@ fitted value is the result of that search. The crash cap is applied after it.
 **A5. Section 8.3, change.** No daily series is published. The daily equity files go to the private repository.
 The public report gives, for each policy and window, the return of each calendar year, in addition to the
 numbers already listed.
+
+## Amendment 2 (2026-10-13, before any return was computed)
+
+**Reason.** (a) As Claude Code read Tiingo's terms, the free plan allows its data only in memory during a run
+and forbids saving them to any lasting storage. (b) The Stooq file the owner could download starts on
+2005-02-25, not in 1993. Sections 4 to 7 are unchanged.
+
+**B1. Tiingo data are never saved** (replaces, for Tiingo, the first and third bullets of A2, and the second
+sentence of A5).
+- Each run downloads SPY and BIL from Tiingo into memory and drops them when it ends. Nothing from Tiingo is
+  written to a disk cache, an artifact, a repository or a log.
+- **Fingerprint.** A run computes one sha256 per calendar year over the raw rows (date, open, high, low, close,
+  cash dividend, split factor) of 1993-01-29 to 2026-09-30, in a fixed text form. The first accepted run commits
+  these hashes to the public repository. Every later run recomputes them and stops on any difference, naming
+  the years.
+- Daily equity series are not saved anywhere.
+- The Stooq file stays in the private repository. The H.15 file is committed to the public repository, with
+  the Board named as its source.
+
+**B2. The program builds the adjusted series itself** (adds to section 3). From raw prices and cash dividends up
+to 2026-09-30: for each ex-dividend day d with dividend D, every price before d is multiplied by
+1 - D / (raw close of the trading day before d). A split factor other than 1 stops the run. Tiingo's own
+adjusted columns are compared with this series for information.
+
+**B3. Acceptance** (replaces checks 2 and 3 of A3; checks 1, 4 and 5 stand).
+- **Two-source period, 2005-02-25 to 2026-09-30** (it holds all of windows S and P): the same trading days in
+  Tiingo and in the Stooq file, every difference listed; and the two tolerances of A3.3, which must hold over
+  this period and over window P. The shares are also reported for 2005-2008, 2009-2015 and 2016-2026, with the
+  10 largest differences of each measure.
+- **Single-source period, 1993-01-29 to 2005-02-24:** the owner accepts one source, as 8.1 allowed. These years
+  serve only the warm-up of the signals and the fitting periods. Checks: integrity (A3.1); and the trading
+  days equal the New York Stock Exchange calendar (weekdays less holidays and documented special closures).
+  Every difference is listed, and one that no documented closure explains stops the run. Reported for
+  information: the days whose close-to-close change is above 5% in size (date and change), and, per year, the
+  share of days whose raw open equals the previous raw close.
+
+**B4. Information only** (adds to 8.3). If the Stooq file is dividend-adjusted, the overlay tests of 7.1 are
+computed a second time over P with the Stooq file as the price source. They decide nothing.
+
+**B5. Public report** (replaces the rest of A5). Aggregated numbers only: test statistics, gates, scales, growth
+rates, drawdowns with their dates, counts, and the calendar-year returns of each policy. No daily or monthly
+series and no price.
