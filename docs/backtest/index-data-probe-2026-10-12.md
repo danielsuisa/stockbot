@@ -61,3 +61,45 @@ bar ending with extended-hours trades rather than the official closing auction.
    Federal Reserve Board's H.15 release (3-month Treasury bill, secondary market, discount basis, business days),
    through the Board's Data Download Program. It is published by a federal agency; its terms should still be
    confirmed before it is committed.
+
+## Second round (Amendments 1 and 2, 2026-10-13): stopped before the acceptance checks
+
+**Tiingo was dropped under Amendment 3, and nothing from it is kept.** Runs 38381913765 and 38382019663 used
+Tiingo; their artifacts were deleted on the owner's instruction.
+
+The other set-up of this round stands:
+- the deploy key `DATA_REPO_KEY` cloned the private repository `danielsuisa/stockbot-data`;
+- the Stooq file there is `spy_us_d.csv`: 287,403 bytes, `;` separated, sha256
+  `3493247f082c56292780c23c9f9272f39da5459b0eb10525e66b7b3ab6baca6f`, 5,440 rows from 2005-02-25 to 2026-10-12,
+  0 non-positive prices and 0 days outside [low, high];
+- the Board's H.15 zip answered 200.
+
+### Tiingo's terms
+
+The terms are at `https://app.tiingo.com/tos` ("Last Updated Date" October 6th, 2026; effective January 16th,
+2022). The tool used here would not reproduce whole clauses, so they are cited by number with short quotes, for
+the analyst to read in full:
+- **1.6(a), Starter and Trial plans:** the user may "not write, save, archive, back up, or otherwise retain Tiingo
+  Data" in persistent storage. Processing is transient only, in volatile memory or a temporary cache. As summarised
+  here, the same limits apply to Derived Products.
+- **1.6(c), Derived Products:**
+  - What may be kept: results that are not a substitute for Tiingo Data and cannot reasonably be reversed to
+    recover it.
+  - Examples: aggregate statistics are permitted; rebased price series and simple reformatting are not.
+  - On Starter and Trial plans, Derived Products may be held only transiently.
+- **1.4(h):** no "publishing or otherwise making available to the public any analysis of" the Service or Tiingo
+  Data, except Derived Products permitted under 1.6.
+- **5.3:** among other things, no systematic retrieval of data to build a compilation or database.
+- **7.3:** "All data via the API is for internal consumption only"; redistribution needs permission and fees.
+
+**Reading against Amendment 2:**
+- **B1, in-memory use:** keeping Tiingo rows in memory and dropping them fits 1.6(a).
+- **B1, the committed fingerprint:** the per-year sha256 is derived from Tiingo Data. It cannot be reversed and
+  substitutes for nothing, so it meets the tests of 1.6(c). But 1.6(c) as summarised lets Starter users hold
+  Derived Products only transiently, and committing the hashes is persistent.
+- **B5, the public report:** it publishes aggregate statistics computed from Tiingo Data: growth rates,
+  drawdowns and yearly returns. Aggregate statistics are the permitted kind of Derived Product. But 1.4(h)
+  allows publishing only Derived Products permitted under 1.6, and for Starter users 1.6 permits them only
+  transiently.
+- **On this reading,** both B1's committed fingerprint and B5's public report conflict with the free plan's
+  terms. This is Claude Code's reading of a summary, not legal advice, and the analyst should check the full text.
