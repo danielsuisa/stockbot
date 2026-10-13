@@ -88,6 +88,17 @@
    "gain": 0.206,
    "vol_ratio": 0.1392,
    "si_pct": 0.2838
+  },
+  {
+   "date": "2026-10-13",
+   "session": "pre",
+   "t": "BKYI",
+   "manual": false,
+   "price": 5.13,
+   "ref": 1.65,
+   "gain": 2.1091,
+   "vol_ratio": 1.557,
+   "si_pct": 0.917
   }
  ]
 }
