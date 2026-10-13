@@ -258,6 +258,8 @@ class Sessions(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.dir = tmp.name
+        # the list tickets are their own test below; here they send nothing
+        self.tickets_run = mock.Mock(return_value=("", {"names": 0, "issued": 0, "journaled": 0}))
 
     def run_at(self, when, res=LIVE, argv=(), quotes=AAA_UP, send=None, scr=SCR, pre=PRE, cands=STATIC):
         """One squeeze_live.main run at New York time `when`, with everything but its logic mocked."""
@@ -273,6 +275,8 @@ class Sessions(unittest.TestCase):
                 mock.patch.object(squeeze_live.screen, "candidates", self.cands), \
                 mock.patch.object(squeeze_live.screen, "premarket", self.pre), \
                 mock.patch.object(squeeze_live, "followup", return_value=0), \
+                mock.patch.object(squeeze_live.list_tickets, "run", self.tickets_run), \
+                mock.patch.object(squeeze_live.list_tickets, "followup", return_value=0), \
                 mock.patch.object(squeeze_live.movers, "quotes", return_value=quotes) as self.quotes, \
                 mock.patch.object(squeeze_live.common, "send", side_effect=send) as sent, mock.patch("builtins.print"):
             code = squeeze_live.main(list(argv))
@@ -302,6 +306,33 @@ class Sessions(unittest.TestCase):
         self.assertIn("<code>BBB</code>", last["text"])  # /squeeze shows the full current list
         journal = self.file(squeeze_live.JOURNAL)["entries"]
         self.assertEqual([(e["t"], e["date"]) for e in journal], [("AAA", "2026-09-29"), ("BBB", "2026-09-29")])
+
+    def test_a_sent_list_is_followed_by_its_tickets(self):
+        """List-tickets spec 2: after a list goes out, one message with the tickets of its new names, computed by
+        /ticket's code path; the journal is written; the log carries counts only."""
+        from bot import list_tickets, ticket_command
+        from tests.test_list_tickets import ticket as make_ticket
+        self.tickets_run = list_tickets.run  # the real part, with /ticket's build mocked
+        built = {"AAA": make_ticket("AAA"), "BBB": {"ok": False, "reason": "no usable quote", "symbol": "BBB",
+                                                   "day": "2026-03-09"}}
+        logs = []
+        with mock.patch.object(list_tickets.ticket_command, "build", side_effect=lambda s, **k: built[s]) as build, \
+                mock.patch.object(list_tickets.equity, "load", return_value=None), \
+                mock.patch.object(squeeze_live.common, "log", side_effect=lambda e, **f: logs.append(f)):
+            code, sent, _ = self.run_at("2026-09-28T10:31", scr={**SCR, "rows": [ROW, ROW2]})
+        self.assertEqual((code, len(sent)), (0, 2))
+        self.assertIn("רשימת סקוויז", sent[0])
+        self.assertIn("🎫 <b>כרטיסים לשמות החדשים", sent[1])
+        self.assertEqual(self.sources, [squeeze_live.SOURCE, ticket_command.SOURCE])
+        self.assertEqual([c.args[0] for c in build.call_args_list], ["AAA", "BBB"])  # by rank
+        msgrules.check(self, sent[1])
+        tickets = self.file(squeeze_live.TICKETS)["tickets"]
+        self.assertEqual([(r["symbol"], r["source"], r["rank"]) for r in tickets], [("AAA", "squeeze", 1)])
+        self.assertEqual({k: logs[-1][k] for k in ("ticket_names", "tickets", "tickets_journaled")},
+                         {"ticket_names": 2, "tickets": 1, "tickets_journaled": 1})
+        with mock.patch.object(list_tickets.ticket_command, "build", side_effect=lambda s, **k: built[s]), \
+                mock.patch.object(list_tickets.equity, "load", return_value=None):
+            self.assertEqual(self.run_at("2026-09-28T11:31", scr={**SCR, "rows": [ROW, ROW2]})[1], [])  # no list, none
 
     def test_after_close_list_changes_and_movers_then_nothing_repeats(self):
         self.run_at("2026-09-28T15:31")
