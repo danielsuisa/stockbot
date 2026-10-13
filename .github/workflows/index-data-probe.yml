@@ -1,9 +1,9 @@
 name: Index program data probe (temporary)
 
-# Runs only on a push to index-data-probe (spec 2026-10-12-index-program-design.md, phase 1, Amendments 1 and 2).
-# Tiingo data stay in memory; the Stooq file is read from the private repository with the deploy key; the artifact
-# holds only counts, dates, shares of days, relative differences, the Tiingo fingerprint, the H.15 file (public
-# domain) and the manifest. No price and no secret is printed. No return of any rule is computed.
+# Runs only on a push to index-data-probe (spec 2026-10-12-index-program-design.md, phase 1, Amendments 1 to 3).
+# The Stooq file is read from the private repository with the deploy key; Alpaca bars stay in memory; the artifact
+# holds only counts, dates, shares of days, differences, the H.15 file (public domain) and the manifest. No price
+# and no secret is printed. No return of any rule is computed.
 on:
   push:
     branches: [index-data-probe]
@@ -33,7 +33,6 @@ jobs:
           rm -f "$RUNNER_TEMP/data_key"
       - name: Probe (in memory; counts and agreement only)
         env:
-          TIINGO_TOKEN: ${{ secrets.TIINGO_TOKEN }}
           ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
         run: python -m bot.index_probe --stooq "$RUNNER_TEMP/private/spy_us_d.csv" --out probe-out
@@ -41,7 +40,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: index-data-probe-2
+          name: index-data-probe-3
           path: probe-out/
       - name: Remove the private checkout
         if: always()
