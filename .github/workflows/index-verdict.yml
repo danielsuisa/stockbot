@@ -1,0 +1,75 @@
+name: Index program verdict run (spec 8.3, F3)
+
+# Runs only on a push to index-run-verdict, of the same commit as the blind run (Amendment 6 F3). The job waits in
+# the environment index-verdict, whose required reviewer is the owner: his approval of the waiting run is his
+# approval of the single verdict run. It refuses when a verdict report already exists on the branch, and unless the
+# recomputed blind report equals the blind run's. The artifact holds the JSON report and the Hebrew summary only:
+# aggregated numbers, no daily series, no price (B5, E2).
+on:
+  push:
+    branches: [index-run-verdict]
+
+permissions:
+  contents: read
+  actions: read  # to find and download the blind run's report
+
+concurrency:
+  group: index-verdict
+  cancel-in-progress: false
+
+env:
+  PYTHONHASHSEED: "0"
+
+jobs:
+  verdict:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: index-verdict
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Refuse when a verdict report already exists on the branch (F3)
+        run: |
+          if ls docs/backtest/index-verdict-*.json >/dev/null 2>&1; then
+            echo "verdict refused: a verdict report already exists on the branch"; exit 1
+          fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download the blind run's report (same commit)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          id=$(gh run list --workflow index-blind.yml --branch index-run-blind --commit "$SHA" --status success \
+            --limit 1 --json databaseId --jq '.[0].databaseId')
+          test -n "$id" || { echo "verdict refused: no successful blind run for this commit"; exit 1; }
+          gh run download "$id" -n index-blind-report -D "$RUNNER_TEMP/blind"
+          echo "blind run: $id"
+      - name: Read the private data repository (deploy key, outside the workspace)
+        env:
+          DATA_REPO_KEY: ${{ secrets.DATA_REPO_KEY }}
+        run: |
+          install -m 600 /dev/null "$RUNNER_TEMP/data_key"
+          printf '%s\n' "$DATA_REPO_KEY" > "$RUNNER_TEMP/data_key"
+          GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/data_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+            git clone --quiet --depth 1 git@github.com:danielsuisa/stockbot-data.git "$RUNNER_TEMP/private"
+          rm -f "$RUNNER_TEMP/data_key"
+      - name: The verdict run (writes its report and summary only)
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          python -m bot.index_run --verdict --commit "$SHA" --owner-go-ahead \
+            --blind-report "$RUNNER_TEMP/blind/index-blind-report.json" --stooq "$RUNNER_TEMP/private/spy_us_d.csv"
+      - name: Upload the verdict report and the Hebrew summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: index-verdict
+          path: |
+            docs/backtest/index-verdict-*.json
+            docs/backtest/index-2*.md
+      - name: Remove the private checkout
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/private" "$RUNNER_TEMP/data_key"

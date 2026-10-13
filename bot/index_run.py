@@ -24,7 +24,8 @@ H = ("2006-01-03", "2026-09-30")  # C2: the operating scale's period
 DEFAULT = {"t_months": rules.T_MONTHS, "d_rsi": rules.D_RSI_MAX, "budget": ie.BUDGET, "cap": ie.CAP}
 BLIND_KEYS = ("fingerprint", "trading_days_per_year", "entries_per_year", "pi", "trend_order_tickets_per_year",
               "tom_days_held_p")
-BLIND_PATH, VERDICT_PATH = "index-blind-report.json", "index-verdict-report.json"
+BLIND_PATH = "index-blind-report.json"
+VERDICT_GLOB = "docs/backtest/index-verdict-*.json"  # F3: a verdict report on the branch refuses a second run
 COSTS = {"optimistic": ie.OPTIMISTIC, "base": ie.BASE, "stress": ie.STRESS}
 
 
@@ -231,7 +232,7 @@ def summary_md(rep, today):
         el = rep["eligibility"].get(p, {}).get("eligible", "—") if p != "STATIC" else "—"
         lines.append(f"| {p} | {rep['policies'][p]['scale_p']['scale']} | {n['growth_p']:.2%} | {n['mdd_p']:.2%} | "
                      f"{el} |")
-    lines += ["", "הפרטים המלאים, כולל סעיף 'information, no decision', נמצאים ב-`index-verdict-report.json`. "
+    lines += ["", "הפרטים המלאים, כולל סעיף 'information, no decision', נמצאים ב-`docs/backtest/index-verdict-<date>.json`. "
               "אין בדוח סדרה יומית או חודשית ואין מחיר (B5, E2).", ""]
     return "\n".join(lines)
 
@@ -243,6 +244,10 @@ def head():
 
 def summary_path(today):
     return f"docs/backtest/index-{today}.md"
+
+
+def verdict_path(today):
+    return f"docs/backtest/index-verdict-{today}.json"
 
 
 def main(argv=None):
@@ -269,6 +274,10 @@ def main(argv=None):
         print(f"blind report written: {BLIND_PATH}; data {fp}")
         return 0
     if a.verdict:
+        import glob
+        if glob.glob(VERDICT_GLOB):
+            print("verdict refused: a verdict report already exists on the branch (F3: one verdict run)")
+            return 2
         if not (a.owner_go_ahead and a.commit and a.commit == head()):
             print("verdict refused: it needs --commit <the checked-out commit> and --owner-go-ahead")
             return 2
@@ -282,12 +291,12 @@ def main(argv=None):
         cash = idata.cash_returns([r[0] for r in rows], h15)
         rep = verdict_report(rows, cash, fp)
         today = dt.date.today().isoformat()
-        with open(VERDICT_PATH, "w", encoding="utf-8") as fh:
-            json.dump(rep, fh, indent=1, ensure_ascii=False)
         os.makedirs("docs/backtest", exist_ok=True)
+        with open(verdict_path(today), "w", encoding="utf-8") as fh:
+            json.dump(rep, fh, indent=1, ensure_ascii=False)
         with open(summary_path(today), "w", encoding="utf-8") as fh:
             fh.write(summary_md(rep, today))
-        print(f"verdict written: {VERDICT_PATH}, {summary_path(today)}")
+        print(f"verdict written: {verdict_path(today)}, {summary_path(today)}")
         return 0
     ap.print_usage()
     return 2

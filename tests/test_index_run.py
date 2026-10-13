@@ -190,9 +190,28 @@ class Main(unittest.TestCase):
         self.assertEqual(code, 0)
         files = [w[6:-1].replace("\\", "/") for w in leaks.writes if w.startswith("[file ")]
         self.assertEqual(len(files), 2)
-        self.assertEqual(files[0], ir.VERDICT_PATH)
+        self.assertTrue(files[0].startswith("docs/backtest/index-verdict-") and files[0].endswith(".json"))
         self.assertTrue(files[1].startswith("docs/backtest/index-"))  # E2: no daily equity file anywhere
         self.assertEqual(leaks.logs, [])
+
+    def test_verdict_refuses_when_a_report_exists(self):
+        """F3: no second verdict: a verdict report already on the branch refuses the run before anything."""
+        rows = path("rise")
+        with tempfile.TemporaryDirectory() as d, short_windows(), mock.patch.object(ir, "head", return_value="c0ffee"),                 contextlib.redirect_stdout(open(os.devnull, "w")):
+            stooq, h15, man = self.files(d, rows)
+            old = os.getcwd()
+            os.chdir(d)
+            try:
+                ir.main(["--blind", "--stooq", stooq, "--h15", h15, "--manifest", man])
+                os.makedirs("docs/backtest")
+                with open("docs/backtest/index-verdict-2026-10-01.json", "w") as fh:
+                    fh.write("{}")
+                with mock.patch.object(ir, "verdict_report", side_effect=AssertionError("ran")):
+                    code = ir.main(["--verdict", "--commit", "c0ffee", "--owner-go-ahead", "--blind-report",
+                                    ir.BLIND_PATH, "--stooq", stooq, "--h15", h15, "--manifest", man])
+            finally:
+                os.chdir(old)
+        self.assertEqual(code, 2)
 
     def test_verdict_refusals(self):
         rows = path("rise")
