@@ -31,12 +31,29 @@ def _week(e):
     return (y, w)
 
 
+def _frozen(entries):
+    """The first 605 trades, or None while they can still change: an earlier entry of the screen without an outcome
+    yet could become a trade and move into them (the journal retries a failed fetch on the next run)."""
+    from bot import squeeze_live
+    variants = (squeeze_live.SCREEN, squeeze_live.SCREEN_PRE)
+    out = []
+    for e in entries:
+        if e.get("variant") not in variants:
+            continue
+        if e.get("outcome") is None:
+            return None
+        if e["outcome"].get("trade"):
+            out.append(e)
+            if len(out) == N:
+                return out
+    return None
+
+
 def verdict(entries):
-    """The verdict on exactly the first 605 trades, or None before there are 605."""
-    pop = population(entries)
-    if len(pop) < N:
+    """The verdict on exactly the first 605 trades, or None before they are 605 and fixed."""
+    pop = _frozen(entries)
+    if pop is None:
         return None
-    pop = pop[:N]
     x = [e["outcome"]["r10"] - COST for e in pop]
     index, blocks = {}, []
     for e in pop:
@@ -62,4 +79,4 @@ def line(entries):
         return (f"מבחן קדימה: הושלמו {code(progress(entries)['closed'])} מתוך {code(N)} עסקאות. "
                 "התוצאה תוצג כשיושלמו כולן.")
     return (f"מבחן קדימה: הושלמו {code(N)} מתוך {code(N)} עסקאות. התוצאה: {code(v['verdict'])}, "
-            f"ממוצע לעסקה אחרי עלות של {code('1%')}: {change(v['mean_x'], 1)}.")
+            f"ממוצע לעסקה אחרי עלות של {code('1%')}: {change(v['mean_x'], 2)}.")

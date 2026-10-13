@@ -41,6 +41,23 @@ class Verdict(unittest.TestCase):
     def test_no_verdict_before_605(self):
         self.assertIsNone(sf.verdict([entry(d, 0.5) for d in weeks(604)]))
 
+    def test_the_first_605_are_frozen(self):
+        """Review finding 1: a pending entry before the 605th trade may later become a trade and move into the first
+        605, so the verdict waits until every earlier entry of the screen has its outcome."""
+        days = weeks(606)
+        es = [entry(days[0], 0.0, trade=None)] + [entry(d, 0.05) for d in days[1:]]
+        self.assertIsNone(sf.verdict(es))
+        self.assertEqual(sf.progress(es)["closed"], 605)  # the count is shown; the verdict waits
+        es[0] = entry(days[0], -5.0)
+        self.assertAlmostEqual(sf.verdict(es)["mean_x"], (-5.01 + 604 * 0.04) / 605)  # now the set is fixed
+        old = [entry(days[0], 0.0, variant="w0.7/si0.2/rv2", trade=None)] + [entry(d, 0.05) for d in days[1:]]
+        self.assertIsNotNone(sf.verdict(old))  # a pending entry of an older variant does not hold it back
+
+    def test_one_week_only_is_no_go(self):
+        es = [entry("2026-10-12", 0.06 + (0.01 if k % 2 else -0.01)) for k in range(605)]
+        got = sf.verdict(es)
+        self.assertEqual((got["weeks"], got["t"], got["verdict"]), (1, 0.0, "NO-GO"))  # G = 1: no SE, no GO
+
     def test_the_605_cut(self):
         es = [entry(d, 0.05) for d in weeks(605)] + [entry("2030-01-01", -100.0)]  # the 606th is never used
         got = sf.verdict(es)
@@ -94,8 +111,14 @@ class StatsLine(unittest.TestCase):
     def test_line_at_605_shows_the_verdict_and_the_mean(self):
         j = {"entries": [entry(d, 0.06 + (0.01 if k % 2 else -0.01)) for k, d in enumerate(weeks(605))]}
         line = sf.line(j["entries"])
-        self.assertIn("GO", line)
-        self.assertIn("<code>5.0%</code>", line)  # the mean of x: 6% - 1%
+        self.assertIn("<code>GO</code>", line)
+        self.assertIn("<code>5.00%</code>", line)  # the mean of x: 6% - 1%
+        small = [entry(d, 0.0104 + (0.001 if k % 2 else -0.001)) for k, d in enumerate(weeks(605))]
+        self.assertIn("<code>0.04%</code>", sf.line(small))  # review finding 2: a small mean is not "no change"
+        bad = [entry(d, -0.05) for d in weeks(605)]
+        self.assertIn("<code>NO-GO</code>", sf.line(bad))
+        self.assertIn("ירידה של <code>6.00%</code>", sf.line(bad))
+        msgrules.check(self, sf.line(bad))
         msgrules.check(self, squeeze_live.stats_text(j))
 
 
