@@ -37,7 +37,12 @@ the pattern of `.github/workflows/ensemble-verdict.yml`.
 | Verdict report | 8.3 as changed by C2 (P, the fitting period, H at the operating scale), A5's first sentence and B5 | 8.3 windows S and H; 8.3 BIL; A5 rest |
 | Acceptance | Done in phase 1 (C3 with D1, D2) | — |
 | Missing day | D1: 2011-02-17 is not a trading day; 2011-02-16 to 2011-02-18 counts as one day | — |
-| Limits | Section 11 plus C4 and D3 | — |
+| Limits | Section 11 plus C4, D3 and E1 | — |
+| E1, the file's recent dividends | E1: the file is not adjusted for the six dividends from 2025-06-20 to 2026-09-18; it is used as it is, not repaired | The first bullet of D3 |
+| E2, daily equity | E2: kept in memory only, saved nowhere; B5 governs the public report | 8.3's "daily equity CSV per policy"; A5's second sentence |
+| E3, TACT | E3: in SPY when either passing overlay holds a position; it trades only when that combined state changes | 6.1's TACT row, made precise |
+| E4, smaller rules | E4: a signal on a window's last day is not executed; P's fitting account starts in cash at the close of 2005-12-30 with $10,000 and base costs; 8.3's information items come after the decision, in their own section; a yearly rebalance is two order tickets | — |
+| E5, phase 3 to phase 4 | E5: merge to `main` with the owner's approval; the blind run is a push of that merge commit to `index-run-blind`; the verdict runs on the same commit and must reproduce the blind report; no time limit | Plan question 8's 7-day limit |
 
 ## Global constraints
 
@@ -306,7 +311,9 @@ the pattern of `.github/workflows/ensemble-verdict.yml`.
   artifact, as the ensemble did.
 - **Upload:** the JSON report and the Hebrew summary `docs/backtest/index-<date>.md`. Aggregated numbers only (B5).
 
-## Open questions (each with a recommendation; none settled here)
+## Open questions: all eight settled by Amendment 5 (2026-10-13)
+
+The owner accepted the eight recommendations below, with one change: question 8 has no 7-day limit (E5). The answers, by question: 1 → E2; 2 → E3; 3 → E1; 4 → E4 (first bullet); 5 → E4 (second); 6 → E4 (third); 7 → E4 (fourth); 8 → E5.
 
 1. **Daily equity files.**
    - A5 sent them to the private repository. B1 replaced A5's second sentence with "not saved anywhere". C1 then
@@ -341,3 +348,4 @@ the pattern of `.github/workflows/ensemble-verdict.yml`.
    - **Recommendation:** use the ensemble pattern: merge to `main` first, then create `index-run-blind` at the
      merge commit. The verdict is dispatched on that ref within 7 days. No cache is needed here, because the
      inputs live in the private repository and are checked by sha256.
+   - **Settled by E5:** as recommended, without the 7-day limit.
