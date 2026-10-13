@@ -62,40 +62,17 @@ bar ending with extended-hours trades rather than the official closing auction.
    through the Board's Data Download Program. It is published by a federal agency; its terms should still be
    confirmed before it is committed.
 
-## Second round (Amendments 1 and 2, 2026-10-13): stopped by B2 before the acceptance checks
+## Second round (Amendments 1 and 2, 2026-10-13): stopped before the acceptance checks
 
-Probe code: `bot/index_probe.py` at `9bc8040` and earlier. Runs: `38381913765`, then `38382019663`, which names
-the symbol. Both ran on the temporary branch `index-data-probe`, triggered by a push only. Tiingo data stayed in
-memory. The Stooq file was read from `danielsuisa/stockbot-data` with the deploy key. The artifact holds only
-`probe.json`, which contains no price.
+**Tiingo was dropped under Amendment 3, and nothing from it is kept.** Runs 38381913765 and 38382019663 used
+Tiingo; their artifacts were deleted on the owner's instruction.
 
-### Set-up
-
-| Item | State |
-|---|---|
-| `TIINGO_TOKEN` | Works: Tiingo answered 200 |
-| `DATA_REPO_KEY` (deploy key, write access) | Works: the private repository was cloned |
-| Stooq file `spy_us_d.csv` in `stockbot-data` | 287,403 bytes, `;` separated, sha256 `3493247f082c56292780c23c9f9272f39da5459b0eb10525e66b7b3ab6baca6f` |
-
-### Sources reached
-
-| Source | Status | First day | Last day | Rows | Integrity (raw) |
-|---|---|---|---|---|---|
-| Tiingo SPY (memory only) | 200 | 1993-01-29 | 2026-09-30 | 8,475 | 0 non-positive, 0 outside [low, high] |
-| Tiingo BIL (memory only) | 200 | 2007-05-30 | 2026-09-30 | 4,866 | 0 non-positive, 0 outside [low, high] |
-| Stooq SPY (private repository) | file | 2005-02-25 | 2026-10-12 | 5,440 | 0 non-positive, 0 outside [low, high] |
-| H.15 zip (Federal Reserve Board) | 200 | — | — | — | zip sha256 `bb2e439536b7312483db8dafd4770509e1c34dcef692e14e4797bd16d051f24a` |
-
-### The stop
-
-B2 says that "a split factor other than 1 stops the run." Tiingo reports a split factor other than 1 for **BIL on
-2017-11-30**. SPY has none from 1993-01-29 to 2026-09-30, and its B2 series was built.
-
-The run therefore stopped (exit 6) before the checks of A3.1, A3.4, A3.5 and B3. No fingerprint and no H.15 file
-was written or committed.
-
-B2 does not say whether its stop applies to BIL. The spec uses BIL only as information (section 3, A1, 8.3), so
-this is left to the owner.
+The other set-up of this round stands:
+- the deploy key `DATA_REPO_KEY` cloned the private repository `danielsuisa/stockbot-data`;
+- the Stooq file there is `spy_us_d.csv`: 287,403 bytes, `;` separated, sha256
+  `3493247f082c56292780c23c9f9272f39da5459b0eb10525e66b7b3ab6baca6f`, 5,440 rows from 2005-02-25 to 2026-10-12,
+  0 non-positive prices and 0 days outside [low, high];
+- the Board's H.15 zip answered 200.
 
 ### Tiingo's terms
 

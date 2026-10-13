@@ -1,5 +1,6 @@
-"""Index program phase 1 (spec 2026-10-12 sections 3, 8.1, Amendments 1 and 2): the probe's parsers and checks on
-SYNTHETIC prices only. Network mocked; no return of any rule is computed."""
+"""Index program phase 1 (spec 2026-10-12, Amendments 1 to 3: C1 sources, C3 acceptance): the probe's parsers and
+checks on SYNTHETIC prices only. Network mocked; no return of any rule is computed."""
+import hashlib
 import io
 import json
 import os
@@ -16,9 +17,14 @@ def ohlc(day, c, o=None):
     return (day, o, max(o, c) + 1, min(o, c) - 1, c)
 
 
-def tiingo_row(day, c, div=0.0, split=1.0, o=None):
-    o = c if o is None else o
-    return (day, o, max(o, c) + 1, min(o, c) - 1, c, div, split, o, max(o, c) + 1, min(o, c) - 1, c)
+def h15_zip(obs):
+    xml = '<kf:Series SERIES_NAME="RIFSGFSM03_N.B">' + "".join(
+        f'<frb:Obs OBS_STATUS="{s}" OBS_VALUE="{v}" TIME_PERIOD="{d}" />' for d, s, v in obs) + "</kf:Series>"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("H15_data.xml", '<x><kf:Series SERIES_NAME="OTHER"><frb:Obs OBS_STATUS="A" OBS_VALUE="9" '
+                                   'TIME_PERIOD="2005-01-03" /></kf:Series>' + xml + "</x>")
+    return buf.getvalue()
 
 
 class Parsers(unittest.TestCase):
@@ -30,158 +36,118 @@ class Parsers(unittest.TestCase):
         self.assertIsNone(ip.parse_stooq(b"Access denied"))
         self.assertIsNone(ip.parse_stooq(b""))
 
-    def test_tiingo_key_only_in_the_header(self):
-        body = json.dumps([{"date": "1993-01-29T00:00:00.000Z", "open": 43.97, "high": 43.97, "low": 43.75,
-                            "close": 43.94, "divCash": 0, "splitFactor": 1, "adjOpen": 1, "adjHigh": 1, "adjLow": 1,
-                            "adjClose": 1}]).encode()
-        with mock.patch.object(ip, "fetch", return_value=(200, body)) as f:
-            status, rows = ip.tiingo("SPY", "SECRETKEY")
-        url, = f.call_args.args
-        self.assertNotIn("SECRETKEY", url)
-        self.assertEqual(f.call_args.kwargs["headers"]["Authorization"], "Token SECRETKEY")
-        self.assertEqual(status, 200)
-        self.assertEqual(rows[0][:7], ("1993-01-29", 43.97, 43.97, 43.75, 43.94, 0.0, 1.0))
-        with mock.patch.object(ip, "fetch", return_value=(401, b"")):
-            self.assertEqual(ip.tiingo("SPY", "x"), (401, None))
-
     def test_h15(self):
-        xml = ('<x><kf:Series SERIES_NAME="OTHER"><frb:Obs OBS_STATUS="A" OBS_VALUE="9.9" TIME_PERIOD="1993-12-01" />'
-               '</kf:Series><kf:Series SERIES_NAME="RIFSGFSM03_N.B">'
-               '<frb:Obs OBS_STATUS="A" OBS_VALUE="3.10" TIME_PERIOD="1993-12-01" />'
-               '<frb:Obs OBS_STATUS="ND" OBS_VALUE="-9999" TIME_PERIOD="1993-12-24" />'
-               '<frb:Obs OBS_STATUS="A" OBS_VALUE="3.12" TIME_PERIOD="1993-12-27" /></kf:Series></x>')
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "w") as z:
-            z.writestr("H15_data.xml", xml)
-        rows = ip.parse_h15(buf.getvalue())
+        rows = ip.parse_h15(h15_zip([("1993-12-01", "A", "3.10"), ("1993-12-24", "ND", "-9999"),
+                                     ("1993-12-27", "A", "3.12")]))
         self.assertEqual(rows, [("1993-12-01", 3.10), ("1993-12-24", None), ("1993-12-27", 3.12)])
         text = ip.h15_csv(rows).decode()
-        self.assertTrue(text.startswith("# source: Board of Governors"))
+        self.assertTrue(text.startswith("# source: Board of Governors of the Federal Reserve System"))
         self.assertIn("date,value\n1993-12-01,3.1\n1993-12-24,\n1993-12-27,3.12\n", text)
+        got = ip.h15_check(rows)
+        self.assertEqual((got["rows"], got["missing"], got["missing_days"]), (3, 1, ["1993-12-24"]))
 
 
-class B1B2(unittest.TestCase):
-    def test_fingerprint_per_year(self):
-        rows = [tiingo_row("1999-12-31", 10.0), tiingo_row("2000-01-03", 11.0)]
-        fp = ip.fingerprint(rows)
-        self.assertEqual(set(fp), {"1999", "2000"})
-        import hashlib
-        self.assertEqual(fp["1999"], hashlib.sha256(b"1999-12-31,10.0,11.0,9.0,10.0,0.0,1.0\n").hexdigest())
-        changed = [rows[0], tiingo_row("2000-01-03", 11.0, div=0.1)]
-        self.assertEqual(ip.fingerprint_diff(ip.fingerprint(changed), fp), ["2000"])
-        self.assertEqual(ip.fingerprint_diff(fp, {"1999": fp["1999"]}), ["2000"])
-
-    def test_adjust_by_hand(self):
-        rows = [tiingo_row("2020-01-01", 100.0), tiingo_row("2020-01-02", 100.0, div=1.0),
-                tiingo_row("2020-01-03", 50.0, div=2.0), tiingo_row("2020-01-06", 60.0)]
-        adj = ip.adjust(rows)
-        # day 3: factor 1 - 2 / 100 (raw close of day 2) applies to days 1 and 2; day 2: 1 - 1 / 100 to day 1
-        self.assertAlmostEqual(adj[0][4], 100 * 0.99 * 0.98)
-        self.assertAlmostEqual(adj[1][4], 100 * 0.98)
-        self.assertEqual(adj[2][4], 50.0)
-        self.assertEqual(adj[3][4], 60.0)
-        self.assertAlmostEqual(adj[0][1], rows[0][1] * 0.99 * 0.98)  # every price of the day, not only the close
-
-    def test_split_stops_the_run(self):
-        with self.assertRaises(ip.SplitFound) as e:
-            ip.adjust([tiingo_row("2020-01-01", 10.0), tiingo_row("2020-01-02", 5.0, split=2.0)], symbol="BIL")
-        self.assertEqual(str(e.exception), "BIL 2020-01-02")  # the stop names the symbol and the day
-
-
-class Checks(unittest.TestCase):
+class C31C32(unittest.TestCase):
     def test_integrity_with_tolerance(self):
-        good = [ohlc("2020-01-01", 10.0), ohlc("2020-01-02", 11.0)]
-        self.assertEqual(ip.integrity(good)["outside_range"], 0)
+        self.assertTrue(ip.integrity([ohlc("2020-01-02", 10.0), ohlc("2020-01-03", 11.0)])["pass"])
         tiny = [("2020-01-03", 10.0, 10.0, 9.0, 10.0 * (1 + 1e-12))]
-        self.assertEqual(ip.integrity(tiny)["outside_range"], 1)
-        self.assertEqual(ip.integrity(tiny, rel=1e-9)["outside_range"], 0)
+        self.assertTrue(ip.integrity(tiny)["pass"])  # within 1e-9
+        self.assertFalse(ip.integrity(tiny, rel=0.0)["pass"])
+        self.assertFalse(ip.integrity([("2020-01-03", 10.0, 10.0, 9.0, 10.1)])["pass"])
         self.assertEqual(ip.integrity([("2020-01-03", 0.0, 1.0, 0.0, 0.5)])["non_positive"], 1)
+        self.assertFalse(ip.integrity([ohlc("2020-01-03", 1.0), ohlc("2020-01-02", 1.0)])["pass"])  # unsorted
 
-    def test_dividends_per_year(self):
-        rows = [tiingo_row(f"2001-{m:02d}-15", 10.0, div=0.1) for m in (3, 6, 9, 12)]
-        rows += [tiingo_row("2002-03-15", 10.0, div=0.1), tiingo_row("2002-06-14", 10.0)]
-        got = ip.dividends_per_year(rows, "2001-01-01", "2002-12-31")
-        self.assertEqual(got["per_year"], {"2001": 4, "2002": 1})
-        self.assertEqual(got["not_4"], {"2002": 1})
-
-    def test_agreement_by_hand(self):
-        a = [ohlc("2020-01-01", 100.0), ohlc("2020-01-02", 101.0), ohlc("2020-01-03", 102.0), ohlc("2020-01-06", 103.0)]
-        b = [(d, o / 2, h / 2, lo / 2, c / 2) for d, o, h, lo, c in a]  # scaled: the same changes and ratios
-        got = ip.agreement(a, b, "2020-01-01", "2020-12-31")
-        self.assertEqual((got["days"], got["change_within"], got["oc_within"], got["pass"]), (4, 1.0, 1.0, True))
-        b[2] = (b[2][0], b[2][1], b[2][2] * 1.01, b[2][3], b[2][4] * 1.001)  # one close 0.1% off
-        got = ip.agreement(a, b, "2020-01-01", "2020-12-31")
-        self.assertAlmostEqual(got["change_within"], 1 / 3)  # the changes into and out of that day differ
-        self.assertEqual(got["oc_within"], 1.0)  # about 0.001 <= 0.0015
-        self.assertFalse(got["pass"])
-        self.assertEqual({d for d, _ in got["largest_change"][:2]}, {"2020-01-03", "2020-01-06"})
-
-    def test_day_diff(self):
-        got = ip.day_diff(["2020-01-01", "2020-01-02"], ["2020-01-02", "2020-01-03"], "2020-01-01", "2020-01-31")
-        self.assertEqual((got["only_a"], got["only_b"]), (["2020-01-01"], ["2020-01-03"]))
-
-    def test_stooq_adjustment_detected(self):
-        raw = [ohlc("2020-01-01", 100.0), ohlc("2020-01-02", 99.0), ohlc("2020-01-03", 99.5)]
-        divs = [tiingo_row("2020-01-01", 100.0), tiingo_row("2020-01-02", 99.0, div=1.0), tiingo_row("2020-01-03", 99.5)]
-        adj = ip.adjust(divs)  # day 1 becomes 99: the ex-day change is 0 after adjustment
-        self.assertTrue(ip.stooq_adjusted(adj, raw, adj, ["2020-01-02"])["adjusted"])
-        self.assertFalse(ip.stooq_adjusted(raw, raw, adj, ["2020-01-02"])["adjusted"])
-
-
-class Calendar(unittest.TestCase):
     def test_holidays_and_closures(self):
-        days, closed = ip.nyse_days("1993-01-01", "2005-12-31")
+        days, closed = ip.nyse_days("2005-01-01", "2026-12-31")
         days = set(days)
-        for d in ("2001-09-11", "2001-09-14", "1994-04-27", "2004-06-11", "1998-04-10", "1998-01-19", "1998-07-03",
-                  "1999-12-24", "1994-12-26", "1995-01-02", "1993-11-25", "2000-05-29"):
+        for d in ("2007-01-02", "2012-10-29", "2012-10-30", "2018-12-05", "2025-01-09",  # special closures
+                  "2022-06-20", "2023-06-19", "2026-06-19",  # Juneteenth (2022 observed on Monday)
+                  "2010-12-24", "2021-12-24", "2015-04-03", "2026-04-03", "2009-01-19", "2017-01-02"):
             self.assertNotIn(d, days, d)
-        for d in ("1997-01-20", "1999-12-31", "2001-09-17", "2004-06-14"):  # MLK not a holiday before 1998; New
-            self.assertIn(d, days, d)  # Year's Day on a Saturday is not moved to Friday
-        self.assertEqual(closed["1998-04-10"], "Good Friday")
+        for d in ("2010-12-31", "2021-12-31", "2021-06-18", "2012-10-31"):  # New Year's Day on a Saturday is not
+            self.assertIn(d, days, d)  # moved back; Juneteenth only from 2022
+        self.assertEqual(closed["2012-10-29"], "Hurricane Sandy")
 
     def test_calendar_check(self):
-        days, _ = ip.nyse_days("2001-09-04", "2001-09-21")
-        ok = ip.calendar_check(days, "2001-09-04", "2001-09-21")
-        self.assertEqual(ok["unexplained"], 0)
-        bad = ip.calendar_check(days[:-1] + ["2001-09-12"], "2001-09-04", "2001-09-21")
-        self.assertEqual(bad["in_file_not_calendar"], [["2001-09-12", "September 11 attacks"]])
-        self.assertEqual(bad["in_calendar_not_file"], [["2001-09-21", None]])
-        self.assertEqual(bad["unexplained"], 1)  # the missing day; the extra day is a documented closure (listed)
+        days, _ = ip.nyse_days("2012-10-22", "2012-11-09")
+        self.assertTrue(ip.calendar_check(days, "2012-10-22", "2012-11-09")["pass"])
+        bad = ip.calendar_check(days[:-1] + ["2012-10-29"], "2012-10-22", "2012-11-09")
+        self.assertEqual(bad["in_file_not_calendar"], [["2012-10-29", "Hurricane Sandy"]])
+        self.assertEqual(bad["in_calendar_not_file"], [["2012-11-09", None]])
+        self.assertEqual(bad["unexplained"], 1)
+        self.assertFalse(bad["pass"])
+
+
+class C33C34(unittest.TestCase):
+    def series(self):
+        """Alpaca raw and adjusted: a dividend of 1 on day 3 (raw falls 1 more than the adjusted series)."""
+        raw = [ohlc("2020-01-02", 100.0), ohlc("2020-01-03", 101.0), ohlc("2020-01-06", 100.0), ohlc("2020-01-07", 102.0)]
+        f = 1 - 1 / 101  # the factor before the ex-day
+        adj = [(d, o * f, h * f, lo * f, c * f) if d < "2020-01-06" else (d, o, h, lo, c) for d, o, h, lo, c in raw]
+        return raw, adj
+
+    def test_dividend_check_by_hand(self):
+        raw, adj = self.series()
+        got = ip.dividend_check(adj, raw, adj, "2020-01-01", "2020-12-31")  # a file equal to the adjusted bars
+        self.assertEqual((got["ex_dividend_days"], got["ex_days"], got["nearer_share"]), (1, ["2020-01-06"], 1.0))
+        self.assertEqual(got["span_relative_difference"], 0.0)
+        self.assertTrue(got["pass"])
+        bad = ip.dividend_check(raw, raw, adj, "2020-01-01", "2020-12-31")  # a raw file: nearer the raw change
+        self.assertEqual(bad["nearer_share"], 0.0)
+        self.assertFalse(bad["pass"])
+
+    def test_gross_errors_by_hand(self):
+        _, adj = self.series()
+        scaled = [(d, o * 3, h * 3, lo * 3, c * 3) for d, o, h, lo, c in adj]  # another scale: the same changes
+        got = ip.gross_errors(scaled, adj, "2020-01-01", "2020-12-31")
+        self.assertEqual((got["common"], got["change_within"], got["oc_within"], got["pass"]), (4, 1.0, 1.0, True))
+        off = list(scaled)
+        off[2] = (off[2][0], off[2][1], off[2][2] * 1.1, off[2][3], off[2][4] * 1.01)  # one close 1% off
+        got = ip.gross_errors(off, adj, "2020-01-01", "2020-12-31")
+        self.assertAlmostEqual(got["change_within"], 1 / 3, places=6)  # into and out of that day: about 0.01
+        self.assertAlmostEqual(got["oc_within"], 0.75)  # that day's open/close moves by about 0.0099 > 0.005
+        self.assertFalse(got["pass"])
+        self.assertEqual(got["largest_oc"][0][0], "2020-01-06")
+        missing = ip.gross_errors(scaled[:-1], adj, "2020-01-01", "2020-12-31")
+        self.assertEqual(missing["only_alpaca"], ["2020-01-07"])
+        self.assertFalse(missing["pass"])
 
     def test_information_lists(self):
-        adj = [ohlc("1999-01-04", 100.0), ohlc("1999-01-05", 106.0), ohlc("1999-01-06", 104.0)]
-        self.assertEqual(ip.big_moves(adj, "1999-01-01", "1999-12-31"), [["1999-01-05", 0.06]])
-        raw = [ohlc("1999-01-04", 100.0), ("1999-01-05", 100.0, 107, 99, 106.0), ("1999-01-06", 105.0, 107, 103, 104.0)]
-        self.assertEqual(ip.open_equals_prev_close(raw, "1999-01-01", "1999-12-31"), {"1999": 0.5})
+        rows = [ohlc("2008-10-10", 100.0), ohlc("2008-10-13", 112.0, o=100.0), ohlc("2008-10-14", 111.0, o=110.0)]
+        self.assertEqual(ip.big_moves(rows), [["2008-10-13", 0.12]])
+        self.assertEqual(ip.open_equals_prev_close(rows), {"2008": 0.5})
 
 
 class Run(unittest.TestCase):
-    def test_run_writes_no_tiingo_price(self):
-        spy = [tiingo_row(d, 1234.5678 + k, div=0.4321 if k == 2 else 0.0) for k, d in
-               enumerate(("2005-02-25", "2005-02-28", "2005-03-01", "2005-03-02"))]
-        stooq = b"Date;Open;High;Low;Close\n" + b"".join(
-            f"{r[0]};{r[1]};{r[2]};{r[3]};{r[4]}\n".encode() for r in spy)
-        h15 = io.BytesIO()
-        with zipfile.ZipFile(h15, "w") as z:
-            z.writestr("H15_data.xml", '<kf:Series SERIES_NAME="RIFSGFSM03_N.B"><frb:Obs OBS_STATUS="A" '
-                                       'OBS_VALUE="2.5" TIME_PERIOD="2005-02-25" /></kf:Series>')
+    def test_run_end_to_end_and_sha256_stop(self):
+        days, _ = ip.nyse_days("2016-01-04", "2016-01-29")
+        rows = [ohlc(d, 200.0 + k) for k, d in enumerate(days)]
+        body = b"Date;Open;High;Low;Close;Volume\n" + b"".join(
+            f"{d};{o};{h};{lo};{c};1\n".encode() for d, o, h, lo, c in rows)
         with tempfile.TemporaryDirectory() as d, \
-                mock.patch.object(ip, "tiingo", side_effect=lambda s, t, start=None, end=None: (200, spy)), \
-                mock.patch.object(ip, "fetch", return_value=(200, h15.getvalue())), \
-                mock.patch.object(ip, "alpaca_adjusted", return_value=[r[:5] for r in spy]), \
-                mock.patch.object(ip, "FIRST", "2005-02-25"), mock.patch.object(ip, "SINGLE_LAST", "2005-02-24"):
+                mock.patch.object(ip, "STOOQ_SHA256", hashlib.sha256(body).hexdigest()), \
+                mock.patch.object(ip, "FIRST", "2016-01-04"), mock.patch.object(ip, "LAST", "2016-01-29"), \
+                mock.patch.object(ip, "fetch", return_value=(200, h15_zip([("2016-01-04", "A", "0.2")]))), \
+                mock.patch.object(ip, "alpaca_bars", return_value=rows), mock.patch("builtins.print"):
             path = os.path.join(d, "spy_us_d.csv")
             with open(path, "wb") as fh:
-                fh.write(stooq)
+                fh.write(body)
             out = os.path.join(d, "out")
-            with mock.patch("builtins.print"):
-                code = ip.main(["--stooq", path, "--out", out])
+            code = ip.main(["--stooq", path, "--out", out])
             names = sorted(os.listdir(out))
-            text = "".join(open(os.path.join(out, n), encoding="utf-8").read() for n in names)
-        self.assertEqual(names, ["h15-3m-tbill.csv", "manifest.json", "probe.json", "tiingo-fingerprint.json"])
-        self.assertNotIn("1234.5678", text)  # no Tiingo price leaves the run
-        self.assertNotIn("0.4321", text)
-        self.assertIn(code, (0, 4))  # synthetic: the checks run end to end
+            rep = json.load(open(os.path.join(out, "probe.json"), encoding="utf-8"))
+            written = "".join(open(os.path.join(out, n), encoding="utf-8").read() for n in names)
+        self.assertEqual(names, ["h15-3m-tbill.csv", "manifest.json", "probe.json"])
+        self.assertTrue(rep["checks"]["1_integrity"]["pass"])
+        self.assertTrue(rep["checks"]["2_calendar"]["pass"])
+        self.assertIn("4_gross_errors", rep["checks"])
+        self.assertIn(code, (0, 4))  # synthetic: no ex-dividend day, so check 3 cannot pass
+        self.assertNotIn("201.0;", written)  # no price of the file leaves the run
+        with tempfile.TemporaryDirectory() as d, mock.patch("builtins.print"):
+            path = os.path.join(d, "spy_us_d.csv")
+            with open(path, "wb") as fh:
+                fh.write(body + b"x")
+            self.assertEqual(ip.main(["--stooq", path, "--out", os.path.join(d, "out")]), 2)  # sha256 differs
 
 
 if __name__ == "__main__":
