@@ -1,8 +1,9 @@
 name: Index program data probe (temporary)
 
-# Runs only on a push to index-data-probe (spec 2026-10-12-index-program-design.md, phase 1). Fetches the sources,
-# checks integrity and price agreement only, and uploads the probe report plus the Stooq and FRED files. Yahoo and
-# Alpaca data are compared in memory and never written. No return of any rule is computed.
+# Runs only on a push to index-data-probe (spec 2026-10-12-index-program-design.md, phase 1, Amendments 1 and 2).
+# Tiingo data stay in memory; the Stooq file is read from the private repository with the deploy key; the artifact
+# holds only counts, dates, shares of days, relative differences, the Tiingo fingerprint, the H.15 file (public
+# domain) and the manifest. No price and no secret is printed. No return of any rule is computed.
 on:
   push:
     branches: [index-data-probe]
@@ -21,14 +22,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Probe the sources (counts and agreement only)
-        run: python -m bot.index_probe index-probe-out
+      - name: Read the private data repository (deploy key, outside the workspace)
         env:
+          DATA_REPO_KEY: ${{ secrets.DATA_REPO_KEY }}
+        run: |
+          install -m 600 /dev/null "$RUNNER_TEMP/data_key"
+          printf '%s\n' "$DATA_REPO_KEY" > "$RUNNER_TEMP/data_key"
+          GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/data_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+            git clone --quiet --depth 1 git@github.com:danielsuisa/stockbot-data.git "$RUNNER_TEMP/private"
+          rm -f "$RUNNER_TEMP/data_key"
+      - name: Probe (in memory; counts and agreement only)
+        env:
+          TIINGO_TOKEN: ${{ secrets.TIINGO_TOKEN }}
           ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
-      - name: Upload the probe files
+        run: python -m bot.index_probe --stooq "$RUNNER_TEMP/private/spy_us_d.csv" --out probe-out
+      - name: Upload the probe report (no price)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: index-data-probe
-          path: index-probe-out/
+          name: index-data-probe-2
+          path: probe-out/
+      - name: Remove the private checkout
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/private" "$RUNNER_TEMP/data_key"
