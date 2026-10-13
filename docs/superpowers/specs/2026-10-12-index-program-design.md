@@ -508,3 +508,33 @@ nothing:
 - The file's dividend adjustment is not exact: on about one ex-dividend day in seven it differs from Alpaca's.
   Over 2016 to 2026 the whole effect is inside the 1% of D2. Before 2016 nothing checks it.
 - One trading day is missing from the file (D1).
+
+## Amendment 5 (2026-10-13, before any return was computed)
+
+**Reason.** The fourth round of the probe passed all four acceptance checks, and the plan for phases 2 to 4
+listed eight open questions. This amendment settles them. Nothing in sections 4 to 7 changes.
+
+**E1. The file's recent dividends** (corrects the first bullet of D3). The file is not adjusted for the six
+dividends from 2025-06-20 to 2026-09-18; before that its adjustment agrees with Alpaca's. The file is used as it
+is and is not repaired. Known effect: SPY's return is understated by about 0.28% a quarter over the last six
+quarters, about 1.7% in all, about 0.1% a year over window P. It lowers every policy in proportion to its SPY
+weight, so it works slightly against the policy with the larger weight.
+
+**E2. Daily equity** is kept in memory only and saved nowhere. The "daily equity CSV per policy" of 8.3 and the
+second sentence of A5 are dropped. B5 governs the public report.
+
+**E3. TACT with two passing overlays** is in SPY when either of them holds a position. It trades only when that
+combined state changes.
+
+**E4. Smaller rules.**
+- A signal on a window's last day is not executed. The position stays and is marked at the last close.
+- The account that fits P's scale starts in the cash leg at the close of 2005-12-30, with $10,000 and base
+  costs, like every window's account.
+- The information items of 8.3 are computed in the verdict run, after the decision, in a separate section
+  marked "information, no decision".
+- A yearly rebalance is two order tickets, one in each leg.
+
+**E5. From phase 3 to phase 4.** After the owner's review of phase 2, the branch is merged to `main` with his
+approval. The blind run is a push of that merge commit to the branch `index-run-blind`. The verdict is
+dispatched on the same commit and refuses to run unless its recomputed blind report equals the blind run's.
+There is no time limit between the two, because the inputs are fixed by their sha256.
