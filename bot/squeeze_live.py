@@ -266,6 +266,8 @@ def stats_text(j):
         hit, crash = (code(format(BACKTEST[k], ".1%")) for k in ("hit", "crash"))
         lines.append(f"בבדיקה ההיסטורית שלה ({code(BACKTEST['years'])}): {hit} עלו {code('50%')} ומעלה, ו־{crash} ירדו"
                      f" {code('33%')} ומעלה.")
+    from bot import squeeze_forward  # the forward test's one line (docs/superpowers/specs/2026-10-13-squeeze-forward-test.md)
+    lines += ["", squeeze_forward.line(j["entries"])]
     return "\n".join(lines)
 
 
