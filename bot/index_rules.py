@@ -10,6 +10,7 @@ return and print nothing.
 - D (4.3): with no D position open, at the close of day t, C > SMA200 and RSI2 < 10: buy at the open of t+1; exit
   at the open after the first close on or after the entry day with C > SMA5."""
 import datetime as dt
+import math
 
 from bot import index_probe
 
@@ -19,6 +20,12 @@ T_MONTHS, D_RSI_MAX, D_LONG, D_SHORT = 10, 10.0, 200, 5
 def sma(closes, n):
     """The mean of the last n closes, day t included (None before n closes)."""
     return [sum(closes[k - n + 1:k + 1]) / n if k >= n - 1 else None for k in range(len(closes))]  # no running drift
+
+
+def above(closes, k, n):
+    """Is close k above the mean of the last n closes, k included? Compared as n x C > the exactly rounded sum, so
+    equal closes tie (never "above") whatever their value."""
+    return k >= n - 1 and n * closes[k] > math.fsum(closes[k - n + 1:k + 1])
 
 
 def rsi2(closes):
@@ -46,11 +53,8 @@ def trend_states(rows, months=T_MONTHS):
     """4.1: [(month-end day, on)] from the first month-end with `months` month-end closes."""
     close = {r[0]: r[4] for r in rows}
     ends = month_ends([r[0] for r in rows])
-    out = []
-    for k in range(months - 1, len(ends)):
-        avg = sum(close[d] for d in ends[k - months + 1:k + 1]) / months
-        out.append((ends[k], close[ends[k]] > avg))
-    return out
+    vals = [close[d] for d in ends]
+    return [(ends[k], above(vals, k, months)) for k in range(months - 1, len(ends))]
 
 
 def trend_changes(rows, months=T_MONTHS):
@@ -107,12 +111,12 @@ def dip_positions(rows, rsi_max=D_RSI_MAX, long=D_LONG, short=D_SHORT):
     """4.3: [(signal day, entry day, exit signal day, exit day)]; entry and exit at the open; the exit fields are
     None while the position is open at the file's end."""
     days, closes = [r[0] for r in rows], [r[4] for r in rows]
-    s_long, s_short, rsi = sma(closes, long), sma(closes, short), rsi2(closes)
+    rsi = rsi2(closes)
     out, t = [], 0
     while t < len(days) - 1:
-        if s_long[t] is not None and rsi[t] is not None and closes[t] > s_long[t] and rsi[t] < rsi_max:
+        if rsi[t] is not None and above(closes, t, long) and rsi[t] < rsi_max:
             entry = t + 1
-            x = next((k for k in range(entry, len(days)) if s_short[k] is not None and closes[k] > s_short[k]), None)
+            x = next((k for k in range(entry, len(days)) if above(closes, k, short)), None)
             if x is None or x + 1 >= len(days):
                 out.append((days[t], days[entry], days[x] if x is not None else None, None))
                 return out

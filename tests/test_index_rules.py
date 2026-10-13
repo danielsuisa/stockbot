@@ -24,7 +24,9 @@ class Averages(unittest.TestCase):
     def test_sma(self):
         self.assertEqual(ir.sma([1, 2, 3, 4], 2), [None, 1.5, 2.5, 3.5])
         self.assertEqual(ir.sma([100.2] * 5, 5)[-1], sum([100.2] * 5) / 5)  # the mean of the slice: no running drift
-        self.assertFalse(100.2 > ir.sma([100.0, 100.2, 100.2, 100.2, 100.2, 100.2], 5)[-1])  # a tie is not "above"
+        for v in (100.2, 451.17, 397.33, 0.1):  # review: equal closes are a tie, never "above"
+            self.assertFalse(ir.above([1.0] + [v] * 5, 5, 5))
+        self.assertTrue(ir.above([1.0, 1.0, 1.0, 1.0, 1.0, 1.1], 5, 5))
 
     def test_rsi2_by_hand(self):
         got = ir.rsi2([10, 11, 10.5, 10.5, 12])

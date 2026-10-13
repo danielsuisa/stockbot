@@ -182,7 +182,9 @@ class Main(unittest.TestCase):
             try:
                 with contextlib.redirect_stdout(open(os.devnull, "w")):
                     ir.main(["--blind", "--stooq", stooq, "--h15", h15, "--manifest", man])
-                with leaks.watch():
+                with open(ir.BLIND_PATH, encoding="utf-8") as fh:
+                    wiring = json.load(fh)["tom_days_held_p"]  # short synthetic windows: not 851
+                with leaks.watch(), mock.patch.object(ir, "TOM_WIRING", wiring):
                     code = ir.main(["--verdict", "--commit", "c0ffee", "--owner-go-ahead", "--blind-report",
                                     ir.BLIND_PATH, "--stooq", stooq, "--h15", h15, "--manifest", man])
             finally:
@@ -212,6 +214,28 @@ class Main(unittest.TestCase):
             finally:
                 os.chdir(old)
         self.assertEqual(code, 2)
+
+    def test_verdict_records_the_run_and_needs_851(self):
+        rows = path("rise")
+        with tempfile.TemporaryDirectory() as d, short_windows(), mock.patch.object(ir, "head", return_value="c0ffee"),                 contextlib.redirect_stdout(open(os.devnull, "w")), mock.patch.dict(os.environ, {"GITHUB_RUN_ID": "77"}):
+            stooq, h15, man = self.files(d, rows)
+            old = os.getcwd()
+            os.chdir(d)
+            try:
+                ir.main(["--blind", "--stooq", stooq, "--h15", h15, "--manifest", man])
+                with open(ir.BLIND_PATH, encoding="utf-8") as fh:
+                    blind = json.load(fh)
+                args = ["--verdict", "--commit", "c0ffee", "--owner-go-ahead", "--blind-report", ir.BLIND_PATH,
+                        "--blind-run-id", "55", "--stooq", stooq, "--h15", h15, "--manifest", man]
+                with mock.patch.object(ir, "TOM_WIRING", blind["tom_days_held_p"] + 1):
+                    self.assertEqual(ir.main(args), 2)  # 8.2 / F6: a blind report without the wiring count refuses
+                with mock.patch.object(ir, "TOM_WIRING", blind["tom_days_held_p"]):
+                    self.assertEqual(ir.main(args), 0)
+                import glob
+                rep = json.load(open(glob.glob(ir.VERDICT_GLOB)[0], encoding="utf-8"))
+            finally:
+                os.chdir(old)
+        self.assertEqual(rep["record"], {"commit": "c0ffee", "blind_run_id": "55", "verdict_run_id": "77"})
 
     def test_verdict_refusals(self):
         rows = path("rise")

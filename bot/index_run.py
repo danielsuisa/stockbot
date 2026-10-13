@@ -25,6 +25,7 @@ DEFAULT = {"t_months": rules.T_MONTHS, "d_rsi": rules.D_RSI_MAX, "budget": ie.BU
 BLIND_KEYS = ("fingerprint", "trading_days_per_year", "entries_per_year", "pi", "trend_order_tickets_per_year",
               "tom_days_held_p")
 BLIND_PATH = "index-blind-report.json"
+TOM_WIRING = 851  # 8.2: TOM holds SPY after the close on 851 days of P (F6: another count stops the run)
 VERDICT_GLOB = "docs/backtest/index-verdict-*.json"  # F3: a verdict report on the branch refuses a second run
 COSTS = {"optimistic": ie.OPTIMISTIC, "base": ie.BASE, "stress": ie.STRESS}
 
@@ -146,6 +147,8 @@ def decide(rows, cash, params=DEFAULT):
 def _metrics(res):
     years = ie.calendar_year_returns(res["e0"], res["days"], res["equity"])
     depth, peak, trough = ie.max_drawdown(res["days"], res["equity"], res["e0"])
+    if depth and peak is None:
+        peak = res["prev_close_day"]  # the fall starts at the close before the window
     return {"growth": ie.growth_rate(res["e0"], res["final"], res["days"][0], res["days"][-1]),
             "final_equity": res["final"], "max_drawdown": {"depth": depth, "peak": peak, "trough": trough},
             "worst_year": min(years.items(), key=lambda kv: kv[1]) if years else None,
@@ -260,6 +263,7 @@ def main(argv=None):
     ap.add_argument("--commit", default="")
     ap.add_argument("--owner-go-ahead", action="store_true")
     ap.add_argument("--blind-report", default="")
+    ap.add_argument("--blind-run-id", default="", help="the blind run's id, recorded in the report (F3)")
     a = ap.parse_args(argv)
     try:
         rows = idata.load_prices(a.stooq, a.manifest)
@@ -285,11 +289,17 @@ def main(argv=None):
             print("verdict refused: it needs --blind-report <the blind run's report> (E5)")
             return 2
         with open(a.blind_report, encoding="utf-8") as fh:
-            if json.load(fh) != json.loads(json.dumps(blind_report(rows, fp))):
-                print("verdict refused: the recomputed blind report differs from the blind run's (E5)")
-                return 2
+            blind = json.load(fh)
+        if blind.get("tom_days_held_p") != TOM_WIRING:
+            print(f"verdict refused: the blind report's TOM count is not {TOM_WIRING} (8.2, F6)")
+            return 2
+        if blind != json.loads(json.dumps(blind_report(rows, fp))):
+            print("verdict refused: the recomputed blind report differs from the blind run's (F3)")
+            return 2
         cash = idata.cash_returns([r[0] for r in rows], h15)
         rep = verdict_report(rows, cash, fp)
+        rep["record"] = {"commit": a.commit, "blind_run_id": a.blind_run_id,
+                         "verdict_run_id": os.environ.get("GITHUB_RUN_ID", "")}  # rule 0.3, F3: the record of the run
         today = dt.date.today().isoformat()
         os.makedirs("docs/backtest", exist_ok=True)
         with open(verdict_path(today), "w", encoding="utf-8") as fh:

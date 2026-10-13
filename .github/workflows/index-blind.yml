@@ -27,10 +27,12 @@ jobs:
       - name: Read the private data repository (deploy key, outside the workspace)
         env:
           DATA_REPO_KEY: ${{ secrets.DATA_REPO_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          gh api meta --jq '.ssh_keys[]' | sed 's/^/github.com /' > "$RUNNER_TEMP/known_hosts"
           install -m 600 /dev/null "$RUNNER_TEMP/data_key"
           printf '%s\n' "$DATA_REPO_KEY" > "$RUNNER_TEMP/data_key"
-          GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/data_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+          GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/data_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts" \
             git clone --quiet --depth 1 git@github.com:danielsuisa/stockbot-data.git "$RUNNER_TEMP/private"
           rm -f "$RUNNER_TEMP/data_key"
       - name: The blind run (counts only; both sha256 checked)
@@ -40,6 +42,9 @@ jobs:
         with:
           name: index-blind-report
           path: index-blind-report.json
+      - name: Check the TOM wiring count (8.2; F6 stops on any other count)
+        run: |
+          python -c "import json,sys; n=json.load(open('index-blind-report.json'))['tom_days_held_p']; print('TOM days held in P:', n); sys.exit(0 if n == 851 else 1)"
       - name: Remove the private checkout
         if: always()
         run: rm -rf "$RUNNER_TEMP/private" "$RUNNER_TEMP/data_key"

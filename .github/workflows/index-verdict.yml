@@ -3,7 +3,8 @@ name: Index program verdict run (spec 8.3, F3)
 # Runs only on a push to index-run-verdict, of the same commit as the blind run (Amendment 6 F3). The job waits in
 # the environment index-verdict, whose required reviewer is the owner: his approval of the waiting run is his
 # approval of the single verdict run. It refuses when a verdict report already exists on the branch, and unless the
-# recomputed blind report equals the blind run's. The artifact holds the JSON report and the Hebrew summary only:
+# recomputed blind report equals the blind run's; the guard job checks the environment,
+# the head commit, earlier verdicts and the blind run's TOM count before the owner is asked. The artifact holds the JSON report and the Hebrew summary only:
 # aggregated numbers, no daily series, no price (B5, E2).
 on:
   push:
@@ -21,7 +22,63 @@ env:
   PYTHONHASHSEED: "0"
 
 jobs:
+  guard:  # no environment: these refusals run before the owner is asked to approve
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      blind_run_id: ${{ steps.blind.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Refuse unless the environment holds the owner's approval (F3)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          rules=$(gh api "repos/$GH_REPO/environments/index-verdict" --jq '[.protection_rules[].type] | join(",")')
+          reviewers=$(gh api "repos/$GH_REPO/environments/index-verdict" --jq '[.protection_rules[] | select(.type == "required_reviewers") | .reviewers[].reviewer.login] | join(",")')
+          branches=$(gh api "repos/$GH_REPO/environments/index-verdict/deployment-branch-policies" --jq '[.branch_policies[].name] | join(",")')
+          echo "rules: $rules; reviewers: $reviewers; branches: $branches"
+          case "$rules" in *required_reviewers*) ;; *) echo "verdict refused: no required reviewer"; exit 1 ;; esac
+          test "$reviewers" = "danielsuisa" || { echo "verdict refused: the reviewer is not the owner"; exit 1; }
+          test "$branches" = "index-run-verdict" || { echo "verdict refused: the branch policy"; exit 1; }
+      - name: Refuse unless this is the head commit of index-program (F3)
+        env:
+          SHA: ${{ github.sha }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          head=$(git ls-remote "$REPO_URL" refs/heads/index-program | cut -f1)
+          test "$head" = "$SHA" || { echo "verdict refused: not the head commit of index-program"; exit 1; }
+      - name: Refuse a second verdict (F3)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ls docs/backtest/index-verdict-*.json >/dev/null 2>&1; then
+            echo "verdict refused: a verdict report already exists on the branch"; exit 1
+          fi
+          done=$(gh run list --workflow index-verdict.yml --status success --limit 50 --json databaseId --jq 'length')
+          test "$done" = "0" || { echo "verdict refused: a verdict run already succeeded"; exit 1; }
+          uploaded=$(gh api "repos/$GH_REPO/actions/artifacts?name=index-verdict" --jq '.total_count')
+          test "$uploaded" = "0" || { echo "verdict refused: a verdict report was already uploaded"; exit 1; }
+      - name: Find the blind run of this commit and check its TOM count (8.2, F6)
+        id: blind
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          id=$(gh run list --workflow index-blind.yml --branch index-run-blind --commit "$SHA" --status success \
+            --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          test -n "$id" || { echo "verdict refused: no successful blind run for this commit"; exit 1; }
+          gh run download "$id" -n index-blind-report -D "$RUNNER_TEMP/blind"
+          python3 -c "import json,os,sys; n=json.load(open(os.path.join(os.environ['RUNNER_TEMP'],'blind','index-blind-report.json')))['tom_days_held_p']; sys.exit(0 if n == 851 else 1)"
+          echo "blind run: $id"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
   verdict:
+    needs: guard
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: index-verdict
@@ -29,39 +86,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Refuse when a verdict report already exists on the branch (F3)
-        run: |
-          if ls docs/backtest/index-verdict-*.json >/dev/null 2>&1; then
-            echo "verdict refused: a verdict report already exists on the branch"; exit 1
-          fi
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Download the blind run's report (same commit)
+      - name: Download the blind run's report (the run the guard found)
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-        run: |
-          id=$(gh run list --workflow index-blind.yml --branch index-run-blind --commit "$SHA" --status success \
-            --limit 1 --json databaseId --jq '.[0].databaseId')
-          test -n "$id" || { echo "verdict refused: no successful blind run for this commit"; exit 1; }
-          gh run download "$id" -n index-blind-report -D "$RUNNER_TEMP/blind"
-          echo "blind run: $id"
+          BLIND_RUN_ID: ${{ needs.guard.outputs.blind_run_id }}
+        run: gh run download "$BLIND_RUN_ID" -n index-blind-report -D "$RUNNER_TEMP/blind"
       - name: Read the private data repository (deploy key, outside the workspace)
         env:
           DATA_REPO_KEY: ${{ secrets.DATA_REPO_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          gh api meta --jq '.ssh_keys[]' | sed 's/^/github.com /' > "$RUNNER_TEMP/known_hosts"
           install -m 600 /dev/null "$RUNNER_TEMP/data_key"
           printf '%s\n' "$DATA_REPO_KEY" > "$RUNNER_TEMP/data_key"
-          GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/data_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+          GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/data_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts" \
             git clone --quiet --depth 1 git@github.com:danielsuisa/stockbot-data.git "$RUNNER_TEMP/private"
           rm -f "$RUNNER_TEMP/data_key"
       - name: The verdict run (writes its report and summary only)
         env:
           SHA: ${{ github.sha }}
+          BLIND_RUN_ID: ${{ needs.guard.outputs.blind_run_id }}
         run: |
-          python -m bot.index_run --verdict --commit "$SHA" --owner-go-ahead \
+          python -m bot.index_run --verdict --commit "$SHA" --owner-go-ahead --blind-run-id "$BLIND_RUN_ID" \
             --blind-report "$RUNNER_TEMP/blind/index-blind-report.json" --stooq "$RUNNER_TEMP/private/spy_us_d.csv"
       - name: Upload the verdict report and the Hebrew summary
         uses: actions/upload-artifact@v4

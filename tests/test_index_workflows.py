@@ -51,6 +51,31 @@ class Common(unittest.TestCase):
         self.assertIn("path: index-blind-report.json", wf)
         self.assertNotIn("environment:", wf)
 
+    def test_blind_checks_the_wiring_count(self):
+        wf = read("index-blind.yml")
+        self.assertIn("tom_days_held_p", wf)  # 8.2 / F6: the job fails unless TOM holds 851 days of P
+        self.assertIn("851", wf)
+        self.assertLess(wf.index("upload-artifact"), wf.index("tom_days_held_p"))  # after the upload
+
+    def test_host_key_from_github(self):
+        for name in ("index-blind.yml", "index-verdict.yml"):
+            wf = read(name)
+            self.assertIn("StrictHostKeyChecking=yes", wf)
+            self.assertNotIn("accept-new", wf)
+
+    def test_verdict_guard_runs_before_the_approval(self):
+        wf = read("index-verdict.yml")
+        guard = wf[wf.index("  guard:"):wf.index("  verdict:")]
+        self.assertNotIn("\n    environment:", guard)  # the checks run before the owner is asked
+        for needle in ("environments/index-verdict", "required_reviewers", "refs/heads/index-program",
+                       "--workflow index-verdict.yml --status success", "actions/artifacts?name=index-verdict",
+                       "ls docs/backtest/index-verdict-*.json", "// empty", "tom_days_held_p"):
+            self.assertIn(needle, guard, needle)
+        verdict = wf[wf.index("  verdict:"):]
+        self.assertIn("needs: guard", verdict)
+        self.assertIn("environment: index-verdict", verdict)
+        self.assertIn("--blind-run-id", verdict)
+
     def test_verdict(self):
         wf = self.check("index-verdict.yml", "index-run-verdict")
         self.assertIn("environment: index-verdict", wf)  # F3: the owner's approval of the waiting run
@@ -58,6 +83,7 @@ class Common(unittest.TestCase):
         self.assertIn("ls docs/backtest/index-verdict-*.json", wf)  # F3: no second verdict
         self.assertIn("--blind-report", wf)
         self.assertIn("gh run download", wf)
+        self.assertEqual(wf.count("actions/upload-artifact"), 1)
         self.assertIn("--commit \"$SHA\" --owner-go-ahead", wf)
         upload = wf[wf.index("actions/upload-artifact"):wf.index("Remove the private checkout")]
         self.assertIn("docs/backtest/index-verdict-*.json", upload)
