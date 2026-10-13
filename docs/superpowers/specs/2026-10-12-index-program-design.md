@@ -419,3 +419,65 @@ computed a second time over P with the Stooq file as the price source. They deci
 **B5. Public report** (replaces the rest of A5). Aggregated numbers only: test statistics, gates, scales, growth
 rates, drawdowns with their dates, counts, and the calendar-year returns of each policy. No daily or monthly
 series and no price.
+
+## Amendment 3 (2026-10-13, before any return was computed)
+
+**Reason.** The analyst read Tiingo's terms (`https://app.tiingo.com/tos`, updated 2026-10-06, sections 1.6 and
+1.4(h)): on the free plan neither Tiingo's data nor anything derived from them may be kept in lasting storage
+or published, so a decision report could not be kept. The owner chose to stay with free data. The Stooq file
+is therefore the only price source. It starts on 2005-02-25, so the windows and the fitting period change.
+No return of any rule or policy has been computed.
+
+**C1. Sources** (replaces A1, B1, B2 and B4).
+- **SPY:** Stooq's daily CSV as the owner downloaded it, kept in the private repository (sha256
+  `3493247f082c56292780c23c9f9272f39da5459b0eb10525e66b7b3ab6baca6f`). Rows from 2005-02-25 to 2026-09-30 are
+  used and later rows are ignored. Its prices are used as given, and they must be dividend-adjusted (C3.3).
+- **Bill rate:** the Board's H.15, as in A1, committed to the public repository with the Board named as source.
+- **Tiingo is not used.** Its code is removed and nothing from it is kept. The comparison with BIL is dropped.
+- **Alpaca** serves only the checks C3.3 and C3.4, in memory.
+- A2 stands for the Stooq file: private repository, a manifest with its sha256 in the public repository, and
+  every run checks the sha256. B5 stands.
+
+**C2. Windows and scales** (replaces the windows table of section 3 and the fitting table of 6.2; changes 7.2,
+7.3 and 8.3 as listed).
+- Signals are computed from the file's first day. No account starts before 2006-01-03.
+- **Window P is unchanged:** 2009-01-02 to 2026-09-30.
+- **Window S is dropped.** Its first 22 months are now fitting data.
+- **H is 2006-01-03 to 2026-09-30.**
+- **Fitting period for P's scale: 2006-01-03 to 2008-12-31.** The operating scale is fitted on H. The 16%
+  budget, the search up to 1.00 and the crash cap of 0.60 are unchanged.
+- **7.2:** condition a becomes "its maximum drawdown is at most 20% over P". Condition c is removed. Conditions
+  b and d are unchanged.
+- **7.3:** when both timing policies are eligible, TACT is selected only if its growth rate over P is above
+  TREND's by at least 0.5 percentage point.
+- **8.3:** each policy is reported for P, for the fitting period, and for H at the operating scale.
+- Everything else in sections 4 to 7 is unchanged, including the overlay test, its thresholds and the wiring
+  count of 851.
+
+**C3. Acceptance** (replaces A3 and B3).
+1. **Integrity:** all prices positive; low <= open <= high and low <= close <= high on every day, with a
+   relative tolerance of 1e-9.
+2. **Calendar:** the trading days of 2005-02-25 to 2026-09-30 equal the New York Stock Exchange calendar
+   (weekdays less holidays and documented special closures). Every difference is listed, and one that no
+   documented closure explains stops the run.
+3. **Dividend adjustment,** against Alpaca over 2016-01-04 to 2026-09-30. Take as ex-dividend days the days on
+   which Alpaca's raw and adjusted close-to-close changes differ by more than 0.001. The file passes if its
+   change over the whole span is within 1% of the change of Alpaca's adjusted bars, and if on at least 90% of
+   the ex-dividend days its close-to-close change is nearer to Alpaca's adjusted change than to its raw
+   change. If the file is not dividend-adjusted, stop.
+4. **Gross errors,** against Alpaca's adjusted bars over the same span: the same trading days; the
+   close-to-close change within 0.005 on at least 99% of days; the same day's open-to-close ratio within 0.005
+   on at least 99% of days. The 10 largest differences of each measure are listed (date and difference).
+5. **H.15:** as A3.4.
+6. **Information:** the days whose close-to-close change is above 5% in size (date and change), and, per year,
+   the share of days whose open equals the previous close.
+
+If check 1, 2, 3 or 4 fails, stop and report.
+
+**C4. Limits added to section 11.**
+- **One source.** No second source checks the prices of 2005-02-25 to 2015-12-31. Alpaca checks later years
+  only for gross errors, because its daily close is not always the official close.
+- **Shorter history.** The file holds one deep fall (2008), and it is in the fitting period. Window P tests the
+  drawdown limit on the falls of 2020 and 2022 only.
+- **Stooq's terms were not read** (they are behind its bot check). The price file stays private, and public
+  reports hold aggregated numbers only.
