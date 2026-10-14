@@ -1,0 +1,41 @@
+name: Breakout backtest v2
+
+# Replays the pre-registered v2 grade in bot/breakout_backtest_v2.py. v1 is a separate workflow.
+# A NO-GO still exits 0. A hole in the download exits 1. The report is an artifact; it is committed by hand.
+on:
+  pull_request:
+    paths:
+      - "bot/breakout_backtest_v2.py"
+      - ".github/workflows/breakout-backtest-v2.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: breakout-backtest-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Replay the pre-registered breakout rule v2
+        timeout-minutes: 340
+        run: python -m bot.breakout_backtest_v2
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: breakout-backtest-v2
+          path: docs/backtest/breakout-rule-v2-*
+          if-no-files-found: warn
+          retention-days: 14
