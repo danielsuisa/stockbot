@@ -75,6 +75,31 @@
    "rank": 3,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-10-13",
+   "signal": "squeeze-list",
+   "symbol": "TNXP",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 6.69,
+   "limit": 6.83,
+   "planned_entry": 6.69,
+   "stop_loss": 6.02,
+   "target": 7.69,
+   "trail": 0.67,
+   "shares": 149,
+   "legs": [
+    74,
+    75
+   ],
+   "R": 0.669,
+   "guard_spread": 0.020000000000000462,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 3,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }
