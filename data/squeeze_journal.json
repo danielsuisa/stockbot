@@ -816,6 +816,23 @@
    "price": 4.415,
    "chg": 0.0437,
    "outcome": null
+  },
+  {
+   "date": "2026-10-15",
+   "seen": "2026-10-14",
+   "t": "LEU",
+   "rank": 3,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-30",
+   "float": 19207818,
+   "short_float": 0.3091,
+   "short_ratio": 8.5253,
+   "avg_vol": 696490,
+   "rel_vol": 2.0575,
+   "pre_vol": null,
+   "price": 119.95,
+   "chg": -0.1067,
+   "outcome": null
   }
  ]
 }
