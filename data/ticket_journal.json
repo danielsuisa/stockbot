@@ -1,0 +1,80 @@
+{
+ "version": 1,
+ "tickets": [
+  {
+   "day": "2026-10-13",
+   "signal": "squeeze-list",
+   "symbol": "BETR",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 9.24,
+   "limit": 9.53,
+   "planned_entry": 9.24,
+   "stop_loss": 8.32,
+   "target": 10.63,
+   "trail": 0.92,
+   "shares": 108,
+   "legs": [
+    54,
+    54
+   ],
+   "R": 0.924,
+   "guard_spread": 0.049999999999998934,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": true
+  },
+  {
+   "day": "2026-10-13",
+   "signal": "squeeze-list",
+   "symbol": "DFH",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 9.31,
+   "limit": 9.46,
+   "planned_entry": 9.31,
+   "stop_loss": 8.38,
+   "target": 10.71,
+   "trail": 0.93,
+   "shares": 107,
+   "legs": [
+    53,
+    54
+   ],
+   "R": 0.931,
+   "guard_spread": 0.01,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 2,
+   "stop_capped": true,
+   "issued_in_first_session": true
+  },
+  {
+   "day": "2026-10-13",
+   "signal": "squeeze-list",
+   "symbol": "ZURA",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 4.79,
+   "limit": 4.88,
+   "planned_entry": 4.79,
+   "stop_loss": 4.31,
+   "target": 5.51,
+   "trail": 0.48,
+   "shares": 208,
+   "legs": [
+    104,
+    104
+   ],
+   "R": 0.47900000000000004,
+   "guard_spread": 0.01,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 3,
+   "stop_capped": true,
+   "issued_in_first_session": true
+  }
+ ]
+}

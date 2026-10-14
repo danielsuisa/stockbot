@@ -765,6 +765,57 @@
    "price": 9.81,
    "chg": -0.0585,
    "outcome": null
+  },
+  {
+   "date": "2026-10-15",
+   "seen": "2026-10-14",
+   "t": "BETR",
+   "rank": 1,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-30",
+   "float": 8454368,
+   "short_float": 0.4413,
+   "short_ratio": 5.7386,
+   "avg_vol": 650154,
+   "rel_vol": 2.1834,
+   "pre_vol": null,
+   "price": 8.065,
+   "chg": -0.1009,
+   "outcome": null
+  },
+  {
+   "date": "2026-10-15",
+   "seen": "2026-10-14",
+   "t": "DFH",
+   "rank": 2,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-30",
+   "float": 26715461,
+   "short_float": 0.3281,
+   "short_ratio": 10.6177,
+   "avg_vol": 825442,
+   "rel_vol": 3.8551,
+   "pre_vol": null,
+   "price": 7.74,
+   "chg": -0.1605,
+   "outcome": null
+  },
+  {
+   "date": "2026-10-15",
+   "seen": "2026-10-14",
+   "t": "ZURA",
+   "rank": 3,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-30",
+   "float": 45078984,
+   "short_float": 0.2078,
+   "short_ratio": 5.1486,
+   "avg_vol": 1819120,
+   "rel_vol": 2.2466,
+   "pre_vol": null,
+   "price": 4.415,
+   "chg": 0.0437,
+   "outcome": null
   }
  ]
 }
