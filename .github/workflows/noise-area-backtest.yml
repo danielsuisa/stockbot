@@ -1,13 +1,9 @@
 name: Noise Area backtest
 
-# Replays the pre-registered QQQ/SPY Noise Area rule. A NO-GO still exits 0.
-# A hole in the download exits 1. The report is an artifact; it is committed by hand.
+# The Noise Area replay already ran and its report is in docs/backtest/. pull_request is absent on purpose:
+# this pull request's path filter matches the whole branch, so another push would start a second download.
+# A NO-GO still exits 0. A hole in the download exits 1.
 on:
-  pull_request:
-    paths:
-      - "bot/noise_area.py"
-      - "bot/noise_area_backtest.py"
-      - ".github/workflows/noise-area-backtest.yml"
   workflow_dispatch:
 
 permissions:
