@@ -132,6 +132,17 @@
    "gain": 0.3346,
    "vol_ratio": 0.3394,
    "si_pct": 0.2027
+  },
+  {
+   "date": "2026-10-14",
+   "session": "post",
+   "t": "SDST",
+   "manual": false,
+   "price": 0.0453,
+   "ref": 0.026,
+   "gain": 0.7423,
+   "vol_ratio": 1.7672,
+   "si_pct": 0.2027
   }
  ]
 }
