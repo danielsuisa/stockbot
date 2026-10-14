@@ -193,6 +193,7 @@ Accept: application/vnd.github+json
 - **צריך:** אותם סודות `ALPACA_KEY_ID` ו־`ALPACA_SECRET_KEY`, ומאזין הטלגרם פעיל. אין סוד חדש. `TICKET_RISK_PCT` לא משנה את הפינגים האלה. בלי <code dir="ltr">/equity</code> הפינג מגיע, בלי מספר מניות. אם המאזין נקטע לפני שמסר את המצב, אותה מניה יכולה לקבל פינג שני.
 - **בדיקה היסטורית:** הכלל ננעל ב־<code dir="ltr">bot/breakout_backtest.py</code> לפני ההרצה, ומשוחק על דקות SIP מ־2024 עם עלות ומרווח. הדוח ב־<code dir="ltr">docs/backtest/</code>. אין פקודה. ציון שני, שבו א׳ ו־ב׳ יכולים לקרות בלי גאפ של 2%–8%, ננעל ב־<code dir="ltr">bot/breakout_backtest_v2.py</code> לפני הרצה נפרדת. הוא לא משנה את המאזין.
 - **אזור רעש על QQQ ו־SPY:** כלל נפרד, נעול ב־<code dir="ltr">bot/noise_area_backtest.py</code> לפני ההרצה. הוא לא חלק מהמאזין ולא שולח פקודה.
+- **מניות פני ומשיכה במגמת עלייה:** שני מבחנים נפרדים, נעולים ב־<code dir="ltr">bot/penny_play_backtest.py</code> וב־<code dir="ltr">bot/swing_pullback_backtest.py</code> לפני ההרצה. הם לא חלק מהמאזין ולא שולחים פקודה.
 
 ### פקודות בבוט
 

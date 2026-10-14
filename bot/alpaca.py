@@ -259,6 +259,43 @@ def news_symbols(prev, day):
     return set(got)
 
 
+def news_earliest(symbol="AAPL"):
+    """created_at of the earliest stored headline for `symbol`, or None. One cached request."""
+    path = CACHE / "news" / f"earliest_{symbol}.json.gz"
+    got = _read(path)
+    if got is None:
+        js = _get(NEWS, {"symbols": symbol, "start": "2010-01-01T00:00:00Z", "end": "2030-01-01T00:00:00Z",
+                         "limit": 1, "sort": "asc"})
+        rows = js.get("news") or []
+        got = (rows[0].get("created_at") if rows else "") or ""
+        _write(path, got)
+    return got or None
+
+
+def news_hit(symbols, start_utc, end_utc, cache_key):
+    """Which of `symbols` have a headline in [start_utc, end_utc). Cached. No request when `symbols` is empty."""
+    if not symbols:
+        return set()
+    path = CACHE / "news" / f"{cache_key}.json.gz"
+    got = _read(path)
+    if got is None:
+        want, found = set(symbols), set()
+        for i in range(0, len(symbols), 30):
+            part = symbols[i:i + 30]
+            token = None
+            while True:
+                js = _get(NEWS, {"symbols": ",".join(part), "start": start_utc, "end": end_utc, "limit": 50,
+                                 "sort": "asc", **({"page_token": token} if token else {})})
+                for x in js.get("news") or []:
+                    found |= set(x.get("symbols") or []) & want
+                token = js.get("next_page_token")
+                if not token:
+                    break
+        got = sorted(found)
+        _write(path, got)
+    return set(got)
+
+
 def quote_full(symbol, at):
     """The last SIP quote in the 60 seconds up to UTC ISO `at` -> (bid, ask, bid size, ask size in shares, age in
     seconds) or None when there is none; cached per symbol and second."""

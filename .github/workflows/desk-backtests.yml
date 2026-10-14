@@ -1,0 +1,48 @@
+name: Desk backtests
+
+# Penny stocks in play and the swing pullback. Research only: no order is placed or transmitted.
+# A NO-GO still exits 0. A hole in the download exits 1.
+# pull_request is absent until the overnight-momentum job is finished. The two jobs share Alpaca's
+# 200 requests a minute, so this file must not start a download while that job is in progress.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desk-backtests-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: .cache/alpaca
+          key: desk-alpaca-${{ github.sha }}
+          restore-keys: desk-alpaca-
+      - name: Replay the pre-registered swing book, then the penny book
+        timeout-minutes: 340
+        run: |
+          python -m bot.swing_pullback_backtest
+          python -m bot.penny_play_backtest
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Upload the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desk-backtests
+          path: |
+            docs/backtest/swing-pullback-2*
+            docs/backtest/penny-play-2*
+          if-no-files-found: warn
+          retention-days: 14
