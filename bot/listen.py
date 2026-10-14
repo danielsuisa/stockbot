@@ -11,8 +11,8 @@ import time
 import urllib.error
 from pathlib import Path
 
-from bot import (check, clock, common, equity, fundamentals, health, journal, market, scan, shadow, squeeze_live,
-                 ticket_command)
+from bot import (breakout_live, check, clock, common, equity, fundamentals, health, journal, market, scan, shadow,
+                 squeeze_live, ticket_command)
 from bot.common import code
 
 MAX = 3  # reports per message
@@ -54,6 +54,9 @@ HELP = "\n".join((
     f"🎫 כרטיס מסחר למניה (כניסה, סטופ לוס, יעד, טריילינג, גודל ועלות; ללא יתרון מוכח): {code('/ticket AAPL')}",
     "",
     f"💼 ההון לחישוב גודל הכרטיסים (נשמר רק בטלגרם, בהודעה נעוצה): {code('/equity 25000')}; בלי סכום: ההגדרה הנוכחית",
+    "",
+    (f"📈 מעקב פריצה: ב־{code('08:45')} שעון ניו יורק ({code('15:45')} שעון ישראל) נשלחת רשימה של עד {code(8)} מניות, "
+     "ואחר כך פינג כשמניה חוצה את הטריגר. בלי פקודה."),
     "",
     f"🩺 בדיקה שהכול עובד: {code('/health')}"))
 
@@ -380,6 +383,9 @@ def output(**kv):
             fh.writelines(f"{k}={v}\n" for k, v in kv.items())
 
 
+_breakout_state = None  # this process's breakout memory; main() hands it to the next listener
+
+
 def serve(seconds=None, stop_file=None, offset=None):
     """Long-poll until `seconds` pass or `stop_file` exists -> (reason, next offset). Reasons: "deadline", "stop",
     "conflict" (another consumer owns the updates: exit, never retry). Network/5xx blips are waited out; anything
@@ -389,6 +395,9 @@ def serve(seconds=None, stop_file=None, offset=None):
     stop = Path(stop_file) if stop_file else None
     handled = failed = errors = 0
     reason, done = "deadline", set()  # done: the clock's jobs this process started
+    global _breakout_state
+    bo_state = _breakout_state = breakout_live.load()  # memory is the source of truth; the file is only the handoff
+    last_bo = time.monotonic() - 50  # the first pass runs at once, then at most once a minute
     while True:
         left = end - time.monotonic()
         if stop and stop.exists():
@@ -396,6 +405,13 @@ def serve(seconds=None, stop_file=None, offset=None):
             break
         if left <= 0:
             break
+        if time.monotonic() - last_bo >= 50:
+            try:  # a bad minute must not stop the replies; the name's own fields stay as this pass left them
+                bo_state, _changed = breakout_live.tick(bo_state)
+            except Exception:
+                common.trace()
+            _breakout_state = bo_state
+            last_bo = time.monotonic()
         try:  # the timed runs (bot/clock.py); a clock problem must never stop the replies
             clock.tick(done)
         except Exception:
@@ -405,6 +421,7 @@ def serve(seconds=None, stop_file=None, offset=None):
                           **({} if offset is None else {"offset": offset}))
             if ups:
                 refresh()
+                breakout_live.dump(_breakout_state)  # checkout of data/ must not put back the previous handoff
                 failed += answer(ups)
                 handled += len(ups)
                 offset = max(u["update_id"] for u in ups) + 1
@@ -441,7 +458,12 @@ def main(argv=None):
         try:
             reason, offset = serve(stop_file=common.env("STOP_FILE") or None, offset=offset)
         finally:  # a crash still hands its offset on; only a planned end says "do not restart"
-            output(offset="" if offset is None else offset, chain="false" if reason in ("stop", "conflict") else "true")
+            breakout_live.dump(_breakout_state)
+            blob = breakout_live.encode(_breakout_state)
+            # an empty blob must not add a line: the chain reads the exact offset/chain lines
+            extra = {"breakout": blob} if blob else {}
+            output(offset="" if offset is None else offset,
+                   chain="false" if reason in ("stop", "conflict") else "true", **extra)
         return None
     try:
         ups = updates(timeout=0, allowed_updates=["message"])

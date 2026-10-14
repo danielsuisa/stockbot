@@ -170,6 +170,26 @@ def assets():
     return rows
 
 
+def iex_snapshots(symbols):
+    """Latest IEX trade and quote -> {symbol: {"price", "bid", "ask"}} (a missing side is None). Never cached.
+
+    The free plan's IEX tape is a few percent of US volume: not the consolidated tape and not the national quote.
+    The body may be a symbol map or wrapped in {"snapshots": {...}}. The daily bar is ignored (it already includes
+    the current print, so it cannot be the high the trigger is compared with)."""
+    out, todo = {}, list(dict.fromkeys(symbols))
+    for i in range(0, len(todo), CHUNK):
+        part = todo[i:i + CHUNK]
+        js = _get(f"{DATA}/snapshots", {"symbols": ",".join(part), "feed": "iex"})
+        snaps = js.get("snapshots") if isinstance(js, dict) and isinstance(js.get("snapshots"), dict) else js
+        snaps = snaps if isinstance(snaps, dict) else {}
+        for s in part:
+            snap = snaps.get(s) or {}
+            trade, quote = snap.get("latestTrade") or {}, snap.get("latestQuote") or {}
+            price, bid, ask = trade.get("p"), quote.get("bp"), quote.get("ap")
+            out[s] = {"price": price or None, "bid": bid or None, "ask": ask or None}
+    return out
+
+
 def volume_since(symbols, day, start, end):
     """Each symbol's volume and last price between New York `start` and `end` ("HH:MM") of `day`, from 15-minute
     bars -> {symbol: (volume, last close)}; symbols without trades are left out. Never cached (a live look)."""

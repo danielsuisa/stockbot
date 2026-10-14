@@ -14,7 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from bot import common, listen, scan  # noqa: E402
 
 ENV = {"TG_TOKEN": "1:x", "TG_CHAT_ID": "42", "GITHUB_ACTIONS": "", "GITHUB_OUTPUT": "", "GITHUB_EVENT_NAME": "",
-       "GITHUB_STEP_SUMMARY": "", "TG_OFFSET": "", "STOP_FILE": "", "PARENT_RUN_ID": "", "GITHUB_RUN_ID": ""}
+       "GITHUB_STEP_SUMMARY": "", "TG_OFFSET": "", "STOP_FILE": "", "PARENT_RUN_ID": "", "GITHUB_RUN_ID": "",
+       "BREAKOUT_STATE": "", "BREAKOUT_PATH": "", "ALPACA_KEY_ID": "", "ALPACA_SECRET_KEY": ""}
 
 
 def http_error(code, body=b""):
@@ -59,6 +60,7 @@ class Serve(unittest.TestCase):
                    mock.patch.object(listen, "handle", side_effect=lambda t: self.handled.append(t) or 0),
                    mock.patch.object(listen, "refresh"), mock.patch.object(common, "send"),
                    mock.patch.object(listen.clock, "tick", return_value=[]),
+                   mock.patch.object(listen.breakout_live, "tick", side_effect=lambda s, *a, **k: (s, False)),
                    mock.patch("builtins.print")]
         for p in patches:
             p.start()
@@ -158,6 +160,15 @@ class Serve(unittest.TestCase):
             with mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(out)}), self.assertRaises(urllib.error.HTTPError):
                 listen.main(["--serve"])
             self.assertEqual(out.read_text("utf-8"), "offset=\nchain=true\n")  # offset: the ACK already confirmed 100
+
+    def test_breakout_state_is_handed_on_only_when_present(self):
+        blob = listen.breakout_live.encode(listen.breakout_live.fresh("2026-10-14"))
+        listen.breakout_live.tick.side_effect = lambda s, *a, **k: (listen.breakout_live.decode(blob), False)
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(listen, "SERVE_SECONDS", 60):
+            out = Path(d, "out")
+            with mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(out), "BREAKOUT_STATE": blob}):
+                listen.main(["--serve"])
+            self.assertEqual(out.read_text("utf-8"), f"offset=\nchain=true\nbreakout={blob}\n")
 
     def test_network_blips_are_waited_out(self):
         errors = iter([OSError("reset"), http_error(502), http_error(502)])
@@ -282,9 +293,12 @@ class Refresh(unittest.TestCase):
 
     def test_workflow_restarts_itself_and_keeps_the_backup_cron(self):
         wf = (Path(__file__).resolve().parent.parent / ".github/workflows/telegram-listen.yml").read_text("utf-8")
-        for needle in ("python -m bot.listen --serve", "actions: write", '- cron: "*/10 * * * *"', "workflow_dispatch:",
+        for needle in ("python -m bot.listen --serve", "actions: write", "contents: write",
+                       '- cron: "*/10 * * * *"', "workflow_dispatch:",
                        "steps.serve.outputs.chain != 'false'", "(success() || failure())",
-                       "actions/workflows/telegram-listen.yml/dispatches", "PARENT_RUN_ID: ${{ inputs.parent }}"):
+                       "actions/workflows/telegram-listen.yml/dispatches", "PARENT_RUN_ID: ${{ inputs.parent }}",
+                       "BREAKOUT_STATE: ${{ inputs.breakout }}", "data/breakout_state.json",
+                       'steps.serve.outputs.breakout'):
             self.assertIn(needle, wf)
         self.assertNotIn("\nconcurrency:", wf)  # a group would queue/cancel runs behind the 5-hour poller
 

@@ -180,6 +180,23 @@ class Other(Base):
         alpaca.trades("ZETA", "2024-11-13", "10:24")
         self.assertEqual(f.call_count, 1)
 
+    def test_iex_snapshots_are_the_live_iex_feed_and_are_not_cached(self):
+        wrapped = {"snapshots": {"AAA": {"latestTrade": {"p": 10.5}, "latestQuote": {"bp": 10.4, "ap": 10.6},
+                                         "dailyBar": {"h": 99}}}}
+        bare = {"BBB": {"latestTrade": {"p": 3}, "latestQuote": {"bp": 2.9, "ap": 3.1}}}
+        f = self.fetch(wrapped, bare)
+        got = alpaca.iex_snapshots(["AAA", "CCC"])
+        self.assertEqual(got["AAA"], {"price": 10.5, "bid": 10.4, "ask": 10.6})
+        self.assertEqual(got["CCC"], {"price": None, "bid": None, "ask": None})
+        url = f.call_args.args[0]
+        self.assertIn("/snapshots?", url)
+        self.assertEqual(params(url)["feed"], "iex")
+        self.assertNotIn("sip", url)
+        self.assertNotIn("dailyBar", url)
+        got = alpaca.iex_snapshots(["BBB"])
+        self.assertEqual(got["BBB"], {"price": 3, "bid": 2.9, "ask": 3.1})
+        self.assertEqual(f.call_count, 2)  # a live look: the second call is not served from disk
+
     def test_utc_in_summer_and_winter(self):
         self.assertEqual(alpaca.utc("2026-12-01", "09:30"), "2026-12-01T14:30:00Z")
         self.assertEqual(alpaca.utc("2026-10-08", "09:30"), "2026-10-08T13:30:00Z")
