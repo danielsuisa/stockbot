@@ -2,10 +2,19 @@ name: Desk backtests
 
 # Penny stocks in play and the swing pullback. Research only: no order is placed or transmitted.
 # A NO-GO still exits 0. A hole in the download exits 1.
-# pull_request is absent until the overnight-momentum job is finished. The two jobs share Alpaca's
-# 200 requests a minute, so this file must not start a download while that job is in progress.
+# This pull_request trigger is only for the start commit. The report commit removes it, because a
+# later push would match the whole pull-request diff and start a second download.
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/desk-backtests.yml"
+      - "bot/desk_gate.py"
+      - "bot/penny_play.py"
+      - "bot/penny_play_backtest.py"
+      - "bot/swing_pullback.py"
+      - "bot/swing_pullback_backtest.py"
+      - "docs/backtest/desk-prereg-2026-10-14.md"
 
 permissions:
   contents: read
