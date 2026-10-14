@@ -40,8 +40,14 @@ jobs:
       - name: Replay the pre-registered swing book, then the penny book
         timeout-minutes: 340
         run: |
+          set +e
           python -m bot.swing_pullback_backtest
+          swing=$?
           python -m bot.penny_play_backtest
+          penny=$?
+          if [ "$swing" -ne 0 ] || [ "$penny" -ne 0 ]; then
+            exit 1
+          fi
         env:
           ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}

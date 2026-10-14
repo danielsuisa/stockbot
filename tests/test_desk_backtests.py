@@ -143,6 +143,16 @@ class Swing(unittest.TestCase):
         self.assertEqual([c["t"] for c in plain], ["AAA", "CCC"])
         self.assertEqual([c["t"] for c in proxy], ["BBB", "CCC"])
 
+    def test_built_candidates_keep_the_entry_day_the_book_sorts_on(self):
+        rows = self._hist()
+        rows.append(("2024-03-02", 121.0, 121.5, 110.0, 115.0, 1_000_000))
+        sessions = [r[0] for r in rows]
+        cands = swing_bt._candidates({"AAA": rows}, sessions, {"AAA": "active"})
+        self.assertTrue(cands)
+        self.assertTrue(all("entry_day" in c and c["entry_day"] == c["day"] for c in cands))
+        booked = swing.schedule(cands, set(), False)
+        self.assertEqual([c["t"] for c in booked], ["AAA"])
+
     def test_same_day_stop_and_target_exits_at_the_stop(self):
         future = [("2024-01-02", 100.0, 120.0, 90.0, 110.0)] + [None] * 14
         self.assertEqual(swing.hold_exit(future, 100.0, 95.0, 115.0)[:2], (95.0, "stop"))

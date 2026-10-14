@@ -122,10 +122,10 @@ def _candidates(daily, sessions, listed):
             scored = score(sig["entry"], exited[0], short_px, sig["stop"])
             if not scored or scored["net_r"] is None or scored["net_r_short"] is None:
                 continue
-            out.append({"day": entry_day, "t": sym, "signal_day": day, "exit_day": exited[2],
-                        "exit_kind": exited[1], "entry": sig["entry"], "stop": sig["stop"],
-                        "target": sig["target"], "exit": exited[0], "adv": sig["adv"],
-                        "hold": future_days, "listed": listed.get(sym), **scored})
+            out.append({"day": entry_day, "entry_day": entry_day, "t": sym, "signal_day": day,
+                        "exit_day": exited[2], "exit_kind": exited[1], "entry": sig["entry"],
+                        "stop": sig["stop"], "target": sig["target"], "exit": exited[0],
+                        "adv": sig["adv"], "hold": future_days, "listed": listed.get(sym), **scored})
     return out
 
 
