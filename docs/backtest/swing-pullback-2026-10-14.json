@@ -1,0 +1,72 @@
+{
+ "run": "2026-10-14",
+ "end": "2026-10-13",
+ "first_bar": "2016-01-04",
+ "universe": 7718,
+ "inactive_names": 1370,
+ "candidates": 185592,
+ "complete": true,
+ "requests": 1268,
+ "plain": {
+  "n": 255,
+  "mean": -1.1222903923157475,
+  "t": -3.8354073330454117,
+  "p95": -0.9579774342238785,
+  "years": {
+   "2023": -1.1756858988395484,
+   "2024": -1.0308655338389938,
+   "2025": -1.397095638643908,
+   "2026": -0.854344241734058
+  },
+  "checks": [
+   [
+    "at least 100 trades (255)",
+    true
+   ],
+   [
+    "mean net R > 0 with t > 2",
+    false
+   ],
+   [
+    "mean net R above the 95th percentile of 20 random-direction means",
+    false
+   ],
+   [
+    "mean net R > 0 in 2023 and in 2024 and in 2025 and in 2026",
+    false
+   ]
+  ],
+  "go": false
+ },
+ "proxy": {
+  "n": 173,
+  "mean": -1.1908685598868078,
+  "t": -2.864385714040273,
+  "p95": -0.8525307599414569,
+  "years": {
+   "2023": -0.8896589509257707,
+   "2024": -1.022272130600516,
+   "2025": -2.0120920514986174,
+   "2026": -1.0404064414701397
+  },
+  "checks": [
+   [
+    "at least 100 trades (173)",
+    true
+   ],
+   [
+    "mean net R > 0 with t > 2",
+    false
+   ],
+   [
+    "mean net R above the 95th percentile of 20 random-direction means",
+    false
+   ],
+   [
+    "mean net R > 0 in 2023 and in 2024 and in 2025 and in 2026",
+    false
+   ]
+  ],
+  "go": false
+ }
+}
