@@ -3503,6 +3503,42 @@
     "0001829126-26-011084"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-14-ONMD",
+   "date": "2026-10-14",
+   "ticker": "ONMD",
+   "cik": 1849380,
+   "company": "OneMedNet Corp",
+   "sic": 8731,
+   "kind": "big",
+   "quality": 32,
+   "parts": {
+    "breadth": 10,
+    "seniority": 9,
+    "size": 10,
+    "conviction": 3,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 4.02,
+    "asof": "2026-10-13 20:00",
+    "source": "live"
+   },
+   "total": 999999.28,
+   "insiders": 2,
+   "liquidity": 393995.1751347022,
+   "scores": {
+    "piotroski": "4/9",
+    "altman": "Z -135.38",
+    "beneish": null
+   },
+   "accs": [
+    "0001493152-26-046908",
+    "0001493152-26-046909"
+   ],
+   "returns": {}
   }
  ]
 }
