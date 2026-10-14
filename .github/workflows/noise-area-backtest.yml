@@ -1,0 +1,42 @@
+name: Noise Area backtest
+
+# Replays the pre-registered QQQ/SPY Noise Area rule. A NO-GO still exits 0.
+# A hole in the download exits 1. The report is an artifact; it is committed by hand.
+on:
+  pull_request:
+    paths:
+      - "bot/noise_area.py"
+      - "bot/noise_area_backtest.py"
+      - ".github/workflows/noise-area-backtest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: noise-area-backtest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Replay the pre-registered Noise Area rule
+        timeout-minutes: 160
+        run: python -m bot.noise_area_backtest
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: noise-area-backtest
+          path: docs/backtest/noise-qqq-*
+          if-no-files-found: warn
+          retention-days: 14
