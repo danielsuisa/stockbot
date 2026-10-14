@@ -397,13 +397,17 @@ def render(rows):
         "## 6. Costs and the winner label",
         "",
         f"Mean cost is {fmt(mean([r['cost_r'] for r in wins]))} R on winners and "
-        f"{fmt(mean([r['cost_r'] for r in losses]))} R on losers. Losers pay more because a stop is a full R "
-        "on a spread that is large relative to that R, and because cheap names need more shares.",
+        f"{fmt(mean([r['cost_r'] for r in losses]))} R on losers. "
+        f"The charged spread averages {fmt(mean([r['sr'] for r in wins]), '{:.3f}')} of R on winners and "
+        f"{fmt(mean([r['sr'] for r in losses]), '{:.3f}')} of R on losers. A stop turns that spread into a loss "
+        "past one R.",
+        f"{sum(r['kind'] == 'target' and r['grade'] == 'B' and not r['win'] for r in rows)} target exits lost money, "
+        "all of them grade B, because the spread was larger than the gain.",
         f"{sum(r['gross_r'] > 0 and r['net_r'] <= 0 for r in rows)} fills were gross winners and net losers. "
         f"{sum(r['net_r'] > 0 and r['gross_r'] <= 0 for r in rows)} net winners were gross losers, so the cost model "
         "does not create the win.",
         f"Of {len(wins)} net winners, {sum(r['extra'] > 0 for r in wins)} stay winners after another cent a share "
-        "on each side. The book's mean gross R is {fmt(mean(gross))}, already below zero, so a cheaper cost model "
+        f"on each side. The book's mean gross R is {fmt(mean(gross))}, already below zero, so a cheaper cost model "
         "does not turn the book into a win. The same is true inside F1: "
         f"gross mean {fmt(mean([r['gross_r'] for r in rows if r['sr'] <= 0.03]))}, "
         f"net mean {fmt(mean([r['net_r'] for r in rows if r['sr'] <= 0.03]))}.",
@@ -429,18 +433,20 @@ def render(rows):
 def _hebrew(rows, wins, top, any_go):
     n_target = sum(bucket(r) == "target, the 1.5R order" for r in wins)
     n_small = sum(bucket(r) == "time stop, gross under 1R" for r in wins)
-    f1 = [r for r in rows if r["sr"] <= 0.03]
-    b = [r for r in rows if r["grade"] == "B"]
-    names = ", ".join(name.split(" ", 1)[0] for name, _, _, _ in top[:3]) or "אין"
+    y2024 = [r for r in rows if r["year"] == "2024"]
+    f1 = [r for r in y2024 if r["sr"] <= 0.03]
+    b = [r for r in y2024 if r["grade"] == "B"]
+    names = " ו-".join(name.split(" ", 1)[0] for name, _, _, _ in top[:3]) or "אין"
     verdict = "אף סינון לא עבר את השער" if not any_go else "יש סינון שעבר את השער"
     return (
         f"הזוכות, {len(wins)} מתוך {len(rows)}, כמעט לא הגיעו ליעד. {n_small} מהן נסגרו בשעה 15:55 ברווח גולמי "
-        f"קטן מ־R אחד, ורק {n_target} נגעו ביעד של אחד וחצי R. אף זוכה לא נבנתה על מהלך של 2R, כי הפקודה יוצאת "
-        f"ביעד ולא מחכה לו. מה שחזר ב־2024, לפני שנפתחו 2025 ו־2026: מרווח שגובהו לכל היותר 3% מהמרחק לסטופ "
-        f"({len(f1)} עסקאות, ממוצע כמעט אפס), וציון א׳ ולא ב׳. ציון ב׳, {len(b)} עסקאות, הפסיד בממוצע "
-        f"{_he(mean([r['net_r'] for r in b]))} R. בסיס רפוי, שתי נגיעות כושלות בשיא, וכניסה שכבר מעל שיא 20 הימים "
-        f"הפסידו יותר. המדד מעל הממוצע לא עזר. הסינונים שננעלו ואז נמדדו מחוץ למדגם הם {names}. {verdict}. "
-        "העלות לא המציאה את הזוכות: הממוצע הגולמי של כל הספר כבר שלילי."
+        f"קטן מ־R אחד, ורק {n_target} נגעו ביעד של אחד וחצי R. אף זוכה לא הגיעה ל־2R, כי הפקודה יוצאת ביעד "
+        f"ולא מחכה לו. מה שהפריד אותן ב־2024, לפני שנפתחו 2025 ו־2026, הוא מרווח צר: לכל היותר 3% מהמרחק לסטופ, "
+        f"{len(f1)} עסקאות, ממוצע {_he(mean([r['net_r'] for r in f1]))} R. ציון ב׳ באותה שנה, {len(b)} עסקאות, "
+        f"הפסיד בממוצע {_he(mean([r['net_r'] for r in b]))} R. בסיס רפוי, נגיעות כושלות, וכניסה מעל שיא 20 הימים "
+        f"נראו גרועים יותר ב־2024, אבל ב־2025–2026 הם לא הרימו את הממוצע כמו המרווח. הסינונים שננעלו ואז נמדדו "
+        f"מחוץ למדגם הם {names}. {verdict}. העלות לא המציאה את הזוכות: אפס זוכות נטו עם רווח גולמי שלילי, "
+        "והממוצע הגולמי של כל הספר כבר שלילי."
     )
 
 
