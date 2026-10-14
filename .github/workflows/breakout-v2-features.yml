@@ -1,0 +1,40 @@
+name: Breakout v2 feature slice
+
+# Daily bars only, for the names already in the v2 trade file. Not a minute-bar replay.
+on:
+  pull_request:
+    paths:
+      - "bot/breakout_v2_features.py"
+      - ".github/workflows/breakout-v2-features.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: breakout-v2-features-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  features:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Daily features for the v2 fills
+        timeout-minutes: 20
+        run: python -m bot.breakout_v2_features
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Upload the feature slice
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: breakout-v2-features
+          path: docs/backtest/breakout-v2-feature-slice-2026-10-14.csv
+          if-no-files-found: warn
+          retention-days: 14
