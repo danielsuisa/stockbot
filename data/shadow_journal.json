@@ -375,6 +375,87 @@
     }
    ],
    "gaps": 0
+  },
+  "2026-10-13": {
+   "top": [
+    "FUN",
+    "SNDX",
+    "VFC",
+    "FIGS",
+    "UNH",
+    "AS",
+    "ARXS",
+    "OLLI",
+    "MMED",
+    "CORZ",
+    "RPRX",
+    "QMCO",
+    "PRVA",
+    "IFF",
+    "JPM",
+    "CTNM",
+    "WFC",
+    "ANET",
+    "CIFR",
+    "BJ"
+   ],
+   "reasons": {
+    "spread": 13,
+    "trigger": 5
+   },
+   "dropped": {
+    "Rule 201": 1
+   },
+   "trades": [
+    {
+     "t": "MMED",
+     "rank": 9,
+     "side": -1,
+     "at": "10:08",
+     "level": 18.87,
+     "R": 0.0802,
+     "shares": 1246,
+     "spread": 0.01,
+     "fill": 18.87,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.212,
+     "net_r": -1.212
+    }
+   ],
+   "optimistic": [
+    {
+     "t": "MMED",
+     "rank": 9,
+     "side": -1,
+     "at": "10:08",
+     "level": 18.87,
+     "R": 0.0802,
+     "shares": 1246,
+     "spread": 0.01,
+     "fill": 18.87,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.212,
+     "net_r": -1.212
+    },
+    {
+     "t": "CIFR",
+     "rank": 19,
+     "side": -1,
+     "at": "09:35",
+     "level": 10.935,
+     "R": 0.1032,
+     "shares": 968,
+     "spread": 0.02,
+     "fill": 10.935,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2616,
+     "net_r": -1.2616
+    }
+   ],
+   "gaps": 0
   }
  }
 }
