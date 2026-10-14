@@ -2,9 +2,16 @@ name: Overnight momentum backtest
 
 # Replays the pre-registered close-to-open book in bot/overnight_mom.py.
 # A NO-GO still exits 0. A hole in the download exits 1. The report is an artifact; it is committed by hand.
-# Dispatch only, so a commit of the pre-registration does not start the download by itself.
+# pull_request, not the default branch: this repo's Actions token cannot dispatch a workflow that
+# is not already on the default branch. The pre-registration commit does not touch this file's
+# trigger paths until the run is meant to start.
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "bot/overnight_mom.py"
+      - ".github/workflows/overnight-mom.yml"
+      - "docs/backtest/overnight-mom-prereg-2026-10-14.md"
 
 permissions:
   contents: read
