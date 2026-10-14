@@ -1,0 +1,42 @@
+name: Breakout backtest
+
+# Replays the pre-registered rule in bot/breakout_backtest.py on Alpaca SIP minute bars.
+# A NO-GO still exits 0. A hole in the download exits 1. The report is an artifact; it is committed by hand.
+on:
+  pull_request:
+    paths:
+      - "bot/breakout_backtest.py"
+      - "bot/breakout.py"
+      - ".github/workflows/breakout-backtest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: breakout-backtest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Replay the pre-registered breakout rule
+        timeout-minutes: 340
+        run: python -m bot.breakout_backtest
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: breakout-backtest
+          path: docs/backtest/breakout-rule-*
+          if-no-files-found: warn
+          retention-days: 14
