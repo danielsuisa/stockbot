@@ -1,0 +1,12 @@
+{
+  "incremented_after": "gem-agg",
+  "gem_agg_verdict": "NO-GO",
+  "counted_before_faber_gem": [
+    "breakout",
+    "noise",
+    "penny",
+    "swing",
+    "sector"
+  ],
+  "effective_trials": 6
+}

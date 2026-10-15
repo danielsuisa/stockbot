@@ -78,7 +78,7 @@ Beating SPY by 1% a year, and an excess Sharpe of 0.8, are the bar for the retur
 ## Effective-trial counter
 
 <!-- TRIAL-COUNT -->
-The GEM result is not filed in this marker yet. The counter has not been incremented.
+Effective trials after the GEM result: **6**. The list before Faber and GEM has 5 names. Faber and GEM add one, and only after this result. GEM-BIL does not add another. The gem-agg verdict is NO-GO. VIX is not in the count.
 <!-- /TRIAL-COUNT -->
 
 ## What this queue runs

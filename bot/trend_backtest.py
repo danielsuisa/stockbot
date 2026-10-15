@@ -319,7 +319,7 @@ def main(argv=None):
             early_note = (
                 f"- {'pass' if early_flags['cagr'] else 'fail'}: 2014-2021 CAGR "
                 f"{_pct(early['cagr'])} against SPY {_pct(early['spy_cagr'])} "
-                f"(gap {_pct(early_book['judge']['gap'])}). "
+                f"(gap {_pct(early_book['judge']['gap'])}).\n"
                 f"- {'pass' if early_flags['drawdown'] else 'fail'}: 2014-2021 bootstrap "
                 f"{_num(None if early['boot_rate'] is None else early['boot_rate'], '{:.1%}')}. "
                 "GEM-BIL needs this window as well as 2014-today. 2022 is excluded from it."
