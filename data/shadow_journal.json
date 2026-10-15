@@ -456,6 +456,132 @@
     }
    ],
    "gaps": 0
+  },
+  "2026-10-14": {
+   "top": [
+    "VSTM",
+    "BSP",
+    "STT",
+    "PEGA",
+    "FAST",
+    "GENB",
+    "SKYD",
+    "CMBT",
+    "MS",
+    "ARWR",
+    "GRML",
+    "BAC",
+    "PGR",
+    "VIR",
+    "CRWV",
+    "SLN",
+    "AGI",
+    "SSRM",
+    "WHR",
+    "PBF"
+   ],
+   "reasons": {
+    "spread": 14,
+    "trigger": 1
+   },
+   "dropped": {
+    "Rule 201": 4
+   },
+   "trades": [
+    {
+     "t": "BAC",
+     "rank": 12,
+     "side": 1,
+     "at": "11:34",
+     "level": 50.49,
+     "R": 0.0953,
+     "shares": 1049,
+     "spread": 0.01,
+     "fill": 50.485,
+     "kinds": "eod",
+     "gross_r": 9.7062,
+     "cost_r": 0.1784,
+     "net_r": 9.5278
+    }
+   ],
+   "optimistic": [
+    {
+     "t": "GENB",
+     "rank": 6,
+     "side": -1,
+     "at": "12:08",
+     "level": 12.1801,
+     "R": 0.0901,
+     "shares": 1109,
+     "spread": 0.02,
+     "fill": 12.1801,
+     "kinds": "stop",
+     "gross_r": -1.1088,
+     "cost_r": 0.2997,
+     "net_r": -1.4084
+    },
+    {
+     "t": "SKYD",
+     "rank": 7,
+     "side": -1,
+     "at": "09:45",
+     "level": 7.1,
+     "R": 0.0586,
+     "shares": 1706,
+     "spread": 0.01,
+     "fill": 7.1,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2901,
+     "net_r": -1.2901
+    },
+    {
+     "t": "GRML",
+     "rank": 11,
+     "side": -1,
+     "at": "13:15",
+     "level": 6.71,
+     "R": 0.1816,
+     "shares": 550,
+     "spread": 0.01,
+     "fill": 6.71,
+     "kinds": "eod",
+     "gross_r": 1.3491,
+     "cost_r": 0.0936,
+     "net_r": 1.2555
+    },
+    {
+     "t": "BAC",
+     "rank": 12,
+     "side": 1,
+     "at": "11:34",
+     "level": 50.49,
+     "R": 0.0953,
+     "shares": 1049,
+     "spread": 0.01,
+     "fill": 50.49,
+     "kinds": "eod",
+     "gross_r": 9.6537,
+     "cost_r": 0.1784,
+     "net_r": 9.4753
+    },
+    {
+     "t": "CRWV",
+     "rank": 15,
+     "side": -1,
+     "at": "09:35",
+     "level": 68.37,
+     "R": 0.4489,
+     "shares": 222,
+     "spread": 0.06,
+     "fill": 68.37,
+     "kinds": "eod",
+     "gross_r": 5.7783,
+     "cost_r": 0.1493,
+     "net_r": 5.6291
+    }
+   ],
+   "gaps": 0
   }
  }
 }
