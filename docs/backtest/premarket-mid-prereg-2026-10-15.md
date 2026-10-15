@@ -38,7 +38,7 @@ Reported beside the gate. Size is the smaller of 1% of $460 at the stop and 2% o
 
 When the 10% band binds, the position is `0.02 * 460 / 0.10 = $92`. When the stop is wider than 10% of the entry, the 1% leg binds and the position is `$4.60 / stop_pct`. That is under $50 once `stop_pct` is above 9.2%.
 
-## Halts, the blacklist, and tax
+## Halts and the blacklist
 
 A likely halt is a gap of at least 5 minutes between 1-minute bar stamps from 09:30 through the flat minute. The fill for that count is the open of the first bar after the gap. The report compares that loss with the planned stop. A stop or a target on an earlier bar means the halt did not affect the trade. A gap that never resumes by the flat minute is not counted. The halt does not change the gated exit.
 
@@ -46,7 +46,7 @@ A trade is excluded from the beside-book when a reverse-split ex-date falls in t
 
 An at-the-market flag beyond the locked S-3 / S-3ASR form screen, and a going-concern flag, need the EDGAR full-text search. They are marked not tested. The submissions screen is unchanged.
 
-Israeli capital-gains tax is 25% of a calendar year's net realized gain. A realized loss offsets a realized gain in the same year. There is no carryforward and no refund. The tax is subtracted once from the terminal sum of trade profits. It does not compound. Pre-tax Sharpe is not this book's gate; the four checks above are. A book that never bought has no tax. Buy-and-hold SPY is taxed once at the end only when this download has that comparison. This download does not add a SPY book. The desk count is not a filled book and has no tax of its own.
+No tax is computed. The four checks above are the book's own checks. The desk count is not a filled book.
 
 ## Run
 
@@ -56,4 +56,4 @@ Do not retune this band, the wires, the relative-volume floor, the forms, the sh
 
 ## Queue amendment, 2026-10-15
 
-Commission is IBKR Pro Fixed on each order: $0.005 a share, minimum $1.00, maximum 1% of that order's trade value. The $0.0035 / $0.35 sentence above is replaced for this book. The spread rules are unchanged. The same sample-size gate as the sub-$5 book applies: n from in-sample per-trade returns, and an out-of-sample count below n is UNKNOWN (insufficient sample), not NO-GO. The after-tax line stays.
+Commission is IBKR Pro Fixed on each order: $0.005 a share, minimum $1.00, maximum 1% of that order's trade value. The $0.0035 / $0.35 sentence above is replaced for this book. The spread rules are unchanged. The same sample count as the sub-$5 book is reported. The gate file's closed status is the verdict. No tax is computed.

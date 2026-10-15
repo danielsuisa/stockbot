@@ -2,7 +2,7 @@
 
 ## Queue preface
 
-This return file was not re-run. It is a prior trial. The commission in the path is $0.0035 a share with a $0.35 minimum. The queue commission for a future fill is IBKR Pro Fixed. No per-trade return list was saved, so required n is not computed. The saved verdict stays NO-GO on that file's own gate. Yearly realized gains were not stored, so the after-tax line is not recomputed. The turnover close in `T5_TURNOVER.md` is the queue close for T5.
+This return file was not re-run. It is a prior trial. The commission in the path is $0.0035 a share with a $0.35 minimum. The queue commission for a future fill is IBKR Pro Fixed. No per-trade return list was saved, so required n is not computed. The saved verdict stays NO-GO on that file's own gate. The turnover close in `T5_TURNOVER.md` is the queue close for T5.
 
 Nine original SPDR sector ETFs, equal weight in the top two, held for one month. XLRE and XLC are excluded. The formation return at month-end t is the adjusted close at t-1 divided by the adjusted close at t-6, minus one. If SPY's month-end adjusted close is below its 200-day average, the account holds cash. Cash earns nothing. Prices are Yahoo Finance adjusted closes (`Yahoo Finance chart v8 adjclose`). This replay does not place or transmit an order.
 

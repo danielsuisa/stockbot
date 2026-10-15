@@ -6,7 +6,6 @@ from bot.macro_exec import (
     GAP, bls_releases, fomc_events, gap_signals, meeting_dates, order_fee,
     run_close_book, run_open_fade, shares_for_cash,
 )
-from bot.tax import after_tax_terminal
 
 
 HEADINGS = """
@@ -120,7 +119,7 @@ class PathTests(unittest.TestCase):
         proceeds, _sell = __import__("bot.macro_exec", fromlist=["sell_proceeds"]).sell_proceeds(shares, 110)
         self.assertAlmostEqual(book_a["terminal"], left + proceeds, places=6)
 
-    def test_tax_is_subtracted_from_the_terminal_and_not_from_the_path(self):
+    def test_the_path_terminal_is_the_last_mark(self):
         days = ["2020-01-02", "2020-01-03", "2020-01-06", "2020-01-07"]
         spy = {
             "2020-01-02": 100.0, "2020-01-03": 100.0,
@@ -128,10 +127,7 @@ class PathTests(unittest.TestCase):
         }
         events = fomc_events(days, ["2020-01-07"], "A")
         book = run_close_book(days, events[0]["spy_days"], {"SPY": spy}, {}, None, None)
-        after, tax, _years = after_tax_terminal(book["terminal"], book["realizations"])
-        self.assertGreater(tax, 0)
         self.assertAlmostEqual(book["curve"][-1][1], book["terminal"])
-        self.assertAlmostEqual(after, book["terminal"] - tax)
 
     def test_gap_filter_and_vix_filter(self):
         days = ["2024-01-02", "2024-01-03", "2024-01-04"]

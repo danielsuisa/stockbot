@@ -2,18 +2,18 @@
 
 Locked on 2026-10-15, before any Faber, GEM, or GEM-BIL return is computed. Nothing in this log places or transmits an order. A later GO would be a paper result. It would not be a merge and it would not be permission to trade.
 
-No tax is computed in the Faber, GEM, or sector books. The T7 and T8 amendment computes a 25% tax. The queue amendment at the bottom applies the Fixed commission, the sample-size gate, and that tax to the pending books, and it reopens T9 and adds T10.
+Tax is not computed in any report in this log. T3, T4, T6, T7, T8, and T9 are closed on cost. They are not trials. Their labels below are the gate function's return value. Faber and GEM are one trial. The counter in the marker is written only after the GEM result.
 
 ## Not a trial
 
-- Turn of the month (T9). An earlier cost-arithmetic close is superseded by the queue amendment, which reopens T9 as a quick check. It was not in the effective-trial number when this section was written.
-- Post-earnings drift (T4) and the T3 penny book with its blacklist. Closed NO-GO on the cost arithmetic. They are not counted.
-- The VIX term-structure test is not re-run. The one-day book already reported on 2026-10-15 remains a prior trial. Its two-day book stays in that same cluster.
-- Pre-FOMC and the CPI/PPI gap-down fade were off the queue when the lines above were written. The amendment at the bottom puts them back on, as T7 and T8.
+- Turn of the month (T9) is CLOSED-COST. It is not a trial.
+- Post-earnings drift (T4) and the T3 penny book are CLOSED-COST. They are not counted.
+- The VIX term-structure book is CLOSED-COST. It is not a trial.
+- Pre-FOMC (T7) is CLOSED-COST. The CPI/PPI gap-down fade (T8) is CLOSED-COST. They are not trials.
 
 ## Effective trials
 
-A raw trial is one return variant that was actually run. Correlated variants share a cluster. The deflated Sharpe ratio uses the number of clusters, not the number of raw rows. Faber, GEM, and GEM-BIL are one cluster: they are monthly trend filters. GEM-BIL is still its own counted trial inside that cluster.
+A raw trial is one return variant that was actually run. Correlated variants share a cluster. The deflated Sharpe ratio uses the number of clusters, not the number of raw rows. Faber and GEM are one trial. GEM-BIL is reported inside that trial and is not a second count.
 
 | Cluster | Raw trials already run | Result |
 |---|---|---|
@@ -22,11 +22,10 @@ A raw trial is one return variant that was actually run. Correlated variants sha
 | Penny intraday | Opening-range breakout; VWAP pullback | NO-GO, both |
 | Swing | No earnings filter; calendar earnings proxy | NO-GO, both |
 | Sector momentum | The 2026-10-15 return replay, under that day's gate | NO-GO. See the turnover close below. No further return is run. |
-| VIX term structure | One-day book (the verdict); two-day book (not the verdict) | GO on the one-day book's own gate. Not re-run. |
 
-The premarket catalyst and the post-earnings drift were removed from this table when they were closed on cost math. They are not clusters. What remains at this point in the file is 6 clusters already run, plus the monthly-trend cluster below (Faber, GEM, and GEM-BIL). The effective number for the Faber and GEM reports is **7**. The T7 and T8 amendment adds two clusters and uses **9** for those reports only. The Faber and GEM reports stay at 7.
+T3, T4, T6, T7, T8, and T9 are not clusters. VIX is not a cluster. What remains before Faber and GEM is the five rows above: breakout, noise, penny intraday, swing, and sector momentum. Faber and GEM are one more trial, counted only after the GEM result. GEM-BIL is reported inside that trial and does not add a second count. The live number is the marker below. It is not filled in before that result.
 
-Older closed work (the ticket search, the ensemble, the index program, the squeeze list) is not reopened and is not added on top of these 7. The opening-range and VWAP penny books stay in the table. They are not the T3 premarket book.
+Older closed work (the ticket search, the ensemble, the index program, the squeeze list) is not reopened and is not added on top of the counter in the marker below. The opening-range and VWAP penny books stay in the table. They are not the T3 premarket book.
 
 ## Faber and GEM, locked before the run
 
@@ -46,7 +45,7 @@ The bootstrap is fixed as follows. The inputs are the paired monthly total retur
 
 Calendar 2020 and calendar 2022 maximum drawdowns are reported separately, for the strategy and for SPY. They are not a gate. Each year uses the daily equity curve inside that year, with the peak reset at the first close of the year.
 
-The deflated Sharpe ratio and the probabilistic Sharpe ratio are reported, at the effective trial count of 7. They are not a third pass condition. The pass rule is (a) and (b) only.
+The deflated Sharpe ratio and the probabilistic Sharpe ratio are reported at the live trial count in the marker below, once that count exists. They are not a third pass condition. The pass rule is (a) and (b) only.
 
 ### GEM and GEM-BIL are both reported
 
@@ -54,7 +53,7 @@ GEM holds AGG when SPY's 12-month total return does not beat BIL. GEM-BIL is the
 
 Both books are reported. The one with the better result is not selected afterward. The decision is the original GEM book, the one that uses AGG.
 
-GEM-BIL is a separate counted trial. It can be marked GO only if it passes (a) and (b) on 2014-today and it also passes (a) and (b) on 2014-2021 alone. That second window is the month-ends from 2014-01 through 2021-12. The year 2022, and every later month, is excluded from it. Failing either window is not a GO.
+GEM-BIL is reported beside GEM and does not add a trial. It can be marked GO only if it passes (a) and (b) on 2014-today and it also passes (a) and (b) on 2014-2021 alone. That second window is the month-ends from 2014-01 through 2021-12. The year 2022, and every later month, is excluded from it. Failing either window is not a GO.
 
 ### The rule itself
 
@@ -75,6 +74,12 @@ The September 2026 signal, computed before this return run, is recorded in `docs
 ### What is not the bar
 
 Beating SPY by 1% a year, and an excess Sharpe of 0.8, are the bar for the return-seeking tests below. They are not the Faber or GEM bar.
+
+## Effective-trial counter
+
+<!-- TRIAL-COUNT -->
+The GEM result is not filed in this marker yet. The counter has not been incremented.
+<!-- /TRIAL-COUNT -->
 
 ## What this queue runs
 
@@ -100,13 +105,11 @@ Reopened on 2026-10-15, after the Faber and GEM results and before any FOMC or C
 
 ### Tax, costs, and the bar
 
-These two tests compute tax. A calendar year's net realized gain is taxed at 25%. A loss offsets a gain in that year. A losing year pays nothing and does not carry forward. The tax is subtracted once from terminal equity. It is not taken out of the daily path, so Sharpe and drawdown stay pre-tax. Buy-and-hold SPY is taxed once, on the gain from the first dollar to the last dollar. The code is `bot/tax.py`.
+T7 and T8 are CLOSED-COST. Tax is not computed. `bot/tax.py` is not called by these reports.
 
 The account starts at $460. Shares may be fractional, because a whole SPY share does not fit in $460 for most of the out-of-sample window. Commission is IBKR Pro fixed: $0.005 a share, minimum $1.00 an order, maximum 1% of trade value. The spread is 1 basis point a side. Selling the sleeve and buying SPY are separate orders, and so are the later sale of SPY and the purchase of the sleeve. Cash that accrues a T-bill yield has no commission.
 
-The book passes only if its out-of-sample after-tax CAGR is at least 1 percentage point above buy-and-hold SPY over the same dates, after SPY's entry cost, final exit, and end tax. In-sample is reported and cannot flip the verdict. VT buy-and-hold is shown beside SPY where VT has bars. SPY stays the bar. The deflated Sharpe ratio is reported at 9 effective trials. It is not an extra pass condition.
-
-The new clusters are pre-FOMC (variants A, B, and C together) and the CPI/PPI gap fade (the base rule and the VIX1D variant together). With the 7 already locked, these reports use 9. Faber and GEM stay at 7.
+These books are not trials, so they do not add to the counter. In-sample is reported and cannot change the closed-cost label.
 
 ### The sleeve and the daily prices
 
@@ -130,9 +133,9 @@ A and C are each judged on the bar above. The higher one is not selected afterwa
 
 Release dates come from the BLS year pages `https://www.bls.gov/schedule/YYYY/home.htm`. A row counts when its name is exactly Consumer Price Index or Producer Price Index. Two releases on one session are one day. The gap is the official open divided by the prior session's official close, minus one.
 
-The registered buy is 9:35 ET, and the exit is the close. This run has no 9:35 print. The registered out-of-sample trade count is 0. The pre-registered minimum is 40, so the verdict is unknown.
+The registered buy is 9:35 ET, and the exit is the close. This run has no 9:35 print. The registered out-of-sample trade count is 0. The pre-registered minimum was 40. The book is closed on cost.
 
-A separate description buys at the official open and sells at the close when the gap is at most -0.5%. It uses the same sleeve, costs, and tax. On a release day that description does not accrue the sleeve from the prior close to the open. Every other session accrues the sleeve from close to close. In-sample release dates fall in 2010 through 2018. Out-of-sample release dates fall in 2019 through the last session. The description's numbers, its tail losses, and its 2022 trades are reported. They are not the verdict.
+A separate description buys at the official open and sells at the close when the gap is at most -0.5%. It uses the same sleeve and costs. On a release day that description does not accrue the sleeve from the prior close to the open. Every other session accrues the sleeve from close to close. In-sample release dates fall in 2010 through 2018. Out-of-sample release dates fall in 2019 through the last session. The description's numbers, its tail losses, and its 2022 trades are reported. They are not the verdict.
 
 The VIX1D variant keeps the 0.5% rule and also requires the gap to be strictly below the prior session's VIX1D close divided by 100 and by the square root of 252. VIX1D is the CBOE daily history. The file's first print is in 2022. The variant still starts in 2023, on the first session that has a prior VIX1D close. It is an out-of-sample description. It is not a verdict.
 
@@ -140,9 +143,7 @@ The VIX1D variant keeps the 0.5% rule and also requires the gap to be strictly b
 
 Computed after the lock above. Reports: `docs/backtest/fomc-drift-2026-10-15.md` and `docs/backtest/cpi-ppi-fade-2026-10-15.md`.
 
-Variant A out of sample meets its required n (36.84, from a negative in-sample mean) and is NO-GO. After-tax CAGR is -7.57% against SPY +11.62%, on 96 round trips. The mean held-window move is +0.18%. Variant C's in-sample mean is nearly zero, so required n is 392,211. The 96 out-of-sample round trips are below that, and the queue verdict is UNKNOWN (insufficient sample). The after-tax CAGR is still -7.71% against the same SPY. Variant B is skipped. There is no 13:55 print. In-sample does not flip either queue verdict.
-
-The CPI/PPI registered book is **UNKNOWN (insufficient sample)**. Out-of-sample trades at 9:35 ET are 0, n is undefined, and the count is also below the minimum of 40. The open-fill description is not a verdict. Its own n is 4.00 and its 23 out-of-sample trades meet that n. It is below the 1 point line: after-tax CAGR -1.54% against SPY +14.29%. The 2022 open-fill trades and the worst open-to-close losses are in the report. The VIX1D description, from 2023, has 5 trades and is not a verdict.
+T7 is **CLOSED-COST** and T8 is **CLOSED-COST**. Variant B is skipped. There is no 13:55 print. The open-fill description and the VIX1D description are not verdicts.
 
 ## Queue amendment, locked before T9 and T10
 
@@ -158,7 +159,7 @@ Every pending report computes, before its results,
 
 n = (1.645 × sigma / mu)²
 
-Sigma is the sample standard deviation of in-sample per-trade returns. Mu is their mean. One trade, or no trades, leaves n undefined. A mean of zero leaves n infinite. A negative mean is used as written, and the square keeps n positive. If the out-of-sample trade count is below n, or n is undefined, the queue verdict is UNKNOWN (insufficient sample), not NO-GO. The book's own checks stay in the report and are not that verdict.
+Sigma is the sample standard deviation of in-sample per-trade returns. Mu is their mean. One trade, or no trades, leaves n undefined. A mean of zero leaves n infinite. A negative mean is used as written, and the square keeps n positive. If the out-of-sample trade count is below n, or n is undefined, the sample count is reported. A book the gate file marks closed takes that status instead. The sample count is not the verdict.
 
 T7 is flagged: a pre-Fed book has about 8 announcement windows a year. T8 is flagged: CPI and PPI together are about 24 release days a year, and the fade trades only the gap-down days.
 
@@ -168,11 +169,7 @@ T4, T5, and T6 are not re-run. Their reports get a preface. Where a saved trade 
 
 Reopened as a quick check. The window is the last trading session of the month plus the first three trading sessions of the next month. The entry is the close before that last session. The exit is the close of the third session of the next month. Cash earns nothing in between. Prices are Yahoo Finance chart v8 adjusted closes. In-sample exits fall in 2000 through 2014. Out-of-sample exits fall in 2015 through the last session. The per-trade return for n is the window's adjusted return minus the two Fixed commissions divided by $460.
 
-The quick rate is the mean out-of-sample window return times 12, minus the mean two-order commission times 12. Each exit year's net window returns are summed. A positive year is taxed at 25%. A negative year is not taxed and does not carry forward. The after-tax rate scales the pre-tax rate by the tax due on those year nets. The position in the quick check is a fresh $460 each window. It does not compound.
-
-Buy-and-hold SPY runs from the first out-of-sample entry close to the last session, pays one entry and one exit, and is taxed once at the end. Close means the quick after-tax rate is within 1 percentage point of that SPY after-tax CAGR, or ahead of it. The sample gate is applied first. Below n, the verdict is UNKNOWN (insufficient sample) and the compounded path is not run. At or above n, and not close, the verdict is NO-GO and the compounded path is not run. At or above n, and close, the compounded path is run on the out-of-sample dates, cash at 0%, Fixed commission, no spread, tax as in `bot/tax.py`. That path passes only if its after-tax CAGR is within 1 percentage point of SPY's, or ahead of it.
-
-T9 does not change the 7 used by the earlier Faber and GEM reports, or the 9 used by T7 and T8.
+T9 is CLOSED-COST. No tax is computed. The compounded path is not run. T9 does not change the counter.
 
 ### T10, Faber on SPY
 
@@ -180,25 +177,26 @@ A different book from the SPYM whole-share Faber report. At the close of each mo
 
 The 10-month average was published in 2007 and is not fitted. There is no in-sample period, so n is not computed and the sample-size gate does not apply. The reported window is one out-of-sample period: the December 2006 signal, which needs the ten month-ends ending that month, through the last session. The order is at that close. The next month's moves belong to the new holding. The last session is liquidated so the exit cost is in the result. That liquidation is not a switch.
 
-Metrics: CAGR, maximum drawdown, daily Sharpe with a zero risk-free rate, and switches per year. Commission is Fixed. Tax is 25% of each calendar year's net realized gain, subtracted once from terminal equity. Sharpe and maximum drawdown stay pre-tax. Buy-and-hold SPY pays one entry, one exit, and one tax at the end.
+Metrics: CAGR, maximum drawdown, daily Sharpe with a zero risk-free rate, and switches per year. Commission is Fixed. No tax is computed. Buy-and-hold SPY pays one entry and one exit.
 
-The goal is drawdown reduction, not return. The book is GO only when its pre-tax maximum drawdown is strictly smaller than SPY's over the same dates. Return is reported and is not the gate. The old one-third bootstrap bar is not applied. T10 is a new raw trial inside the monthly-trend cluster already counted. It does not change the 7 on the earlier Faber and GEM reports.
+The verdict is the same two-part gate as Faber and GEM, from `faber-spy` in `docs/backtest/gates.json`: CAGR no more than 1 percentage point below SPY, and the paired 3-month block bootstrap clearing 80%. Both are required. A smaller path drawdown alone is not a GO. T10 does not add a trial. Faber and GEM remain the one monthly-trend trial, counted only after GEM.
 
 ## Queue results, computed after the lock
 
-T3, the empty premarket book, has no in-sample trades, so n is undefined. The queue verdict is UNKNOWN (insufficient sample). The four desk checks still fail. There were no fills to re-price. The after-tax line is zero. Report: `docs/backtest/premarket-catalyst-2026-10-15.md`.
+T3, the empty premarket book, is **CLOSED-COST**. Report: `docs/backtest/premarket-catalyst-2026-10-15.md`.
 
-T4 was not re-run. From the saved 20-session returns, n is 608.22 and the out-of-sample count is 69, so the queue verdict is UNKNOWN (insufficient sample). The saved gate still reads NO-GO. Saved out-of-sample pnl is -$643.32, tax $0.00. The fills stay at $0.0035.
+T4 was not re-run. The queue verdict is **CLOSED-COST**. The saved fills stay at $0.0035.
 
-T5 was not re-run. The turnover close stays NO-GO at 9.82 replacements a year. There is no trade list, so n is not computed and the after-tax line is not stored.
+T5 was not re-run. The turnover close stays NO-GO at 9.82 replacements a year.
 
-T6 was not re-run. n is not computed. The saved one-day verdict stays GO on its own gate. Its after-tax terminal is $1,950.35 against SPY $3,498.37, on the old commission.
+T6 was not re-run. The verdict is **CLOSED-COST**.
 
-T7 and T8, after the sample gate: variant A is NO-GO, variant C is UNKNOWN (insufficient sample), and the registered CPI/PPI book is UNKNOWN (insufficient sample). The after-tax figures are unchanged from the section above.
+T7 is **CLOSED-COST**. T8 is **CLOSED-COST**. Variant B stays skipped. There is no 13:55 print.
 
-T9, the turn-of-month quick screen, has in-sample mu -0.001559 and sigma 0.022543 over 180 windows, so n is 565.79. Out-of-sample windows are 142. The queue verdict is UNKNOWN (insufficient sample). The quick after-tax rate is -2.29% against SPY's after-tax CAGR of +11.52%, so it is not close. The sample gate applies first. The compounded path was not run. Report: `docs/backtest/tom-2026-10-15.md`.
+T9, the turn-of-month quick screen, is **CLOSED-COST**. The compounded path was not run. Report: `docs/backtest/tom-2026-10-15.md`.
 
-T10, the Faber filter on SPY from 2006-12-29 through 2026-10-14, is **GO** on the drawdown goal. Pre-tax maximum drawdown is 25.82% against SPY 55.19%. All 253 sessions in 2008 were cash. After-tax CAGR is +6.77% against SPY +9.55%. Pre-tax CAGR is +8.01% against +10.92%. Daily Sharpe is 0.67 against 0.63. Switches are 1.67 a year. Fees are $34.00 against SPY's $2.00. Tax is $430.77 against SPY's $778.60. Return is lower and is not the gate. This does not reopen the SPYM whole-share Faber report, which stays NO-GO. Report: `docs/backtest/faber-spy-2026-10-15.md`.
+T10, the Faber filter on SPY, is **NO-GO**. The verdict is `trend_verdict` on the saved CAGR and the bootstrap of `docs/backtest/series/faber-spy.csv`. CAGR +8.01% against SPY +10.92% misses the 1 percentage point leg, so both legs cannot pass. Report: `docs/backtest/faber-spy-2026-10-15.md`.
+
 
 ## Sector rotation is closed
 

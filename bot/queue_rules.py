@@ -56,8 +56,12 @@ def queue_verdict(oos_count, n, economic_go):
     return "GO" if economic_go else "NO-GO"
 
 
-def sample_lines(label, returns, oos_count, flag=None):
-    """Prose placed before a report's results. Returns `(lines, n)`."""
+def sample_lines(label, returns, oos_count, flag=None, state_verdict=True):
+    """Prose placed before a report's results. Returns `(lines, n)`.
+
+    `state_verdict` is false when a closed book takes its label from the gate file.
+    The sample count is then not a verdict.
+    """
     n, mu, sigma, count = required_n(returns)
     if count == 0:
         body = (
@@ -82,10 +86,16 @@ def sample_lines(label, returns, oos_count, flag=None):
         )
     lines = [body]
     if sample_unknown(oos_count, n):
-        lines.append(
-            f"Out-of-sample trades: {oos_count}. That count is below n, so the queue verdict "
-            f"is {UNKNOWN}, not NO-GO."
-        )
+        if state_verdict:
+            lines.append(
+                f"Out-of-sample trades: {oos_count}. That count is below n, so the queue verdict "
+                f"is {UNKNOWN}, not NO-GO."
+            )
+        else:
+            lines.append(
+                f"Out-of-sample trades: {oos_count}. That count is below n. "
+                "The sample count is not the verdict."
+            )
     else:
         lines.append(
             f"Out-of-sample trades: {oos_count}. That count meets n ({n:.2f}). "

@@ -10,36 +10,36 @@ Release dates are the BLS year pages from 2010 through the run year. A row count
 
 CPI rows by year run from 11 to 12. PPI rows run from 10 to 13. Distinct release sessions: 406.
 
-Costs, the sleeve, the $460 account, and the 25% tax match the pre-FOMC book. The description is scored on the same 1 percentage point after-tax line so the distance is visible. That score is not a verdict.
+Costs, the sleeve, and the $460 account match the pre-FOMC book. No tax is computed. The open-fill description is not the verdict.
 
 ## Required sample
 
 Flag: T8 is a CPI/PPI book, about 24 release days a year. The registered rule trades only the days that open at least 0.5% below the prior close, so the trade count is smaller than 24 a year. The per-trade return on the open-fill description is the dollar result divided by the dollars spent at the open, after commission.
 
 Registered 9:35 book: the in-sample period has no trades, so mu and sigma are not defined. Required n is not defined.
-Out-of-sample trades: 0. That count is below n, so the queue verdict is UNKNOWN (insufficient sample), not NO-GO.
-The pre-registered floor is 40 out-of-sample trades. The registered count is 0, which is also below that floor. The queue verdict is **UNKNOWN (insufficient sample)**. In-sample 9:35 trades are 0 as well. No tail and no 2022 result exists for the registered fill, because that fill was not observed.
+Out-of-sample trades: 0. That count is below n. The sample count is not the verdict.
+The pre-registered floor is 40 out-of-sample trades. The registered count is 0, which is also below that floor. The verdict is **CLOSED-COST**. In-sample 9:35 trades are 0 as well. No tail and no 2022 result exists for the registered fill, because that fill was not observed.
 
 Open-fill description: in-sample per-trade mu -0.006842, sigma 0.008318, 27 trades. Required n = (1.645 × sigma / mu)² = 4.00. Mu is negative. The formula is applied as written.
 Out-of-sample trades: 23. That count meets n (4.00). The sample gate does not replace this book's own bar.
 The open-fill description is not the verdict.
 
-| Book | Trades | After-tax CAGR | SPY after-tax | Pre-tax CAGR | SPY pre-tax | Fees | Tax | Max DD | On the line |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| Open IS | 27 | -3.46% | +9.31% | -3.46% | +11.38% | $110 | $0 | 26.99% | below |
-| Open OOS | 23 | -1.54% | +14.29% | -1.25% | +17.19% | $96 | $9 | 21.53% | below |
+| Book | Trades | CAGR | SPY CAGR | Fees | Max DD |
+|---|---:|---:|---:|---:|---:|
+| Open IS | 27 | -3.46% | +11.38% | $110 | 26.99% |
+| Open OOS | 23 | -1.25% | +17.19% | $96 | 21.53% |
 
 ## The registered book
 
-Out-of-sample trades at 9:35 ET: 0. The queue verdict is **UNKNOWN (insufficient sample)**.
+Out-of-sample trades at 9:35 ET: 0. The verdict is **CLOSED-COST**.
 
 ## Open-fill description
 
-Out of sample the open-fill description has 23 trades. After-tax CAGR -1.54% against SPY +14.29%. Pre-tax CAGR -1.25% against SPY +17.19%. VT buy-and-hold pre-tax CAGR is +14.19%. Monthly Sharpe -0.08. Probabilistic Sharpe 0.179. Deflated Sharpe 0.007 at 9 effective trials. Maximum drawdown 21.53%, pre-tax. Fees $96.00. Tax $9.30. BIL starts 2007-05-30. SGOV starts 2020-06-01. Forward-filled sessions: SPY 0, BIL 0, SGOV 0, ^IRX 7.
+Out of sample the open-fill description has 23 trades. CAGR -1.25% against SPY +17.19%. VT buy-and-hold CAGR is +14.19%. Monthly Sharpe -0.08. Probabilistic Sharpe 0.179. Deflated Sharpe 0.007. Maximum drawdown 21.53%. Fees $96.00. BIL starts 2007-05-30. SGOV starts 2020-06-01. Forward-filled sessions: SPY 0, BIL 0, SGOV 0, ^IRX 7.
 
 ## In sample, open fill
 
-In sample, 2010 through 2018, the open fill has 27 trades. After-tax CAGR -3.46% against SPY +9.31%. It does not change the verdict.
+In sample, 2010 through 2018, the open fill has 27 trades. CAGR -3.46% against SPY +11.38%. It does not change the verdict.
 
 ## Tail losses, open fill, out of sample
 
@@ -68,6 +68,6 @@ In sample, 2010 through 2018, the open fill has 27 trades. After-tax CAGR -3.46%
 
 ## VIX1D variant, description only
 
-VIX1D is the CBOE daily file. The file's first print is 2022-05-13. The registered window is 2023 onward, so this book starts at 2023-01-04. The variant keeps the 0.5% rule and also requires the gap to be strictly below that prior close divided by 100 and by the square root of 252. It is an out-of-sample description. Trades: 5. After-tax CAGR +2.84% against SPY +17.41%. Pre-tax CAGR +3.76%. Monthly Sharpe 1.31. Probabilistic Sharpe 0.997. Deflated Sharpe 0.899 at 9 effective trials. This description is not a verdict.
+VIX1D is the CBOE daily file. The file's first print is 2022-05-13. The registered window is 2023 onward, so this book starts at 2023-01-04. The variant keeps the 0.5% rule and also requires the gap to be strictly below that prior close divided by 100 and by the square root of 252. It is an out-of-sample description. Trades: 5. CAGR +3.76%. Monthly Sharpe 1.31. Probabilistic Sharpe 0.997. Deflated Sharpe 0.899. This description is not a verdict.
 
-Daily pre-tax returns are in `docs/backtest/series/cpi-ppi-open-is.csv`, `cpi-ppi-open-oos.csv`, and `cpi-ppi-vix1d.csv`. The release dates are in `bls-cpi-ppi.csv`.
+Daily returns are in `docs/backtest/series/cpi-ppi-open-is.csv`, `cpi-ppi-open-oos.csv`, and `cpi-ppi-vix1d.csv`. The release dates are in `bls-cpi-ppi.csv`.

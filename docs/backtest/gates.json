@@ -1,0 +1,46 @@
+{
+  "locked": "2026-10-15",
+  "note": "Thresholds and closed-cost status only. This file stores no return, no bootstrap rate, and no verdict. Faber and GEM are one trial. counted_before_faber_gem is the list already counted. The runner adds one after the gem-agg result exists. That sum is not stored here. GEM-BIL does not add a count.",
+  "counted_before_faber_gem": ["breakout", "noise", "penny", "swing", "sector"],
+  "increment_after": "gem-agg",
+  "faber_gem_is_one_trial": true,
+  "trials": {
+    "t3": {"status": "CLOSED-COST"},
+    "t3-mid": {"status": "CLOSED-COST"},
+    "t4": {"status": "CLOSED-COST"},
+    "t6": {"status": "CLOSED-COST"},
+    "t7": {"status": "CLOSED-COST"},
+    "t8": {"status": "CLOSED-COST"},
+    "t9": {"status": "CLOSED-COST"},
+    "gem-agg": {
+      "kind": "trend",
+      "requires_early_window": false,
+      "cagr_max_shortfall": 0.01,
+      "bootstrap_floor": 0.8,
+      "bootstrap_draws": 1000,
+      "bootstrap_block": 3,
+      "bootstrap_seed": 20261015,
+      "drawdown_fraction": "2/3"
+    },
+    "gem-bil": {
+      "kind": "trend",
+      "requires_early_window": true,
+      "cagr_max_shortfall": 0.01,
+      "bootstrap_floor": 0.8,
+      "bootstrap_draws": 1000,
+      "bootstrap_block": 3,
+      "bootstrap_seed": 20261015,
+      "drawdown_fraction": "2/3"
+    },
+    "faber-spy": {
+      "kind": "trend",
+      "requires_early_window": false,
+      "cagr_max_shortfall": 0.01,
+      "bootstrap_floor": 0.8,
+      "bootstrap_draws": 1000,
+      "bootstrap_block": 3,
+      "bootstrap_seed": 20261015,
+      "drawdown_fraction": "2/3"
+    }
+  }
+}

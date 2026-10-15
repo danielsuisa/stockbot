@@ -1,20 +1,25 @@
-"""Faber, GEM, and GEM-BIL on a $460 whole-share account. Research only.
+"""GEM and GEM-BIL on a $460 whole-share account. Research only.
 
 Signals use SPY (and BIL, VEU). The executable book buys SPYM when the signal says SPY.
 The SPY reference buys SPY instead. Nothing here places or transmits an order.
+The verdict string is bot.gates.trend_verdict. This module does not re-run Faber.
 """
 import csv
 import datetime as dt
 import gzip
 import json
-from pathlib import Path
+import sys
 from zoneinfo import ZoneInfo
 
 from bot import common
+from bot.gates import (
+    COUNT_PATH, drawdown_fraction, effective_trials, leg_flags, trial, trend_verdict,
+    write_trial_count,
+)
 from bot.trend_exec import (
-    ACCOUNT, BOOT_DRAWS, CASH, N_EFF, actual_dividends, actual_prints, block_bootstrap,
-    cagr, deflated_sharpe, faber_signal, gem_bil_passes, gem_signals, max_drawdown,
-    monthly_returns, simulate, trend_passes, year_drawdown,
+    ACCOUNT, actual_dividends, actual_prints, block_bootstrap,
+    cagr, deflated_sharpe, gem_signals, max_drawdown,
+    monthly_returns, simulate, year_drawdown,
 )
 
 NY = ZoneInfo("America/New_York")
@@ -102,17 +107,22 @@ def _book(name, prices, splits, dividends, sessions, signals, start, end):
     }
 
 
-def _judge(book, spy_book):
+def _judge(book, spy_book, trial_id):
     left, right = _paired(book["returns"], spy_book["returns"])
-    rate = block_bootstrap(left, right)
-    passed = trend_passes(book["cagr"], spy_book["cagr"], rate)
-    stats = deflated_sharpe(left, N_EFF)
+    gate = trial(trial_id)
+    rate = block_bootstrap(
+        left, right,
+        draws=gate["bootstrap_draws"],
+        block=gate["bootstrap_block"],
+        seed=gate["bootstrap_seed"],
+        fraction=drawdown_fraction(gate),
+    )
     return {
         "boot": rate,
-        "passes": passed,
         "gap": None if book["cagr"] is None or spy_book["cagr"] is None else book["cagr"] - spy_book["cagr"],
-        "stats": stats,
+        "left": left,
         "months": len(left),
+        "gate": gate,
     }
 
 
@@ -130,7 +140,8 @@ def _num(value, spec="{:.2f}"):
 
 def render(title, decision, reference, spy, vt, early_note, supplement, signal_note):
     judge = decision["judge"]
-    verdict = decision["verdict"]
+    gate = judge["gate"]
+    flags = decision["flags"]
     lines = [
         f"# {title}",
         "",
@@ -142,19 +153,22 @@ def render(title, decision, reference, spy, vt, early_note, supplement, signal_n
         "The SPY reference is the same signals filled in SPY, and it is not the verdict. "
         "No tax is computed. This replay does not place or transmit an order.",
         "",
-        f"Verdict: **{'GO' if verdict else 'NO-GO'}**.",
+        f"Verdict: **{decision['verdict_text']}**.",
+        "",
+        "The verdict is the return value of `trend_verdict` in `bot/gates.py`, from the gate in "
+        "`docs/backtest/gates.json`.",
         "",
     ]
-    gap_ok = judge["gap"] is not None and judge["gap"] >= -0.01
-    boot_ok = judge["boot"] is not None and judge["boot"] >= 0.80
+    shortfall = gate["cagr_max_shortfall"]
     lines.append(
-        f"- {'pass' if gap_ok else 'fail'}: CAGR {_pct(decision['cagr'])} against SPY "
-        f"{_pct(spy['cagr'])} (gap {_pct(judge['gap'])}; allowed to be as low as 1 percentage point under SPY)."
+        f"- {'pass' if flags['cagr'] else 'fail'}: CAGR {_pct(decision['cagr'])} against SPY "
+        f"{_pct(spy['cagr'])} (gap {_pct(judge['gap'])}; allowed shortfall {shortfall:.0%} from the gate)."
     )
     lines.append(
-        f"- {'pass' if boot_ok else 'fail'}: bootstrap pass rate "
+        f"- {'pass' if flags['drawdown'] else 'fail'}: bootstrap pass rate "
         f"{_num(None if judge['boot'] is None else judge['boot'], '{:.1%}')} "
-        f"of {BOOT_DRAWS} paired 3-month blocks (floor 80%)."
+        f"of {gate['bootstrap_draws']} paired {gate['bootstrap_block']}-month blocks "
+        f"(floor {gate['bootstrap_floor']:.0%})."
     )
     if early_note:
         lines.append(early_note)
@@ -189,7 +203,7 @@ def render(title, decision, reference, spy, vt, early_note, supplement, signal_n
     lines += [
         f"Monthly observations {judge['months']}. "
         f"Probabilistic Sharpe {_num(stats.get('psr'), '{:.3f}')}. "
-        f"Deflated Sharpe {_num(stats.get('dsr'), '{:.3f}')} at {N_EFF} effective trials. "
+        f"Deflated Sharpe {_num(stats.get('dsr'), '{:.3f}')} at {decision['n_eff']} effective trials. "
         "Those two ratios are reported. They do not change the verdict.",
         "",
     ]
@@ -216,7 +230,7 @@ def _slice_signals(signals, start, end):
     return {day: target for day, target in signals.items() if start <= day < end}
 
 
-def run_pair(label, signals_exec, signals_ref, books, sessions, start, end):
+def run_pair(label, trial_id, signals_exec, signals_ref, books, sessions, start, end):
     prices = {sym: books[sym]["actual"] for sym in books}
     splits = {sym: books[sym]["split"] for sym in books}
     dividends = {sym: books[sym]["div"] for sym in books}
@@ -226,7 +240,7 @@ def run_pair(label, signals_exec, signals_ref, books, sessions, start, end):
                       _slice_signals(signals_ref, start, end), start, end)
     spy = _book("SPY", prices, splits, dividends, sessions, _hold("SPY", start), start, end)
     vt = _book("VT", prices, splits, dividends, sessions, _hold("VT", start), start, end)
-    executable["judge"] = _judge(executable, spy)
+    executable["judge"] = _judge(executable, spy, trial_id)
     return executable, reference, spy, vt
 
 
@@ -248,7 +262,20 @@ def _write_series(stem, strategy, spy):
     return path
 
 
-def main():
+def _trials_now():
+    if COUNT_PATH.exists():
+        return json.loads(COUNT_PATH.read_text(encoding="utf-8"))["effective_trials"]
+    return effective_trials(False)
+
+
+def main(argv=None):
+    chosen = [arg for arg in (sys.argv[1:] if argv is None else argv) if not arg.startswith("-")]
+    if not chosen:
+        chosen = ["gem", "gembil"]
+    allowed = {"gem", "gembil"}
+    refused = [key for key in chosen if key not in allowed]
+    if refused:
+        raise SystemExit(f"This entry point runs only gem and gembil. Refusing {refused}.")
     symbols = ["SPY", "SPYM", "VEU", "BIL", "AGG", "VT"]
     books = {sym: load_symbol(sym) for sym in symbols}
     sessions = sorted(books["SPY"]["actual"])
@@ -261,54 +288,73 @@ def main():
     veu_adj = sorted(books["VEU"]["adj"].items())
 
     jobs = [
-        ("faber", "Faber 10-month — 2026-10-15",
-         faber_signal(spy_adj, "SPYM"), faber_signal(spy_adj, "SPY"),
-         "faber-10m", False, None),
-        ("gem", "GEM (AGG) — 2026-10-15",
+        ("gem", "gem-agg", "GEM (AGG) — 2026-10-15",
          gem_signals(spy_adj, bil_adj, veu_adj, "AGG", "SPYM"),
          gem_signals(spy_adj, bil_adj, veu_adj, "AGG", "SPY"),
          "gem-agg", False, "The September 2026 signal is VEU. See docs/backtest/GEM_SIGNAL_2026-09.md. "
          "That month-end is the last signal inside this window, so its fill is the next open, outside the window."),
-        ("gembil", "GEM-BIL — 2026-10-15",
+        ("gembil", "gem-bil", "GEM-BIL — 2026-10-15",
          gem_signals(spy_adj, bil_adj, veu_adj, "BIL", "SPYM"),
          gem_signals(spy_adj, bil_adj, veu_adj, "BIL", "SPY"),
          "gem-bil", True, "Reported beside GEM. It is not selected when it is ahead of the AGG book. "
          "The decision for the rule is the AGG book."),
     ]
     written = []
-    for key, title, sig_x, sig_r, stem, is_bil, note in jobs:
-        decision, reference, spy, vt = run_pair(key, sig_x, sig_r, books, sessions, start, end)
+    for key, trial_id, title, sig_x, sig_r, stem, is_bil, note in jobs:
+        if key not in chosen:
+            continue
+        decision, reference, spy, vt = run_pair(key, trial_id, sig_x, sig_r, books, sessions, start, end)
+        early = None
         early_note = None
-        verdict = decision["judge"]["passes"]
         if is_bil:
-            early, _ref, early_spy, _vt = run_pair(key, sig_x, sig_r, books, sessions, start, early_end)
-            early_pass = early["judge"]["passes"]
-            verdict = gem_bil_passes(verdict, early_pass)
+            early_book, _ref, early_spy, _vt = run_pair(
+                key, trial_id, sig_x, sig_r, books, sessions, start, early_end,
+            )
+            early = {
+                "cagr": early_book["cagr"],
+                "spy_cagr": early_spy["cagr"],
+                "boot_rate": early_book["judge"]["boot"],
+            }
+            early_flags = leg_flags(trial_id, early["cagr"], early["spy_cagr"], early["boot_rate"])
             early_note = (
-                f"- {'pass' if early_pass else 'fail'}: 2014-2021 alone, "
-                f"CAGR {_pct(early['cagr'])} against SPY {_pct(early_spy['cagr'])} "
-                f"(gap {_pct(early['judge']['gap'])}), bootstrap "
-                f"{_num(None if early['judge']['boot'] is None else early['judge']['boot'], '{:.1%}')}. "
+                f"- {'pass' if early_flags['cagr'] else 'fail'}: 2014-2021 CAGR "
+                f"{_pct(early['cagr'])} against SPY {_pct(early['spy_cagr'])} "
+                f"(gap {_pct(early_book['judge']['gap'])}). "
+                f"- {'pass' if early_flags['drawdown'] else 'fail'}: 2014-2021 bootstrap "
+                f"{_num(None if early['boot_rate'] is None else early['boot_rate'], '{:.1%}')}. "
                 "GEM-BIL needs this window as well as 2014-today. 2022 is excluded from it."
             )
+        verdict_text = trend_verdict(
+            trial_id, decision["cagr"], spy["cagr"], decision["judge"]["boot"], early=early,
+        )
+        if trial_id == "gem-agg":
+            n_eff = write_trial_count(verdict_text)
+        else:
+            n_eff = _trials_now()
+        decision["verdict_text"] = verdict_text
+        decision["flags"] = leg_flags(trial_id, decision["cagr"], spy["cagr"], decision["judge"]["boot"])
+        decision["n_eff"] = n_eff
+        decision["judge"]["stats"] = deflated_sharpe(decision["judge"]["left"], n_eff)
         listed = min(books["SPYM"]["actual"])
         live_signals = [day for day in sig_x if day >= listed]
         first_signal = min(live_signals) if live_signals else None
         supplement = None
         if first_signal is not None and first_signal <= supplement_end:
-            sup, _r, sup_spy, _v = run_pair(key, sig_x, sig_r, books, sessions, first_signal, supplement_end)
+            sup, _r, sup_spy, _v = run_pair(
+                key, trial_id, sig_x, sig_r, books, sessions, first_signal, supplement_end,
+            )
             supplement = {
                 "start": sup["start"], "end": sup["end"], "cagr": sup["cagr"], "final": sup["final"],
                 "maxdd": sup["maxdd"], "spy_cagr": sup_spy["cagr"], "spy_maxdd": sup_spy["maxdd"],
             }
-        decision["verdict"] = verdict
         text = render(title, decision, reference, spy, vt, early_note, supplement, note)
         path = common.ROOT / "docs" / "backtest" / f"{stem}-2026-10-15.md"
         path.write_text(text + "\n", encoding="utf-8")
         _write_series(stem, decision, spy)
-        written.append((stem, verdict, decision["cagr"], spy["cagr"], decision["judge"]["boot"]))
-        print(stem, "GO" if verdict else "NO-GO",
+        written.append((stem, verdict_text, decision["cagr"], spy["cagr"], decision["judge"]["boot"]))
+        print(stem, verdict_text,
               f"cagr={decision['cagr']}", f"spy={spy['cagr']}", f"boot={decision['judge']['boot']}",
+              f"trials={n_eff}",
               flush=True)
     return written
 

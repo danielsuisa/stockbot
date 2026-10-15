@@ -300,15 +300,15 @@ def _compound_drawdown(returns):
     return worst
 
 
-def drawdown_is_smaller(strategy, spy):
-    """True when the strategy drawdown is at least one third smaller than SPY's."""
+def drawdown_is_smaller(strategy, spy, fraction=2 / 3):
+    """True when the strategy drawdown is at most `fraction` of SPY's."""
     if spy <= 0:
         return strategy <= 0
-    return strategy <= spy * (2 / 3) + 1e-15
+    return strategy <= spy * fraction + 1e-15
 
 
-def block_bootstrap(strategy, spy, draws=BOOT_DRAWS, block=BOOT_BLOCK, seed=BOOT_SEED):
-    """Paired circular 3-month blocks. Returns the fraction of draws that pass."""
+def block_bootstrap(strategy, spy, draws=BOOT_DRAWS, block=BOOT_BLOCK, seed=BOOT_SEED, fraction=2 / 3):
+    """Paired circular block bootstrap. Returns the fraction of draws that pass."""
     if len(strategy) != len(spy) or len(strategy) < block:
         return None
     rng = random.Random(seed)
@@ -326,7 +326,7 @@ def block_bootstrap(strategy, spy, draws=BOOT_DRAWS, block=BOOT_BLOCK, seed=BOOT
                 path_b.append(spy[i])
         path_s = path_s[:length]
         path_b = path_b[:length]
-        if drawdown_is_smaller(_compound_drawdown(path_s), _compound_drawdown(path_b)):
+        if drawdown_is_smaller(_compound_drawdown(path_s), _compound_drawdown(path_b), fraction):
             passed += 1
     return passed / draws
 

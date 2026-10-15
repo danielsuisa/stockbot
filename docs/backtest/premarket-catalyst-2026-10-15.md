@@ -5,11 +5,11 @@ Long only, one name a day, $460. Split-adjusted prices. The headline had to be a
 ## Required sample
 
 T3 premarket catalyst: the in-sample period has no trades, so mu and sigma are not defined. Required n is not defined.
-Out-of-sample trades: 0. That count is below n, so the queue verdict is UNKNOWN (insufficient sample), not NO-GO.
+Out-of-sample trades: 0. That count is below n. The sample count is not the verdict.
 
 The checks under the verdict are the book's own gate. When the sample is short they stay on the page and they are not the queue verdict.
 
-Verdict: **UNKNOWN (insufficient sample)**.
+Verdict: **CLOSED-COST**.
 
 - fail: at least 100 trades (0)
 - fail: mean net R > 0 with t > 2
@@ -76,12 +76,6 @@ The 86,582 relative-volume passers were not joined to Alpaca's reverse-split fil
 
 Not tested. An at-the-market flag and a going-concern flag need the EDGAR full-text search. That search was not run. The filing screen never started, because no name had a primary-wire headline. This run also has no SEC_UA, and a request to sec.gov without it stops the process. The locked 30-day submissions screen for S-1, 424B, and S-3 / S-3ASR is unchanged. It was not reached either.
 
-## After tax
-
-Israeli capital-gains tax at 25% on realized gains. Losses offset gains inside the same calendar year. A losing year pays nothing and does not carry forward. There is no refund. The tax line does not change the pre-tax gate.
-
-This book never bought, so realized gains are zero and the tax is zero. Buy-and-hold SPY, taxed once at the end, is not a comparison for a book that never bought.
-
 ## Trading halts
 
 A likely halt is a gap of at least 5 minutes between 1-minute bars from 09:30 through the flat minute. The fill is the open of the first bar after that gap. A stop or a target on an earlier bar means the halt did not affect the trade. A gap that never resumes by the flat minute is not counted. This exit sits beside the main book and does not change the gate.
@@ -98,7 +92,7 @@ Signals that survive: 0 of 0 (not defined on an empty signal list).
 
 On a $460 account the 20% band caps the position at $46, which is under $50, and a wider stop is smaller still. A signal priced from $0.75 through $3 does not survive. Above $3 the 10% band caps the position at $92. Under $0.75 the dollar band keeps the position under $50 as well.
 
-The recorded book has no entry signals, so this percentage is not defined. The screen was not run again. The desk book never bought, so its tax is zero.
+The recorded book has no entry signals, so this percentage is not defined. The screen was not run again.
 
 ## Sub-$1 streak
 
@@ -136,4 +130,4 @@ Known 2016–2018 delistings found in the asset file with bars: 2 of 9.
 
 ## Verdict
 
-- Premarket catalyst: UNKNOWN (insufficient sample).
+- Premarket catalyst: CLOSED-COST.

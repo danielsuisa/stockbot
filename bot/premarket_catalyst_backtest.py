@@ -28,8 +28,8 @@ from bot.premarket_catalyst import (
     price_ok, primary_source, quote_spread, rvol_ok, scale_quote, score, setup, shares_ok, source_name,
     split_sane, universe,
 )
-from bot.queue_rules import queue_verdict, sample_lines
-from bot.tax import TAX, after_tax_terminal
+from bot.gates import verdict as gate_verdict
+from bot.queue_rules import sample_lines
 
 START, OOS, WARM = "2016-01-01", "2023-01-01", "2015-06-01"
 NY = alpaca.NY
@@ -597,7 +597,7 @@ def _sens_table(rows):
 
 
 def _variant_lines(result, rows):
-    """The reverse-split book, the flags that were not tested, and the after-tax line."""
+    """The reverse-split book and the flags that were not tested."""
     summary = blacklist_summary(rows, result.get("reverses") or {})
     counts = result.get("counts") or {}
     pct = "not defined on an empty book" if summary["pct"] is None else f"{summary['pct']:.1%}"
@@ -624,24 +624,7 @@ def _variant_lines(result, rows):
               "That search was not run. The filing screen never started, because no name had a primary-wire "
               "headline. This run also has no SEC_UA, and a request to sec.gov without it stops the process. "
               "The locked 30-day submissions screen for S-1, 424B, and S-3 / S-3ASR is unchanged. It was not "
-              "reached either.",
-              "",
-              "## After tax",
-              "",
-              f"Israeli capital-gains tax at {TAX:.0%} on realized gains. Losses offset gains inside the same "
-              "calendar year. A losing year pays nothing and does not carry forward. There is no refund. "
-              "The tax line does not change the pre-tax gate.",
-              ""]
-    if summary["n"] == 0:
-        lines.append("This book never bought, so realized gains are zero and the tax is zero. Buy-and-hold "
-                     "SPY, taxed once at the end, is not a comparison for a book that never bought.")
-    else:
-        realized = [(row["day"], row.get("pnl") or 0.0) for row in rows]
-        terminal = sum(pnl for _day, pnl in realized)
-        after, tax, _years = after_tax_terminal(terminal, realized)
-        lines.append(f"Realized dollar profit ${terminal:,.2f}. Tax ${tax:,.2f}. After tax ${after:,.2f}. "
-                     "The book does not compound, so this is the sum of trade profits. Buy-and-hold SPY is "
-                     "not in this download, so the end-tax comparison is not computed here.")
+              "reached either."]
     return lines
 
 
@@ -697,7 +680,7 @@ def _desk_lines(rows):
     if summary["n"] == 0:
         lines += ["",
                   "The recorded book has no entry signals, so this percentage is not defined. The screen "
-                  "was not run again. The desk book never bought, so its tax is zero."]
+                  "was not run again."]
     return lines
 
 
@@ -758,8 +741,8 @@ def _queue(rows, economic_go, label="T3 premarket catalyst"):
     ins = [r for r in rows if r["day"] < OOS]
     oos = [r for r in rows if r["day"] >= OOS]
     rets = [value for value in (_row_return(row) for row in ins) if value is not None]
-    block, n = sample_lines(label, rets, len(oos))
-    return queue_verdict(len(oos), n, economic_go), block
+    block, n = sample_lines(label, rets, len(oos), state_verdict=False)
+    return gate_verdict("t3"), block
 
 
 def render(result):

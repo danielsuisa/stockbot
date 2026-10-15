@@ -69,7 +69,7 @@ class TomTests(unittest.TestCase):
         sessions = ["2015-01-02", "2015-01-05", "2015-02-02", "2015-02-03"]
         self.assertEqual(tom_windows(sessions), [])
 
-    def test_the_quick_screen_taxes_a_winning_year_and_not_a_losing_one(self):
+    def test_the_quick_screen_is_the_pre_tax_rate(self):
         windows = [
             {"exit": "2015-01-06"}, {"exit": "2015-02-04"},
             {"exit": "2016-01-06"},
@@ -79,8 +79,7 @@ class TomTests(unittest.TestCase):
         screen = quick_screen(windows, gross, fees)
         self.assertAlmostEqual(screen["commission_annual"], (2.0 / 460) * 12)
         self.assertAlmostEqual(screen["gross_annual"], (0.02 + 0.02 - 0.05) / 3 * 12)
-        self.assertAlmostEqual(screen["year_nets"][0]["tax"], 0.25 * screen["year_nets"][0]["net"])
-        self.assertEqual(screen["year_nets"][1]["tax"], 0.0)
+        self.assertNotIn("tax", screen)
         self.assertAlmostEqual(window_fee(100, 110), 2.0)
 
     def test_the_path_earns_the_window_and_cash_earns_nothing(self):
@@ -120,7 +119,7 @@ class FaberTests(unittest.TestCase):
         self.assertEqual(held["switches"], 1)
         spy = buy_hold(100.0, 100.0)
         self.assertAlmostEqual(spy["terminal"], 458.0, places=6)
-        self.assertEqual(spy["tax"], 0.0)
+        self.assertNotIn("tax", spy)
 
 
 if __name__ == "__main__":

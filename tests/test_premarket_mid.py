@@ -127,12 +127,12 @@ class Report(unittest.TestCase):
     def test_the_empty_book_is_a_separate_no_go(self):
         from bot.premarket_mid_backtest import render
         text = render(_stub())
-        self.assertIn("Premarket $3–$20: UNKNOWN (insufficient sample)", text)
+        self.assertIn("Premarket $3–$20: CLOSED-COST", text)
         self.assertIn("Separate from the sub-$5 book", text)
         self.assertIn("both ends inclusive", text)
         self.assertIn("Excluded 0 of 0 trades", text)
         self.assertIn("Not tested", text)
-        self.assertIn("the tax is zero", text)
+        self.assertNotIn("tax", text.lower())
         self.assertIn("Trades affected by a halt: 0 of 0", text)
         self.assertIn("Signals that survive: 0 of 0", text)
         self.assertIn("$92", text)
@@ -147,10 +147,10 @@ class Report(unittest.TestCase):
                  "halt_affected": True, "planned_loss": 0.50, "realized_loss": 0.80}
         text = render(_stub(trades=[trade], counts={"rvol": 3, "news": 1},
                             reverses={"AAA": ["2024-01-01"]}))
-        self.assertIn("Premarket $3–$20: UNKNOWN (insufficient sample)", text)
+        self.assertIn("Premarket $3–$20: CLOSED-COST", text)
         self.assertIn("Excluded 1 of 1 trades", text)
-        self.assertIn("Tax $5.00", text)
-        self.assertIn("After tax $15.00", text)
+        self.assertNotIn("Tax", text)
+        self.assertNotIn("After tax", text)
         self.assertIn("Trades affected by a halt: 1 of 1", text)
         self.assertIn("Signals that survive: 1 of 1 (100.0%)", text)
         self.assertIn("The locked submissions screen", text)

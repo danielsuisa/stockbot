@@ -16,11 +16,11 @@ from zoneinfo import ZoneInfo
 
 from bot import common
 from bot.macro_exec import (
-    ACCOUNT, N_EFF, OOS_MIN, beats, bls_releases, fomc_events, gap_signals,
+    ACCOUNT, N_EFF, OOS_MIN, bls_releases, fomc_events, gap_signals,
     meeting_dates, release_days, run_close_book, run_open_fade,
 )
-from bot.queue_rules import queue_verdict, sample_lines
-from bot.tax import after_tax_terminal
+from bot.gates import verdict as gate_verdict
+from bot.queue_rules import sample_lines
 from bot.trend_exec import cagr, deflated_sharpe, max_drawdown, monthly_returns
 
 NY = ZoneInfo("America/New_York")
@@ -146,14 +146,12 @@ def _book(days, spy_days, prices, irx, bil_first, sgov_first):
 
 
 def _summarize(book, days):
-    after, tax, years = after_tax_terminal(book["terminal"], book["realizations"])
     net = sum(pnl for _day, pnl in book["realizations"])
     if abs(net - (book["terminal"] - ACCOUNT)) > 0.05:
         raise SystemExit(
             f"Realized pnl ${net:,.2f} does not meet terminal ${book['terminal']:,.2f} from ${ACCOUNT:.0f}."
         )
     pre = cagr(ACCOUNT, book["terminal"], days[0], days[-1])
-    post = cagr(ACCOUNT, after, days[0], days[-1])
     monthly = [ret for _day, ret in monthly_returns(book["curve"])]
     stats = deflated_sharpe(monthly, N_EFF)
     gross = []
@@ -163,11 +161,7 @@ def _summarize(book, days):
         elif trade.get("gross") is not None:
             gross.append(trade["gross"])
     return {
-        "after": after,
-        "tax": tax,
-        "tax_years": years,
         "pre": pre,
-        "post": post,
         "dd": max_drawdown(book["curve"]),
         "stats": stats,
         "fees": book["fees"],
@@ -227,13 +221,10 @@ def _prices_for(days, spy, bil, sgov, irx):
     }
 
 
-def _line(label, summary, spy_summary, verdict=None):
-    if verdict is None:
-        verdict = "GO" if beats(summary["post"], spy_summary["post"]) else "NO-GO"
+def _line(label, summary, spy_summary, verdict):
     return verdict, (
-        f"| {label} | {summary['n']} | {_pct(summary['post'])} | {_pct(spy_summary['post'])} | "
-        f"{_pct(summary['pre'])} | {_pct(spy_summary['pre'])} | ${summary['fees']:,.0f} | "
-        f"${summary['tax']:,.0f} | {_dd(summary['dd'])} | {verdict} |"
+        f"| {label} | {summary['n']} | {_pct(summary['pre'])} | {_pct(spy_summary['pre'])} | "
+        f"${summary['fees']:,.0f} | {_dd(summary['dd'])} | {verdict} |"
     )
 
 
@@ -336,14 +327,11 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
         "2020-01-01, SGOV from its first bar in 2020, and before BIL a cash accrual at the prior "
         "session's Yahoo ^IRX close divided by 100 and by 252. Commission is IBKR Pro fixed, $0.005 a "
         "share, minimum $1, maximum 1% of trade value, plus 1 basis point a side. Selling the sleeve "
-        "and buying SPY are both orders. The 25% tax nets each calendar year and is subtracted once "
-        "from terminal equity. The daily path stays pre-tax.",
+        "and buying SPY are both orders. No tax is computed.",
         "",
-        "The bar is the out-of-sample after-tax CAGR, at least 1 percentage point above buy-and-hold "
-        "SPY over the same dates. In-sample cannot flip the verdict. A and C are judged separately. "
-        "The higher one is not selected. VT is shown pre-tax, beside SPY. SPY is the bar. "
-        "Before that bar, the sample gate applies. An out-of-sample count below the required n "
-        "is UNKNOWN (insufficient sample), not NO-GO.",
+        "This book is closed on cost. The verdict is the gate file's return value. "
+        "In-sample does not change it. A and C are not selected against each other. "
+        "VT is shown beside SPY. SPY is the reference.",
         "",
     ]
     stored = {}
@@ -368,20 +356,21 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
     for variant in ("A", "C"):
         is_summary, is_spy, is_vt, is_days, is_events, is_gaps, is_bil, is_sgov = stored[(variant, "IS")]
         oos_summary, oos_spy, oos_vt, oos_days, oos_events, oos_gaps, oos_bil, oos_sgov = stored[(variant, "OOS")]
-        block, n = sample_lines(f"Variant {variant}", is_summary["rets"], oos_summary["n"])
+        block, _n = sample_lines(
+            f"Variant {variant}", is_summary["rets"], oos_summary["n"], state_verdict=False,
+        )
         lines.extend(block)
         lines.append("")
-        oos_verdict = queue_verdict(oos_summary["n"], n, beats(oos_summary["post"], oos_spy["post"]))
-        is_verdict = "GO" if beats(is_summary["post"], is_spy["post"]) else "NO-GO"
+        closed = gate_verdict("t7")
         verdicts[(variant, "OOS")] = (
-            oos_verdict, oos_summary, oos_spy, oos_vt, oos_days, oos_events, oos_gaps, oos_bil, oos_sgov,
+            closed, oos_summary, oos_spy, oos_vt, oos_days, oos_events, oos_gaps, oos_bil, oos_sgov,
         )
         verdicts[(variant, "IS")] = (
-            is_verdict, is_summary, is_spy, is_vt, is_days, is_events, is_gaps, is_bil, is_sgov,
+            closed, is_summary, is_spy, is_vt, is_days, is_events, is_gaps, is_bil, is_sgov,
         )
     lines.extend([
-        "| Book | Trades | After-tax CAGR | SPY after-tax | Pre-tax CAGR | SPY pre-tax | Fees | Tax | Max DD | Verdict |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "| Book | Trades | CAGR | SPY CAGR | Fees | Max DD | Verdict |",
+        "|---|---:|---:|---:|---:|---:|---|",
     ])
     for label in ("IS", "OOS"):
         for variant in ("A", "C"):
@@ -402,19 +391,18 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
         vt_text = "VT has no book on this window."
         if vt_book is not None:
             vt_pre = cagr(ACCOUNT, vt_book["terminal"], vt_book["curve"][0][0], vt_book["curve"][-1][0])
-            vt_text = f"VT buy-and-hold pre-tax CAGR is {_pct(vt_pre)} from {vt_book['curve'][0][0]}."
+            vt_text = f"VT buy-and-hold CAGR is {_pct(vt_pre)} from {vt_book['curve'][0][0]}."
         gross = summary["gross"]
         mean = sum(gross) / len(gross) if gross else None
         hit = sum(1 for value in gross if value > 0) / len(gross) if gross else None
         lines.append(
             f"Variant {variant} is **{verdict}**. {summary['n']} round trips, from {days[0]} to {days[-1]}. "
-            f"After-tax CAGR {_pct(summary['post'])} against SPY {_pct(spy_summary['post'])}. "
-            f"Pre-tax CAGR {_pct(summary['pre'])} against SPY {_pct(spy_summary['pre'])}. "
+            f"CAGR {_pct(summary['pre'])} against SPY {_pct(spy_summary['pre'])}. "
             f"Mean held-window SPY move {_pct(mean)}. "
             f"Winning windows {(_num(hit * 100, 1) + '%') if hit is not None else 'n/a'}. "
             f"{vt_text} {_dsr(summary)} "
-            f"Maximum drawdown {_dd(summary['dd'])}, pre-tax. "
-            f"Fees ${summary['fees']:,.2f}. Tax ${summary['tax']:,.2f}. "
+            f"Maximum drawdown {_dd(summary['dd'])}. "
+            f"Fees ${summary['fees']:,.2f}. "
             f"BIL starts {bil_first}. SGOV starts {sgov_first}. "
             f"Forward-filled sessions: SPY {gaps['spy']}, BIL {gaps['bil']}, SGOV {gaps['sgov']}, ^IRX {gaps['irx']}."
         )
@@ -430,9 +418,8 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
     for variant in ("A", "C"):
         verdict, summary, spy_summary, _vt, days, _events, _gaps, _b, _s = verdicts[(variant, "IS")]
         lines.append(
-            f"Variant {variant} in sample would read {verdict} on the economic bar. That reading is not "
-            f"the queue verdict. After-tax CAGR "
-            f"{_pct(summary['post'])} against SPY {_pct(spy_summary['post'])}, {summary['n']} round trips, "
+            f"Variant {variant} in sample is **{verdict}**. "
+            f"CAGR {_pct(summary['pre'])} against SPY {_pct(spy_summary['pre'])}, {summary['n']} round trips, "
             f"{days[0]} to {days[-1]}. {_dsr(summary)}"
         )
         lines.append("")
@@ -443,7 +430,7 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
         "run has no bar at that time. It is inside the pre-FOMC cluster. It is not a separate trial "
         "and it is not a verdict.",
         "",
-        "Daily pre-tax returns, strategy and SPY, are in `docs/backtest/series/fomc-a-is.csv`, "
+        "Daily returns, strategy and SPY, are in `docs/backtest/series/fomc-a-is.csv`, "
         "`fomc-a-oos.csv`, `fomc-c-is.csv`, and `fomc-c-oos.csv`. The announcement dates are in "
         "`fomc-announcements.csv`.",
         "",
@@ -484,9 +471,8 @@ def cpi_report(sessions, releases, spy, bil, sgov, vt, irx, vix, today, last, cp
         f"PPI rows run from {min(ppi_years.values())} to {max(ppi_years.values())}. "
         f"Distinct release sessions: {len(published)}.",
         "",
-        "Costs, the sleeve, the $460 account, and the 25% tax match the pre-FOMC book. The description "
-        "is scored on the same 1 percentage point after-tax line so the distance is visible. That score "
-        "is not a verdict.",
+        "Costs, the sleeve, and the $460 account match the pre-FOMC book. No tax is computed. "
+        "The open-fill description is not the verdict.",
         "",
     ]
     stored = {}
@@ -514,56 +500,56 @@ def cpi_report(sessions, releases, spy, bil, sgov, vt, irx, vix, today, last, cp
         "the dollars spent at the open, after commission."
     )
     lines.append("")
-    registered, _n = sample_lines("Registered 9:35 book", [], 0)
+    closed = gate_verdict("t8")
+    registered, _n = sample_lines("Registered 9:35 book", [], 0, state_verdict=False)
     lines.extend(registered)
     lines.append(
         f"The pre-registered floor is {OOS_MIN} out-of-sample trades. The registered count is 0, which "
-        "is also below that floor. The queue verdict is **UNKNOWN (insufficient sample)**. In-sample "
+        f"is also below that floor. The verdict is **{closed}**. In-sample "
         "9:35 trades are 0 as well. No tail and no 2022 result exists for the registered fill, because "
         "that fill was not observed."
     )
     lines.append("")
-    opened, _open_n = sample_lines("Open-fill description", is_summary["rets"], oos_summary["n"])
+    opened, _open_n = sample_lines(
+        "Open-fill description", is_summary["rets"], oos_summary["n"], state_verdict=False,
+    )
     lines.extend(opened)
     lines.append("The open-fill description is not the verdict.")
     lines.extend([
         "",
-        "| Book | Trades | After-tax CAGR | SPY after-tax | Pre-tax CAGR | SPY pre-tax | Fees | Tax | Max DD | On the line |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "| Book | Trades | CAGR | SPY CAGR | Fees | Max DD |",
+        "|---|---:|---:|---:|---:|---:|",
     ])
     for label in ("IS", "OOS"):
         summary, spy_summary = stored[label][0], stored[label][1]
-        mark = "above" if beats(summary["post"], spy_summary["post"]) else "below"
         lines.append(
-            f"| Open {label} | {summary['n']} | {_pct(summary['post'])} | {_pct(spy_summary['post'])} | "
-            f"{_pct(summary['pre'])} | {_pct(spy_summary['pre'])} | ${summary['fees']:,.0f} | "
-            f"${summary['tax']:,.0f} | {_dd(summary['dd'])} | {mark} |"
+            f"| Open {label} | {summary['n']} | {_pct(summary['pre'])} | {_pct(spy_summary['pre'])} | "
+            f"${summary['fees']:,.0f} | {_dd(summary['dd'])} |"
         )
     oos_summary, oos_spy, oos_book, oos_vt, gaps, bil_first, sgov_first, _signals = stored["OOS"]
     lines.extend(["", "## The registered book", ""])
     lines.append(
-        "Out-of-sample trades at 9:35 ET: 0. The queue verdict is **UNKNOWN (insufficient sample)**."
+        f"Out-of-sample trades at 9:35 ET: 0. The verdict is **{closed}**."
     )
     lines.extend(["", "## Open-fill description", ""])
     vt_text = "VT has no book on this window."
     if oos_vt is not None:
         vt_pre = cagr(ACCOUNT, oos_vt["terminal"], oos_vt["curve"][0][0], oos_vt["curve"][-1][0])
-        vt_text = f"VT buy-and-hold pre-tax CAGR is {_pct(vt_pre)}."
+        vt_text = f"VT buy-and-hold CAGR is {_pct(vt_pre)}."
     lines.append(
         f"Out of sample the open-fill description has {oos_summary['n']} trades. "
-        f"After-tax CAGR {_pct(oos_summary['post'])} against SPY {_pct(oos_spy['post'])}. "
-        f"Pre-tax CAGR {_pct(oos_summary['pre'])} against SPY {_pct(oos_spy['pre'])}. "
+        f"CAGR {_pct(oos_summary['pre'])} against SPY {_pct(oos_spy['pre'])}. "
         f"{vt_text} {_dsr(oos_summary)} "
-        f"Maximum drawdown {_dd(oos_summary['dd'])}, pre-tax. "
-        f"Fees ${oos_summary['fees']:,.2f}. Tax ${oos_summary['tax']:,.2f}. "
+        f"Maximum drawdown {_dd(oos_summary['dd'])}. "
+        f"Fees ${oos_summary['fees']:,.2f}. "
         f"BIL starts {bil_first}. SGOV starts {sgov_first}. "
         f"Forward-filled sessions: SPY {gaps['spy']}, BIL {gaps['bil']}, SGOV {gaps['sgov']}, ^IRX {gaps['irx']}."
     )
     is_summary, is_spy, _is_book, _is_vt, _g, _b, _s, _sig = stored["IS"]
     lines.extend(["", "## In sample, open fill", ""])
     lines.append(
-        f"In sample, 2010 through 2018, the open fill has {is_summary['n']} trades. After-tax CAGR "
-        f"{_pct(is_summary['post'])} against SPY {_pct(is_spy['post'])}. It does not change the verdict."
+        f"In sample, 2010 through 2018, the open fill has {is_summary['n']} trades. CAGR "
+        f"{_pct(is_summary['pre'])} against SPY {_pct(is_spy['pre'])}. It does not change the verdict."
     )
     tails = sorted(oos_book["trades"], key=lambda row: row["gross"])[:5]
     lines.extend(["", "## Tail losses, open fill, out of sample", ""])
@@ -621,13 +607,13 @@ def cpi_report(sessions, releases, spy, bil, sgov, vt, irx, vix, today, last, cp
             f"VIX1D is the CBOE daily file. The file's first print is 2022-05-13. The registered window is 2023 onward, so this book starts at {first_vix}. "
             f"The variant keeps the 0.5% rule and also requires the gap to be strictly below that prior "
             f"close divided by 100 and by the square root of 252. It is an out-of-sample description. "
-            f"Trades: {summary['n']}. After-tax CAGR {_pct(summary['post'])} against SPY "
-            f"{_pct(spy_summary['post'])}. Pre-tax CAGR {_pct(summary['pre'])}. {_dsr(summary)} "
+            f"Trades: {summary['n']}. CAGR {_pct(summary['pre'])} against SPY "
+            f"{_pct(spy_summary['pre'])}. {_dsr(summary)} "
             "This description is not a verdict."
         )
     lines.extend([
         "",
-        "Daily pre-tax returns are in `docs/backtest/series/cpi-ppi-open-is.csv`, "
+        "Daily returns are in `docs/backtest/series/cpi-ppi-open-is.csv`, "
         "`cpi-ppi-open-oos.csv`, and `cpi-ppi-vix1d.csv`. The release dates are in `bls-cpi-ppi.csv`.",
         "",
     ])

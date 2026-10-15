@@ -15,7 +15,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from bot import common
-from bot.tax import TAX, after_tax_terminal, spy_hold_tax
+from bot.gates import verdict as gate_verdict
 from bot.vix_term import ACCOUNT, IS_START, OOS_START, SPREAD, goes, parse_cboe, parse_yahoo, simulate
 
 NY = ZoneInfo("America/New_York")
@@ -76,17 +76,9 @@ def _fmt(x, spec="{:.2f}"):
     return "—" if x is None else spec.format(x)
 
 
-def _tax_row(book):
-    marks = list(book["realizations"])
-    if book.get("final_mark"):
-        marks.append(tuple(book["final_mark"]))
-    after, tax, _years = after_tax_terminal(book["final_equity"], marks)
-    spy_after, spy_tax = spy_hold_tax(ACCOUNT, book["spy_final"])
-    return after, tax, spy_after, spy_tax
-
-
 def render(result):
     verdict = result.get("verdict") or {"go": False, "checks": []}
+    closed = gate_verdict("t6")
     one = (result.get("books") or {}).get("1") or {}
     two = (result.get("books") or {}).get("2") or {}
     lines = [
@@ -107,7 +99,7 @@ def render(result):
         "is zero, and the scale is the square root of 252. Maximum drawdown uses out-of-sample closes only. "
         "The first out-of-sample close starts the peak.",
         "",
-        f"Verdict: **{'GO' if verdict.get('go') else 'NO-GO'}**.",
+        f"Verdict: **{closed}**.",
         "",
     ]
     for label, ok in verdict.get("checks") or []:
@@ -150,29 +142,7 @@ def render(result):
     lines += ["",
               f"Average switches per year: 1-day {_fmt(one.get('switches_per_year'), '{:.2f}')}, "
               f"2-day {_fmt(two.get('switches_per_year'), '{:.2f}')}.",
-              "",
-              "## After tax",
-              "",
-              f"Israeli capital-gains tax at {TAX:.0%}. Realized losses offset realized gains inside the "
-              "same calendar year. A year that nets to a loss pays nothing and does not carry forward. "
-              "There is no refund. The tax is subtracted from terminal equity and is not compounded inside "
-              "the path. SGOV and BIL gains are taxed the same way. There is no exemption. Sharpe and "
-              "maximum drawdown stay pre-tax.",
-              "",
-              "The strategy's tax line adds one final mark: shares times the last close, minus the all-in "
-              "cost basis, with no extra spread. That mark is not a trade in the Sharpe path. Buy-and-hold "
-              "SPY is taxed once, on the gain from the starting $460 to its terminal equity.",
-              "",
-              "| Book | Pre-tax terminal | Tax | After tax | SPY pre-tax | SPY tax | SPY after tax |",
-              "|---|---:|---:|---:|---:|---:|---:|"]
-    for label, book in (("1-day", one), ("2-day (not the verdict)", two)):
-        if not book:
-            lines.append(f"| {label} | — | — | — | — | — | — |")
-            continue
-        after, tax, spy_after, spy_tax = _tax_row(book)
-        lines.append(f"| {label} | {_fmt(book['final_equity'], '${:,.2f}')} | {_fmt(tax, '${:,.2f}')} | "
-                     f"{_fmt(after, '${:,.2f}')} | {_fmt(book['spy_final'], '${:,.2f}')} | "
-                     f"{_fmt(spy_tax, '${:,.2f}')} | {_fmt(spy_after, '${:,.2f}')} |")
+              ""]
     two_line = "- Two consecutive closes: reported, not the verdict."
     if two:
         two_verdict = goes(two.get("oos") or {}, result.get("complete", False))
@@ -182,7 +152,7 @@ def render(result):
         else:
             two_line += " Its out-of-sample checks would pass."
     lines += ["", "## Verdict", "",
-              f"- VIX term structure, one-day book: {'GO' if verdict.get('go') else 'NO-GO'}.",
+              f"- VIX term structure, one-day book: {closed}.",
               two_line,
               ""]
     return "\n".join(lines)

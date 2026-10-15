@@ -30,7 +30,7 @@ The account starts at $460 and compounds. Shares may be fractional. The position
 
 Each order pays IBKR fixed commission: $0.0035 a share, $0.35 minimum. The spread is 2 basis points round trip: half on the buy and half on the sell. These are the same costs as the sector-momentum test. A buy is shrunk so the cash balance does not go negative. Costs are paid on the first buy and on each switch.
 
-Buy-and-hold SPY uses the same execution dates, buys once at the first open, and holds. It pays that one entry cost. The pre-tax comparison is this path.
+Buy-and-hold SPY uses the same execution dates, buys once at the first open, and holds. It pays that one entry cost. The comparison is this path.
 
 ## Samples and the gate
 
@@ -45,12 +45,7 @@ The report counts switches per year for both books. A switch is a change of symb
 
 ## Tax line
 
-The report adds an after-tax line. It does not change the pre-tax gate.
-
-Israeli capital-gains tax is 25% of a calendar year's net realized gain. A realized loss offsets a realized gain in the same year. A year that nets to a loss pays nothing and does not carry forward. There is no refund. The tax is subtracted from terminal equity once. It is not compounded inside the path. SGOV and BIL gains are taxed the same way. There is no exemption.
-
-The strategy's tax line adds one final mark: shares times the last close, minus the all-in cost basis, with no extra spread. That mark is not a trade in the Sharpe path. Buy-and-hold SPY is taxed once, on the gain from $460 to its terminal equity.
-
+No tax is computed. A report does not add a tax line.
 ## Run
 
 `python -m bot.vix_term_backtest`. An incomplete download is NO-GO and exits 1. A finished NO-GO exits 0.

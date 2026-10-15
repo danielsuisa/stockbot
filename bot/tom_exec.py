@@ -4,7 +4,6 @@ The quick screen and the full path are the T9 lock in docs/backtest/TRIALS.md.
 Cash earns nothing. Commission is IBKR Pro Fixed, with no spread.
 """
 from bot.queue_rules import fixed_fee
-from bot.tax import spy_hold_tax
 
 ACCOUNT = 460.0
 
@@ -64,13 +63,10 @@ def window_fee(raw_entry, raw_exit, account=ACCOUNT):
 
 
 def quick_screen(windows, gross, fees, account=ACCOUNT):
-    """Mean window return times 12, minus the annual Fixed drag, then year-by-year tax.
+    """Mean window return times 12, minus the annual Fixed commission. No tax.
 
-    `gross` and `fees` line up with `windows`. A year's net is the sum of that year's
-    net window returns, keyed by the exit year. Losses offset inside the year. The
-    after-tax rate is the pre-tax annual rate scaled by the tax actually due on those
-    year nets. A partial year is not scaled up: it contributes the windows it has to
-    the mean.
+    `gross` and `fees` line up with `windows`. A partial year is not scaled up:
+    it contributes the windows it has to the mean.
     """
     if not windows or len(gross) != len(windows) or len(fees) != len(windows):
         return None
@@ -78,22 +74,6 @@ def quick_screen(windows, gross, fees, account=ACCOUNT):
     mean_gross = sum(gross) / len(gross)
     mean_fee = sum(fees) / len(fees)
     pretax = (mean_gross - mean_fee / account) * 12
-    by_year = {}
-    for window, net in zip(windows, nets):
-        year = window["exit"][:4]
-        by_year[year] = by_year.get(year, 0.0) + net
-    tax_drag = 0.0
-    year_nets = []
-    for year in sorted(by_year):
-        net = by_year[year]
-        tax = 0.25 * net if net > 0 else 0.0
-        tax_drag += tax
-        year_nets.append({"year": year, "net": net, "tax": tax})
-    total = sum(row["net"] for row in year_nets)
-    if total > 0:
-        after = pretax * (1 - tax_drag / total)
-    else:
-        after = pretax
     return {
         "n": len(windows),
         "mean_gross": mean_gross,
@@ -101,27 +81,23 @@ def quick_screen(windows, gross, fees, account=ACCOUNT):
         "mean_fee": mean_fee,
         "commission_annual": mean_fee / account * 12,
         "pretax": pretax,
-        "after": after,
-        "tax_drag": tax_drag,
-        "year_nets": year_nets,
         "nets": nets,
     }
 
 
 def close_enough(strategy, spy, margin=0.01):
-    """True when the quick after-tax rate is within `margin` of SPY, or ahead of it."""
+    """True when the quick rate is within `margin` of SPY, or ahead of it."""
     if strategy is None or spy is None:
         return False
     return strategy >= spy - margin - 1e-12
 
 
 def buy_hold(start_px, end_px, account=ACCOUNT):
-    """One entry and one exit, Fixed commission, no spread. Taxed once at the end."""
+    """One entry and one exit, Fixed commission, no spread."""
     shares, fee, left = shares_for_fee(account, start_px)
     exit_fee = fixed_fee(shares, end_px)
     terminal = left + shares * end_px - exit_fee
-    after, tax = spy_hold_tax(account, terminal)
-    return {"terminal": terminal, "after": after, "tax": tax, "shares": shares, "fees": fee + exit_fee}
+    return {"terminal": terminal, "shares": shares, "fees": fee + exit_fee}
 
 
 def held_sessions(sessions, windows):

@@ -241,12 +241,12 @@ class Dates(unittest.TestCase):
                        "probe": []})
         self.assertIn("Excluded 0 of 0 trades", text)
         self.assertIn("Not tested", text)
-        self.assertIn("the tax is zero", text)
+        self.assertNotIn("tax", text.lower())
         self.assertIn("Trades affected by a halt: 0 of 0", text)
         self.assertIn("Signals that survive: 0 of 0", text)
         self.assertIn("under $1 for 30 sessions", text)
         self.assertIn("both sides of the split are empty", text)
-        self.assertIn("Premarket catalyst: UNKNOWN (insufficient sample)", text)
+        self.assertIn("Premarket catalyst: CLOSED-COST", text)
         self.assertIn("Required n is not defined", text)
 
     def test_thirty_raw_closes_under_a_dollar_tags_the_name(self):
