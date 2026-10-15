@@ -878,6 +878,40 @@
    "price": 119.95,
    "chg": -0.1067,
    "outcome": null
+  },
+  {
+   "date": "2026-10-16",
+   "seen": "2026-10-15",
+   "t": "BKV",
+   "rank": 2,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-30",
+   "float": 31568964,
+   "short_float": 0.3378,
+   "short_ratio": 6.7078,
+   "avg_vol": 1589792,
+   "rel_vol": 2.2129,
+   "pre_vol": null,
+   "price": 22.3,
+   "chg": -0.0346,
+   "outcome": null
+  },
+  {
+   "date": "2026-10-16",
+   "seen": "2026-10-15",
+   "t": "TSSI",
+   "rank": 4,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-30",
+   "float": 21612421,
+   "short_float": 0.2154,
+   "short_ratio": 5.1902,
+   "avg_vol": 897090,
+   "rel_vol": 2.3947,
+   "pre_vol": null,
+   "price": 7.43,
+   "chg": -0.0511,
+   "outcome": null
   }
  ]
 }
