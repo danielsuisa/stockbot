@@ -107,6 +107,53 @@ def _book(name, prices, splits, dividends, sessions, signals, start, end):
     }
 
 
+def total_return_buy_hold(adj, actual, sessions, start, end, name="SPY"):
+    """Fractional SPY total return on the adjusted close.
+
+    The account is cash at `start`. It buys at the next session's adjusted open
+    and holds to the adjusted close of `end`. The adjusted open is that session's
+    raw open scaled by adjclose/close. Dividends sit inside the adjusted close.
+    There is no whole-share leftover and no commission.
+    """
+    days = [day for day in sessions if start <= day <= end and day in adj and day in actual]
+    if not days:
+        raise ValueError(f"no {name} sessions from {start} to {end}")
+    buy = next((day for day in days if day > start), None)
+    if buy is None:
+        curve = [(day, float(ACCOUNT)) for day in days]
+    else:
+        raw_open, raw_close = actual[buy]
+        if raw_open <= 0 or raw_close <= 0 or adj[buy] <= 0:
+            raise ValueError(f"bad {name} print on {buy}")
+        entry = raw_open * adj[buy] / raw_close
+        shares = ACCOUNT / entry
+        curve = []
+        for day in days:
+            if day < buy:
+                curve.append((day, float(ACCOUNT)))
+            else:
+                curve.append((day, shares * adj[day]))
+    final = curve[-1][1]
+    return {
+        "name": name,
+        "start": start,
+        "end": end,
+        "final": final,
+        "cagr": cagr(ACCOUNT, final, start, end),
+        "maxdd": max_drawdown(curve),
+        "dd_2020": year_drawdown(curve, "2020"),
+        "dd_2022": year_drawdown(curve, "2022"),
+        "returns": monthly_returns(curve, final, end),
+        "curve": curve,
+        "fees": 0.0,
+        "buys": 1 if buy else 0,
+        "first_buy": {"date": buy} if buy else None,
+        "trades": [],
+        "field": "adjclose",
+        "entry": buy,
+    }
+
+
 def _judge(book, spy_book, trial_id):
     left, right = _paired(book["returns"], spy_book["returns"])
     gate = trial(trial_id)
@@ -151,6 +198,9 @@ def render(title, decision, reference, spy, vt, early_note, supplement, signal_n
         "from the open of the fund being bought. Signals are month-end adjusted closes of SPY "
         "(GEM also uses BIL and VEU). The executable equity sleeve is SPYM. "
         "The SPY reference is the same signals filled in SPY, and it is not the verdict. "
+        "The SPY buy-and-hold column is the fractional adjusted-close total return: "
+        "it buys at the next session's adjusted open and holds to the window's adjusted close. "
+        "Dividends are inside that adjusted close. It is not the raw close and it is not a whole-share account. "
         "No tax is computed. This replay does not place or transmit an order.",
         "",
         f"Verdict: **{decision['verdict_text']}**.",
@@ -239,7 +289,7 @@ def run_pair(label, trial_id, signals_exec, signals_ref, books, sessions, start,
                        _slice_signals(signals_exec, start, end), start, end)
     reference = _book(label + " SPY", prices, splits, dividends, sessions,
                       _slice_signals(signals_ref, start, end), start, end)
-    spy = _book("SPY", prices, splits, dividends, sessions, _hold("SPY", start), start, end)
+    spy = total_return_buy_hold(books["SPY"]["adj"], books["SPY"]["actual"], sessions, start, end)
     vt = _book("VT", prices, splits, dividends, sessions, _hold("VT", start), start, end)
     executable["judge"] = _judge(executable, spy, trial_id)
     return executable, reference, spy, vt
@@ -287,12 +337,14 @@ def main(argv=None):
          gem_signals(spy_adj, bil_adj, veu_adj, "AGG", "SPYM"),
          gem_signals(spy_adj, bil_adj, veu_adj, "AGG", "SPY"),
          "gem-agg", False, "The September 2026 signal is VEU. See docs/backtest/GEM_SIGNAL_2026-09.md. "
-         "That month-end is the last signal inside this window, so its fill is the next open, outside the window."),
+         "That month-end is the last signal inside this window, so its fill is the next open, outside the window. "
+         "The desk's independent cost path is 5.25% a year with 1.75 switches a year. That path closes this book NO-GO."),
         ("gembil", "gem-bil", "GEM-BIL — 2026-10-15",
          gem_signals(spy_adj, bil_adj, veu_adj, "BIL", "SPYM"),
          gem_signals(spy_adj, bil_adj, veu_adj, "BIL", "SPY"),
          "gem-bil", True, "Reported beside GEM. It is not selected when it is ahead of the AGG book. "
-         "The decision for the rule is the AGG book."),
+         "The decision for the rule is the AGG book. "
+         "The desk's independent cost path is 5.42% a year. That path closes this book NO-GO."),
     ]
     written = []
     for key, trial_id, title, sig_x, sig_r, stem, is_bil, note in jobs:
