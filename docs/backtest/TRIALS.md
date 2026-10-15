@@ -7,6 +7,7 @@ No tax is computed anywhere in this program.
 ## Not a trial
 
 - Turn of the month (T9). Closed NO-GO on the cost arithmetic. It is not counted, and it is not in the effective-trial number.
+- Post-earnings drift (T4), pre-FOMC (T7), and the T3 penny book with its blacklist. Closed NO-GO on the cost arithmetic. They are not counted. The pre-FOMC test was not run.
 - The VIX term-structure test is not re-run. The one-day book already reported on 2026-10-15 remains a prior trial. Its two-day book stays in that same cluster.
 - The 13:55 ET pre-FOMC variant and the CPI/PPI gap-down fade were taken off the queue before either was run. They are not trials.
 
@@ -20,14 +21,12 @@ A raw trial is one return variant that was actually run. Correlated variants sha
 | Noise area | QQQ and SPY, long and short | NO-GO |
 | Penny intraday | Opening-range breakout; VWAP pullback | NO-GO, both |
 | Swing | No earnings filter; calendar earnings proxy | NO-GO, both |
-| Premarket catalyst | Sub-$5 book | NO-GO. The $3–$20 book and the blacklist are the same cluster if they finish. |
-| Post-earnings drift | Holds of 10, 20, and 40 sessions. The gate was the 20-session book. | NO-GO |
 | Sector momentum | The 2026-10-15 return replay, under that day's gate | NO-GO. See the turnover close below. No further return is run. |
 | VIX term structure | One-day book (the verdict); two-day book (not the verdict) | GO on the one-day book's own gate. Not re-run. |
 
-That is 15 raw trials and 8 clusters. Two clusters are registered below and have not been run: monthly trend (Faber, GEM, GEM-BIL) and pre-FOMC daily closes. Counting those planned clusters now, so the number does not shrink after a result, the effective number of trials for a deflated Sharpe ratio in this program is **10**.
+The premarket catalyst and the post-earnings drift were removed from this table when they were closed on cost math. They are not clusters. Pre-FOMC was never run and is not a cluster. What remains is 6 clusters already run, plus the monthly-trend cluster below (Faber, GEM, and GEM-BIL), which had not been run when this line was written. The effective number of trials for the deflated Sharpe ratio is **7**.
 
-Older closed work (the ticket search, the ensemble, the index program, the squeeze list) is not reopened and is not added on top of these 10.
+Older closed work (the ticket search, the ensemble, the index program, the squeeze list) is not reopened and is not added on top of these 7. The opening-range and VWAP penny books stay in the table. They are not the T3 premarket book.
 
 ## Faber and GEM, locked before the run
 
@@ -47,7 +46,7 @@ The bootstrap is fixed as follows. The inputs are the paired monthly total retur
 
 Calendar 2020 and calendar 2022 maximum drawdowns are reported separately, for the strategy and for SPY. They are not a gate. Each year uses the daily equity curve inside that year, with the peak reset at the first close of the year.
 
-The deflated Sharpe ratio and the probabilistic Sharpe ratio are reported, at the effective trial count of 10. They are not a third pass condition. The pass rule is (a) and (b) only.
+The deflated Sharpe ratio and the probabilistic Sharpe ratio are reported, at the effective trial count of 7. They are not a third pass condition. The pass rule is (a) and (b) only.
 
 ### GEM and GEM-BIL are both reported
 
@@ -63,9 +62,13 @@ There is no gap and no hysteresis. A month stands on its own comparison. A tie i
 
 The 12-month total return is the month-end adjusted close divided by the month-end adjusted close twelve months earlier, minus one. Adjusted closes include dividends. An ETF is not used before it exists.
 
-The signal is the month-end close. The fill is the next session's open. A switch from one ETF to another is T+1: the sale is the next open, and the purchase is the open after that, because the sale has not settled. The night in between is cash at zero. Staying in the same ETF does not trade. The first purchase, from settled cash, is the next open.
+The signal is the month-end close. The order is market-on-open at the next session's open. A switch from one ETF to another is T+1: the sale is the next open, and the purchase is the open after that, because the sale has not settled. The night in between is cash at zero. Staying in the same ETF does not trade. The first purchase, from settled cash, is the next open.
 
-Faber, on the same execution, holds SPY when the month-end adjusted close is strictly above the average of the last ten month-end adjusted closes, including that month. Otherwise it holds cash at zero. A close equal to the average is cash. There is no band around the average and no extra month of confirmation.
+The account is $460. It buys whole shares of the fund the signal selected, at that fund's actual open price. Leftover cash earns nothing and is recomputed at every switch from the fund being bought. It is not a fixed remainder from SPYM. When the signal says SPY, the executable book buys SPYM (the fund formerly named SPLG). VEU, AGG, and BIL are bought as themselves. The signal is still computed from SPY, not from SPYM. A second book, the SPY reference, is the same signals with SPY bought in place of SPYM. The verdict uses the executable book. The reference is not chosen when it looks better.
+
+Prices used for the fill are the exchange prints, with splits undone. Yahoo's historical opens are split-adjusted, so a print from before a split is scaled back to the price that traded. Share count changes on the split morning. A reverse split leaves a fractional share as cash at that morning's open. Dividends are cash, per share actually held, and are not spent on the same morning's open.
+
+Faber, on the same execution, holds the equity sleeve when SPY's month-end adjusted close is strictly above the average of the last ten month-end adjusted closes, including that month. Otherwise it holds cash at zero. A close equal to the average is cash. There is no band around the average and no extra month of confirmation. The executable equity sleeve is SPYM. The reference sleeve is SPY.
 
 The September 2026 signal, computed before this return run, is recorded in `docs/backtest/GEM_SIGNAL_2026-09.md`. The holding is VEU. That file is not a return test.
 
@@ -73,13 +76,11 @@ The September 2026 signal, computed before this return run, is recorded in `docs
 
 Beating SPY by 1% a year, and an excess Sharpe of 0.8, are the bar for the return-seeking tests below. They are not the Faber or GEM bar.
 
-## Return-seeking tests
+## What this queue runs
 
-These keep a different bar. GO requires all three, after the same fixed commission and spread, with no tax: CAGR at least 1 percentage point above SPY, annualized Sharpe at least 0.8 above SPY (excess Sharpe, risk-free rate zero), and a deflated Sharpe ratio of at least 0.95 at 10 effective trials. The required trade count uses half of the in-sample mean, the McLean-Pontiff haircut: `n = (1.645 * sigma / (mu / 2))^2` when the in-sample mean is positive. If the out-of-sample count is below that n, the verdict is UNKNOWN. An event test counts independent events, not days. Fewer than 100 events cannot be a GO; if the count is also below the required n, the verdict stays UNKNOWN.
+The only return tests left are Faber, GEM with AGG, and GEM-BIL. The September 2026 signal and the sector-turnover count are already filed and are not return tests. Post-earnings drift, pre-FOMC, and the T3 penny book are not run.
 
-Pre-FOMC is the event test still on the queue, and only its daily-close variants. The 13:55 variant is not run. A large-cap post-earnings split, if the data can be built without a second bulk download, is another raw trial inside the existing post-earnings cluster, not a new cluster.
-
-Every return report also shows buy-and-hold VT beside SPY. SPY stays the primary bar. Where VT does not exist yet, the secondary line is an 80% VTI / 20% VXUS buy-and-hold, and only over the dates both exist. The comparison says so. Daily strategy returns and daily SPY returns are saved under `docs/backtest/series/` when a return test is run.
+Every return report also shows buy-and-hold VT beside SPY. SPY stays the primary bar. VT exists for the whole decision window. Daily strategy returns and daily SPY returns are saved under `docs/backtest/series/`.
 
 ## Sector rotation is closed
 
