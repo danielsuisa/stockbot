@@ -116,6 +116,56 @@
    "rank": 3,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-10-14",
+   "signal": "squeeze-list",
+   "symbol": "DFH",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 9.17,
+   "limit": 9.34,
+   "planned_entry": 9.17,
+   "stop_loss": 8.25,
+   "target": 10.55,
+   "trail": 0.92,
+   "shares": 109,
+   "legs": [
+    54,
+    55
+   ],
+   "R": 0.917,
+   "guard_spread": 0.03000000000000025,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": true
+  },
+  {
+   "day": "2026-10-14",
+   "signal": "squeeze-list",
+   "symbol": "TNXP",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 6.73,
+   "limit": 6.87,
+   "planned_entry": 6.73,
+   "stop_loss": 6.06,
+   "target": 7.74,
+   "trail": 0.67,
+   "shares": 148,
+   "legs": [
+    74,
+    74
+   ],
+   "R": 0.673,
+   "guard_spread": 0.01,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 2,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }
