@@ -176,6 +176,19 @@ def _summarize(book, days):
     }
 
 
+def _dollars(value):
+    if value is None:
+        return "n/a"
+    sign = "-" if value < 0 else ""
+    return f"{sign}${abs(value):,.2f}"
+
+
+def _dd(value):
+    if value is None:
+        return "n/a"
+    return f"{value * 100:.2f}%"
+
+
 def _pct(value):
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return "n/a"
@@ -217,7 +230,7 @@ def _line(label, summary, spy_summary):
     return verdict, (
         f"| {label} | {summary['n']} | {_pct(summary['post'])} | {_pct(spy_summary['post'])} | "
         f"{_pct(summary['pre'])} | {_pct(spy_summary['pre'])} | ${summary['fees']:,.0f} | "
-        f"${summary['tax']:,.0f} | {_pct(summary['dd'])} | {verdict} |"
+        f"${summary['tax']:,.0f} | {_dd(summary['dd'])} | {verdict} |"
     )
 
 
@@ -247,7 +260,7 @@ def run():
     sessions = sorted(day for day in spy["adj"] if day < today)
     last = sessions[-1]
     by_year = Counter(day[:4] for day in announcements if "2000" <= day[:4] <= "2025")
-    thin = [year for year in range(2000, 2026) if by_year[f"{year}"] < 6]
+    thin = [year for year in range(2000, 2026) if by_year[f"{year}"] < 8]
     if thin:
         raise SystemExit(f"FOMC calendar is short in {thin}: {dict(sorted(by_year.items()))}")
     cpi_years = Counter(day[:4] for day, kind in releases if kind == "CPI")
@@ -306,7 +319,10 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
         "Announcement dates are the Fed historical calendar: a Meeting heading on "
         "`fomchistorical2000.htm` through `fomchistorical2020.htm`, and `fomccalendars.htm` after that. "
         "A conference call, a notation vote, and a cancelled meeting are left out. A Fed date that is "
-        "not a SPY session uses the next SPY session. Daily prices are Yahoo Finance chart v8, including "
+        "not a SPY session uses the next SPY session. The March 2020 unscheduled meeting is dated March 2 "
+        "on the heading; the public statement is March 3, and this book uses March 2. A statement the Fed "
+        "labels as a conference call is not in the book. That includes the January 22, 2008 and October 8, "
+        "2008 cuts. Daily prices are Yahoo Finance chart v8, including "
         f"the years before 2016. SPY splits in the download: {spy['splits']}. "
         "The ETF marks are adjusted closes.",
         "",
@@ -339,7 +355,15 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
             lines.append(row)
             _series(SERIES / f"fomc-{variant.lower()}-{label.lower()}.csv", book["returns"], spy_book["returns"])
             verdicts[(variant, label)] = (verdict, summary, spy_summary, vt_book, days, events, gaps, bil_first, sgov_first)
-    lines.extend(["", "## Out of sample", ""])
+    lines.extend([
+        "",
+        "## Out of sample",
+        "",
+        "Each round trip is four orders once the sleeve is an ETF: sell the sleeve, buy SPY, sell SPY, "
+        "buy the sleeve. On a $460 account the $1 minimum binds, so those four orders cost $4. Before "
+        "BIL exists the sleeve is a cash accrual and only the two SPY orders pay commission.",
+        "",
+    ])
     for variant in ("A", "C"):
         verdict, summary, spy_summary, vt_book, days, events, gaps, bil_first, sgov_first = verdicts[(variant, "OOS")]
         vt_text = "VT has no book on this window."
@@ -356,7 +380,7 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
             f"Mean held-window SPY move {_pct(mean)}. "
             f"Winning windows {(_num(hit * 100, 1) + '%') if hit is not None else 'n/a'}. "
             f"{vt_text} {_dsr(summary)} "
-            f"Maximum drawdown {_pct(summary['dd'])}, pre-tax. "
+            f"Maximum drawdown {_dd(summary['dd'])}, pre-tax. "
             f"Fees ${summary['fees']:,.2f}. Tax ${summary['tax']:,.2f}. "
             f"BIL starts {bil_first}. SGOV starts {sgov_first}. "
             f"Forward-filled sessions: SPY {gaps['spy']}, BIL {gaps['bil']}, SGOV {gaps['sgov']}, ^IRX {gaps['irx']}."
@@ -365,7 +389,9 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
     lines.extend([
         "## In sample",
         "",
-        "In-sample is 2000 through 2014. It is reported here and does not change the verdicts above.",
+        "In-sample is 2000 through 2014. It is reported here and does not change the verdicts above. "
+        "The window contains 121 announcements. September 15 and September 16, 2003 are consecutive "
+        "meetings and share one position, so the round-trip count is 120.",
         "",
     ])
     for variant in ("A", "C"):
@@ -444,7 +470,7 @@ def cpi_report(sessions, releases, spy, bil, sgov, vt, irx, vix, today, last, cp
         lines.append(
             f"| Open {label} | {summary['n']} | {_pct(summary['post'])} | {_pct(spy_summary['post'])} | "
             f"{_pct(summary['pre'])} | {_pct(spy_summary['pre'])} | ${summary['fees']:,.0f} | "
-            f"${summary['tax']:,.0f} | {_pct(summary['dd'])} | {mark} |"
+            f"${summary['tax']:,.0f} | {_dd(summary['dd'])} | {mark} |"
         )
         _series(SERIES / f"cpi-ppi-open-{label.lower()}.csv", book["returns"], spy_book["returns"])
         vt_prices = _forward(days, vt["adj"])[0]
@@ -468,7 +494,7 @@ def cpi_report(sessions, releases, spy, bil, sgov, vt, irx, vix, today, last, cp
         f"After-tax CAGR {_pct(oos_summary['post'])} against SPY {_pct(oos_spy['post'])}. "
         f"Pre-tax CAGR {_pct(oos_summary['pre'])} against SPY {_pct(oos_spy['pre'])}. "
         f"{vt_text} {_dsr(oos_summary)} "
-        f"Maximum drawdown {_pct(oos_summary['dd'])}, pre-tax. "
+        f"Maximum drawdown {_dd(oos_summary['dd'])}, pre-tax. "
         f"Fees ${oos_summary['fees']:,.2f}. Tax ${oos_summary['tax']:,.2f}. "
         f"BIL starts {bil_first}. SGOV starts {sgov_first}. "
         f"Forward-filled sessions: SPY {gaps['spy']}, BIL {gaps['bil']}, SGOV {gaps['sgov']}, ^IRX {gaps['irx']}."
@@ -488,7 +514,7 @@ def cpi_report(sessions, releases, spy, bil, sgov, vt, irx, vix, today, last, cp
         lines.append("|---|---:|---:|---:|")
         for trade in tails:
             lines.append(
-                f"| {trade['day']} | {_pct(trade['gap'])} | {_pct(trade['gross'])} | ${trade['pnl']:,.2f} |"
+                f"| {trade['day']} | {_pct(trade['gap'])} | {_pct(trade['gross'])} | {_dollars(trade['pnl'])} |"
             )
     y2022 = [trade for trade in oos_book["trades"] if trade["day"].startswith("2022")]
     lines.extend(["", "## 2022, open fill", ""])
@@ -499,15 +525,16 @@ def cpi_report(sessions, releases, spy, bil, sgov, vt, irx, vix, today, last, cp
         lines.append("|---|---:|---:|---:|")
         for trade in y2022:
             lines.append(
-                f"| {trade['day']} | {_pct(trade['gap'])} | {_pct(trade['gross'])} | ${trade['pnl']:,.2f} |"
+                f"| {trade['day']} | {_pct(trade['gap'])} | {_pct(trade['gross'])} | {_dollars(trade['pnl'])} |"
             )
         gross = [trade["gross"] for trade in y2022]
         lines.append("")
         lines.append(
             f"2022 open-fill trades: {len(y2022)}. Mean open-to-close {_pct(sum(gross) / len(gross))}."
         )
-    # VIX1D description, from the first session that has a prior print.
-    vix_days = [day for day in sessions if day >= "2019-01-01" and day <= last]
+    # VIX1D description. The registration limits it to 2023 onward. The CBOE file
+    # also prints 2022; those sessions stay out of this book.
+    vix_days = [day for day in sessions if day >= "2023-01-01" and day <= last]
     first_vix = None
     prev = None
     for day in vix_days:
@@ -531,7 +558,7 @@ def cpi_report(sessions, releases, spy, bil, sgov, vt, irx, vix, today, last, cp
         spy_summary = _summarize(spy_book, window)
         _series(SERIES / "cpi-ppi-vix1d.csv", book["returns"], spy_book["returns"])
         lines.append(
-            f"VIX1D is the CBOE daily file. The first session with a prior close is {first_vix}. "
+            f"VIX1D is the CBOE daily file. The file's first print is 2022-05-13. The registered window is 2023 onward, so this book starts at {first_vix}. "
             f"The variant keeps the 0.5% rule and also requires the gap to be strictly below that prior "
             f"close divided by 100 and by the square root of 252. It is an out-of-sample description. "
             f"Trades: {summary['n']}. After-tax CAGR {_pct(summary['post'])} against SPY "

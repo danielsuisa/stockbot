@@ -48,6 +48,24 @@ class CalendarTests(unittest.TestCase):
     def test_calendar_page_uses_the_last_day(self):
         self.assertEqual(meeting_dates(CALENDAR), ["2026-09-16", "2026-10-28"])
 
+    def test_month_crossing_headings(self):
+        html = """
+        <h5>Jan/Feb 31-1 Meeting - 2017</h5>
+        <h5>April/May 30-1 Meeting - 2013</h5>
+        <h5>June 30-1 Meeting - 2024</h5>
+        """
+        self.assertEqual(meeting_dates(html), ["2013-05-01", "2017-02-01", "2024-07-01"])
+
+    def test_calendar_page_month_crossing(self):
+        html = """
+        <h4><a id="1">2024 FOMC Meetings</a></h4>
+        <div class="fomc-meeting__month"><strong>June</strong></div>
+        <div class="fomc-meeting__date">30-1</div>
+        <div class="fomc-meeting__month"><strong>Jan/Feb</strong></div>
+        <div class="fomc-meeting__date">31-1</div>
+        """
+        self.assertEqual(meeting_dates(html), ["2024-02-01", "2024-07-01"])
+
     def test_sunday_announcement_uses_the_next_session(self):
         sessions = ["2020-03-12", "2020-03-13", "2020-03-16", "2020-03-17"]
         events = fomc_events(sessions, ["2020-03-15"], "A")

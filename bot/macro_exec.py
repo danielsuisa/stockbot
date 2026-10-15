@@ -18,7 +18,34 @@ OOS_MIN = 40
 MONTHS = {
     "January": 1, "February": 2, "March": 3, "April": 4, "May": 5, "June": 6,
     "July": 7, "August": 8, "September": 9, "October": 10, "November": 11, "December": 12,
+    "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "Jun": 6, "Jul": 7, "Aug": 8,
+    "Sep": 9, "Sept": 9, "Oct": 10, "Nov": 11, "Dec": 12,
 }
+
+
+def announcement_day(month_text, first, second, year):
+    """The announcement calendar day named by a Fed heading.
+
+    A slash means the meeting crosses months, and the last day falls in the
+    second month. A single month whose last day number is below its first day
+    number also crosses into the next month: June 30-1 is July 1.
+    """
+    parts = month_text.split("/")
+    start = MONTHS.get(parts[0])
+    end = MONTHS.get(parts[-1])
+    if start is None or end is None:
+        return None
+    if second is None:
+        month, day, out_year = start, first, year
+    elif len(parts) > 1:
+        month, day, out_year = end, second, year
+    elif second < first:
+        month, day, out_year = start + 1, second, year
+        if month == 13:
+            month, out_year = 1, year + 1
+    else:
+        month, day, out_year = start, second, year
+    return f"{out_year}-{month:02d}-{day:02d}"
 
 
 def order_fee(shares, price):
@@ -69,28 +96,33 @@ def meeting_dates(html):
         if not re.search(r"\bMeeting\b", text):
             continue
         hit = re.search(
-            r"(January|February|March|April|May|June|July|August|September|"
-            r"October|November|December)\s+(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?",
+            r"([A-Za-z]+(?:/[A-Za-z]+)?)\s+(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?",
             text,
         )
         year = re.search(r"(20\d{2}|19\d{2})", text)
         if not hit or not year:
             continue
-        day = int(hit.group(3) or hit.group(2))
-        found.append(f"{year.group(1)}-{MONTHS[hit.group(1)]:02d}-{day:02d}")
+        second = int(hit.group(3)) if hit.group(3) else None
+        day = announcement_day(hit.group(1), int(hit.group(2)), second, int(year.group(1)))
+        if day:
+            found.append(day)
     parts = re.split(r"<h4>\s*<a[^>]*>\s*(\d{4}) FOMC Meetings\s*</a>", html)
     for index in range(1, len(parts), 2):
         year = parts[index]
         body = parts[index + 1]
         for block in re.split(r"fomc-meeting__month", body)[1:]:
-            month = re.search(r"<strong>([A-Za-z]+)</strong>", block)
+            month = re.search(r"<strong>([A-Za-z]+(?:/[A-Za-z]+)?)</strong>", block)
             date = re.search(r"fomc-meeting__date[^>]*>\s*([^<]+)", block)
-            if not month or not date or month.group(1) not in MONTHS:
+            if not month or not date:
                 continue
-            numbers = re.findall(r"\d+", date.group(1).replace("*", ""))
+            numbers = [int(piece) for piece in re.findall(r"\d+", date.group(1))]
             if not numbers:
                 continue
-            found.append(f"{year}-{MONTHS[month.group(1)]:02d}-{int(numbers[-1]):02d}")
+            second = numbers[-1] if len(numbers) > 1 else None
+            first = numbers[0]
+            day = announcement_day(month.group(1), first, second, int(year))
+            if day:
+                found.append(day)
     return sorted(set(found))
 
 

@@ -118,7 +118,7 @@ The last session is the last bar strictly before the New York run date.
 
 ### T7, pre-FOMC drift
 
-Announcement dates come from the Fed's historical calendar: `fomchistorical2000.htm` through `fomchistorical2020.htm`, and `fomccalendars.htm` after that. A heading counts when it is a Meeting. A conference call, a notation vote, and a cancelled meeting do not count. The announcement date is the last day named in the heading. If that date is not a SPY session, the announcement session is the next SPY session.
+Announcement dates come from the Fed's historical calendar: `fomchistorical2000.htm` through `fomchistorical2020.htm`, and `fomccalendars.htm` after that. A heading counts when it is a Meeting. A conference call, a notation vote, and a cancelled meeting do not count. The announcement date is the last day named in the heading. When the heading names two months, that day is in the second month. When one month is named and the last day number is lower than the first, that day is in the following month, so June 30-1 is July 1. If that date is not a SPY session, the announcement session is the next SPY session.
 
 Variant A buys SPY at the close two trading sessions before the announcement session and sells at the close of the session before the announcement. Variant C sells at the close of the announcement session. A dividend inside the window is in the adjusted close. An event belongs to a sample only when its entry close and its exit close are both inside the sample. In-sample is 2000 through 2014. Out-of-sample is 2015 through the last session.
 
@@ -134,7 +134,15 @@ The registered buy is 9:35 ET, and the exit is the close. This run has no 9:35 p
 
 A separate description buys at the official open and sells at the close when the gap is at most -0.5%. It uses the same sleeve, costs, and tax. On a release day that description does not accrue the sleeve from the prior close to the open. Every other session accrues the sleeve from close to close. In-sample release dates fall in 2010 through 2018. Out-of-sample release dates fall in 2019 through the last session. The description's numbers, its tail losses, and its 2022 trades are reported. They are not the verdict.
 
-The VIX1D variant keeps the 0.5% rule and also requires the gap to be strictly below the prior session's VIX1D close divided by 100 and by the square root of 252. VIX1D is the CBOE daily history. The variant starts on the first session that has a prior VIX1D close. That history begins in 2023, so the variant is an out-of-sample description. It is not a verdict.
+The VIX1D variant keeps the 0.5% rule and also requires the gap to be strictly below the prior session's VIX1D close divided by 100 and by the square root of 252. VIX1D is the CBOE daily history. The file's first print is in 2022. The variant still starts in 2023, on the first session that has a prior VIX1D close. It is an out-of-sample description. It is not a verdict.
+
+## T7 and T8 results
+
+Computed after the lock above. Reports: `docs/backtest/fomc-drift-2026-10-15.md` and `docs/backtest/cpi-ppi-fade-2026-10-15.md`.
+
+Variant A out of sample is NO-GO. After-tax CAGR is -7.57% against SPY +11.62%, on 96 round trips. The mean held-window move is +0.18%. Variant C out of sample is NO-GO, at -7.71% against the same SPY. Variant B is skipped. There is no 13:55 print. In-sample does not flip either verdict.
+
+The CPI/PPI registered book is **unknown**. Out-of-sample trades at 9:35 ET are 0, below the minimum of 40. The open-fill description is below the 1 point line and is not a verdict: 23 out-of-sample trades, after-tax CAGR -1.54% against SPY +14.29%. The 2022 open-fill trades and the worst open-to-close losses are in the report. The VIX1D description, from 2023, has 5 trades and is not a verdict.
 
 ## Sector rotation is closed
 
