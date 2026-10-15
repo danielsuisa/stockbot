@@ -12,6 +12,9 @@ CLOSED_COST = "CLOSED-COST"
 GO = "GO"
 NO_GO = "NO-GO"
 PENDING = "PENDING-REPLICATION"
+NOT_RECORDED = "NOT-RECORDED"
+ROW_FRACTIONAL = "fractional"
+ROW_WHOLE = "whole_share"
 
 ROOT = Path(__file__).resolve().parents[1]
 GATES_PATH = ROOT / "docs" / "backtest" / "gates.json"
@@ -61,6 +64,28 @@ def dsr_trials_next(gates=None):
 def effective_trials(gates=None):
     """The trial counter N. Present for callers that used the old name."""
     return completed_tests(gates)
+
+
+def symmetry(gates=None):
+    """Two rows on every gate. The verdict is the whole-share row."""
+    gates = gates if gates is not None else load_gates()
+    rule = gates["symmetry"]
+    if rule.get("verdict_row") != ROW_WHOLE:
+        raise ValueError("the verdict uses the whole-share row")
+    if rule.get("spy_exposure") != "SPYM":
+        raise ValueError("whole-share SPY exposure is SPYM")
+    if rule.get("out_of_market") != "cash":
+        raise ValueError("the recorded Faber book holds cash when it is out of the market")
+    if list(rule.get("rows") or []) != [ROW_FRACTIONAL, ROW_WHOLE]:
+        raise ValueError("the gate reports a fractional row and a whole-share row")
+    return rule
+
+
+def info_only(gate_result):
+    """A sleeve that was not pre-registered. A GO is not entered in the trial log."""
+    if gate_result == GO:
+        return NOT_RECORDED
+    return gate_result
 
 
 def _cagr_ok(gate, growth, spy_growth):
@@ -224,7 +249,8 @@ def write_trial_count(gem_verdict, trials_path=None, count_path=None, gates=None
         f"A verdict stays {PENDING} until an independent script matches. "
         f"The gem-agg verdict is {gem_verdict}. "
         f"The next test uses a deflated Sharpe N of **{dsr_n}** "
-        f"({gates['dsr_n_earlier_variants']} earlier variants + Faber + GEM + GEM-BIL).\n"
+        f"({gates['dsr_n_earlier_variants']} earlier variants + Faber + GEM + GEM-BIL). "
+        f"A bug-fix re-run does not add a trial.\n"
         f"{MARKER_END}"
     )
     trials.write_text(text[:start] + snippet + text[end + len(MARKER_END):], encoding="utf-8")

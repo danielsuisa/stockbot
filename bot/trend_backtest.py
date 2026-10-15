@@ -83,8 +83,8 @@ def _paired(strategy_returns, spy_returns):
     return left, right
 
 
-def _book(name, prices, splits, dividends, sessions, signals, start, end):
-    result = simulate(prices, splits, dividends, sessions, signals, start, end, ACCOUNT)
+def _book(name, prices, splits, dividends, sessions, signals, start, end, whole=True):
+    result = simulate(prices, splits, dividends, sessions, signals, start, end, ACCOUNT, whole=whole)
     curve = result["curve"]
     growth = cagr(ACCOUNT, result["final"], start, end)
     returns = monthly_returns(curve, result["final"], end)
@@ -185,34 +185,38 @@ def _num(value, spec="{:.2f}"):
     return "—" if value is None else spec.format(value)
 
 
-def render(title, decision, reference, spy, vt, early_note, supplement, signal_note):
+def render(title, decision, bench, vt, logic, early_note, supplement, signal_note):
     judge = decision["judge"]
     gate = judge["gate"]
     flags = decision["flags"]
     lines = [
         f"# {title}",
         "",
-        "Account $460. Whole shares of the fund the signal holds, bought at that fund's actual open. "
-        "Market-on-open at the next session. A switch from one fund to another sells at the next open "
-        "and buys at the open after that. Leftover cash earns nothing and is set again at each switch "
-        "from the open of the fund being bought. Signals are month-end adjusted closes of SPY "
-        "(GEM also uses BIL and VEU). The executable equity sleeve is SPYM. "
-        "The SPY reference is the same signals filled in SPY, and it is not the verdict. "
-        "The SPY buy-and-hold column is the fractional adjusted-close total return: "
-        "it buys at the next session's adjusted open and holds to the window's adjusted close. "
-        "Dividends are inside that adjusted close. It is not the raw close and it is not a whole-share account. "
+        "Account $460. The signal is the month-end adjusted close of SPY (GEM also uses BIL and VEU). "
+        "Market-on-open at the next session. A switch sells at the next open and buys at the open after that. "
+        "The gate has two rows, and both sides of a row use the same share rule. "
+        "Row (a) is fractional shares of the signal fund, including SPY itself, against fractional SPY. "
+        "Row (b) is whole shares, and SPY exposure is SPYM because one SPY share costs more than $460, "
+        "against whole shares of SPYM. The verdict is row (b). "
         "No tax is computed. This replay does not place or transmit an order.",
         "",
         f"Verdict: **{decision['verdict_text']}**.",
         "",
         "The verdict is the return value of `trend_verdict` in `bot/gates.py`, from the gate in "
-        "`docs/backtest/gates.json`.",
+        "`docs/backtest/gates.json`, on row (b).",
+        "",
+        "| Row | Strategy | Benchmark | Strategy CAGR | Benchmark CAGR | Bootstrap | Role |",
+        "|---|---|---|---:|---:|---:|---|",
+        f"| (a) fractional | signal funds, including SPY | SPY | {_pct(logic['cagr'])} | "
+        f"{_pct(logic['bench_cagr'])} | {_num(logic['boot'], '{:.1%}')} | logic, not the verdict |",
+        f"| (b) whole shares, $460 | signal funds, SPY exposure is SPYM | SPYM | {_pct(decision['cagr'])} | "
+        f"{_pct(bench['cagr'])} | {_num(judge['boot'], '{:.1%}')} | verdict |",
         "",
     ]
     shortfall = gate["cagr_max_shortfall"]
     lines.append(
-        f"- {'pass' if flags['cagr'] else 'fail'}: CAGR {_pct(decision['cagr'])} against SPY "
-        f"{_pct(spy['cagr'])} (gap {_pct(judge['gap'])}; allowed shortfall {shortfall:.0%} from the gate)."
+        f"- {'pass' if flags['cagr'] else 'fail'}: CAGR {_pct(decision['cagr'])} against SPYM "
+        f"{_pct(bench['cagr'])} (gap {_pct(judge['gap'])}; allowed shortfall {shortfall:.0%} from the gate)."
     )
     lines.append(
         f"- {'pass' if flags['drawdown'] else 'fail'}: bootstrap pass rate "
@@ -240,13 +244,15 @@ def render(title, decision, reference, spy, vt, early_note, supplement, signal_n
         lines.append(signal_note)
         lines.append("")
     lines += [
-        "| | Executable | SPY reference | SPY buy-and-hold | VT buy-and-hold |",
-        "|---|---:|---:|---:|---:|",
-        f"| CAGR | {_pct(decision['cagr'])} | {_pct(reference['cagr'])} | {_pct(spy['cagr'])} | {_pct(vt['cagr'])} |",
-        f"| Max drawdown | {_dd(decision['maxdd'])} | {_dd(reference['maxdd'])} | {_dd(spy['maxdd'])} | {_dd(vt['maxdd'])} |",
-        f"| 2020 drawdown | {_dd(decision['dd_2020'])} | {_dd(reference['dd_2020'])} | {_dd(spy['dd_2020'])} | {_dd(vt['dd_2020'])} |",
-        f"| 2022 drawdown | {_dd(decision['dd_2022'])} | {_dd(reference['dd_2022'])} | {_dd(spy['dd_2022'])} | {_dd(vt['dd_2022'])} |",
-        f"| Ending equity | ${decision['final']:.2f} | ${reference['final']:.2f} | ${spy['final']:.2f} | ${vt['final']:.2f} |",
+        "Row (b), the verdict. VT is buy-and-hold on the same whole-share rule. It is not the benchmark.",
+        "",
+        "| | Strategy | SPYM buy-and-hold | VT buy-and-hold |",
+        "|---|---:|---:|---:|",
+        f"| CAGR | {_pct(decision['cagr'])} | {_pct(bench['cagr'])} | {_pct(vt['cagr'])} |",
+        f"| Max drawdown | {_dd(decision['maxdd'])} | {_dd(bench['maxdd'])} | {_dd(vt['maxdd'])} |",
+        f"| 2020 drawdown | {_dd(decision['dd_2020'])} | {_dd(bench['dd_2020'])} | {_dd(vt['dd_2020'])} |",
+        f"| 2022 drawdown | {_dd(decision['dd_2022'])} | {_dd(bench['dd_2022'])} | {_dd(vt['dd_2022'])} |",
+        f"| Ending equity | ${decision['final']:.2f} | ${bench['final']:.2f} | ${vt['final']:.2f} |",
         "",
     ]
     stats = judge["stats"] or {}
@@ -265,8 +271,8 @@ def render(title, decision, reference, spy, vt, early_note, supplement, signal_n
             "A separate $460 account. It does not change the verdict.",
             "",
             f"Window {supplement['start']} through {supplement['end']}. "
-            f"CAGR {_pct(supplement['cagr'])} against SPY {_pct(supplement['spy_cagr'])}. "
-            f"Max drawdown {_dd(supplement['maxdd'])} against SPY {_dd(supplement['spy_maxdd'])}. "
+            f"CAGR {_pct(supplement['cagr'])} against SPYM {_pct(supplement['spy_cagr'])}. "
+            f"Max drawdown {_dd(supplement['maxdd'])} against SPYM {_dd(supplement['spy_maxdd'])}. "
             f"Ending equity ${supplement['final']:.2f}.",
             "",
         ]
@@ -281,18 +287,18 @@ def _slice_signals(signals, start, end):
     return {day: target for day, target in signals.items() if start <= day < end}
 
 
-def run_pair(label, trial_id, signals_exec, signals_ref, books, sessions, start, end):
+def run_pair(label, trial_id, signals_exec, bench_symbol, books, sessions, start, end, whole):
+    """One symmetric row. The strategy and the benchmark use the same share rule."""
     prices = {sym: books[sym]["actual"] for sym in books}
     splits = {sym: books[sym]["split"] for sym in books}
     dividends = {sym: books[sym]["div"] for sym in books}
     executable = _book(label, prices, splits, dividends, sessions,
-                       _slice_signals(signals_exec, start, end), start, end)
-    reference = _book(label + " SPY", prices, splits, dividends, sessions,
-                      _slice_signals(signals_ref, start, end), start, end)
-    spy = total_return_buy_hold(books["SPY"]["adj"], books["SPY"]["actual"], sessions, start, end)
-    vt = _book("VT", prices, splits, dividends, sessions, _hold("VT", start), start, end)
-    executable["judge"] = _judge(executable, spy, trial_id)
-    return executable, reference, spy, vt
+                       _slice_signals(signals_exec, start, end), start, end, whole=whole)
+    bench = _book(bench_symbol, prices, splits, dividends, sessions,
+                  _hold(bench_symbol, start), start, end, whole=whole)
+    vt = _book("VT", prices, splits, dividends, sessions, _hold("VT", start), start, end, whole=whole)
+    executable["judge"] = _judge(executable, bench, trial_id)
+    return executable, bench, vt
 
 
 def _write_series(stem, strategy, spy):
@@ -350,36 +356,47 @@ def main(argv=None):
     for key, trial_id, title, sig_x, sig_r, stem, is_bil, note in jobs:
         if key not in chosen:
             continue
-        decision, reference, spy, vt = run_pair(key, trial_id, sig_x, sig_r, books, sessions, start, end)
+        logic_book, logic_bench, _logic_vt = run_pair(
+            key, trial_id, sig_r, "SPY", books, sessions, start, end, whole=False,
+        )
+        decision, bench, vt = run_pair(
+            key, trial_id, sig_x, "SPYM", books, sessions, start, end, whole=True,
+        )
+        logic = {
+            "cagr": logic_book["cagr"],
+            "bench_cagr": logic_bench["cagr"],
+            "boot": logic_book["judge"]["boot"],
+        }
         early = None
         early_note = None
         if is_bil:
-            early_book, _ref, early_spy, _vt = run_pair(
-                key, trial_id, sig_x, sig_r, books, sessions, start, early_end,
+            early_book, early_bench, _vt = run_pair(
+                key, trial_id, sig_x, "SPYM", books, sessions, start, early_end, whole=True,
             )
             early = {
                 "cagr": early_book["cagr"],
-                "spy_cagr": early_spy["cagr"],
+                "spy_cagr": early_bench["cagr"],
                 "boot_rate": early_book["judge"]["boot"],
             }
             early_flags = leg_flags(trial_id, early["cagr"], early["spy_cagr"], early["boot_rate"])
             early_note = (
-                f"- {'pass' if early_flags['cagr'] else 'fail'}: 2014-2021 CAGR "
-                f"{_pct(early['cagr'])} against SPY {_pct(early['spy_cagr'])} "
+                f"- {'pass' if early_flags['cagr'] else 'fail'}: 2014-2021 whole-share CAGR "
+                f"{_pct(early['cagr'])} against SPYM {_pct(early['spy_cagr'])} "
                 f"(gap {_pct(early_book['judge']['gap'])}).\n"
                 f"- {'pass' if early_flags['drawdown'] else 'fail'}: 2014-2021 bootstrap "
                 f"{_num(None if early['boot_rate'] is None else early['boot_rate'], '{:.1%}')}. "
-                "GEM-BIL needs this window as well as 2014-today. 2022 is excluded from it."
+                "GEM-BIL needs this window as well as 2014-today. 2022 is excluded from it. "
+                "This check is row (b)."
             )
         verdict_text = trend_verdict(
-            trial_id, decision["cagr"], spy["cagr"], decision["judge"]["boot"], early=early,
+            trial_id, decision["cagr"], bench["cagr"], decision["judge"]["boot"], early=early,
         )
         if trial_id == "gem-agg":
             write_trial_count(verdict_text)
         note = f"{note} {replication_note(trial_id)}"
         n_eff = dsr_trials_next()
         decision["verdict_text"] = verdict_text
-        decision["flags"] = leg_flags(trial_id, decision["cagr"], spy["cagr"], decision["judge"]["boot"])
+        decision["flags"] = leg_flags(trial_id, decision["cagr"], bench["cagr"], decision["judge"]["boot"])
         decision["n_eff"] = n_eff
         decision["judge"]["stats"] = deflated_sharpe(decision["judge"]["left"], n_eff)
         listed = min(books["SPYM"]["actual"])
@@ -387,20 +404,21 @@ def main(argv=None):
         first_signal = min(live_signals) if live_signals else None
         supplement = None
         if first_signal is not None and first_signal <= supplement_end:
-            sup, _r, sup_spy, _v = run_pair(
-                key, trial_id, sig_x, sig_r, books, sessions, first_signal, supplement_end,
+            sup, sup_bench, _v = run_pair(
+                key, trial_id, sig_x, "SPYM", books, sessions, first_signal, supplement_end, whole=True,
             )
             supplement = {
                 "start": sup["start"], "end": sup["end"], "cagr": sup["cagr"], "final": sup["final"],
-                "maxdd": sup["maxdd"], "spy_cagr": sup_spy["cagr"], "spy_maxdd": sup_spy["maxdd"],
+                "maxdd": sup["maxdd"], "spy_cagr": sup_bench["cagr"], "spy_maxdd": sup_bench["maxdd"],
             }
-        text = render(title, decision, reference, spy, vt, early_note, supplement, note)
+        text = render(title, decision, bench, vt, logic, early_note, supplement, note)
         path = common.ROOT / "docs" / "backtest" / f"{stem}-2026-10-15.md"
         path.write_text(text + "\n", encoding="utf-8")
-        _write_series(stem, decision, spy)
-        written.append((stem, verdict_text, decision["cagr"], spy["cagr"], decision["judge"]["boot"]))
+        _write_series(stem, decision, bench)
+        written.append((stem, verdict_text, decision["cagr"], bench["cagr"], decision["judge"]["boot"]))
         print(stem, verdict_text,
-              f"cagr={decision['cagr']}", f"spy={spy['cagr']}", f"boot={decision['judge']['boot']}",
+              f"whole={decision['cagr']}", f"spym={bench['cagr']}", f"boot={decision['judge']['boot']}",
+              f"fractional={logic['cagr']}", f"spy={logic['bench_cagr']}",
               f"trials={n_eff}",
               flush=True)
     return written

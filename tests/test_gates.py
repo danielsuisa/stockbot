@@ -5,8 +5,9 @@ import unittest
 from pathlib import Path
 
 from bot.gates import (
-    CLOSED_COST, GO, NO_GO, PENDING, MARKER_END, MARKER_START, completed_tests,
-    dsr_trials_next, load_gates, replication_ok, trend_verdict, verdict, write_trial_count,
+    CLOSED_COST, GO, NO_GO, NOT_RECORDED, PENDING, MARKER_END, MARKER_START,
+    completed_tests, dsr_trials_next, info_only, load_gates, replication_ok, symmetry,
+    trend_verdict, verdict, write_trial_count,
 )
 
 
@@ -60,6 +61,19 @@ class GateTests(unittest.TestCase):
         self.assertEqual(completed_tests(), 9)
         self.assertEqual(dsr_trials_next(), 18)
         self.assertGreaterEqual(dsr_trials_next(), 18)
+
+    def test_the_verdict_row_is_whole_shares_and_cash(self):
+        rule = symmetry()
+        self.assertEqual(rule["rows"], ["fractional", "whole_share"])
+        self.assertEqual(rule["verdict_row"], "whole_share")
+        self.assertEqual(rule["spy_exposure"], "SPYM")
+        self.assertEqual(rule["out_of_market"], "cash")
+        self.assertEqual(rule["account"], 460)
+
+    def test_an_information_only_go_is_not_recorded(self):
+        self.assertEqual(info_only(GO), NOT_RECORDED)
+        self.assertEqual(info_only(NO_GO), NO_GO)
+        self.assertEqual(info_only(PENDING), PENDING)
 
     def test_a_pending_verdict_still_increments_the_counter(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -45,6 +45,23 @@ def whole_shares(cash, open_price):
     return 0
 
 
+def fractional_shares(cash, open_price):
+    """Fractional shares that spend the cash, paying the half-spread and the commission."""
+    if open_price <= 0 or cash <= 0:
+        return 0.0
+    fill = open_price * (1 + HALF_SPREAD)
+    lo, hi = 0.0, cash / fill
+    for _ in range(60):
+        mid = (lo + hi) / 2.0
+        if mid * fill + fixed_commission(mid, open_price) <= cash + 1e-8:
+            lo = mid
+        else:
+            hi = mid
+    if lo <= 0 or lo * fill + fixed_commission(lo, open_price) > cash + 1e-6:
+        return 0.0
+    return lo
+
+
 def actual_prints(bars, splits):
     """Undo split adjustment. `splits` maps the split date to new shares per old share.
 
@@ -102,7 +119,7 @@ def schedule(held, target, sessions, prices, signal_date):
     return orders
 
 
-def simulate(prices, splits, dividends, sessions, signals, start, end, account=ACCOUNT):
+def simulate(prices, splits, dividends, sessions, signals, start, end, account=ACCOUNT, whole=True):
     """Run one account from the close of `start` through the close of `end`.
 
     `signals` maps a session to an execution symbol or CASH. The account is cash at
@@ -124,11 +141,14 @@ def simulate(prices, splits, dividends, sessions, signals, start, end, account=A
             ratio = splits[held][day]
             opx = prices[held][day][0]
             grown = shares * ratio
-            whole = int(math.floor(grown + 1e-9))
-            fraction = grown - whole
-            if fraction > 1e-8:
-                cash += fraction * opx
-            shares = whole
+            if whole:
+                kept = int(math.floor(grown + 1e-9))
+                fraction = grown - kept
+                if fraction > 1e-8:
+                    cash += fraction * opx
+                shares = kept
+            else:
+                shares = grown
             div_shares = shares
             if shares == 0:
                 held = CASH
@@ -147,7 +167,7 @@ def simulate(prices, splits, dividends, sessions, signals, start, end, account=A
                 held = CASH
             elif side == "buy" and held == CASH and day in prices.get(symbol, {}):
                 opx = prices[symbol][day][0]
-                count = whole_shares(cash, opx)
+                count = whole_shares(cash, opx) if whole else fractional_shares(cash, opx)
                 if count > 0:
                     fill = opx * (1 + HALF_SPREAD)
                     fee = fixed_commission(count, opx)

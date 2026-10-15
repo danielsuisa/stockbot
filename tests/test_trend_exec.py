@@ -3,8 +3,8 @@ import unittest
 
 from bot.trend_exec import (
     CASH, actual_dividends, actual_prints, block_bootstrap, drawdown_is_smaller,
-    faber_signal, fixed_commission, gem_bil_passes, schedule, simulate, trend_passes,
-    whole_shares,
+    faber_signal, fixed_commission, fractional_shares, gem_bil_passes, schedule,
+    simulate, trend_passes, whole_shares,
 )
 
 
@@ -18,6 +18,8 @@ class Costs(unittest.TestCase):
         count = whole_shares(460, 84)
         self.assertEqual(count, 5)
         self.assertEqual(whole_shares(460, 700), 0)
+        self.assertEqual(whole_shares(460, 100), 4)
+        self.assertGreater(fractional_shares(460, 100), 4)
 
     def test_a_split_is_put_back_onto_the_historical_print(self):
         bars = {"2017-10-13": (29.94, 29.94), "2017-10-16": (30.01, 29.96)}

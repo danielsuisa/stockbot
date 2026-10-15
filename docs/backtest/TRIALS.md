@@ -79,7 +79,7 @@ Beating SPY by 1% a year, and an excess Sharpe of 0.8, are the bar for the retur
 ## Effective-trial counter
 
 <!-- TRIAL-COUNT -->
-Completed tests: **9** (6 prior + Faber + GEM + GEM-BIL). GO: **0**. The counter moved when those tests were run. A verdict stays PENDING-REPLICATION until an independent script matches. The gem-agg verdict is NO-GO. The next test uses a deflated Sharpe N of **18** (15 earlier variants + Faber + GEM + GEM-BIL).
+Completed tests: **9** (6 prior + Faber + GEM + GEM-BIL). GO: **0**. The counter moved when those tests were run. A verdict stays PENDING-REPLICATION until an independent script matches. The gem-agg verdict is NO-GO. The next test uses a deflated Sharpe N of **18** (15 earlier variants + Faber + GEM + GEM-BIL). A bug-fix re-run does not add a trial.
 <!-- /TRIAL-COUNT -->
 
 ## What this queue runs
@@ -94,13 +94,15 @@ The decision is GEM with AGG: **NO-GO**. GEM-BIL is **NO-GO**. Faber is **PENDIN
 
 The standalone script `gem.py` replicates GEM with no costs and fractional shares from 2014-01 through 2025-12 (144 holding months). It uses each fund's own month-end adjusted close, a twelve-month return that includes the signal month, and a holding for the next calendar month. Against the main signals on that same no-cost path, GEM (AGG) is 7.8725% a year on both sides and GEM-BIL is 8.0031% a year on both sides. Holding mismatches: 0. The September 2026 signal is VEU on both sides. The record is `docs/backtest/replication.json`.
 
-| Book | Verdict | CAGR | SPY total return | Bootstrap |
+| Book | Verdict | CAGR | Verdict benchmark | Bootstrap |
 |---|---|---:|---:|---:|
-| Faber, SPYM whole shares | PENDING-REPLICATION | +6.32% | +14.08% | 8.9% |
-| GEM, AGG, the decision | NO-GO | +6.48% | +14.08% | 1.5% |
-| GEM-BIL | NO-GO | +6.50% | +14.08% | 3.7% |
+| Faber T10, cash at 0%, whole shares of SPYM | PENDING-REPLICATION | +7.62% | +9.64% SPYM | 41.5% |
+| GEM, AGG, the decision | NO-GO | +6.48% | +12.34% SPYM | 0.1% |
+| GEM-BIL | NO-GO | +6.50% | +12.34% SPYM | 1.6% |
 
-The SPY column is the fractional adjusted-close total return, bought at the next session's adjusted open (2014-02-03) and held to the adjusted close on 2026-09-30. The old +11.24% was two whole shares of the raw close, with $103 left in cash. GEM-BIL also fails 2014–2021 (CAGR +5.21% against SPY +15.36%, bootstrap 0%). The desk's independent cost path closes GEM at 5.25% and GEM-BIL at 5.42%, with 1.75 switches a year. This book's own execution switches 21 times in 12.66 years, 1.66 a year. Both closes are NO-GO. The first executable fill is 5 shares of SPYM at 84.00 on 2014-02-03, with $38.96 left in cash.
+The verdict column is row (b): whole shares of a $460 account on both the strategy and the benchmark, with SPY exposure in SPYM. Row (a), fractional units on both sides, is logic and is not the verdict. GEM row (a) is +7.08% against fractional SPY +12.96%. GEM-BIL row (a) is +7.24% against the same +12.96%. The earlier fractional adjusted-close SPY figure of +14.08% is not the verdict benchmark. GEM-BIL also fails 2014–2021 on row (b) (CAGR +5.21% against SPYM +13.44%, bootstrap 0%). The desk's independent cost path closes GEM at 5.25% and GEM-BIL at 5.42%, with 1.75 switches a year. This book's own execution switches 21 times in 12.66 years, 1.66 a year. Both closes are NO-GO. The first executable fill is 5 shares of SPYM at 84.00 on 2014-02-03, with $38.96 left in cash.
+
+Faber T10's recorded book holds cash at 0% when it is out of the market. Row (a) is the pre-registered fractional adjusted close, +8.01% against SPY +10.92%, bootstrap 45.3%. A BIL out-of-market sleeve, with a commission on every BIL entry and exit, is information only: whole-share CAGR +7.73% against SPYM +9.64%, bootstrap 40.7%, fees $66 against $34 on the cash book. That sleeve is NO-GO. It is not recorded and it does not add a trial. The GEM-window Faber book, +6.32% with the prior fractional benchmark, was not rebuilt in this pass. Its recorded verdict stays PENDING-REPLICATION.
 
 ## Benchmark audit
 
@@ -116,9 +118,9 @@ Alpaca keys are not set in this environment, so SPY, VEU, AGG, and BIL were not 
 | Swing | 2023-01-03 to 2026-10-13, out of sample | Next session's open | Alpaca daily, `adjustment=raw` | Not used | +22.35% adjusted close to close | Unchanged NO-GO. The gate does not use SPY. |
 | Sector momentum | Out of sample, month-ends 2019-12-31 to 2026-09-30 | Month-end close | Yahoo adjusted close | Yahoo adjusted close | +15.25%, the same figure already in the report | Unchanged NO-GO. Sharpe still trails SPY. |
 | VIX term structure | One-day execution 2009-09-21 to 2026-10-14; out of sample from 2020 | Buy at the open, mark at the close | Yahoo adjusted open and adjusted close | Same adjusted open and close | Already total return. Out-of-sample adjusted close, 2020-01-02 to 2026-10-14, is +15.17%. | Verdict stays CLOSED-COST. |
-| Faber, SPYM whole shares | 2014-01-31 to 2026-09-30 | Next session's open | Raw open and close, plus cash dividends, whole shares | Raw close, whole shares, +11.24% | +14.08% adjusted open on 2014-02-03 to adjusted close on 2026-09-30. Bootstrap 8.9%. | Legs fail. Recorded verdict stays PENDING-REPLICATION. |
-| Faber T10 | 2006-12-29 to 2026-10-14 | That close | Yahoo adjusted close | Yahoo adjusted close, +10.92% | +10.93% before the entry and exit commission. Raw close on the same dates is +8.93%. | Legs fail. Recorded verdict stays PENDING-REPLICATION. |
-| GEM and GEM-BIL | 2014-01-31 to 2026-09-30 | Next session's open | Raw open and close, plus cash dividends, whole shares | Raw close, whole shares, +11.24% | +14.08%. Early window 2014-01-31 to 2021-12-31 is +15.36%. | Closed NO-GO. GEM bootstrap 1.5%. GEM-BIL bootstrap 3.7%, and 0% on 2014–2021. |
+| Faber, SPYM whole shares | 2014-01-31 to 2026-09-30 | Next session's open | Raw open and close, plus cash dividends, whole shares | Raw close, whole shares, +11.24% | Prior fractional adjusted path +14.08%. This book was not rebuilt onto the whole-share SPYM benchmark. | Legs fail. Recorded verdict stays PENDING-REPLICATION. |
+| Faber T10 | 2006-12-29 to 2026-10-14 | That close | Row (a) Yahoo adjusted close. Row (b) SPYM actual close, cash dividends, whole shares. Cash at 0% when out. | Row (a) adjusted close, +10.92%. Row (b) whole-share SPYM, +9.64%. | Row (a) +8.01% against +10.92%, bootstrap 45.3%. Row (b) +7.62% against +9.64%, bootstrap 41.5%. | Legs fail. Recorded verdict stays PENDING-REPLICATION. The BIL sleeve is information only and is NO-GO. |
+| GEM and GEM-BIL | 2014-01-31 to 2026-09-30 | Next session's open | Raw open and close, plus cash dividends. Row (b) whole shares. | Row (b) whole-share SPYM | +12.34%. Row (a) fractional SPY is +12.96%. Early window on row (b), 2014-01-31 to 2021-12-31, is +13.44%. | Closed NO-GO. GEM bootstrap 0.1%. GEM-BIL bootstrap 1.6%, and 0% on 2014–2021. |
 
 ## T7 and T8, locked before those returns
 
@@ -216,7 +218,7 @@ T7 is **CLOSED-COST**. T8 is **CLOSED-COST**. Variant B stays skipped. There is 
 
 T9, the turn-of-month quick screen, is **CLOSED-COST**. The compounded path was not run. Report: `docs/backtest/tom-2026-10-15.md`.
 
-T10, the Faber filter on SPY, fails both gate legs: CAGR +8.01% against adjusted-close SPY +10.92%. The recorded verdict stays **PENDING-REPLICATION**. On these dates the raw close compounds at 8.93%, so the reported SPY figure was already the adjusted close. Report: `docs/backtest/faber-spy-2026-10-15.md`.
+T10, the Faber filter, keeps cash at 0% when it is out of the market. The recorded verdict is row (b), whole shares of SPYM: CAGR +7.62% against SPYM +9.64%, bootstrap 41.5%. Both legs fail. The recorded verdict stays **PENDING-REPLICATION**. Row (a) is unchanged at +8.01% against adjusted-close SPY +10.92%, bootstrap 45.3%. The BIL sleeve is information only. On row (b) it is +7.73% against SPYM +9.64%, bootstrap 40.7%, with $66 of commission against $34 on the cash book, and the gate label is NO-GO. It is not recorded. It does not add a trial. N stays 18. Report: `docs/backtest/faber-spy-2026-10-15.md`.
 
 
 ## Sector rotation is closed

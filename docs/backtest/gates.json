@@ -11,6 +11,14 @@
     "max_cagr_gap": 0.005,
     "max_mismatch_periods": 2
   },
+  "symmetry": {
+    "rows": ["fractional", "whole_share"],
+    "verdict_row": "whole_share",
+    "account": 460,
+    "spy_exposure": "SPYM",
+    "out_of_market": "cash",
+    "note": "Row (a) is fractional units for the strategy and the benchmark. Row (b) is whole shares of a $460 account for both, and SPY exposure uses SPYM because one SPY share costs more than $460. The verdict is row (b). Faber, when out of the market, holds cash at 0%. A BIL sleeve is information only and does not add a trial. A bug-fix re-run does not change dsr_n_next."
+  },
   "trials": {
     "t3": {"status": "CLOSED-COST"},
     "t3-mid": {"status": "CLOSED-COST"},

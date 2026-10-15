@@ -121,6 +121,27 @@ class FaberTests(unittest.TestCase):
         self.assertAlmostEqual(spy["terminal"], 458.0, places=6)
         self.assertNotIn("tax", spy)
 
+    def test_whole_shares_buy_fewer_than_fractional_shares(self):
+        days = ["2006-12-29", "2007-01-31"]
+        prices = {"2006-12-29": 100.0, "2007-01-31": 110.0}
+        fractional = run_faber(days, {"2006-12-29": True}, prices)
+        whole = run_faber(days, {"2006-12-29": True}, prices, whole=True)
+        self.assertGreater(fractional["terminal"], whole["terminal"])
+        self.assertAlmostEqual(whole["terminal"], 498.0, places=6)
+
+    def test_a_bil_round_trip_pays_a_commission_on_entry_and_exit(self):
+        days = ["2006-12-29", "2007-01-31", "2007-05-30", "2007-06-29"]
+        prices = {day: 100.0 for day in days}
+        sleeve = {"2007-05-30": 50.0, "2007-06-29": 50.0}
+        signals = {"2006-12-29": True, "2007-01-31": False}
+        cash = run_faber(days, signals, prices)
+        booked = run_faber(days, signals, prices, sleeve=sleeve)
+        self.assertAlmostEqual(cash["fees"], 2.0, places=6)
+        self.assertAlmostEqual(cash["terminal"], 458.0, places=6)
+        self.assertAlmostEqual(booked["fees"], 4.0, places=6)
+        self.assertEqual(booked["switches"], 3)
+        self.assertGreater(booked["fees"], cash["fees"])
+
 
 if __name__ == "__main__":
     unittest.main()

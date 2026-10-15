@@ -3,6 +3,8 @@
 The quick screen and the full path are the T9 lock in docs/backtest/TRIALS.md.
 Cash earns nothing. Commission is IBKR Pro Fixed, with no spread.
 """
+import math
+
 from bot.queue_rules import fixed_fee
 
 ACCOUNT = 460.0
@@ -51,6 +53,19 @@ def shares_for_fee(cash, price):
             hi = mid
     fee = fixed_fee(lo, price)
     return lo, fee, cash - lo * price - fee
+
+
+def whole_shares_for_fee(cash, price):
+    """Integer shares that spend at most `cash`, fee included, no spread."""
+    if cash <= 0 or price <= 0:
+        return 0, 0.0, cash
+    count = int(math.floor(cash / price + 1e-12))
+    while count > 0:
+        fee = fixed_fee(count, price)
+        if count * price + fee <= cash + 1e-9:
+            return count, fee, cash - count * price - fee
+        count -= 1
+    return 0, 0.0, cash
 
 
 def window_fee(raw_entry, raw_exit, account=ACCOUNT):

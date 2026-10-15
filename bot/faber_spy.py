@@ -2,11 +2,14 @@
 
 The book is the T10 lock in docs/backtest/TRIALS.md. Cash earns nothing.
 Commission is IBKR Pro Fixed, with no spread. A close equal to the average is cash.
+The recorded book holds cash when it is out of the market. A sleeve price map is
+a separate holding, and entering or leaving it pays a commission.
 """
+import math
 import statistics
 
 from bot.queue_rules import fixed_fee
-from bot.tom_exec import shares_for_fee
+from bot.tom_exec import shares_for_fee, whole_shares_for_fee
 
 ACCOUNT = 460.0
 LOOKBACK = 10
@@ -44,59 +47,148 @@ def drawdown_reduced(strategy_dd, spy_dd):
     return strategy_dd < spy_dd
 
 
-def run_faber(days, signals, prices, account=ACCOUNT):
-    """Close-to-close book. `signals` maps a session to True (SPY) or False (cash).
+def run_faber(days, signals, prices, account=ACCOUNT, whole=False, sleeve=None,
+              dividends=None, sleeve_dividends=None, splits=None, sleeve_splits=None,
+              opens=None, sleeve_opens=None):
+    """Close-to-close book. `signals` maps a session to True (the risk fund) or False.
 
     The account starts in cash. A signal on a session trades at that close, so the
-    next session's move belongs to the new holding. The last session liquidates.
-    That final sale is the measurement exit. It is not an extra switch.
+    next session's move belongs to the new holding. False is cash at 0% unless
+    `sleeve` has a price that session, in which case the account holds the sleeve.
+    Entering and leaving the sleeve each pay a commission. The last session
+    liquidates. That final sale is the measurement exit. It is not an extra switch.
+
+    `whole` buys an integer share count. The default is fractional. `splits` maps
+    a session to new shares per old share and is applied to shares already held.
+    Dividend maps pay cash to shares held coming into that session.
     """
     cash = float(account)
     shares = 0.0
     basis = 0.0
-    holding = False
+    mode = "cash"
+    intent = "out"
     fees = 0.0
     switches = 0
     realizations = []
+    cash_extras = 0.0
+
+    def price_of(day, which):
+        book = prices if which == "risk" else sleeve
+        if not book or day not in book:
+            return None
+        px = book[day]
+        return px if px and px > 0 else None
 
     def mark(day):
-        if not holding:
+        if mode == "cash":
             return cash
-        return cash + shares * prices[day]
+        px = price_of(day, mode)
+        if px is None:
+            return cash
+        return cash + shares * px
 
-    def enter(day):
-        nonlocal cash, shares, basis, holding, fees
-        bought, fee, left = shares_for_fee(cash, prices[day])
-        cash = left
-        shares = bought
-        basis = bought * prices[day] + fee
-        holding = bought > 0
-        fees += fee
+    def size(day_cash, px):
+        if whole:
+            return whole_shares_for_fee(day_cash, px)
+        return shares_for_fee(day_cash, px)
 
-    def leave(day):
-        nonlocal cash, shares, basis, holding, fees
-        if not holding:
+    def sell(day):
+        nonlocal cash, shares, basis, mode, fees
+        px = price_of(day, mode)
+        if mode == "cash" or shares <= 0 or px is None:
+            shares = 0.0
+            basis = 0.0
+            mode = "cash"
             return
-        fee = fixed_fee(shares, prices[day])
-        proceeds = shares * prices[day] - fee
+        fee = fixed_fee(shares, px)
+        proceeds = shares * px - fee
         realizations.append((day, proceeds - basis))
         cash += proceeds
         fees += fee
         shares = 0.0
         basis = 0.0
-        holding = False
+        mode = "cash"
+
+    def buy(day, which):
+        nonlocal cash, shares, basis, mode, fees
+        px = price_of(day, which)
+        if px is None:
+            return
+        bought, fee, left = size(cash, px)
+        cash = left
+        shares = bought
+        basis = bought * px + fee
+        mode = which if bought > 0 else "cash"
+        fees += fee
+
+    def apply_split(day):
+        nonlocal cash, shares, basis, mode, cash_extras
+        if mode == "cash" or shares <= 0:
+            return
+        table = splits if mode == "risk" else sleeve_splits
+        if not table or day not in table:
+            return
+        grown = shares * table[day]
+        paid = 0.0
+        if whole:
+            kept = int(math.floor(grown + 1e-9))
+            fraction = grown - kept
+            open_book = opens if mode == "risk" else sleeve_opens
+            opx = None if not open_book else open_book.get(day)
+            if fraction > 1e-8 and opx and opx > 0:
+                paid = fraction * opx
+                shares = float(kept)
+            elif fraction > 1e-8:
+                shares = grown
+            else:
+                shares = float(kept)
+        else:
+            shares = grown
+        if shares <= 0:
+            realizations.append((day, paid - basis))
+            cash += paid
+            basis = 0.0
+            mode = "cash"
+            return
+        if paid:
+            cash += paid
+            cash_extras += paid
+
+    def credit_dividend(day):
+        nonlocal cash, cash_extras
+        if mode == "cash" or shares <= 0:
+            return
+        table = dividends if mode == "risk" else sleeve_dividends
+        if not table or day not in table:
+            return
+        amount = table[day] * shares
+        if amount:
+            cash += amount
+            cash_extras += amount
 
     curve = []
     for day in days:
-        if day in signals and bool(signals[day]) != holding:
-            if signals[day]:
-                enter(day)
-            else:
-                leave(day)
+        apply_split(day)
+        credit_dividend(day)
+        signaled = day in signals
+        if signaled:
+            intent = "risk" if bool(signals[day]) else "out"
+        if intent == "risk":
+            desired = "risk"
+        elif price_of(day, "sleeve") is not None:
+            desired = "sleeve"
+        else:
+            desired = "cash"
+        listing = (not signaled) and desired == "sleeve" and mode == "cash"
+        if (signaled and desired != mode) or listing:
+            if mode != "cash":
+                sell(day)
+            if desired != "cash":
+                buy(day, desired)
             switches += 1
         curve.append((day, mark(day)))
-    if holding:
-        leave(days[-1])
+    if mode != "cash":
+        sell(days[-1])
         curve[-1] = (days[-1], cash)
     returns = []
     for (_day0, equity0), (day1, equity1) in zip(curve, curve[1:]):
@@ -115,4 +207,5 @@ def run_faber(days, signals, prices, account=ACCOUNT):
         "realizations": realizations,
         "switches": switches,
         "sharpe": sharpe,
+        "cash_extras": cash_extras,
     }
