@@ -2,14 +2,15 @@
 
 Locked on 2026-10-15, before any Faber, GEM, or GEM-BIL return is computed. Nothing in this log places or transmits an order. A later GO would be a paper result. It would not be a merge and it would not be permission to trade.
 
-Tax is not computed in any report in this log. T3, T4, T6, T7, T8, and T9 are closed on cost. They are not in the counter. Their labels below are the gate function's return value. Faber, GEM, and GEM-BIL are three trials. The counter increments when a test is run, including while its verdict is PENDING-REPLICATION. Only the verdict column waits for an independent-script replication.
+Tax is not computed in any report in this log. T3, T4, T7, T8, and T9 are closed on cost and are not in the counter. T6 is the VIX term-structure book. The one-day book is the verdict, and the two-day book is reported beside it and does not add a count. T6's verdict is CLOSED-COST. T6 is the sixth prior completed test, so it is in the counter, and it is not a GO. The labels below are the gate function's return value. Faber, GEM, and GEM-BIL are three further trials. The counter increments when a test is run, including while its verdict is PENDING-REPLICATION. Only the verdict column waits for an independent-script replication. Completed tests stay 9. N stays 18.
 
 ## Not a trial
 
 - Turn of the month (T9) is CLOSED-COST. It is not a trial.
 - Post-earnings drift (T4) and the T3 penny book are CLOSED-COST. They are not counted.
-- The VIX term-structure book is the sixth prior completed test. Its verdict is CLOSED-COST, so it is in the counter and it is not a GO.
 - Pre-FOMC (T7) is CLOSED-COST. The CPI/PPI gap-down fade (T8) is CLOSED-COST. They are not trials.
+
+T6, the VIX term-structure book, is a completed test. It is the sixth row in the table below.
 
 ## Effective trials
 
@@ -22,9 +23,9 @@ A completed test is one return test that was run. The counter of completed tests
 | Penny intraday | Opening-range breakout; VWAP pullback | NO-GO, both |
 | Swing | No earnings filter; calendar earnings proxy | NO-GO, both |
 | Sector momentum | The 2026-10-15 return replay, under that day's gate | NO-GO. See the turnover close below. No further return is run. |
-| VIX term structure | One-day book, with the two-day book reported beside it | CLOSED-COST. Counted. Not a GO. |
+| T6, VIX term structure | One-day book, with the two-day book reported beside it | CLOSED-COST. In the counter. Not a GO. |
 
-T3, T4, T6, T7, T8, and T9 are not in the six prior tests. Faber, GEM, and GEM-BIL are three further completed tests. The live number is the marker below. The counter does not wait for replication. The verdict column does.
+T3, T4, T7, T8, and T9 are not in the six prior tests. T6 is the VIX term-structure row in that table, so it is in the counter. Faber, GEM, and GEM-BIL are three further completed tests. The live number is the marker below. The counter does not wait for replication. The verdict column does. N stays 18.
 
 Older closed work (the ticket search, the ensemble, the index program, the squeeze list) is not reopened and is not added on top of the counter in the marker below. The opening-range and VWAP penny books stay in the table. They are not the T3 premarket book.
 
@@ -117,7 +118,7 @@ Alpaca keys are not set in this environment, so SPY, VEU, AGG, and BIL were not 
 | Penny | 2023-01-03 to 2026-10-13, out of sample | Next minute's open | Alpaca SIP minutes, `adjustment=raw` | Not used | +22.35% adjusted close to close | Unchanged NO-GO. The gate does not use SPY. |
 | Swing | 2023-01-03 to 2026-10-13, out of sample | Next session's open | Alpaca daily, `adjustment=raw` | Not used | +22.35% adjusted close to close | Unchanged NO-GO. The gate does not use SPY. |
 | Sector momentum | Out of sample, month-ends 2019-12-31 to 2026-09-30 | Month-end close | Yahoo adjusted close | Yahoo adjusted close | +15.25%, the same figure already in the report | Unchanged NO-GO. Sharpe still trails SPY. |
-| VIX term structure | One-day execution 2009-09-21 to 2026-10-14; out of sample from 2020 | Buy at the open, mark at the close | Yahoo adjusted open and adjusted close | Same adjusted open and close | Already total return. Out-of-sample adjusted close, 2020-01-02 to 2026-10-14, is +15.17%. | Verdict stays CLOSED-COST. |
+| T6, VIX term structure | One-day execution 2009-09-21 to 2026-10-14; out of sample from 2020 | Buy at the open, mark at the close | Yahoo adjusted open and adjusted close | Same adjusted open and close | Already total return. Out-of-sample adjusted close, 2020-01-02 to 2026-10-14, is +15.17%. | T6 is this book. Verdict stays CLOSED-COST. It is the sixth prior completed test and it is in the counter. It is not a GO. |
 | Faber, SPYM whole shares | 2014-01-31 to 2026-09-30 | Next session's open | Raw open and close, plus cash dividends, whole shares | Raw close, whole shares, +11.24% | Prior fractional adjusted path +14.08%. This book was not rebuilt onto the whole-share SPYM benchmark. | Legs fail. Recorded verdict stays PENDING-REPLICATION. |
 | Faber T10 | 2006-12-29 to 2026-10-14 | That close | Row (a) Yahoo adjusted close. Row (b) SPYM actual close, cash dividends, whole shares. Cash at 0% when out. | Row (a) adjusted close, +10.92%. Row (b) whole-share SPYM, +9.64%. | Row (a) +8.01% against +10.92%, bootstrap 45.3%. Row (b) +7.62% against +9.64%, bootstrap 41.5%. | Legs fail. Recorded verdict stays PENDING-REPLICATION. The BIL sleeve is information only and is NO-GO. |
 | GEM and GEM-BIL | 2014-01-31 to 2026-09-30 | Next session's open | Raw open and close, plus cash dividends. Row (b) whole shares. | Row (b) whole-share SPYM | +12.34%. Row (a) fractional SPY is +12.96%. Early window on row (b), 2014-01-31 to 2021-12-31, is +13.44%. | Closed NO-GO. GEM bootstrap 0.1%. GEM-BIL bootstrap 1.6%, and 0% on 2014–2021. |
@@ -186,7 +187,7 @@ Sigma is the sample standard deviation of in-sample per-trade returns. Mu is the
 
 T7 is flagged: a pre-Fed book has about 8 announcement windows a year. T8 is flagged: CPI and PPI together are about 24 release days a year, and the fade trades only the gap-down days.
 
-T4, T5, and T6 are not re-run. Their reports get a preface. Where a saved trade list exists, n is computed from it. Where it does not, the preface says n was not computed. Saved fills keep the commission they were run with.
+T4 and T5 are not re-run. T6, the VIX term-structure book, is not re-run. It is already in the counter. These reports get a preface. Where a saved trade list exists, n is computed from it. Where it does not, the preface says n was not computed. Saved fills keep the commission they were run with. This does not change N.
 
 ### T9, turn of the month
 
@@ -212,7 +213,7 @@ T4 was not re-run. The queue verdict is **CLOSED-COST**. The saved fills stay at
 
 T5 was not re-run. The turnover close stays NO-GO at 9.82 replacements a year.
 
-T6 was not re-run. The verdict is **CLOSED-COST**.
+T6, the VIX term-structure book, was not re-run. The verdict is **CLOSED-COST**. It is the sixth prior completed test and it is already in the counter. It is not a GO. This line does not add a trial. N stays 18.
 
 T7 is **CLOSED-COST**. T8 is **CLOSED-COST**. Variant B stays skipped. There is no 13:55 print.
 
@@ -220,6 +221,18 @@ T9, the turn-of-month quick screen, is **CLOSED-COST**. The compounded path was 
 
 T10, the Faber filter, keeps cash at 0% when it is out of the market. The recorded verdict is row (b), whole shares of SPYM: CAGR +7.62% against SPYM +9.64%, bootstrap 41.5%. Both legs fail. The recorded verdict stays **PENDING-REPLICATION**. Row (a) is unchanged at +8.01% against adjusted-close SPY +10.92%, bootstrap 45.3%. The BIL sleeve is information only. On row (b) it is +7.73% against SPYM +9.64%, bootstrap 40.7%, with $66 of commission against $34 on the cash book, and the gate label is NO-GO. It is not recorded. It does not add a trial. N stays 18. Report: `docs/backtest/faber-spy-2026-10-15.md`.
 
+
+## Reopen thresholds
+
+No book is rerun in this section. Completed tests stay 9. GO stays 0. N stays 18.
+
+T3, T4, T6, T8, and T9 are NO-GO at any account size. A larger account does not reopen them. T3, T4, T8, and T9 stay out of the counter. T6 is the VIX term-structure book. It stays in the counter, and its recorded verdict stays CLOSED-COST. The account-size answer does not add a trial.
+
+T9's in-sample mean is negative, so the sample-size formula has no threshold. The out-of-sample edge is not used.
+
+T7 clears the cost screen on a cash-only account near $8,000. It does not beat SPY. It stays closed, and it is not in the counter.
+
+Straddles are TBD after 100 events. A cash account is acceptable for long straddles.
 
 ## Sector rotation is closed
 
