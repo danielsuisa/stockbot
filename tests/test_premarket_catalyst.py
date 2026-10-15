@@ -155,6 +155,38 @@ class Universe(unittest.TestCase):
 
 
 class Dates(unittest.TestCase):
+    def test_a_reverse_split_in_the_prior_year_blocks_the_variant(self):
+        # 2024 is a leap year, so 365 calendar days before 2024-06-01 is 2023-06-02.
+        self.assertTrue(pc.reverse_blocked(["2023-06-02"], "2024-06-01"))
+        self.assertTrue(pc.reverse_blocked(["2024-05-31"], "2024-06-01"))
+        self.assertFalse(pc.reverse_blocked(["2023-06-01"], "2024-06-01"))
+        self.assertFalse(pc.reverse_blocked(["2024-06-01"], "2024-06-01"))
+        self.assertFalse(pc.reverse_blocked([], "2024-06-01"))
+        # 2023 is not a leap year. The day 365 calendar days earlier still blocks.
+        self.assertTrue(pc.reverse_blocked(["2022-06-01"], "2023-06-01"))
+        self.assertFalse(pc.reverse_blocked(["2022-05-31"], "2023-06-01"))
+
+    def test_the_blacklist_is_beside_the_recorded_trades(self):
+        trades = [{"t": "AAA", "day": "2024-06-01"}, {"symbol": "BBB", "day": "2024-06-01"}]
+        got = pc.blacklist_summary(trades, {"AAA": ["2024-01-01"]})
+        self.assertEqual(got["n"], 2)
+        self.assertEqual(got["excluded"], 1)
+        self.assertAlmostEqual(got["pct"], 0.5)
+        self.assertEqual([row.get("symbol") or row["t"] for row in got["kept"]], ["BBB"])
+        empty = pc.blacklist_summary([], {"AAA": ["2024-01-01"]})
+        self.assertEqual((empty["n"], empty["excluded"], empty["pct"], empty["kept"]), (0, 0, None, []))
+
+    def test_the_empty_report_keeps_the_blacklist_beside_the_main_book(self):
+        from bot.premarket_catalyst_backtest import render
+        text = render({"run": "2026-10-15", "trades": [], "complete": True, "counts": {"rvol": 86582},
+                       "end": "2026-10-14", "first_bar": "2016-01-04", "universe": 1,
+                       "inactive_names": 0, "inactive_with_bars": 0, "aapl": "ok", "split_days": 0,
+                       "probe": []})
+        self.assertIn("Excluded 0 of 0 trades", text)
+        self.assertIn("Not tested", text)
+        self.assertIn("the tax is zero", text)
+        self.assertIn("Premarket catalyst: NO-GO", text)
+
     def test_thirty_calendar_days_not_sessions(self):
         # 2024-05-21 09:30 is exactly 30 days before 2024-06-20 09:30, so it still blocks.
         self.assertTrue(pc.filing_blocks([("2024-05-21T09:30", "S-1/A")], "2024-06-20"))

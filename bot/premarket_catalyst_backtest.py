@@ -22,10 +22,11 @@ from pathlib import Path
 from bot import alpaca, common
 from bot.desk_gate import YEARS, judge, tstat
 from bot.premarket_catalyst import (
-    CHEAP_SENS, CHEAP_SLIP, DELISTED, GAPS, ex_dates, filing_blocks, flat_minute, index_assets, opening_low,
-    pick, premarket, price_ok, primary_source, quote_spread, rvol_ok, scale_quote, score, setup, shares_ok,
-    source_name, split_sane, universe,
+    CHEAP_SENS, CHEAP_SLIP, DELISTED, GAPS, blacklist_summary, ex_dates, filing_blocks, flat_minute,
+    index_assets, opening_low, pick, premarket, price_ok, primary_source, quote_spread, rvol_ok,
+    scale_quote, score, setup, shares_ok, source_name, split_sane, universe,
 )
+from bot.tax import TAX, after_tax_terminal
 
 START, OOS, WARM = "2016-01-01", "2023-01-01", "2015-06-01"
 NY = alpaca.NY
@@ -556,6 +557,55 @@ def _sens_table(rows):
     return "\n".join(lines)
 
 
+def _variant_lines(result, rows):
+    """The reverse-split book, the flags that were not tested, and the after-tax line."""
+    summary = blacklist_summary(rows, result.get("reverses") or {})
+    counts = result.get("counts") or {}
+    pct = "not defined on an empty book" if summary["pct"] is None else f"{summary['pct']:.1%}"
+    lines = [
+        "## Reverse-split blacklist",
+        "",
+        "This variant sits beside the main book. It does not replace it, and it does not change the gate.",
+        "",
+        "A trade is excluded when a reverse-split ex-date falls in the 365 calendar days strictly before "
+        "the trade date. The trade date itself does not count. A split 366 calendar days earlier does not count.",
+        "",
+        f"Excluded {summary['excluded']} of {summary['n']} trades ({pct}). "
+        f"The book that remains has {len(summary['kept'])} trades.",
+    ]
+    if summary["n"] == 0:
+        lines += ["",
+                  f"The {counts.get('rvol', 0):,} relative-volume passers were not joined to Alpaca's "
+                  "reverse-split file. That would be a new download, and the recorded trade list has nothing "
+                  "to exclude. Both books are the same empty book, and both are NO-GO."]
+    lines += ["",
+              "## ATM, S-3 full text, and going concern",
+              "",
+              "Not tested. An at-the-market flag and a going-concern flag need the EDGAR full-text search. "
+              "That search was not run. The filing screen never started, because no name had a primary-wire "
+              "headline. This run also has no SEC_UA, and a request to sec.gov without it stops the process. "
+              "The locked 30-day submissions screen for S-1, 424B, and S-3 / S-3ASR is unchanged. It was not "
+              "reached either.",
+              "",
+              "## After tax",
+              "",
+              f"Israeli capital-gains tax at {TAX:.0%} on realized gains. Losses offset gains inside the same "
+              "calendar year. A losing year pays nothing and does not carry forward. There is no refund. "
+              "The tax line does not change the pre-tax gate.",
+              ""]
+    if summary["n"] == 0:
+        lines.append("This book never bought, so realized gains are zero and the tax is zero. Buy-and-hold "
+                     "SPY, taxed once at the end, is not a comparison for a book that never bought.")
+    else:
+        realized = [(row["day"], row.get("pnl") or 0.0) for row in rows]
+        terminal = sum(pnl for _day, pnl in realized)
+        after, tax, _years = after_tax_terminal(terminal, realized)
+        lines.append(f"Realized dollar profit ${terminal:,.2f}. Tax ${tax:,.2f}. After tax ${after:,.2f}. "
+                     "The book does not compound, so this is the sum of trade profits. Buy-and-hold SPY is "
+                     "not in this download, so the end-tax comparison is not computed here.")
+    return lines
+
+
 def render(result):
     rows = result.get("trades") or []
     oos = [r for r in rows if r["day"] >= OOS]
@@ -628,6 +678,8 @@ def render(result):
               "",
               f"Quotes on both sides: {sum(r.get('cost_mode') == 'quote' for r in rows)}. "
               f"Percent slippage: {sum(r.get('cost_mode') == 'slip' for r in rows)}.",
+              "",
+              *_variant_lines(result, rows),
               "",
               "## Survivorship",
               ""]

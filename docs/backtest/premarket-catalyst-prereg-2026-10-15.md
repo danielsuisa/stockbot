@@ -57,3 +57,17 @@ Known gaps the report must repeat, with the counts this run can fill:
 ## Run
 
 `python -m bot.premarket_catalyst_backtest`. The workflow starts only after this file is committed. The report commit removes the pull-request trigger so a later push does not download again.
+
+## Blacklist variant, added 2026-10-15
+
+Reported beside the main book. It does not replace that book and it does not change the gate.
+
+A trade is excluded when Alpaca records a `reverse_split` whose `ex_date` (or `process_date` if there is no `ex_date`) falls in the 365 calendar days strictly before the trade date. The trade date itself does not count. A split 366 calendar days earlier does not count. The report gives the share of recorded trades excluded, and the result with and without that exclusion.
+
+The recorded book has no fills. The exclusion rate on that list is the rate that is reported. The relative-volume passers are not joined to a new corporate-action download.
+
+An at-the-market flag beyond the locked S-3 / S-3ASR form screen, and a going-concern flag, need the EDGAR full-text search. They are marked not tested when that search is not run. The reason is stated in the report. The 30-day submissions screen is unchanged.
+
+## Tax line, added 2026-10-15
+
+Reports written from this date on include an after-tax line. Israeli capital-gains tax is 25% of a calendar year's net realized gain. A realized loss offsets a realized gain in the same year. There is no carryforward and no refund. Buy-and-hold SPY is taxed once, at the end. The pre-tax gate is unchanged. A book that never bought has no tax, and the SPY end-tax comparison does not apply to it.

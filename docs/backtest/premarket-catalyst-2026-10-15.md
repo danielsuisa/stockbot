@@ -55,6 +55,26 @@ This download had no fills, so the 1%, 0.5%, and 2% books are the same empty boo
 
 Quotes on both sides: 0. Percent slippage: 0.
 
+## Reverse-split blacklist
+
+This variant sits beside the main book. It does not replace it, and it does not change the gate.
+
+A trade is excluded when a reverse-split ex-date falls in the 365 calendar days strictly before the trade date. The trade date itself does not count. A split 366 calendar days earlier does not count.
+
+Excluded 0 of 0 trades (not defined on an empty book). The book that remains has 0 trades.
+
+The 86,582 relative-volume passers were not joined to Alpaca's reverse-split file. That would be a new download, and the recorded trade list has nothing to exclude. Both books are the same empty book, and both are NO-GO.
+
+## ATM, S-3 full text, and going concern
+
+Not tested. An at-the-market flag and a going-concern flag need the EDGAR full-text search. That search was not run. The filing screen never started, because no name had a primary-wire headline. This run also has no SEC_UA, and a request to sec.gov without it stops the process. The locked 30-day submissions screen for S-1, 424B, and S-3 / S-3ASR is unchanged. It was not reached either.
+
+## After tax
+
+Israeli capital-gains tax at 25% on realized gains. Losses offset gains inside the same calendar year. A losing year pays nothing and does not carry forward. There is no refund. The tax line does not change the pre-tax gate.
+
+This book never bought, so realized gains are zero and the tax is zero. Buy-and-hold SPY, taxed once at the end, is not a comparison for a book that never bought.
+
 ## Survivorship
 
 Known 2016–2018 delistings found in the asset file with bars: 2 of 9.

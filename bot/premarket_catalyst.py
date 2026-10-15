@@ -197,6 +197,40 @@ def ex_dates(rows):
     return out
 
 
+def reverse_blocked(ex_dates, day):
+    """True when a reverse-split ex-date falls in the 365 calendar days strictly before `day`.
+
+    The trade date itself does not block. A split 366 calendar days earlier does not block.
+    `ex_dates` is an iterable of `YYYY-MM-DD` strings, reverse splits only.
+    """
+    end = dt.date.fromisoformat(str(day)[:10])
+    start = end - dt.timedelta(days=365)
+    for raw in ex_dates or ():
+        seen = dt.date.fromisoformat(str(raw)[:10])
+        if start <= seen < end:
+            return True
+    return False
+
+
+def blacklist_summary(trades, reverses):
+    """How many recorded trades a reverse split in the prior year would have removed.
+
+    `reverses` maps a symbol to reverse-split ex-dates. The symbol is `symbol` or `t`.
+    `pct` is None when the trade list is empty. The kept list is the variant book.
+    """
+    kept = []
+    excluded = 0
+    for row in trades or []:
+        sym = row.get("symbol") or row.get("t")
+        dates = reverses.get(sym) if isinstance(reverses, dict) else None
+        if reverse_blocked(dates, row["day"]):
+            excluded += 1
+        else:
+            kept.append(row)
+    n = len(trades or [])
+    return {"n": n, "excluded": excluded, "pct": (excluded / n if n else None), "kept": kept}
+
+
 def split_sane(closes, sessions):
     """AAPL's 4-for-1 split on 2020-08-31 must not survive as a jump. `(ok, detail)`."""
     before = [d for d in sessions if d <= "2020-08-28" and d in closes]

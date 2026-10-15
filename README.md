@@ -197,6 +197,7 @@ Accept: application/vnd.github+json
 - **מניות פני לפני הפתיחה:** מבחן שלישי, נעול ב־<code dir="ltr">bot/premarket_catalyst_backtest.py</code> לפני ההרצה. מחירים מותאמי פיצול, כולל מניות שנמחקו. הוא לא חלק מהמאזין ולא שולח פקודה.
 - **סחף אחרי דוח:** מבחן רביעי, נעול ב־<code dir="ltr">bot/pead_backtest.py</code> לפני ההרצה. הוא לא חלק מהמאזין ולא שולח פקודה.
 - **מומנטום סקטורים:** מבחן חמישי, נעול ב־<code dir="ltr">bot/sector_mom_backtest.py</code> לפני ההרצה. תשע קרנות הסקטור המקוריות, בלי XLRE ובלי XLC. הוא לא חלק מהמאזין ולא שולח פקודה.
+- **עקום VIX:** מבחן שישי, נעול ב־<code dir="ltr">bot/vix_term_backtest.py</code> לפני ההרצה. מחזיק SPY כשסגירת VIX מתחת ל־VIX3M, ואחרת SGOV (לפני 2020, BIL). הוא לא חלק מהמאזין ולא שולח פקודה.
 
 ### פקודות בבוט
 
