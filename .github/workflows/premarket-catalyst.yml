@@ -1,11 +1,17 @@
 name: Premarket catalyst
 
 # Premarket relative volume with a primary-source headline. Research only: no order is placed or transmitted.
-# This file starts as workflow_dispatch. The start commit adds pull_request, and the report commit removes
-# it, because a later push matches the whole pull-request diff and would start a second download.
+# pull_request is only for the start commit. The report commit removes it, because a later push matches
+# the whole pull-request diff and would start a second download.
 # A NO-GO still exits 0. A hole in the download exits 1.
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/premarket-catalyst.yml"
+      - "bot/premarket_catalyst.py"
+      - "bot/premarket_catalyst_backtest.py"
+      - "docs/backtest/premarket-catalyst-prereg-2026-10-15.md"
 
 permissions:
   contents: read
