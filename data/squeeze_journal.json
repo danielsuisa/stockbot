@@ -200,7 +200,16 @@
     "pc_oi": 0.4695,
     "iv30": 153.518
    },
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-01",
+    "end": "2026-10-14",
+    "hit": false,
+    "crash": false,
+    "maxup": 0.0032,
+    "dd": -0.3088,
+    "r10": -0.2959
+   }
   },
   {
    "date": "2026-10-01",
@@ -226,7 +235,16 @@
     "pc_oi": 0.2922,
     "iv30": 88.425
    },
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-01",
+    "end": "2026-10-14",
+    "hit": false,
+    "crash": false,
+    "maxup": 0.0431,
+    "dd": -0.2993,
+    "r10": -0.2698
+   }
   },
   {
    "date": "2026-10-01",
@@ -252,7 +270,16 @@
     "pc_oi": 0.5538,
     "iv30": 64.176
    },
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-01",
+    "end": "2026-10-14",
+    "hit": false,
+    "crash": false,
+    "maxup": 0.0102,
+    "dd": -0.2475,
+    "r10": -0.2358
+   }
   },
   {
    "date": "2026-10-01",
@@ -273,7 +300,16 @@
    "shares": 667047,
    "borrow": null,
    "gamma": null,
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-01",
+    "end": "2026-10-14",
+    "hit": false,
+    "crash": false,
+    "maxup": 0.1787,
+    "dd": -0.2902,
+    "r10": -0.2852
+   }
   },
   {
    "date": "2026-10-01",
@@ -299,7 +335,16 @@
     "pc_oi": 0.7606,
     "iv30": 68.052
    },
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-01",
+    "end": "2026-10-14",
+    "hit": false,
+    "crash": false,
+    "maxup": 0.1558,
+    "dd": -0.1726,
+    "r10": -0.166
+   }
   },
   {
    "date": "2026-10-02",
