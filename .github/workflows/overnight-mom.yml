@@ -1,0 +1,47 @@
+name: Overnight momentum backtest
+
+# Replays the pre-registered close-to-open book in bot/overnight_mom.py.
+# A NO-GO still exits 0. A hole in the download exits 1. The report is an artifact; it is committed by hand.
+# pull_request, not the default branch: this repo's Actions token cannot dispatch a workflow that
+# is not already on the default branch. The pre-registration commit does not touch this file's
+# trigger paths until the run is meant to start.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "bot/overnight_mom.py"
+      - ".github/workflows/overnight-mom.yml"
+      - "docs/backtest/overnight-mom-prereg-2026-10-14.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: overnight-mom-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Replay the pre-registered overnight book
+        timeout-minutes: 340
+        run: python -m bot.overnight_mom
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: overnight-mom
+          path: |
+            docs/backtest/overnight-mom-2*.md
+            docs/backtest/overnight-mom-2*.json
+          if-no-files-found: warn
+          retention-days: 14
