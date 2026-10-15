@@ -182,8 +182,15 @@ class Halts(unittest.TestCase):
         self.assertFalse(quiet["affected"])
 
     def test_the_desk_size_skips_a_position_under_fifty_dollars(self):
-        self.assertEqual(pc.luld_band(0.74), None)
+        self.assertAlmostEqual(pc.luld_band(0.74), 0.15 / 0.74)
+        self.assertAlmostEqual(pc.luld_band(0.10), 0.75)
+        self.assertAlmostEqual(pc.luld_band(0.20), 0.75)
         self.assertEqual(pc.luld_band(0.75), 0.20)
+        # A one-cent stop under $0.75 used to size off the stop. The $0.15 band now caps it.
+        tight = pc.desk_size(0.50, 0.49)
+        self.assertAlmostEqual(tight["worst"], 0.15)
+        self.assertAlmostEqual(tight["position"], 9.2 * 0.50 / 0.15)
+        self.assertFalse(tight["kept"])
         self.assertEqual(pc.luld_band(3), 0.20)
         self.assertEqual(pc.luld_band(3.01), 0.10)
         # $2 with a 20% band: 2% of $460 is a $46 position.
@@ -237,7 +244,18 @@ class Dates(unittest.TestCase):
         self.assertIn("the tax is zero", text)
         self.assertIn("Trades affected by a halt: 0 of 0", text)
         self.assertIn("Signals that survive: 0 of 0", text)
+        self.assertIn("under $1 for 30 sessions", text)
+        self.assertIn("both sides of the split are empty", text)
         self.assertIn("Premarket catalyst: NO-GO", text)
+
+    def test_thirty_raw_closes_under_a_dollar_tags_the_name(self):
+        under = [0.40] * 30
+        self.assertTrue(pc.subdollar_streak(under))
+        self.assertTrue(pc.subdollar_streak([5.0] + under))
+        self.assertFalse(pc.subdollar_streak([0.40] * 29))
+        self.assertFalse(pc.subdollar_streak(under[:-1] + [1.0]))
+        self.assertFalse(pc.subdollar_streak(under[:-1] + [None]))
+        self.assertFalse(pc.subdollar_streak([]))
 
     def test_thirty_calendar_days_not_sessions(self):
         # 2024-05-21 09:30 is exactly 30 days before 2024-06-20 09:30, so it still blocks.

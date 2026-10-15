@@ -74,7 +74,13 @@ Reported beside the main book. Neither one changes the gate, the entry, or the p
 
 A likely halt is a gap of at least 5 minutes between 1-minute bars from 09:30 through the flat minute. The difference is measured on the bar stamps, so a bar 5 minutes after the previous one counts. The fill for this variant is the open of the first bar after the gap. The report compares that loss per share with the planned stop distance. A stop or a target on an earlier bar means the halt did not affect the trade. A gap that never resumes by the flat minute is not counted. The recorded book has no fills, so the minute bars are not downloaded again for this count.
 
-The desk size is the smaller of 1% of the $460 account at the stop and 2% of the account at the worst case. Worst case per share is the larger of the stop distance and the LULD band: 20% from $0.75 through $3, and 10% above $3. Below $0.75 the rule names no band, so the worst case is the stop. A position under $50 is skipped. The report gives the share of recorded signals that survive. On this account the 20% band caps the position at $46, so a signal from $0.75 through $3 does not survive.
+The desk size is the smaller of 1% of the $460 account at the stop and 2% of the account at the worst case. Worst case per share is the larger of the stop distance and the LULD dollars. From $0.75 through $3 the band is 20%. Above $3 it is 10%. Under $0.75 the dollar band is the lesser of $0.15 and 75% of the price, and the fraction used in the size is that dollar band divided by the price. A price of $0.75 stays on the 20% band. A position under $50 is skipped. The report gives the share of recorded signals that survive. On this account the 20% band caps the position at $46, so a signal from $0.75 through $3 does not survive. Under $0.75 the dollar band keeps the position under $50 as well.
+
+## Sub-$1 streak, added 2026-10-15
+
+Reported beside the main book. It does not change the gate.
+
+A trade is tagged when each of the 30 raw closes strictly before the entry day is under $1. The entry day is not in the count. A close of exactly $1.00 is not under $1. Fewer than 30 printed sessions is not the tag. The closes are the raw daily closes, not the split-adjusted series. The tag is a proxy for a Nasdaq closing-bid deficiency. The report splits mean net R and win rate by the tag, in-sample and out-of-sample. The recorded book has no fills, so the split on that list is empty.
 
 ## Tax line, added 2026-10-15
 

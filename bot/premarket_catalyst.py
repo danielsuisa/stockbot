@@ -385,16 +385,36 @@ def _minutes(hhmm):
     return int(hour) * 60 + int(minute)
 
 
+# Under $0.75 the dollar band is the lesser of $0.15 and 75% of the price.
+LULD_LOW_DOLLARS, LULD_LOW_FRACTION = 0.15, 0.75
+# A proxy for the Nasdaq bid-price deficiency: 30 raw closes under $1 before entry.
+SUBDOLLAR, SUBDOLLAR_DAYS = 1.0, 30
+
+
 def luld_band(price):
     """The desk's LULD fraction. $0.75 through $3 is 20%. Above $3 is 10%.
 
-    Below $0.75 the desk rule does not name a band, so the caller treats the stop as the worst case.
+    Under $0.75 the fraction is min($0.15, 75% of the price) divided by the price.
+    A price of $0.75 stays on the 20% band.
     """
-    if price is None or price < 0.75:
+    if price is None or price <= 0:
         return None
+    if price < 0.75:
+        return min(LULD_LOW_DOLLARS, LULD_LOW_FRACTION * price) / price
     if price <= 3:
         return 0.20
     return 0.10
+
+
+def subdollar_streak(prior_closes, days=SUBDOLLAR_DAYS, level=SUBDOLLAR):
+    """True when the last `days` closes before entry are all strictly under `level`.
+
+    `prior_closes` is oldest to newest and does not include the entry session. A close
+    of exactly $1 is not under $1. Fewer than `days` prints is not the tag.
+    """
+    if not prior_closes or len(prior_closes) < days:
+        return False
+    return all(px is not None and px < level for px in list(prior_closes)[-days:])
 
 
 def desk_size(entry, stop, account=ACCOUNT, band=None):

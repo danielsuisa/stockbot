@@ -85,13 +85,26 @@ The recorded book has no fills, so there is no realized loss to set against the 
 
 ## Desk size
 
-Reported beside the main book. The gate still buys the whole shares of $460. This size is the smaller of 1% of the account at the stop and 2% of the account at the worst case. Worst case per share is the larger of the stop distance and the LULD band: 20% from $0.75 through $3, and 10% above $3. Below $0.75 the desk rule names no band, so the worst case is the stop. A position under $50 is skipped.
+Reported beside the main book. The gate still buys the whole shares of $460. This size is the smaller of 1% of the account at the stop and 2% of the account at the worst case. Worst case per share is the larger of the stop distance and the LULD dollars. From $0.75 through $3 the band is 20%. Above $3 it is 10%. Under $0.75 the dollar band is the lesser of $0.15 and 75% of the price. A position under $50 is skipped.
 
 Signals that survive: 0 of 0 (not defined on an empty signal list).
 
-On a $460 account the 20% band caps the position at $46, which is under $50, and a wider stop is smaller still. A signal priced from $0.75 through $3 does not survive. Above $3 the 10% band caps the position at $92.
+On a $460 account the 20% band caps the position at $46, which is under $50, and a wider stop is smaller still. A signal priced from $0.75 through $3 does not survive. Above $3 the 10% band caps the position at $92. Under $0.75 the dollar band keeps the position under $50 as well.
 
 The recorded book has no entry signals, so this percentage is not defined. The screen was not run again. The desk book never bought, so its tax is zero.
+
+## Sub-$1 streak
+
+A trade is tagged when each of the 30 raw closes before the entry day is strictly under $1. The entry day is not in the count. A close of exactly $1.00 is not under $1. Fewer than 30 printed sessions is not the tag. The tag is a proxy for a Nasdaq bid-price deficiency. It does not change the gate. The figures are the same net R as the main table.
+
+| Tag | Sample | Trades | Mean net R | Win rate |
+|---|---|---:|---:|---:|
+| under $1 for 30 sessions | 2023–2026 | 0 | — | — |
+| not tagged | 2023–2026 | 0 | — | — |
+| under $1 for 30 sessions | 2016–2022 | 0 | — | — |
+| not tagged | 2016–2022 | 0 | — | — |
+
+The recorded book has no fills, so both sides of the split are empty. The screen was not run again.
 
 ## Survivorship
 
