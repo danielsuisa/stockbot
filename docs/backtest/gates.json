@@ -1,9 +1,16 @@
 {
   "locked": "2026-10-15",
-  "note": "Thresholds and closed-cost status only. This file stores no return, no bootstrap rate, and no verdict. Faber and GEM are one trial. counted_before_faber_gem is the list already counted. The runner adds one after the gem-agg result exists. That sum is not stored here. GEM-BIL does not add a count.",
-  "counted_before_faber_gem": ["breakout", "noise", "penny", "swing", "sector"],
-  "increment_after": "gem-agg",
-  "faber_gem_is_one_trial": true,
+  "note": "Thresholds, the completed-test list, and the replication rule. This file stores no return, no bootstrap rate, and no verdict. completed_prior plus completed_added is the trial counter. That counter moves when a test is run, including while the verdict is PENDING-REPLICATION. Only the verdict waits for docs/backtest/replication.json. dsr_n_next is the variant count the next test's deflated Sharpe uses.",
+  "completed_prior": ["breakout", "noise", "penny", "swing", "sector", "vix"],
+  "completed_added": ["faber", "gem", "gem-bil"],
+  "go_count": 0,
+  "dsr_n_earlier_variants": 15,
+  "dsr_n_next": 18,
+  "replication": {
+    "required_before_verdict": true,
+    "max_cagr_gap": 0.005,
+    "max_mismatch_periods": 2
+  },
   "trials": {
     "t3": {"status": "CLOSED-COST"},
     "t3-mid": {"status": "CLOSED-COST"},

@@ -2,28 +2,29 @@
 
 Locked on 2026-10-15, before any Faber, GEM, or GEM-BIL return is computed. Nothing in this log places or transmits an order. A later GO would be a paper result. It would not be a merge and it would not be permission to trade.
 
-Tax is not computed in any report in this log. T3, T4, T6, T7, T8, and T9 are closed on cost. They are not trials. Their labels below are the gate function's return value. Faber and GEM are one trial. The counter in the marker is written only after the GEM result.
+Tax is not computed in any report in this log. T3, T4, T6, T7, T8, and T9 are closed on cost. They are not in the counter. Their labels below are the gate function's return value. Faber, GEM, and GEM-BIL are three trials. The counter increments when a test is run, including while its verdict is PENDING-REPLICATION. Only the verdict column waits for an independent-script replication.
 
 ## Not a trial
 
 - Turn of the month (T9) is CLOSED-COST. It is not a trial.
 - Post-earnings drift (T4) and the T3 penny book are CLOSED-COST. They are not counted.
-- The VIX term-structure book is CLOSED-COST. It is not a trial.
+- The VIX term-structure book is the sixth prior completed test. Its verdict is CLOSED-COST, so it is in the counter and it is not a GO.
 - Pre-FOMC (T7) is CLOSED-COST. The CPI/PPI gap-down fade (T8) is CLOSED-COST. They are not trials.
 
 ## Effective trials
 
-A raw trial is one return variant that was actually run. Correlated variants share a cluster. The deflated Sharpe ratio uses the number of clusters, not the number of raw rows. Faber and GEM are one trial. GEM-BIL is reported inside that trial and is not a second count.
+A completed test is one return test that was run. The counter of completed tests is 9: the six prior rows below, plus Faber, plus GEM, plus GEM-BIL. The deflated Sharpe for the next test uses a variant count of 18, which is 15 earlier variants plus those three. That variant count is not the completed-test counter.
 
-| Cluster | Raw trials already run | Result |
+| Completed test | What was run | Result |
 |---|---|---|
 | Breakout | v1; v2; the six post-mortem filters fit on 2024 | NO-GO. The filters were discarded. |
 | Noise area | QQQ and SPY, long and short | NO-GO |
 | Penny intraday | Opening-range breakout; VWAP pullback | NO-GO, both |
 | Swing | No earnings filter; calendar earnings proxy | NO-GO, both |
 | Sector momentum | The 2026-10-15 return replay, under that day's gate | NO-GO. See the turnover close below. No further return is run. |
+| VIX term structure | One-day book, with the two-day book reported beside it | CLOSED-COST. Counted. Not a GO. |
 
-T3, T4, T6, T7, T8, and T9 are not clusters. VIX is not a cluster. What remains before Faber and GEM is the five rows above: breakout, noise, penny intraday, swing, and sector momentum. Faber and GEM are one more trial, counted only after the GEM result. GEM-BIL is reported inside that trial and does not add a second count. The live number is the marker below. It is not filled in before that result.
+T3, T4, T6, T7, T8, and T9 are not in the six prior tests. Faber, GEM, and GEM-BIL are three further completed tests. The live number is the marker below. The counter does not wait for replication. The verdict column does.
 
 Older closed work (the ticket search, the ensemble, the index program, the squeeze list) is not reopened and is not added on top of the counter in the marker below. The opening-range and VWAP penny books stay in the table. They are not the T3 premarket book.
 
@@ -45,15 +46,15 @@ The bootstrap is fixed as follows. The inputs are the paired monthly total retur
 
 Calendar 2020 and calendar 2022 maximum drawdowns are reported separately, for the strategy and for SPY. They are not a gate. Each year uses the daily equity curve inside that year, with the peak reset at the first close of the year.
 
-The deflated Sharpe ratio and the probabilistic Sharpe ratio are reported at the live trial count in the marker below, once that count exists. They are not a third pass condition. The pass rule is (a) and (b) only.
+The deflated Sharpe ratio and the probabilistic Sharpe ratio are reported. The next test uses the variant count in the marker, 18. They are not a third pass condition. The pass rule is (a) and (b) only. A GO or a NO-GO is recorded only after the independent-script replication in `docs/backtest/README.md`. Until that check passes, the verdict is PENDING-REPLICATION. The completed-test counter does not wait.
 
 ### GEM and GEM-BIL are both reported
 
 GEM holds AGG when SPY's 12-month total return does not beat BIL. GEM-BIL is the same rule with BIL as the defensive asset instead of AGG.
 
-Both books are reported. The one with the better result is not selected afterward. The decision is the original GEM book, the one that uses AGG.
+Both books are reported. The one with the better result is not selected afterward. The decision is the original GEM book, the one that uses AGG. GEM and GEM-BIL are separate trials. Each has its own preregistered gate.
 
-GEM-BIL is reported beside GEM and does not add a trial. It can be marked GO only if it passes (a) and (b) on 2014-today and it also passes (a) and (b) on 2014-2021 alone. That second window is the month-ends from 2014-01 through 2021-12. The year 2022, and every later month, is excluded from it. Failing either window is not a GO.
+GEM-BIL can be marked GO only if it passes (a) and (b) on 2014-today and it also passes (a) and (b) on 2014-2021 alone. That second window is the month-ends from 2014-01 through 2021-12. The year 2022, and every later month, is excluded from it. Failing either window is not a GO. The recorded verdict still waits for the independent-script check.
 
 ### The rule itself
 
@@ -78,7 +79,7 @@ Beating SPY by 1% a year, and an excess Sharpe of 0.8, are the bar for the retur
 ## Effective-trial counter
 
 <!-- TRIAL-COUNT -->
-Effective trials after the GEM result: **6**. The list before Faber and GEM has 5 names. Faber and GEM add one, and only after this result. GEM-BIL does not add another. The gem-agg verdict is NO-GO. VIX is not in the count.
+Completed tests: **9** (6 prior + Faber + GEM + GEM-BIL). GO: **0**. The counter moved when those tests were run. A verdict stays PENDING-REPLICATION until an independent script matches. The gem-agg verdict is NO-GO. The next test uses a deflated Sharpe N of **18** (15 earlier variants + Faber + GEM + GEM-BIL).
 <!-- /TRIAL-COUNT -->
 
 ## What this queue runs
@@ -89,11 +90,13 @@ Every return report also shows buy-and-hold VT beside SPY. SPY stays the primary
 
 ## Results, computed after the lock
 
-The decision is GEM with AGG: **NO-GO**. Faber and GEM-BIL are also NO-GO. GEM-BIL was not preferred to GEM. Reports: `docs/backtest/faber-10m-2026-10-15.md`, `docs/backtest/gem-agg-2026-10-15.md`, `docs/backtest/gem-bil-2026-10-15.md`. Daily returns are in `docs/backtest/series/`.
+The decision is GEM with AGG: **NO-GO**. GEM-BIL is **NO-GO**. Faber is **PENDING-REPLICATION** because no independent script has matched it yet; the test is already in the counter. GEM-BIL was not preferred to GEM. Reports: `docs/backtest/faber-10m-2026-10-15.md`, `docs/backtest/gem-agg-2026-10-15.md`, `docs/backtest/gem-bil-2026-10-15.md`. Daily returns are in `docs/backtest/series/`.
+
+The standalone script `gem.py` replicates GEM with no costs and fractional shares from 2014-01 through 2025-12 (144 holding months). It uses each fund's own month-end adjusted close, a twelve-month return that includes the signal month, and a holding for the next calendar month. Against the main signals on that same no-cost path, GEM (AGG) is 7.8725% a year on both sides and GEM-BIL is 8.0031% a year on both sides. Holding mismatches: 0. The September 2026 signal is VEU on both sides. The record is `docs/backtest/replication.json`.
 
 | Book | Verdict | CAGR | SPY CAGR | Bootstrap |
 |---|---|---:|---:|---:|
-| Faber, SPYM whole shares | NO-GO | +6.32% | +11.24% | 2.3% |
+| Faber, SPYM whole shares | PENDING-REPLICATION | +6.32% | +11.24% | 2.3% |
 | GEM, AGG, the decision | NO-GO | +6.48% | +11.24% | 0.1% |
 | GEM-BIL | NO-GO | +6.50% | +11.24% | 1.0% |
 

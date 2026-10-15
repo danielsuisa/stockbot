@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 from bot import common
 from bot.gates import (
-    COUNT_PATH, drawdown_fraction, effective_trials, leg_flags, trial, trend_verdict,
+    drawdown_fraction, dsr_trials_next, leg_flags, replication_note, trial, trend_verdict,
     write_trial_count,
 )
 from bot.trend_exec import (
@@ -203,7 +203,8 @@ def render(title, decision, reference, spy, vt, early_note, supplement, signal_n
     lines += [
         f"Monthly observations {judge['months']}. "
         f"Probabilistic Sharpe {_num(stats.get('psr'), '{:.3f}')}. "
-        f"Deflated Sharpe {_num(stats.get('dsr'), '{:.3f}')} at {decision['n_eff']} effective trials. "
+        f"Deflated Sharpe {_num(stats.get('dsr'), '{:.3f}')} at {decision['n_eff']} variants, "
+        "the count the next test uses. "
         "Those two ratios are reported. They do not change the verdict.",
         "",
     ]
@@ -260,12 +261,6 @@ def _write_series(stem, strategy, spy):
                 f"{b_curve[day] / b_curve[prev] - 1:.8f}",
             ])
     return path
-
-
-def _trials_now():
-    if COUNT_PATH.exists():
-        return json.loads(COUNT_PATH.read_text(encoding="utf-8"))["effective_trials"]
-    return effective_trials(False)
 
 
 def main(argv=None):
@@ -328,9 +323,9 @@ def main(argv=None):
             trial_id, decision["cagr"], spy["cagr"], decision["judge"]["boot"], early=early,
         )
         if trial_id == "gem-agg":
-            n_eff = write_trial_count(verdict_text)
-        else:
-            n_eff = _trials_now()
+            write_trial_count(verdict_text)
+        note = f"{note} {replication_note(trial_id)}"
+        n_eff = dsr_trials_next()
         decision["verdict_text"] = verdict_text
         decision["flags"] = leg_flags(trial_id, decision["cagr"], spy["cagr"], decision["judge"]["boot"])
         decision["n_eff"] = n_eff

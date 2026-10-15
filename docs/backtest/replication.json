@@ -1,0 +1,22 @@
+{
+  "gem-agg": {
+    "passed": true,
+    "window": "2014-01..2025-12",
+    "months": 144,
+    "mismatch": 0,
+    "independent_cagr": 0.07872466677480916,
+    "main_cagr": 0.07872466677480916,
+    "cagr_gap": 0.0,
+    "sep_2026": "VEU"
+  },
+  "gem-bil": {
+    "passed": true,
+    "window": "2014-01..2025-12",
+    "months": 144,
+    "mismatch": 0,
+    "independent_cagr": 0.08003096097760287,
+    "main_cagr": 0.08003096097760287,
+    "cagr_gap": 0.0,
+    "sep_2026": "VEU"
+  }
+}
