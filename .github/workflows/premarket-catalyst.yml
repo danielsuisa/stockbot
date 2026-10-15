@@ -1,0 +1,47 @@
+name: Premarket catalyst
+
+# Premarket relative volume with a primary-source headline. Research only: no order is placed or transmitted.
+# This file starts as workflow_dispatch. The start commit adds pull_request, and the report commit removes
+# it, because a later push matches the whole pull-request diff and would start a second download.
+# A NO-GO still exits 0. A hole in the download exits 1.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: premarket-catalyst-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/alpaca
+            .cache/sec-t3
+          key: t3-alpaca-${{ github.sha }}
+          restore-keys: t3-alpaca-
+      - name: Replay the pre-registered premarket catalyst
+        timeout-minutes: 340
+        run: python -m bot.premarket_catalyst_backtest
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          SEC_UA: ${{ secrets.SEC_UA }}
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: premarket-catalyst
+          path: docs/backtest/premarket-catalyst-2*
+          if-no-files-found: warn
+          retention-days: 14
