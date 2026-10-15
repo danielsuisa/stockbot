@@ -3694,6 +3694,155 @@
     "0001225028-26-000006"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-15-PRTA",
+   "date": "2026-10-15",
+   "ticker": "PRTA",
+   "cik": 1559053,
+   "company": "PROTHENA CORP PUBLIC LTD CO",
+   "sic": 2834,
+   "kind": "big",
+   "quality": 18,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 18,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 8.5,
+    "asof": "2026-10-15 20:00",
+    "source": "live"
+   },
+   "total": 6737349.3,
+   "insiders": 1,
+   "liquidity": 5043968.251891569,
+   "scores": {
+    "piotroski": "5/8",
+    "altman": "Z 11.21",
+    "beneish": null
+   },
+   "accs": [
+    "0001045463-26-000016",
+    "0001045463-26-000017",
+    "0001045463-26-000018",
+    "0001045463-26-000019",
+    "0001045463-26-000020",
+    "0001045463-26-000021"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-15-GOLD",
+   "date": "2026-10-15",
+   "ticker": "GOLD",
+   "cik": 1591588,
+   "company": "Gold.com, Inc.",
+   "sic": 5094,
+   "kind": "big",
+   "quality": 16,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 16,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 39.63,
+    "asof": "2026-10-15 20:00",
+    "source": "live"
+   },
+   "total": 3983018.72,
+   "insiders": 1,
+   "liquidity": 22037604.953540456,
+   "scores": {
+    "piotroski": "6/9",
+    "altman": "Z 6.78",
+    "beneish": -3.21
+   },
+   "accs": [
+    "0001104659-26-115328",
+    "0001104659-26-116094"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-15-ECF",
+   "date": "2026-10-15",
+   "ticker": "ECF",
+   "cik": 793040,
+   "company": "ELLSWORTH GROWTH & INCOME FUND LTD",
+   "sic": null,
+   "kind": "big",
+   "quality": 11,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 11,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 11.8,
+    "asof": "2026-10-15 20:00",
+    "source": "live"
+   },
+   "total": 1377949.13,
+   "insiders": 1,
+   "liquidity": 599622.5476611744,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000334",
+    "0001510281-26-000341",
+    "0001510281-26-000345",
+    "0001510281-26-000349"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-15-CXM",
+   "date": "2026-10-15",
+   "ticker": "CXM",
+   "cik": 1569345,
+   "company": "Sprinklr, Inc.",
+   "sic": 7372,
+   "kind": "big",
+   "quality": 28,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 9,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 5.85,
+    "asof": "2026-10-15 20:00",
+    "source": "live"
+   },
+   "total": 850500.0,
+   "insiders": 1,
+   "liquidity": 14828008.73755325,
+   "scores": {
+    "piotroski": "6/9",
+    "altman": "Z'' 2.07",
+    "beneish": -3.01
+   },
+   "accs": [
+    "0001164644-26-000008"
+   ],
+   "returns": {}
   }
  ]
 }
