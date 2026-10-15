@@ -230,7 +230,7 @@ T3, T4, T6, T8, and T9 are NO-GO at any account size. A larger account does not 
 
 T9's in-sample mean is negative, so the sample-size formula has no threshold. The out-of-sample edge is not used.
 
-T7 clears the cost screen on a cash-only account near $8,000. It does not beat SPY. It stays closed, and it is not in the counter.
+T7 Variant A has no threshold. The in-sample mean net is -0.4502% per event (mu -0.004502, 120 trades, 2000 through 2014). The sample-size formula has no threshold when that mean is negative. The out-of-sample mean held-window SPY move of +0.18% is not used. Variant C has no threshold. Its in-sample mean net is -0.0048% per event (mu -0.000048, 120 trades). T7 stays closed, and it is not in the counter.
 
 Straddles are TBD after 100 events. A cash account is acceptable for long straddles.
 
