@@ -119,6 +119,17 @@ def rank_top(returns):
     return [sym for sym, _ret in ordered[:TOP_N]]
 
 
+def single_fund_replacements(held, nxt):
+    """How many held names changed. Cash is the empty set.
+
+    A one-for-one swap counts as one. Selling both for cash counts as two, and buying
+    two names out of cash counts as two. The same names in a different order count as zero.
+    """
+    left = len(set(held) - set(nxt))
+    entered = len(set(nxt) - set(held))
+    return max(left, entered)
+
+
 def decision(prices, spy, ends, i):
     """('cash', []) or ('invest', [two symbols]). None when a price or the average is missing."""
     point = asof(spy, ends[i], limit=0)

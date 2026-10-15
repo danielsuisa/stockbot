@@ -1,16 +1,10 @@
 name: Premarket mid
 
 # $3–$20 parallel of the premarket catalyst. Research only: no order is placed or transmitted.
-# pull_request starts this replay from the pull-request branch. The report commit removes it.
+# pull_request was removed so later commits on this branch do not start another download.
 # A finished NO-GO exits 0. A hole in the download exits 1.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - bot/premarket_mid.py
-      - bot/premarket_mid_backtest.py
-      - .github/workflows/premarket-mid.yml
-      - docs/backtest/premarket-mid-prereg-2026-10-15.md
 
 permissions:
   contents: read
