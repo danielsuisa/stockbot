@@ -232,8 +232,31 @@ T9's in-sample mean is negative, so the sample-size formula has no threshold. Th
 
 T7 Variant A has no threshold. The in-sample mean net is -0.4502% per event (mu -0.004502, 120 trades, 2000 through 2014). The sample-size formula has no threshold when that mean is negative. The out-of-sample mean held-window SPY move of +0.18% is not used. Variant C has no threshold. Its in-sample mean net is -0.0048% per event (mu -0.000048, 120 trades). T7 stays closed, and it is not in the counter.
 
-Straddles are TBD after 100 events. A cash account is acceptable for long straddles.
+Long straddles are pre-registered in the section below. They are not run. The counter stays at 9 completed tests, 0 GO, and a deflated Sharpe N of 18 until that test is run.
 
 ## Sector rotation is closed
 
 `docs/backtest/T5_TURNOVER.md` counts the preregistered book from 2007-01-31 through 2026-09-30. The average is 9.82 single-fund replacements per year. The gate was 2. T5 is closed NO-GO. No return test is run. The earlier sector return report stays a prior trial under the old gate. It does not add a cluster beyond the one already counted.
+
+## Straddles, locked before any return
+
+Locked on 2026-10-15, before any straddle return is computed. Nothing here places or transmits an order. This section does not run the book and does not add a trial. Completed tests stay 9. GO stays 0. The deflated Sharpe N in the marker stays 18.
+
+When the straddle test is run, it is trial 19. That run uses a deflated Sharpe N of 19. A bug-fix re-run of an earlier book does not consume trial 19.
+
+The book is long straddles. A long straddle is acceptable in a cash account.
+
+The build window is the only place a threshold is set. It stays open until both of these are true: it contains at least 100 events, and those events span at least two earnings seasons. One of those conditions does not close the window. The report names the first and last earnings season inside the build window.
+
+The test window is the next 50 events after the build window ends. It can confirm a pass or close the book. It does not change a threshold, a sample size, or the deflated Sharpe N.
+
+A GO requires the thresholds from the build window, confirmation on the test window, and a passing deflated Sharpe computed with N=19. The deflated Sharpe is not a pass condition for Faber or GEM. It is a pass condition for this trial. The standing replication rule still applies: until an independent script matches, the verdict is PENDING-REPLICATION.
+
+Every number in a results table states its window in that row. The window is build or test. A count of events states the same window. A number with no window is not a result. The table below is the lock. Its numbers are the rules, not returns.
+
+| Rule | Number | Window |
+|---|---:|---|
+| Events required before the build window can end | 100 | build |
+| Earnings seasons required before the build window can end | 2 | build |
+| Events in the test window | 50 | test. The next 50 events after the build window ends. |
+| Deflated Sharpe N when this trial is run | 19 | trial count for this test. Not a return from the build window or the test window. |
