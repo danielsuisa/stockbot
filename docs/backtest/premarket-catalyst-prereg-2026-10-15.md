@@ -79,3 +79,7 @@ The desk size is the smaller of 1% of the $460 account at the stop and 2% of the
 ## Tax line, added 2026-10-15
 
 Reports written from this date on include an after-tax line. Israeli capital-gains tax is 25% of a calendar year's net realized gain. A realized loss offsets a realized gain in the same year. There is no carryforward and no refund. Buy-and-hold SPY is taxed once, at the end. The pre-tax gate is unchanged. A book that never bought has no tax, and the SPY end-tax comparison does not apply to it.
+
+## Parallel book, added 2026-10-15
+
+A separate book uses this rule on a prior close from $3 through $20, both ends inclusive. It is locked in `docs/backtest/premarket-mid-prereg-2026-10-15.md`. It does not change the $0.50–$5 band, and it is not this report.

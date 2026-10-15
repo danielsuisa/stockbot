@@ -397,17 +397,18 @@ def luld_band(price):
     return 0.10
 
 
-def desk_size(entry, stop, account=ACCOUNT):
+def desk_size(entry, stop, account=ACCOUNT, band=None):
     """Dollar position = min(1% of the account at the stop, 2% at the worst case).
 
-    Worst case per share is the larger of the stop distance and the LULD dollars. The position is
-    skipped when it comes out under $50. This size can be fractional. The main book still buys the
-    whole shares of $460.
+    Worst case per share is the larger of the stop distance and the LULD dollars. `band` overrides
+    the price lookup; None uses `luld_band`. The position is skipped when it comes out under $50.
+    This size can be fractional. The main book still buys the whole shares of $460.
     """
     if entry is None or stop is None or entry <= 0 or entry <= stop:
         return None
     stop_dist = entry - stop
-    band = luld_band(entry)
+    if band is None:
+        band = luld_band(entry)
     luld_dist = None if band is None else band * entry
     worst = stop_dist if luld_dist is None else max(stop_dist, luld_dist)
     by_stop = (DESK_RISK * account) * entry / stop_dist
@@ -417,11 +418,14 @@ def desk_size(entry, stop, account=ACCOUNT):
             "luld": band, "kept": position >= DESK_MIN_POSITION}
 
 
-def desk_summary(trades, account=ACCOUNT):
-    """How many recorded signals clear the $50 position. `pct` is None when there are no signals."""
+def desk_summary(trades, account=ACCOUNT, band=None):
+    """How many recorded signals clear the $50 position. `pct` is None when there are no signals.
+
+    `band` is forwarded to `desk_size`. None keeps the price lookup.
+    """
     kept = []
     for row in trades or []:
-        sized = desk_size(row.get("entry"), row.get("stop"), account)
+        sized = desk_size(row.get("entry"), row.get("stop"), account, band)
         if sized and sized["kept"]:
             kept.append(dict(row, desk_position=sized["position"], desk_shares=sized["shares"]))
     n = len(trades or [])

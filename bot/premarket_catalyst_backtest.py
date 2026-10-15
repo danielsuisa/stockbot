@@ -138,6 +138,27 @@ def _page_actions(types, start, end, symbols=None):
             return rows
 
 
+def reverse_splits(start, end, symbols):
+    """Reverse-split ex-dates only. A separate file, so the combined split cache stays unlabeled."""
+    path = CACHE / f"reverse_{start}_{end}.json.gz"
+    got = alpaca._read(path)
+    if got is None:
+        got = []
+        try:
+            got.extend(_page_actions("reverse_split", start, end))
+            print(f"reverse splits {len(got)}", flush=True)
+        except urllib.error.HTTPError as e:
+            if e.code != 400:
+                raise
+            print("reverse-split market-wide query rejected; chunking symbols", flush=True)
+            got = []
+            for i in range(0, len(symbols), CHUNK):
+                got.extend(_page_actions("reverse_split", start, end, symbols[i:i + CHUNK]))
+            print(f"reverse splits {len(got)}", flush=True)
+        alpaca._write(path, got)
+    return ex_dates(got)
+
+
 def corporate_actions(start, end, symbols):
     """Forward and reverse splits. A failed download is an incomplete file, not a silent skip."""
     path = CACHE / f"splits_{start}_{end}.json.gz"
@@ -168,8 +189,11 @@ def _end():
     return today, days, {d: cal[d] for d in days}
 
 
-def _candidates(adj, sessions, splits):
-    """Days whose previous session printed a split-adjusted close in the band, and that are not an ex-date."""
+def _candidates(adj, sessions, splits, accept=price_ok):
+    """Days whose previous session printed a split-adjusted close in the band, and that are not an ex-date.
+
+    `accept` defaults to the $0.50–$5 test. The $3–$20 book passes its own test and does not change this one.
+    """
     index = {d: i for i, d in enumerate(sessions)}
     out, dropped = [], 0
     for sym, rows in adj.items():
@@ -179,7 +203,7 @@ def _candidates(adj, sessions, splits):
             if day < START or i < 1:
                 continue
             prev = by.get(sessions[i - 1])
-            if not prev or not price_ok(prev[4]):
+            if not prev or not accept(prev[4]):
                 continue
             if day in banned:
                 dropped += 1
@@ -241,11 +265,15 @@ def _pass_rvol(cands, sessions):
     return passed
 
 
-def _news(symbols, day):
-    """Symbols in `symbols` with a primary-source headline in the 24 hours ending 09:30. Fail closed."""
+def _news(symbols, day, cache_name="news"):
+    """Symbols in `symbols` with a primary-source headline in the 24 hours ending 09:30. Fail closed.
+
+    `cache_name` is the cache directory. The default is this book's file. A parallel book uses its own
+    directory, because a hit is the headlines already stored for the symbols in that file.
+    """
     if not symbols:
         return set(), False
-    path = CACHE / "news" / f"{day}.json.gz"
+    path = CACHE / cache_name / f"{day}.json.gz"
     got = alpaca._read(path)
     end = dt.datetime.fromisoformat(f"{day}T09:30").replace(tzinfo=NY)
     start = end - dt.timedelta(hours=24)
@@ -437,7 +465,7 @@ def _next_minute(hhmm):
     return f"{t // 60:02d}:{t % 60:02d}"
 
 
-def _screen(passed, listed):
+def _screen(passed, listed, news_cache="news"):
     """News, filings, and shares outstanding. Returns the rows that may be played, plus counts."""
     counts = {"rvol": len(passed), "news": 0, "news_truncated": 0, "no_cik": 0, "filings_blocked": 0,
               "filings_incomplete": 0, "shares_none": 0, "shares_scale": 0, "shares_stale": 0,
@@ -450,7 +478,7 @@ def _screen(passed, listed):
     ready = []
     for n, day in enumerate(sorted(by_day)):
         rows = by_day[day]
-        hits, truncated = _news([r["t"] for r in rows], day)
+        hits, truncated = _news([r["t"] for r in rows], day, news_cache)
         if truncated:
             counts["news_truncated"] += 1
             rows = []
@@ -486,7 +514,7 @@ def _screen(passed, listed):
     return ready, counts
 
 
-def _play(ready, cal, raw, adj):
+def _play(ready, cal, raw, adj, scorer=score):
     books = []
     by_day = defaultdict(list)
     for row in ready:
@@ -516,7 +544,7 @@ def _play(ready, cal, raw, adj):
             raw_c, adj_c = chosen["raw_close"], chosen["adj_close"]
             entry_q = _nbbo(chosen["t"], day, chosen["fill_minute"], raw_c, adj_c)
             exit_q = _nbbo(chosen["t"], day, chosen["exit_minute"], raw_c, adj_c)
-            pack = {slip: score(chosen, entry_q, exit_q, slip) for slip in (CHEAP_SLIP, *CHEAP_SENS)}
+            pack = {slip: scorer(chosen, entry_q, exit_q, slip) for slip in (CHEAP_SLIP, *CHEAP_SENS)}
             scored = pack[CHEAP_SLIP]
             if scored:
                 for slip, key in ((0.005, "net_r_0_5"), (0.02, "net_r_2")):
