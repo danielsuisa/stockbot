@@ -89,3 +89,9 @@ Reports written from this date on include an after-tax line. Israeli capital-gai
 ## Parallel book, added 2026-10-15
 
 A separate book uses this rule on a prior close from $3 through $20, both ends inclusive. It is locked in `docs/backtest/premarket-mid-prereg-2026-10-15.md`. It does not change the $0.50–$5 band, and it is not this report.
+
+## Queue amendment, 2026-10-15
+
+Commission on a future fill is IBKR Pro Fixed, each order, from the shares and that order's fill price: $0.005 a share, minimum $1.00, maximum 1% of trade value. The $0.0035 / $0.35 sentence above is the earlier lock. This amendment replaces it. The recorded book has no fills, so nothing is re-priced.
+
+Before the results, the report computes n = (1.645 × sigma / mu)² from in-sample per-trade returns. The per-trade return is the dollar result divided by the dollars paid. If the out-of-sample count is below n, or n is undefined, the queue verdict is UNKNOWN (insufficient sample), not NO-GO. The four desk checks stay in the report and are not that verdict when the sample is short. The after-tax line stays.

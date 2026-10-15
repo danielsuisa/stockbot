@@ -91,13 +91,13 @@ class Costs(unittest.TestCase):
         self.assertEqual(hair["shares"], 92)
         self.assertAlmostEqual(hair["fill_entry"], 5.0)
         self.assertAlmostEqual(hair["net_r"], again["net_r"])
-        self.assertAlmostEqual(hair["net_r"], 40.47 / 46)
+        self.assertAlmostEqual(hair["net_r"], 39.17 / 46)
         self.assertNotAlmostEqual(hair["net_r"], pc.score(priced, None, None, 0.01)["net_r"])
         quoted = mid.score_priced(priced, (4.95, 5.05), (5.40, 5.60), 0.02)
         wide_exit = mid.score_priced(priced, (4.95, 5.05), (1.0, 9.0), 0.01)
         self.assertEqual(quoted["cost_mode"], "quote")
         self.assertAlmostEqual(quoted["fill_entry"], 5.0)
-        self.assertAlmostEqual(quoted["net_r"], 36.10 / 46)
+        self.assertAlmostEqual(quoted["net_r"], 34.80 / 46)
         self.assertAlmostEqual(quoted["net_r"], wide_exit["net_r"])
         slipped = pc.score(priced, None, None, 0.01)
         self.assertEqual(slipped["cost_mode"], "slip")
@@ -127,7 +127,7 @@ class Report(unittest.TestCase):
     def test_the_empty_book_is_a_separate_no_go(self):
         from bot.premarket_mid_backtest import render
         text = render(_stub())
-        self.assertIn("Premarket $3–$20: NO-GO", text)
+        self.assertIn("Premarket $3–$20: UNKNOWN (insufficient sample)", text)
         self.assertIn("Separate from the sub-$5 book", text)
         self.assertIn("both ends inclusive", text)
         self.assertIn("Excluded 0 of 0 trades", text)
@@ -137,7 +137,7 @@ class Report(unittest.TestCase):
         self.assertIn("Signals that survive: 0 of 0", text)
         self.assertIn("$92", text)
         self.assertIn("9.2%", text)
-        self.assertNotIn("Premarket catalyst: NO-GO", text)
+        self.assertNotIn("Premarket catalyst: UNKNOWN (insufficient sample)", text)
 
     def test_a_recorded_trade_keeps_the_halt_the_tax_and_the_ten_percent_count(self):
         from bot.premarket_mid_backtest import render
@@ -147,7 +147,7 @@ class Report(unittest.TestCase):
                  "halt_affected": True, "planned_loss": 0.50, "realized_loss": 0.80}
         text = render(_stub(trades=[trade], counts={"rvol": 3, "news": 1},
                             reverses={"AAA": ["2024-01-01"]}))
-        self.assertIn("Premarket $3–$20: NO-GO", text)
+        self.assertIn("Premarket $3–$20: UNKNOWN (insufficient sample)", text)
         self.assertIn("Excluded 1 of 1 trades", text)
         self.assertIn("Tax $5.00", text)
         self.assertIn("After tax $15.00", text)

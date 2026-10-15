@@ -25,7 +25,8 @@ import datetime as dt
 import re
 import statistics
 
-from bot.desk_gate import ACCOUNT, COMMISSION, MIN_ORDER, shares_for, walk
+from bot.desk_gate import ACCOUNT, shares_for, walk
+from bot.queue_rules import fixed_fee
 
 PRICE_LO, PRICE_HI = 0.50, 5.0
 RVOL_MIN = 5.0
@@ -283,10 +284,11 @@ def cheap_fill(entry, exit_px, side, entry_quote, exit_quote, slip):
     return entry * (1 - slip), exit_px * (1 + slip), "slip"
 
 
-def _fee(shares, pro):
+def _fee(shares, pro, price):
+    """One side. IBKR Pro Fixed, from the shares and that side's fill price."""
     if not pro:
         return 0.0
-    return 2 * max(MIN_ORDER, COMMISSION * shares)
+    return fixed_fee(shares, price)
 
 
 def cheap_result(entry, exit_px, stop, side, entry_quote, exit_quote, slip, pro=True, shares=None):
@@ -309,7 +311,7 @@ def cheap_result(entry, exit_px, stop, side, entry_quote, exit_quote, slip, pro=
     if side == "short" and fill_e >= short_stop:
         return None
     gross = (fill_x - fill_e) if side == "long" else (fill_e - fill_x)
-    pnl = gross * shares - _fee(shares, pro)
+    pnl = gross * shares - (_fee(shares, pro, fill_e) + _fee(shares, pro, fill_x))
     risk = abs(entry - stop) * shares
     if not risk:
         return None

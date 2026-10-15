@@ -27,11 +27,9 @@ _EULER = 0.5772156649015329
 
 
 def fixed_commission(shares, price):
-    """IBKR Pro fixed: $0.005 a share, minimum $1, maximum 1% of trade value."""
-    notion = abs(shares) * price
-    if notion <= 0 or shares == 0:
-        return 0.0
-    return min(max(1.0, 0.005 * abs(shares)), 0.01 * notion)
+    """IBKR Pro Fixed: $0.005 a share, minimum $1, maximum 1% of trade value."""
+    from bot.queue_rules import fixed_fee
+    return fixed_fee(shares, price)
 
 
 def whole_shares(cash, open_price):

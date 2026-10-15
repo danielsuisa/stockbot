@@ -246,7 +246,8 @@ class Dates(unittest.TestCase):
         self.assertIn("Signals that survive: 0 of 0", text)
         self.assertIn("under $1 for 30 sessions", text)
         self.assertIn("both sides of the split are empty", text)
-        self.assertIn("Premarket catalyst: NO-GO", text)
+        self.assertIn("Premarket catalyst: UNKNOWN (insufficient sample)", text)
+        self.assertIn("Required n is not defined", text)
 
     def test_thirty_raw_closes_under_a_dollar_tags_the_name(self):
         under = [0.40] * 30

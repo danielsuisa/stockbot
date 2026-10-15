@@ -10,14 +10,24 @@ The calendar holds 227 announcement dates. Counts from 2000 through 2025 run fro
 
 The account starts at $460 and may hold fractional shares. Out of SPY it holds BIL before 2020-01-01, SGOV from its first bar in 2020, and before BIL a cash accrual at the prior session's Yahoo ^IRX close divided by 100 and by 252. Commission is IBKR Pro fixed, $0.005 a share, minimum $1, maximum 1% of trade value, plus 1 basis point a side. Selling the sleeve and buying SPY are both orders. The 25% tax nets each calendar year and is subtracted once from terminal equity. The daily path stays pre-tax.
 
-The bar is the out-of-sample after-tax CAGR, at least 1 percentage point above buy-and-hold SPY over the same dates. In-sample cannot flip the verdict. A and C are judged separately. The higher one is not selected. VT is shown pre-tax, beside SPY. SPY is the bar.
+The bar is the out-of-sample after-tax CAGR, at least 1 percentage point above buy-and-hold SPY over the same dates. In-sample cannot flip the verdict. A and C are judged separately. The higher one is not selected. VT is shown pre-tax, beside SPY. SPY is the bar. Before that bar, the sample gate applies. An out-of-sample count below the required n is UNKNOWN (insufficient sample), not NO-GO.
+
+## Required sample
+
+Flag: T7 is a pre-Fed book, about 8 announcement windows a year, so the out-of-sample count grows slowly. The per-trade return is the round trip's dollar result divided by the dollars spent to buy SPY, after commission. The in-sample column later in this report is the economic reading. It is not the queue verdict.
+
+Variant A: in-sample per-trade mu -0.004502, sigma 0.016611, 120 trades. Required n = (1.645 × sigma / mu)² = 36.84. Mu is negative. The formula is applied as written.
+Out-of-sample trades: 96. That count meets n (36.84). The sample gate does not replace this book's own bar.
+
+Variant C: in-sample per-trade mu -0.000048, sigma 0.018098, 120 trades. Required n = (1.645 × sigma / mu)² = 392211.14. Mu is negative. The formula is applied as written.
+Out-of-sample trades: 96. That count is below n, so the queue verdict is UNKNOWN (insufficient sample), not NO-GO.
 
 | Book | Trades | After-tax CAGR | SPY after-tax | Pre-tax CAGR | SPY pre-tax | Fees | Tax | Max DD | Verdict |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
 | A IS | 120 | -4.92% | +3.36% | -4.36% | +4.21% | $364 | $20 | 55.16% | NO-GO |
 | C IS | 120 | -1.01% | +3.36% | -0.18% | +4.21% | $364 | $53 | 29.16% | NO-GO |
 | A OOS | 96 | -7.57% | +11.62% | -7.57% | +13.69% | $388 | $0 | 60.36% | NO-GO |
-| C OOS | 96 | -7.71% | +11.62% | -7.71% | +13.69% | $388 | $0 | 61.05% | NO-GO |
+| C OOS | 96 | -7.71% | +11.62% | -7.71% | +13.69% | $388 | $0 | 61.05% | UNKNOWN (insufficient sample) |
 
 ## Out of sample
 
@@ -25,15 +35,15 @@ Each round trip is four orders once the sleeve is an ETF: sell the sleeve, buy S
 
 Variant A is **NO-GO**. 96 round trips, from 2015-01-02 to 2026-10-14. After-tax CAGR -7.57% against SPY +11.62%. Pre-tax CAGR -7.57% against SPY +13.69%. Mean held-window SPY move +0.18%. Winning windows 51.0%. VT buy-and-hold pre-tax CAGR is +10.85% from 2015-01-02. Monthly Sharpe -0.56. Probabilistic Sharpe 0.000. Deflated Sharpe 0.000 at 9 effective trials. Maximum drawdown 60.36%, pre-tax. Fees $388.00. Tax $0.00. BIL starts 2007-05-30. SGOV starts 2020-06-01. Forward-filled sessions: SPY 0, BIL 0, SGOV 0, ^IRX 8.
 
-Variant C is **NO-GO**. 96 round trips, from 2015-01-02 to 2026-10-14. After-tax CAGR -7.71% against SPY +11.62%. Pre-tax CAGR -7.71% against SPY +13.69%. Mean held-window SPY move +0.17%. Winning windows 56.2%. VT buy-and-hold pre-tax CAGR is +10.85% from 2015-01-02. Monthly Sharpe -0.51. Probabilistic Sharpe 0.000. Deflated Sharpe 0.000 at 9 effective trials. Maximum drawdown 61.05%, pre-tax. Fees $388.00. Tax $0.00. BIL starts 2007-05-30. SGOV starts 2020-06-01. Forward-filled sessions: SPY 0, BIL 0, SGOV 0, ^IRX 8.
+Variant C is **UNKNOWN (insufficient sample)**. 96 round trips, from 2015-01-02 to 2026-10-14. After-tax CAGR -7.71% against SPY +11.62%. Pre-tax CAGR -7.71% against SPY +13.69%. Mean held-window SPY move +0.17%. Winning windows 56.2%. VT buy-and-hold pre-tax CAGR is +10.85% from 2015-01-02. Monthly Sharpe -0.51. Probabilistic Sharpe 0.000. Deflated Sharpe 0.000 at 9 effective trials. Maximum drawdown 61.05%, pre-tax. Fees $388.00. Tax $0.00. BIL starts 2007-05-30. SGOV starts 2020-06-01. Forward-filled sessions: SPY 0, BIL 0, SGOV 0, ^IRX 8.
 
 ## In sample
 
 In-sample is 2000 through 2014. It is reported here and does not change the verdicts above. The window contains 121 announcements. September 15 and September 16, 2003 are consecutive meetings and share one position, so the round-trip count is 120.
 
-Variant A in sample would read NO-GO on the same bar: after-tax CAGR -4.92% against SPY +3.36%, 120 round trips, 2000-01-03 to 2014-12-31. Monthly Sharpe -0.25. Probabilistic Sharpe 0.004. Deflated Sharpe 0.000 at 9 effective trials.
+Variant A in sample would read NO-GO on the economic bar. That reading is not the queue verdict. After-tax CAGR -4.92% against SPY +3.36%, 120 round trips, 2000-01-03 to 2014-12-31. Monthly Sharpe -0.25. Probabilistic Sharpe 0.004. Deflated Sharpe 0.000 at 9 effective trials.
 
-Variant C in sample would read NO-GO on the same bar: after-tax CAGR -1.01% against SPY +3.36%, 120 round trips, 2000-01-03 to 2014-12-31. Monthly Sharpe -0.00. Probabilistic Sharpe 0.480. Deflated Sharpe 0.058 at 9 effective trials.
+Variant C in sample would read NO-GO on the economic bar. That reading is not the queue verdict. After-tax CAGR -1.01% against SPY +3.36%, 120 round trips, 2000-01-03 to 2014-12-31. Monthly Sharpe -0.00. Probabilistic Sharpe 0.480. Deflated Sharpe 0.058 at 9 effective trials.
 
 ## Variant B
 

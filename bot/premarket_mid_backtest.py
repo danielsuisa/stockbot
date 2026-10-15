@@ -20,8 +20,8 @@ from bot.premarket_catalyst import (
     DESK_MIN_POSITION, GAPS, blacklist_summary, desk_summary, halt_summary, index_assets, split_sane, universe,
 )
 from bot.premarket_catalyst_backtest import (
-    NY, OOS, START, WARM, _candidates, _end, _fmt, _pass_rvol, _play, _probe, _result, _screen,
-    corporate_actions, daily, reverse_splits,
+    NY, OOS, START, WARM, _candidates, _end, _fee_side, _fmt, _pass_rvol, _play, _probe, _queue,
+    _result, _screen, corporate_actions, daily, reverse_splits,
 )
 from bot.premarket_mid import MID_HI, MID_LO, MID_LULD, mid_price_ok, score_priced
 from bot.tax import TAX, after_tax_terminal
@@ -170,7 +170,7 @@ def render(result):
     ins = [r for r in rows if r["day"] < OOS]
     g = judge(oos, YEARS)
     counts = result.get("counts") or {}
-    go = g["go"] and result.get("complete")
+    verdict, sample = _queue(rows, g["go"] and result.get("complete"), "T3 $3–$20 book")
     lines = [
         f"# Premarket catalyst, $3–$20 — {result['run']}",
         "",
@@ -178,7 +178,14 @@ def render(result):
         "the entry, the stop, and the four-check gate are otherwise the same rule. Long only, one name a day, "
         "$460, whole shares. This replay does not place or transmit an order.",
         "",
-        f"Verdict: **{'GO' if go else 'NO-GO'}**.",
+        "## Required sample",
+        "",
+        *sample,
+        "",
+        "The checks under the verdict are the book's own gate. When the sample is short they stay on the page "
+        "and they are not the queue verdict.",
+        "",
+        f"Verdict: **{verdict}**.",
         "",
     ]
     for label, ok in g["checks"]:
@@ -224,7 +231,10 @@ def render(result):
     inactive = [r for r in rows if r.get("listed") == "inactive"]
     lines += ["",
               f"Trades in names Alpaca now marks inactive: {len(inactive)} of {len(rows)}.",
-              f"The $0.35 minimum binds below 100 shares: {sum(r['shares'] < 100 for r in rows)} of {len(rows)}.",
+              "Commission is IBKR Pro Fixed on each order: $0.005 a share, minimum $1.00, maximum 1% of "
+              f"that order's trade value. Orders on which the $1 minimum is the smaller fee: "
+              f"{_fee_side(rows, True)} of {len(rows) * 2}. Orders on which the 1% cap is the smaller fee: "
+              f"{_fee_side(rows, False)} of {len(rows) * 2}.",
               "",
               "## Cost model",
               "",
@@ -241,8 +251,10 @@ def render(result):
               "is the whole shares of $460 at the printed entry. Those names repeat the same net R in the "
               "0.5% and 2% columns.",
               "",
-              "Commission stays $0.0035 a share with a $0.35 minimum, both sides. Net R divides the dollar "
-              "result by the printed entry-to-stop risk.",
+              "Commission is IBKR Pro Fixed on each order, from the shares and that order's fill price: $0.005 a "
+              "share, minimum $1.00, maximum 1% of trade value. A $50 to $100 penny order pays the 1% cap. "
+              "A $460 order in a name above a few dollars pays the $1 minimum. It is not a flat percent. "
+              "Net R divides the dollar result by the printed entry-to-stop risk.",
               "",
               _sens_table(rows),
               "",
@@ -269,7 +281,7 @@ def render(result):
     lines.append("")
     for gap in _gaps():
         lines.append(f"- {gap}")
-    lines += ["", "## Verdict", "", f"- Premarket $3–$20: {'GO' if go else 'NO-GO'}.", ""]
+    lines += ["", "## Verdict", "", f"- Premarket $3–$20: {verdict}.", ""]
     return "\n".join(lines)
 
 

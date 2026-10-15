@@ -6,11 +6,10 @@ docs/backtest/TRIALS.md. This module does not place or transmit an order.
 import math
 import re
 
+from bot.queue_rules import fixed_fee
+
 ACCOUNT = 460.0
 HALF = 0.0001
-FEE_PER_SHARE = 0.005
-FEE_MIN = 1.0
-FEE_CAP = 0.01
 GAP = -0.005
 N_EFF = 9
 OOS_MIN = 40
@@ -49,12 +48,8 @@ def announcement_day(month_text, first, second, year):
 
 
 def order_fee(shares, price):
-    """IBKR Pro fixed commission, with the $1 floor and the 1% cap."""
-    notional = abs(shares) * price
-    if notional <= 0:
-        return 0.0
-    raw = max(FEE_MIN, FEE_PER_SHARE * abs(shares))
-    return min(raw, FEE_CAP * notional)
+    """IBKR Pro Fixed commission, with the $1 floor and the 1% cap."""
+    return fixed_fee(shares, price)
 
 
 def shares_for_cash(cash, price):
@@ -277,7 +272,9 @@ def run_close_book(days, spy_days, prices, irx, bil_first, sgov_first):
                 "exit": days[index],
                 "entry_price": entry_price,
                 "exit_price": price_override if price_override is not None else prices["SPY"][days[index]],
+                "basis": book["basis"],
                 "pnl": None,
+                "ret": None,
             })
         price = price_override
         if price is None and leaving not in (None, "IRX"):
@@ -286,6 +283,8 @@ def run_close_book(days, spy_days, prices, irx, bil_first, sgov_first):
         _leave(book, days[index], price, realizations, fees)
         if leaving == "SPY" and len(realizations) > before:
             trades[-1]["pnl"] = realizations[-1][1]
+            basis = trades[-1]["basis"]
+            trades[-1]["ret"] = realizations[-1][1] / basis if basis else None
         if kind is None:
             return
         enter_price = price_override if kind == "SPY" and price_override is not None else None
@@ -383,15 +382,17 @@ def run_open_fade(days, signals, prices, spy_open, spy_close, irx, bil_first, sg
             _enter(book, "SPY", spy_open[day], fees)
             entry_basis = book["basis"]
             _leave(book, day, spy_close[day], realizations, fees)
+            pnl = realizations[-1][1] if realizations else None
             trades.append({
                 "day": day,
                 "gap": wanted[day]["gap"],
                 "implied": wanted[day]["implied"],
                 "open": spy_open[day],
                 "close": spy_close[day],
-                "pnl": realizations[-1][1] if realizations else None,
+                "pnl": pnl,
                 "gross": spy_close[day] / spy_open[day] - 1,
                 "basis": entry_basis,
+                "ret": pnl / entry_basis if pnl is not None and entry_basis else None,
             })
             if index != len(days) - 1:
                 kind = sleeve_name(day, bil_first, sgov_first)

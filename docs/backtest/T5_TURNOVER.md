@@ -1,5 +1,9 @@
 # Sector rotation turnover — 2007 through September 2026
 
+## Queue preface
+
+This count was not re-run. The turnover gate below stays **NO-GO** at 9.82 single-fund replacements a year. There is no per-trade return list, so required n is not computed and the sample-size gate is not applied. A future fill would use IBKR Pro Fixed, from each order's shares and price. This file has no realized gains, so the after-tax line is not computed. The earlier sector return report is a prior trial under the old commission and was not re-priced.
+
 Holdings only. No return is computed. The book is the preregistered sector rule: at each completed month-end, rank the nine original SPDR sectors by the adjusted close at t−1 divided by the adjusted close at t−6, minus one, and hold the top two. If SPY's month-end adjusted close is strictly below its 200-day average, the held set is empty (cash). XLRE and XLC are not in the universe. Prices are Yahoo Finance adjusted closes from 2005-01-03 through 2026-10-15, so the 2007 signals have their lookback. This count does not place or transmit an order.
 
 A single-fund replacement counts each name that changed hands. Cash is the empty set. A one-for-one swap is one replacement. Leaving two funds for cash counts as two, and leaving cash for two funds counts as two. A name that stays counts as zero. Staying in cash counts as zero.

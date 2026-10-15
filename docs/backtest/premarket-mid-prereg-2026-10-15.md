@@ -53,3 +53,7 @@ Israeli capital-gains tax is 25% of a calendar year's net realized gain. A reali
 `python -m bot.premarket_mid_backtest`. Daily bars, corporate actions, premarket bars, minute bars, and SEC files may reuse the earlier T3 cache. Headlines for this book are stored under `news-mid`, because the sub-$5 news file holds only the symbols that book asked for. The workflow starts only after this file is committed. The report commit removes the pull-request trigger so a later push does not download again.
 
 Do not retune this band, the wires, the relative-volume floor, the forms, the shares-outstanding proxy, the entry window, the stop, the cost split at $5, the forced 10% band, or the gate after seeing the numbers.
+
+## Queue amendment, 2026-10-15
+
+Commission is IBKR Pro Fixed on each order: $0.005 a share, minimum $1.00, maximum 1% of that order's trade value. The $0.0035 / $0.35 sentence above is replaced for this book. The spread rules are unchanged. The same sample-size gate as the sub-$5 book applies: n from in-sample per-trade returns, and an out-of-sample count below n is UNKNOWN (insufficient sample), not NO-GO. The after-tax line stays.

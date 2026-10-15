@@ -10,6 +10,7 @@ a print of exactly $3.
 """
 from bot.desk_gate import ACCOUNT, friction, shares_for
 from bot.premarket_catalyst import CHEAP_SLIP, score
+from bot.queue_rules import fixed_fee
 
 MID_LO, MID_HI = 3.0, 20.0
 MID_LULD = 0.10
@@ -22,9 +23,8 @@ def mid_price_ok(prev_close):
 
 def _priced_side(entry, exit_px, stop, shares, spread, side, pro):
     """One side at $5 or above. The spread is charged once. `pro` False zeros the commission."""
-    slip, fee, mode = friction(entry, exit_px, shares, spread)
-    if not pro:
-        fee = 0.0
+    slip, _old, mode = friction(entry, exit_px, shares, spread)
+    fee = 0.0 if not pro else fixed_fee(shares, entry) + fixed_fee(shares, exit_px)
     gross = (exit_px - entry) if side == "long" else (entry - exit_px)
     risk = abs(entry - stop) * shares
     if shares < 1 or risk <= 0 or entry <= 0 or exit_px <= 0:

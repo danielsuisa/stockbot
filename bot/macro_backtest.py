@@ -19,6 +19,7 @@ from bot.macro_exec import (
     ACCOUNT, N_EFF, OOS_MIN, beats, bls_releases, fomc_events, gap_signals,
     meeting_dates, release_days, run_close_book, run_open_fade,
 )
+from bot.queue_rules import queue_verdict, sample_lines
 from bot.tax import after_tax_terminal
 from bot.trend_exec import cagr, deflated_sharpe, max_drawdown, monthly_returns
 
@@ -171,6 +172,7 @@ def _summarize(book, days):
         "stats": stats,
         "fees": book["fees"],
         "n": len(book["trades"]),
+        "rets": [trade["ret"] for trade in book["trades"] if trade.get("ret") is not None],
         "gross": gross,
         "terminal": book["terminal"],
     }
@@ -225,8 +227,9 @@ def _prices_for(days, spy, bil, sgov, irx):
     }
 
 
-def _line(label, summary, spy_summary):
-    verdict = "GO" if beats(summary["post"], spy_summary["post"]) else "NO-GO"
+def _line(label, summary, spy_summary, verdict=None):
+    if verdict is None:
+        verdict = "GO" if beats(summary["post"], spy_summary["post"]) else "NO-GO"
     return verdict, (
         f"| {label} | {summary['n']} | {_pct(summary['post'])} | {_pct(spy_summary['post'])} | "
         f"{_pct(summary['pre'])} | {_pct(spy_summary['pre'])} | ${summary['fees']:,.0f} | "
@@ -338,12 +341,12 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
         "",
         "The bar is the out-of-sample after-tax CAGR, at least 1 percentage point above buy-and-hold "
         "SPY over the same dates. In-sample cannot flip the verdict. A and C are judged separately. "
-        "The higher one is not selected. VT is shown pre-tax, beside SPY. SPY is the bar.",
+        "The higher one is not selected. VT is shown pre-tax, beside SPY. SPY is the bar. "
+        "Before that bar, the sample gate applies. An out-of-sample count below the required n "
+        "is UNKNOWN (insufficient sample), not NO-GO.",
         "",
-        "| Book | Trades | After-tax CAGR | SPY after-tax | Pre-tax CAGR | SPY pre-tax | Fees | Tax | Max DD | Verdict |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
-    verdicts = {}
+    stored = {}
     for start, end, label in samples:
         for variant in ("A", "C"):
             days, events, book, spy_book, vt_book, gaps, bil_first, sgov_first = _sample_books(
@@ -351,10 +354,40 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
             )
             summary = _summarize(book, days)
             spy_summary = _summarize(spy_book, days)
-            verdict, row = _line(f"{variant} {label}", summary, spy_summary)
-            lines.append(row)
             _series(SERIES / f"fomc-{variant.lower()}-{label.lower()}.csv", book["returns"], spy_book["returns"])
-            verdicts[(variant, label)] = (verdict, summary, spy_summary, vt_book, days, events, gaps, bil_first, sgov_first)
+            stored[(variant, label)] = (summary, spy_summary, vt_book, days, events, gaps, bil_first, sgov_first)
+    lines.extend(["## Required sample", ""])
+    lines.append(
+        "Flag: T7 is a pre-Fed book, about 8 announcement windows a year, so the out-of-sample "
+        "count grows slowly. The per-trade return is the round trip's dollar result divided by "
+        "the dollars spent to buy SPY, after commission. The in-sample column later in this report "
+        "is the economic reading. It is not the queue verdict."
+    )
+    lines.append("")
+    verdicts = {}
+    for variant in ("A", "C"):
+        is_summary, is_spy, is_vt, is_days, is_events, is_gaps, is_bil, is_sgov = stored[(variant, "IS")]
+        oos_summary, oos_spy, oos_vt, oos_days, oos_events, oos_gaps, oos_bil, oos_sgov = stored[(variant, "OOS")]
+        block, n = sample_lines(f"Variant {variant}", is_summary["rets"], oos_summary["n"])
+        lines.extend(block)
+        lines.append("")
+        oos_verdict = queue_verdict(oos_summary["n"], n, beats(oos_summary["post"], oos_spy["post"]))
+        is_verdict = "GO" if beats(is_summary["post"], is_spy["post"]) else "NO-GO"
+        verdicts[(variant, "OOS")] = (
+            oos_verdict, oos_summary, oos_spy, oos_vt, oos_days, oos_events, oos_gaps, oos_bil, oos_sgov,
+        )
+        verdicts[(variant, "IS")] = (
+            is_verdict, is_summary, is_spy, is_vt, is_days, is_events, is_gaps, is_bil, is_sgov,
+        )
+    lines.extend([
+        "| Book | Trades | After-tax CAGR | SPY after-tax | Pre-tax CAGR | SPY pre-tax | Fees | Tax | Max DD | Verdict |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+    ])
+    for label in ("IS", "OOS"):
+        for variant in ("A", "C"):
+            verdict, summary, spy_summary = verdicts[(variant, label)][:3]
+            _verdict, row = _line(f"{variant} {label}", summary, spy_summary, verdict)
+            lines.append(row)
     lines.extend([
         "",
         "## Out of sample",
@@ -397,7 +430,8 @@ def fomc_report(sessions, announcements, spy, bil, sgov, vt, irx, today, last, b
     for variant in ("A", "C"):
         verdict, summary, spy_summary, _vt, days, _events, _gaps, _b, _s = verdicts[(variant, "IS")]
         lines.append(
-            f"Variant {variant} in sample would read {verdict} on the same bar: after-tax CAGR "
+            f"Variant {variant} in sample would read {verdict} on the economic bar. That reading is not "
+            f"the queue verdict. After-tax CAGR "
             f"{_pct(summary['post'])} against SPY {_pct(spy_summary['post'])}, {summary['n']} round trips, "
             f"{days[0]} to {days[-1]}. {_dsr(summary)}"
         )
@@ -433,7 +467,8 @@ def cpi_report(sessions, releases, spy, bil, sgov, vt, irx, vix, today, last, cp
         "The registered buy is 9:35 ET on a CPI or PPI release day, and the exit is the close, when "
         "SPY opens at least 0.5% below the prior close. This run has no 9:35 print. There is no Alpaca "
         "credential and no public minute archive. Registered out-of-sample trades at that fill: 0. "
-        f"The pre-registered minimum is {OOS_MIN}. The verdict is **unknown**.",
+        f"The pre-registered minimum is {OOS_MIN}. The queue verdict is computed in the sample section "
+        "below, before the open-fill numbers.",
         "",
         "The numbers below are a separate description. They buy the Yahoo official open and sell the "
         "official close on the same rule. They are not the 9:35 book and they are not the verdict. "
@@ -453,8 +488,6 @@ def cpi_report(sessions, releases, spy, bil, sgov, vt, irx, vix, today, last, cp
         "is scored on the same 1 percentage point after-tax line so the distance is visible. That score "
         "is not a verdict.",
         "",
-        "| Book | Trades | After-tax CAGR | SPY after-tax | Pre-tax CAGR | SPY pre-tax | Fees | Tax | Max DD | On the line |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     stored = {}
     for label, days in days_by.items():
@@ -466,23 +499,50 @@ def cpi_report(sessions, releases, spy, bil, sgov, vt, irx, vix, today, last, cp
         spy_book = _book(days, days[1:], prices, irx_fill, bil_first, sgov_first)
         summary = _summarize(book, days)
         spy_summary = _summarize(spy_book, days)
+        _series(SERIES / f"cpi-ppi-open-{label.lower()}.csv", book["returns"], spy_book["returns"])
+        vt_prices = _forward(days, vt["adj"])[0]
+        vt_days = [day for day in days if day in vt_prices]
+        vt_book = _book(vt_days, vt_days[1:], {"SPY": vt_prices}, {}, None, None) if len(vt_days) > 10 else None
+        stored[label] = (summary, spy_summary, book, vt_book, gaps, bil_first, sgov_first, signals)
+    is_summary = stored["IS"][0]
+    oos_summary = stored["OOS"][0]
+    lines.extend(["## Required sample", ""])
+    lines.append(
+        "Flag: T8 is a CPI/PPI book, about 24 release days a year. The registered rule trades only "
+        "the days that open at least 0.5% below the prior close, so the trade count is smaller than "
+        "24 a year. The per-trade return on the open-fill description is the dollar result divided by "
+        "the dollars spent at the open, after commission."
+    )
+    lines.append("")
+    registered, _n = sample_lines("Registered 9:35 book", [], 0)
+    lines.extend(registered)
+    lines.append(
+        f"The pre-registered floor is {OOS_MIN} out-of-sample trades. The registered count is 0, which "
+        "is also below that floor. The queue verdict is **UNKNOWN (insufficient sample)**. In-sample "
+        "9:35 trades are 0 as well. No tail and no 2022 result exists for the registered fill, because "
+        "that fill was not observed."
+    )
+    lines.append("")
+    opened, _open_n = sample_lines("Open-fill description", is_summary["rets"], oos_summary["n"])
+    lines.extend(opened)
+    lines.append("The open-fill description is not the verdict.")
+    lines.extend([
+        "",
+        "| Book | Trades | After-tax CAGR | SPY after-tax | Pre-tax CAGR | SPY pre-tax | Fees | Tax | Max DD | On the line |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+    ])
+    for label in ("IS", "OOS"):
+        summary, spy_summary = stored[label][0], stored[label][1]
         mark = "above" if beats(summary["post"], spy_summary["post"]) else "below"
         lines.append(
             f"| Open {label} | {summary['n']} | {_pct(summary['post'])} | {_pct(spy_summary['post'])} | "
             f"{_pct(summary['pre'])} | {_pct(spy_summary['pre'])} | ${summary['fees']:,.0f} | "
             f"${summary['tax']:,.0f} | {_dd(summary['dd'])} | {mark} |"
         )
-        _series(SERIES / f"cpi-ppi-open-{label.lower()}.csv", book["returns"], spy_book["returns"])
-        vt_prices = _forward(days, vt["adj"])[0]
-        vt_days = [day for day in days if day in vt_prices]
-        vt_book = _book(vt_days, vt_days[1:], {"SPY": vt_prices}, {}, None, None) if len(vt_days) > 10 else None
-        stored[label] = (summary, spy_summary, book, vt_book, gaps, bil_first, sgov_first, signals)
     oos_summary, oos_spy, oos_book, oos_vt, gaps, bil_first, sgov_first, _signals = stored["OOS"]
     lines.extend(["", "## The registered book", ""])
     lines.append(
-        f"Out-of-sample trades at 9:35 ET: 0. That is below {OOS_MIN}. The verdict is **unknown**. "
-        "In-sample 9:35 trades are 0 as well. No tail and no 2022 result exists for the registered fill, "
-        "because that fill was not observed."
+        "Out-of-sample trades at 9:35 ET: 0. The queue verdict is **UNKNOWN (insufficient sample)**."
     )
     lines.extend(["", "## Open-fill description", ""])
     vt_text = "VT has no book on this window."

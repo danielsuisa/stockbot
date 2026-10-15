@@ -2,7 +2,7 @@
 
 Run date 2026-10-15. The last session is 2026-10-14. This is a paper test. It places no order.
 
-The registered buy is 9:35 ET on a CPI or PPI release day, and the exit is the close, when SPY opens at least 0.5% below the prior close. This run has no 9:35 print. There is no Alpaca credential and no public minute archive. Registered out-of-sample trades at that fill: 0. The pre-registered minimum is 40. The verdict is **unknown**.
+The registered buy is 9:35 ET on a CPI or PPI release day, and the exit is the close, when SPY opens at least 0.5% below the prior close. This run has no 9:35 print. There is no Alpaca credential and no public minute archive. Registered out-of-sample trades at that fill: 0. The pre-registered minimum is 40. The queue verdict is computed in the sample section below, before the open-fill numbers.
 
 The numbers below are a separate description. They buy the Yahoo official open and sell the official close on the same rule. They are not the 9:35 book and they are not the verdict. On a traded morning the sleeve does not accrue from the prior close to the open. Every other session accrues the sleeve from close to close.
 
@@ -12,6 +12,18 @@ CPI rows by year run from 11 to 12. PPI rows run from 10 to 13. Distinct release
 
 Costs, the sleeve, the $460 account, and the 25% tax match the pre-FOMC book. The description is scored on the same 1 percentage point after-tax line so the distance is visible. That score is not a verdict.
 
+## Required sample
+
+Flag: T8 is a CPI/PPI book, about 24 release days a year. The registered rule trades only the days that open at least 0.5% below the prior close, so the trade count is smaller than 24 a year. The per-trade return on the open-fill description is the dollar result divided by the dollars spent at the open, after commission.
+
+Registered 9:35 book: the in-sample period has no trades, so mu and sigma are not defined. Required n is not defined.
+Out-of-sample trades: 0. That count is below n, so the queue verdict is UNKNOWN (insufficient sample), not NO-GO.
+The pre-registered floor is 40 out-of-sample trades. The registered count is 0, which is also below that floor. The queue verdict is **UNKNOWN (insufficient sample)**. In-sample 9:35 trades are 0 as well. No tail and no 2022 result exists for the registered fill, because that fill was not observed.
+
+Open-fill description: in-sample per-trade mu -0.006842, sigma 0.008318, 27 trades. Required n = (1.645 × sigma / mu)² = 4.00. Mu is negative. The formula is applied as written.
+Out-of-sample trades: 23. That count meets n (4.00). The sample gate does not replace this book's own bar.
+The open-fill description is not the verdict.
+
 | Book | Trades | After-tax CAGR | SPY after-tax | Pre-tax CAGR | SPY pre-tax | Fees | Tax | Max DD | On the line |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
 | Open IS | 27 | -3.46% | +9.31% | -3.46% | +11.38% | $110 | $0 | 26.99% | below |
@@ -19,7 +31,7 @@ Costs, the sleeve, the $460 account, and the 25% tax match the pre-FOMC book. Th
 
 ## The registered book
 
-Out-of-sample trades at 9:35 ET: 0. That is below 40. The verdict is **unknown**. In-sample 9:35 trades are 0 as well. No tail and no 2022 result exists for the registered fill, because that fill was not observed.
+Out-of-sample trades at 9:35 ET: 0. The queue verdict is **UNKNOWN (insufficient sample)**.
 
 ## Open-fill description
 

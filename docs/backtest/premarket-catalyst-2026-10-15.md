@@ -2,7 +2,14 @@
 
 Long only, one name a day, $460. Split-adjusted prices. The headline had to be a primary wire in the 24 hours ending 09:30. S-1, 424B, and S-3 / S-3ASR shelves in the prior 30 days were excluded. Shares outstanding stand in for float and are not float. This replay does not place or transmit an order.
 
-Verdict: **NO-GO**.
+## Required sample
+
+T3 premarket catalyst: the in-sample period has no trades, so mu and sigma are not defined. Required n is not defined.
+Out-of-sample trades: 0. That count is below n, so the queue verdict is UNKNOWN (insufficient sample), not NO-GO.
+
+The checks under the verdict are the book's own gate. When the sample is short they stay on the page and they are not the queue verdict.
+
+Verdict: **UNKNOWN (insufficient sample)**.
 
 - fail: at least 100 trades (0)
 - fail: mean net R > 0 with t > 2
@@ -37,11 +44,11 @@ Price-band days 1522111. Relative-volume pass 86582. Primary-source headlines 0.
 | 2026 | 0 | — |
 
 Trades in names Alpaca now marks inactive: 0 of 0.
-The $0.35 minimum binds below 100 shares: 0 of 0.
+Commission is IBKR Pro Fixed on each order: $0.005 a share, minimum $1.00, maximum 1% of that order's trade value. Orders on which the $1 minimum is the smaller fee: 0 of 0. Orders on which the 1% cap is the smaller fee: 0 of 0.
 
 ## Cost model
 
-Every trade in this book is a sub-$5 name. When a SIP quote exists at the entry minute and at the exit minute, the entry fills at the ask and the exit fills at the bid. Both quotes are scaled by that day's split-adjusted close divided by the raw close. If either quote is missing, the entry print is raised by 1% and the exit print is lowered by 1%. That is 1% on each side. It is not a 1% round trip. Commission stays $0.0035 a share with a $0.35 minimum, both sides. The share count is the whole shares of $460 at the ask, or at the slipped entry when the quote is missing. Net R divides the dollar result by the printed entry-to-stop risk.
+Every trade in this book is a sub-$5 name. When a SIP quote exists at the entry minute and at the exit minute, the entry fills at the ask and the exit fills at the bid. Both quotes are scaled by that day's split-adjusted close divided by the raw close. If either quote is missing, the entry print is raised by 1% and the exit print is lowered by 1%. That is 1% on each side. It is not a 1% round trip. Commission is IBKR Pro Fixed, computed on each order from the shares and that order's fill price: $0.005 a share, minimum $1.00, maximum 1% of trade value. A $460 SPY order pays the $1 minimum, about 0.22% of the order. A penny order of $50 to $100 pays the 1% cap, because the $1 minimum is larger than 1% of that value. It is not a flat percent. The share count is the whole shares of $460 at the ask, or at the slipped entry when the quote is missing. Net R divides the dollar result by the printed entry-to-stop risk.
 
 The gate uses the 1% fallback. The same prints at 0.5% and at 2% per side are a sensitivity check. They do not flip the verdict. When both quotes exist, the three rates are the same fill.
 
@@ -63,7 +70,7 @@ A trade is excluded when a reverse-split ex-date falls in the 365 calendar days 
 
 Excluded 0 of 0 trades (not defined on an empty book). The book that remains has 0 trades.
 
-The 86,582 relative-volume passers were not joined to Alpaca's reverse-split file. That would be a new download, and the recorded trade list has nothing to exclude. Both books are the same empty book, and both are NO-GO.
+The 86,582 relative-volume passers were not joined to Alpaca's reverse-split file. That would be a new download, and the recorded trade list has nothing to exclude. Both books are the same empty book.
 
 ## ATM, S-3 full text, and going concern
 
@@ -129,4 +136,4 @@ Known 2016–2018 delistings found in the asset file with bars: 2 of 9.
 
 ## Verdict
 
-- Premarket catalyst: NO-GO.
+- Premarket catalyst: UNKNOWN (insufficient sample).

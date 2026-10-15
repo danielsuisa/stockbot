@@ -28,6 +28,7 @@ from bot.premarket_catalyst import (
     price_ok, primary_source, quote_spread, rvol_ok, scale_quote, score, setup, shares_ok, source_name,
     split_sane, universe,
 )
+from bot.queue_rules import queue_verdict, sample_lines
 from bot.tax import TAX, after_tax_terminal
 
 START, OOS, WARM = "2016-01-01", "2023-01-01", "2015-06-01"
@@ -615,7 +616,7 @@ def _variant_lines(result, rows):
         lines += ["",
                   f"The {counts.get('rvol', 0):,} relative-volume passers were not joined to Alpaca's "
                   "reverse-split file. That would be a new download, and the recorded trade list has nothing "
-                  "to exclude. Both books are the same empty book, and both are NO-GO."]
+                  "to exclude. Both books are the same empty book."]
     lines += ["",
               "## ATM, S-3 full text, and going concern",
               "",
@@ -728,12 +729,46 @@ def _subdollar_lines(rows):
     return lines
 
 
+def _fee_side(rows, floor):
+    """Orders whose fee is the $1 minimum (`floor` true) or the 1% cap."""
+    count = 0
+    for row in rows:
+        shares = row.get("shares") or 0
+        for price in (row.get("fill_entry") or row.get("entry"), row.get("fill_exit") or row.get("exit")):
+            if not shares or not price:
+                continue
+            raw = max(1.0, 0.005 * abs(shares))
+            cap = 0.01 * abs(shares) * abs(price)
+            if (raw <= cap) is floor:
+                count += 1
+    return count
+
+
+def _row_return(row):
+    """Dollar result divided by the dollars paid. That is the per-trade return for the sample gate."""
+    if row.get("net_return") is not None:
+        return row["net_return"]
+    basis = (row.get("fill_entry") or 0) * (row.get("shares") or 0)
+    if basis and row.get("pnl") is not None:
+        return row["pnl"] / basis
+    return None
+
+
+def _queue(rows, economic_go, label="T3 premarket catalyst"):
+    ins = [r for r in rows if r["day"] < OOS]
+    oos = [r for r in rows if r["day"] >= OOS]
+    rets = [value for value in (_row_return(row) for row in ins) if value is not None]
+    block, n = sample_lines(label, rets, len(oos))
+    return queue_verdict(len(oos), n, economic_go), block
+
+
 def render(result):
     rows = result.get("trades") or []
     oos = [r for r in rows if r["day"] >= OOS]
     ins = [r for r in rows if r["day"] < OOS]
     g = judge(oos, YEARS)
     counts = result.get("counts") or {}
+    verdict, sample = _queue(rows, g["go"] and result.get("complete"))
     lines = [
         f"# Premarket catalyst — {result['run']}",
         "",
@@ -741,7 +776,14 @@ def render(result):
         "24 hours ending 09:30. S-1, 424B, and S-3 / S-3ASR shelves in the prior 30 days were excluded. "
         "Shares outstanding stand in for float and are not float. This replay does not place or transmit an order.",
         "",
-        f"Verdict: **{'GO' if g['go'] and result.get('complete') else 'NO-GO'}**.",
+        "## Required sample",
+        "",
+        *sample,
+        "",
+        "The checks under the verdict are the book's own gate. When the sample is short they stay on the page "
+        "and they are not the queue verdict.",
+        "",
+        f"Verdict: **{verdict}**.",
         "",
     ]
     for label, ok in g["checks"]:
@@ -781,7 +823,10 @@ def render(result):
     inactive = [r for r in rows if r.get("listed") == "inactive"]
     lines += ["",
               f"Trades in names Alpaca now marks inactive: {len(inactive)} of {len(rows)}.",
-              f"The $0.35 minimum binds below 100 shares: {sum(r['shares'] < 100 for r in rows)} of {len(rows)}.",
+              "Commission is IBKR Pro Fixed on each order: $0.005 a share, minimum $1.00, maximum 1% of "
+              f"that order's trade value. Orders on which the $1 minimum is the smaller fee: "
+              f"{_fee_side(rows, True)} of {len(rows) * 2}. Orders on which the 1% cap is the smaller fee: "
+              f"{_fee_side(rows, False)} of {len(rows) * 2}.",
               "",
               "## Cost model",
               "",
@@ -789,7 +834,10 @@ def render(result):
               "the exit minute, the entry fills at the ask and the exit fills at the bid. Both quotes are scaled "
               "by that day's split-adjusted close divided by the raw close. If either quote is missing, the entry "
               "print is raised by 1% and the exit print is lowered by 1%. That is 1% on each side. It is not a 1% "
-              "round trip. Commission stays $0.0035 a share with a $0.35 minimum, both sides. The share count is "
+              "round trip. Commission is IBKR Pro Fixed, computed on each order from the shares and that order's "
+              "fill price: $0.005 a share, minimum $1.00, maximum 1% of trade value. A $460 SPY order pays "
+              "the $1 minimum, about 0.22% of the order. A penny order of $50 to $100 pays the 1% cap, because "
+              "the $1 minimum is larger than 1% of that value. It is not a flat percent. The share count is "
               "the whole shares of $460 at the ask, or at the slipped entry when the quote is missing. Net R "
               "divides the dollar result by the printed entry-to-stop risk.",
               "",
@@ -821,7 +869,7 @@ def render(result):
     lines.append("")
     for gap in GAPS:
         lines.append(f"- {gap}")
-    lines += ["", "## Verdict", "", f"- Premarket catalyst: {'GO' if g['go'] and result.get('complete') else 'NO-GO'}.",
+    lines += ["", "## Verdict", "", f"- Premarket catalyst: {verdict}.",
               ""]
     return "\n".join(lines)
 
