@@ -1,0 +1,126 @@
+{
+ "run": "2026-10-15",
+ "end": "2026-10-14",
+ "first_bar": "2016-01-04",
+ "universe": 6379,
+ "inactive_names": 745,
+ "inactive_with_bars": 726,
+ "aapl": {
+  "from": "2020-08-28",
+  "to": "2020-08-31",
+  "jump": 0.033891515102956404
+ },
+ "split_days": 492,
+ "probe": [
+  {
+   "symbol": "LNKD",
+   "last": "2016-12-07",
+   "bars": 28,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "YHOO",
+   "last": "2017-06-16",
+   "bars": 29,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "WFM",
+   "last": "2017-08-25",
+   "bars": 30,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "MON",
+   "last": "2018-06-06",
+   "bars": 28,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "TWX",
+   "last": "2018-06-14",
+   "bars": 28,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "SHLD",
+   "last": "2018-10-15",
+   "bars": 29,
+   "in_assets": true,
+   "status": "inactive"
+  },
+  {
+   "symbol": "SPLS",
+   "last": "2017-09-12",
+   "bars": 28,
+   "in_assets": true,
+   "status": "active"
+  },
+  {
+   "symbol": "PNRA",
+   "last": "2017-07-17",
+   "bars": 28,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "CAB",
+   "last": "2017-09-22",
+   "bars": 29,
+   "in_assets": false,
+   "status": null
+  }
+ ],
+ "counts": {
+  "rvol": 86582,
+  "news": 0,
+  "news_truncated": 0,
+  "no_cik": 0,
+  "filings_blocked": 0,
+  "filings_incomplete": 0,
+  "shares_none": 0,
+  "shares_scale": 0,
+  "shares_stale": 0,
+  "shares_large": 0,
+  "ready": 0,
+  "band": 1522111
+ },
+ "complete": true,
+ "requests": 25639,
+ "oos": {
+  "n": 0,
+  "mean": null,
+  "t": null,
+  "p95": null,
+  "years": {
+   "2023": null,
+   "2024": null,
+   "2025": null,
+   "2026": null
+  },
+  "checks": [
+   [
+    "at least 100 trades (0)",
+    false
+   ],
+   [
+    "mean net R > 0 with t > 2",
+    false
+   ],
+   [
+    "mean net R above the 95th percentile of 20 random-direction means",
+    false
+   ],
+   [
+    "mean net R > 0 in 2023 and in 2024 and in 2025 and in 2026",
+    false
+   ]
+  ],
+  "go": false
+ }
+}

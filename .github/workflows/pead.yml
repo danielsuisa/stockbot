@@ -1,0 +1,48 @@
+name: Post-earnings drift
+
+# PEAD replay. Research only: no order is placed or transmitted.
+# workflow_dispatch until the premarket replay has finished. The start commit adds pull_request.
+# The report commit removes it so a later push does not download again.
+# A NO-GO still exits 0. A hole in the download exits 1.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pead-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/alpaca
+            .cache/sec-t3
+          key: pead-alpaca-${{ github.sha }}
+          restore-keys: |
+            pead-alpaca-
+            t3-alpaca-
+      - name: Replay the pre-registered post-earnings book
+        timeout-minutes: 340
+        run: python -m bot.pead_backtest
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pead
+          path: docs/backtest/pead-2*
+          if-no-files-found: warn
+          retention-days: 14

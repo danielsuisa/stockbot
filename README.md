@@ -195,6 +195,7 @@ Accept: application/vnd.github+json
 - **אזור רעש על QQQ ו־SPY:** כלל נפרד, נעול ב־<code dir="ltr">bot/noise_area_backtest.py</code> לפני ההרצה. הוא לא חלק מהמאזין ולא שולח פקודה.
 - **מניות פני ומשיכה במגמת עלייה:** שני מבחנים נפרדים, נעולים ב־<code dir="ltr">bot/penny_play_backtest.py</code> וב־<code dir="ltr">bot/swing_pullback_backtest.py</code> לפני ההרצה. הם לא חלק מהמאזין ולא שולחים פקודה.
 - **מניות פני לפני הפתיחה:** מבחן שלישי, נעול ב־<code dir="ltr">bot/premarket_catalyst_backtest.py</code> לפני ההרצה. מחירים מותאמי פיצול, כולל מניות שנמחקו. הוא לא חלק מהמאזין ולא שולח פקודה.
+- **סחף אחרי דוח:** מבחן רביעי, נעול ב־<code dir="ltr">bot/pead_backtest.py</code> לפני ההרצה. הוא לא חלק מהמאזין ולא שולח פקודה.
 
 ### פקודות בבוט
 

@@ -1,0 +1,66 @@
+# Premarket catalyst — 2026-10-15
+
+Long only, one name a day, $460. Split-adjusted prices. The headline had to be a primary wire in the 24 hours ending 09:30. S-1, 424B, and S-3 / S-3ASR shelves in the prior 30 days were excluded. Shares outstanding stand in for float and are not float. This replay does not place or transmit an order.
+
+Verdict: **NO-GO**.
+
+- fail: at least 100 trades (0)
+- fail: mean net R > 0 with t > 2
+- fail: mean net R above the 95th percentile of 20 random-direction means
+- fail: mean net R > 0 in 2023 and in 2024 and in 2025 and in 2026
+
+Window asked for: in-sample 2016-01-01 through 2022-12-31, out-of-sample 2023-01-01 through 2026-10-14. First split-adjusted daily bar: 2016-01-04.
+
+Universe 6379 names, 745 inactive in the asset file, 726 of those inactive names have a daily bar.
+
+AAPL split check: {'from': '2020-08-28', 'to': '2020-08-31', 'jump': 0.033891515102956404}. Split sessions skipped: 492.
+
+Price-band days 1522111. Relative-volume pass 86582. Primary-source headlines 0. News days cut off early 0. No CIK 0. Filing blocked 0. Filing history incomplete 0. Shares missing 0, scale error 0, stale 0, at or above 20 million 0. Ready for the entry 0.
+
+| Sample | Trades | Mean net R | t | Random p95 | Win rate | Mean R without commission |
+|---|---:|---:|---:|---:|---:|---:|
+| 2023–2026 | 0 | — | — | — | — | — |
+| 2016–2022 | 0 | — | — | — | — | — |
+
+| Year | Trades | Mean net R |
+|---|---:|---:|
+| 2016 | 0 | — |
+| 2017 | 0 | — |
+| 2018 | 0 | — |
+| 2019 | 0 | — |
+| 2020 | 0 | — |
+| 2021 | 0 | — |
+| 2022 | 0 | — |
+| 2023 | 0 | — |
+| 2024 | 0 | — |
+| 2025 | 0 | — |
+| 2026 | 0 | — |
+
+Trades in names Alpaca now marks inactive: 0 of 0.
+Quotes: 0 trades charged the scaled SIP spread, 0 took the 1% haircut.
+The $0.35 minimum binds below 100 shares: 0 of 0.
+
+## Survivorship
+
+Known 2016–2018 delistings found in the asset file with bars: 2 of 9.
+- LNKD (2016-12-07): NOT in the asset file, 28 raw bars.
+- YHOO (2017-06-16): NOT in the asset file, 29 raw bars.
+- WFM (2017-08-25): NOT in the asset file, 30 raw bars.
+- MON (2018-06-06): NOT in the asset file, 28 raw bars.
+- TWX (2018-06-14): NOT in the asset file, 28 raw bars.
+- SHLD (2018-10-15): in the asset file, status inactive, 29 raw bars.
+- SPLS (2017-09-12): in the asset file, status active, 28 raw bars.
+- PNRA (2017-07-17): NOT in the asset file, 28 raw bars.
+- CAB (2017-09-22): NOT in the asset file, 29 raw bars.
+
+- Tickers Alpaca never stored are absent. The nine-name probe counts that hole for those names only.
+- A reused ticker is one symbol. The two companies are not split apart.
+- A delisting with no inactive asset row is absent.
+- A name with no CIK, no usable shares-outstanding fact, or an incomplete filing history is excluded. Shares outstanding are not float.
+- An intraday halt or a delist after the entry exits at the last print. There is no CRSP delisting return.
+- The $0.50–$5 band is split-adjusted, so a later split moves an old day into or out of the band.
+- OTC names and symbols outside NYSE, NASDAQ, and AMEX are out.
+
+## Verdict
+
+- Premarket catalyst: NO-GO.
