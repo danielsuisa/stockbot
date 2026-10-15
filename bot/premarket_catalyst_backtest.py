@@ -22,9 +22,10 @@ from pathlib import Path
 from bot import alpaca, common
 from bot.desk_gate import YEARS, judge, tstat
 from bot.premarket_catalyst import (
-    CHEAP_SENS, CHEAP_SLIP, DELISTED, GAPS, blacklist_summary, ex_dates, filing_blocks, flat_minute,
-    index_assets, opening_low, pick, premarket, price_ok, primary_source, quote_spread, rvol_ok,
-    scale_quote, score, setup, shares_ok, source_name, split_sane, universe,
+    CHEAP_SENS, CHEAP_SLIP, DELISTED, DESK_MIN_POSITION, GAPS, blacklist_summary, desk_summary, ex_dates,
+    filing_blocks, flat_minute, halt_exit, halt_summary, index_assets, opening_low, pick, premarket,
+    price_ok, primary_source, quote_spread, rvol_ok, scale_quote, score, setup, shares_ok, source_name,
+    split_sane, universe,
 )
 from bot.tax import TAX, after_tax_terminal
 
@@ -503,6 +504,12 @@ def _play(ready, cal, raw, adj):
             adj_c = _close(adj, row["t"], day)
             built.update(day=day, t=row["t"], rvol=row["rvol"], listed=row.get("listed"),
                          raw_close=raw_c, adj_close=adj_c)
+            halt = halt_exit(minutes.get(row["t"], []), built["fill_minute"], built["entry"], built["stop"],
+                             built["target"], flat)
+            built["halt_affected"] = halt["affected"]
+            if halt["affected"]:
+                built.update(planned_loss=halt["planned_loss"], realized_loss=halt["realized_loss"],
+                             halt_fill=halt["fill"], halt_minute=halt["minute"])
             done.append(built)
         chosen = pick(done)
         if chosen:
@@ -606,6 +613,62 @@ def _variant_lines(result, rows):
     return lines
 
 
+def _halt_lines(rows):
+    """Halt gaps beside the main book. The gate still exits at the planned stop."""
+    summary = halt_summary(rows)
+    lines = [
+        "## Trading halts",
+        "",
+        "A likely halt is a gap of at least 5 minutes between 1-minute bars from 09:30 through the flat "
+        "minute. The fill is the open of the first bar after that gap. A stop or a target on an earlier "
+        "bar means the halt did not affect the trade. A gap that never resumes by the flat minute is not "
+        "counted. This exit sits beside the main book and does not change the gate.",
+        "",
+        f"Trades affected by a halt: {summary['affected']} of {summary['n']}.",
+    ]
+    if summary["affected"]:
+        lines += ["",
+                  f"Mean planned stop loss {summary['planned_loss']:.4f} per share. Mean realized loss at the "
+                  f"halt open {summary['realized_loss']:.4f} per share. Extra loss versus the stop "
+                  f"{summary['extra_loss']:.4f} per share.",
+                  f"Dollar planned loss ${summary['planned_dollars']:.2f}. Dollar realized loss "
+                  f"${summary['realized_dollars']:.2f}."]
+    elif summary["n"] == 0:
+        lines += ["",
+                  "The recorded book has no fills, so there is no realized loss to set against the planned "
+                  "stop. The minute bars were not downloaded again."]
+    else:
+        lines.append("No open trade contained a gap of 5 minutes, so there is no halt fill to compare "
+                     "with the planned stop.")
+    return lines
+
+
+def _desk_lines(rows):
+    """The desk size beside the $460 whole-share book."""
+    summary = desk_summary(rows)
+    pct = "not defined on an empty signal list" if summary["pct"] is None else f"{summary['pct']:.1%}"
+    lines = [
+        "## Desk size",
+        "",
+        "Reported beside the main book. The gate still buys the whole shares of $460. This size is the "
+        "smaller of 1% of the account at the stop and 2% of the account at the worst case. Worst case per "
+        f"share is the larger of the stop distance and the LULD band: 20% from $0.75 through $3, and 10% "
+        f"above $3. Below $0.75 the desk rule names no band, so the worst case is the stop. A position "
+        f"under ${DESK_MIN_POSITION:.0f} is skipped.",
+        "",
+        f"Signals that survive: {summary['kept_n']} of {summary['n']} ({pct}).",
+        "",
+        "On a $460 account the 20% band caps the position at $46, which is under $50, and a wider stop is "
+        "smaller still. A signal priced from $0.75 through $3 does not survive. Above $3 the 10% band caps "
+        "the position at $92.",
+    ]
+    if summary["n"] == 0:
+        lines += ["",
+                  "The recorded book has no entry signals, so this percentage is not defined. The screen "
+                  "was not run again. The desk book never bought, so its tax is zero."]
+    return lines
+
+
 def render(result):
     rows = result.get("trades") or []
     oos = [r for r in rows if r["day"] >= OOS]
@@ -680,6 +743,10 @@ def render(result):
               f"Percent slippage: {sum(r.get('cost_mode') == 'slip' for r in rows)}.",
               "",
               *_variant_lines(result, rows),
+              "",
+              *_halt_lines(rows),
+              "",
+              *_desk_lines(rows),
               "",
               "## Survivorship",
               ""]

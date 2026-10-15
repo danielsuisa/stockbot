@@ -75,6 +75,24 @@ Israeli capital-gains tax at 25% on realized gains. Losses offset gains inside t
 
 This book never bought, so realized gains are zero and the tax is zero. Buy-and-hold SPY, taxed once at the end, is not a comparison for a book that never bought.
 
+## Trading halts
+
+A likely halt is a gap of at least 5 minutes between 1-minute bars from 09:30 through the flat minute. The fill is the open of the first bar after that gap. A stop or a target on an earlier bar means the halt did not affect the trade. A gap that never resumes by the flat minute is not counted. This exit sits beside the main book and does not change the gate.
+
+Trades affected by a halt: 0 of 0.
+
+The recorded book has no fills, so there is no realized loss to set against the planned stop. The minute bars were not downloaded again.
+
+## Desk size
+
+Reported beside the main book. The gate still buys the whole shares of $460. This size is the smaller of 1% of the account at the stop and 2% of the account at the worst case. Worst case per share is the larger of the stop distance and the LULD band: 20% from $0.75 through $3, and 10% above $3. Below $0.75 the desk rule names no band, so the worst case is the stop. A position under $50 is skipped.
+
+Signals that survive: 0 of 0 (not defined on an empty signal list).
+
+On a $460 account the 20% band caps the position at $46, which is under $50, and a wider stop is smaller still. A signal priced from $0.75 through $3 does not survive. Above $3 the 10% band caps the position at $92.
+
+The recorded book has no entry signals, so this percentage is not defined. The screen was not run again. The desk book never bought, so its tax is zero.
+
 ## Survivorship
 
 Known 2016–2018 delistings found in the asset file with bars: 2 of 9.

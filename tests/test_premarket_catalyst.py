@@ -154,6 +154,56 @@ class Universe(unittest.TestCase):
         self.assertEqual(indexed["OLD"]["status"], "inactive")
 
 
+def bar(hhmm, o, h, l, c):
+    return (hhmm, o, h, l, c, 1)
+
+
+class Halts(unittest.TestCase):
+    def test_a_five_minute_gap_fills_at_the_next_open_and_a_stop_before_it_does_not(self):
+        # Fill at 09:40. The next bar is 09:45, so the gap is 5 minutes and the open is the fill.
+        halted = pc.halt_exit(
+            [bar("09:40", 2, 2, 2, 2), bar("09:45", 1.50, 1.60, 1.40, 1.55)],
+            "09:40", 2.0, 1.80, 2.40, "15:55")
+        self.assertTrue(halted["affected"])
+        self.assertEqual(halted["fill"], 1.50)
+        self.assertAlmostEqual(halted["planned_loss"], 0.20)
+        self.assertAlmostEqual(halted["realized_loss"], 0.50)
+        self.assertAlmostEqual(halted["extra_loss"], 0.30)
+        # Four minutes is not a halt. The stop on that bar closes the trade.
+        stopped = pc.halt_exit(
+            [bar("09:40", 2, 2, 2, 2), bar("09:44", 1.70, 1.75, 1.60, 1.65),
+             bar("09:50", 1.20, 1.20, 1.20, 1.20)],
+            "09:40", 2.0, 1.80, 2.40, "15:55")
+        self.assertFalse(stopped["affected"])
+        # A hole before the open is not a halt during the trade.
+        quiet = pc.halt_exit(
+            [bar("08:00", 2, 2, 2, 2), bar("09:40", 2, 2, 2, 2), bar("09:41", 2, 2, 1.9, 2)],
+            "09:40", 2.0, 1.80, 2.40, "15:55")
+        self.assertFalse(quiet["affected"])
+
+    def test_the_desk_size_skips_a_position_under_fifty_dollars(self):
+        self.assertEqual(pc.luld_band(0.74), None)
+        self.assertEqual(pc.luld_band(0.75), 0.20)
+        self.assertEqual(pc.luld_band(3), 0.20)
+        self.assertEqual(pc.luld_band(3.01), 0.10)
+        # $2 with a 20% band: 2% of $460 is a $46 position.
+        penny = pc.desk_size(2.0, 1.80)
+        self.assertAlmostEqual(penny["position"], 46.0)
+        self.assertFalse(penny["kept"])
+        # Above $3 the 10% band caps the position at $92, and the tighter 1% stop can bind first.
+        held = pc.desk_size(4.0, 3.80)
+        self.assertAlmostEqual(held["position"], 92.0)
+        self.assertTrue(held["kept"])
+        wide = pc.desk_size(4.0, 3.50)
+        self.assertAlmostEqual(wide["position"], 4.60 / (0.50 / 4.0))
+        self.assertFalse(wide["kept"])
+        empty = pc.desk_summary([])
+        self.assertEqual((empty["n"], empty["kept_n"], empty["pct"]), (0, 0, None))
+        both = pc.desk_summary([{"entry": 2.0, "stop": 1.80}, {"entry": 4.0, "stop": 3.80}])
+        self.assertEqual((both["n"], both["kept_n"]), (2, 1))
+        self.assertAlmostEqual(both["pct"], 0.5)
+
+
 class Dates(unittest.TestCase):
     def test_a_reverse_split_in_the_prior_year_blocks_the_variant(self):
         # 2024 is a leap year, so 365 calendar days before 2024-06-01 is 2023-06-02.
@@ -185,6 +235,8 @@ class Dates(unittest.TestCase):
         self.assertIn("Excluded 0 of 0 trades", text)
         self.assertIn("Not tested", text)
         self.assertIn("the tax is zero", text)
+        self.assertIn("Trades affected by a halt: 0 of 0", text)
+        self.assertIn("Signals that survive: 0 of 0", text)
         self.assertIn("Premarket catalyst: NO-GO", text)
 
     def test_thirty_calendar_days_not_sessions(self):

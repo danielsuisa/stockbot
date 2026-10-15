@@ -36,6 +36,11 @@ SHARES_MAX_AGE = 400
 TARGET_R = 2.0
 TICK = 0.01
 ENTRY_FROM, ENTRY_TO = "09:35", "10:30"
+# Added 2026-10-15. Reported beside the main book. Neither one changes the gate.
+RTH_OPEN = "09:30"
+HALT_MINUTES = 5
+DESK_RISK, DESK_WORST = 0.01, 0.02
+DESK_MIN_POSITION = 50.0
 # Amended 2026-10-15 for every name in this book. 1% is each side, not a round trip.
 CHEAP_SLIP = 0.01
 CHEAP_SENS = (0.005, 0.02)
@@ -373,6 +378,114 @@ def score(row, entry_quote, exit_quote, slip=CHEAP_SLIP, account=ACCOUNT):
                short_pnl=short["pnl"], cost_mode=long["cost_mode"], net_r_no_commission=bare["net_r"],
                fill_entry=long["fill_entry"], fill_exit=long["fill_exit"], slip=slip)
     return out
+
+
+def _minutes(hhmm):
+    hour, minute = str(hhmm)[:5].split(":")
+    return int(hour) * 60 + int(minute)
+
+
+def luld_band(price):
+    """The desk's LULD fraction. $0.75 through $3 is 20%. Above $3 is 10%.
+
+    Below $0.75 the desk rule does not name a band, so the caller treats the stop as the worst case.
+    """
+    if price is None or price < 0.75:
+        return None
+    if price <= 3:
+        return 0.20
+    return 0.10
+
+
+def desk_size(entry, stop, account=ACCOUNT):
+    """Dollar position = min(1% of the account at the stop, 2% at the worst case).
+
+    Worst case per share is the larger of the stop distance and the LULD dollars. The position is
+    skipped when it comes out under $50. This size can be fractional. The main book still buys the
+    whole shares of $460.
+    """
+    if entry is None or stop is None or entry <= 0 or entry <= stop:
+        return None
+    stop_dist = entry - stop
+    band = luld_band(entry)
+    luld_dist = None if band is None else band * entry
+    worst = stop_dist if luld_dist is None else max(stop_dist, luld_dist)
+    by_stop = (DESK_RISK * account) * entry / stop_dist
+    by_worst = (DESK_WORST * account) * entry / worst
+    position = min(by_stop, by_worst)
+    return {"position": position, "shares": position / entry, "stop_dist": stop_dist, "worst": worst,
+            "luld": band, "kept": position >= DESK_MIN_POSITION}
+
+
+def desk_summary(trades, account=ACCOUNT):
+    """How many recorded signals clear the $50 position. `pct` is None when there are no signals."""
+    kept = []
+    for row in trades or []:
+        sized = desk_size(row.get("entry"), row.get("stop"), account)
+        if sized and sized["kept"]:
+            kept.append(dict(row, desk_position=sized["position"], desk_shares=sized["shares"]))
+    n = len(trades or [])
+    return {"n": n, "kept_n": len(kept), "skipped": n - len(kept),
+            "pct": (len(kept) / n if n else None), "kept": kept}
+
+
+def halt_exit(minutes, fill_minute, entry, stop, target, flat_at):
+    """The first regular-hours gap of at least 5 minutes while the long is still open.
+
+    A gap is the difference between two 1-minute bar stamps. Five minutes counts. The fill is the
+    open of the first bar after the gap. A stop or a target on an earlier bar means the halt did
+    not affect the trade. A gap that never resumes by the flat minute has no fill and does not count.
+    Premarket bars are ignored.
+    """
+    if entry is None or stop is None or entry <= stop or not fill_minute:
+        return {"affected": False}
+    ordered = [b for b in minutes or () if b[0] and RTH_OPEN <= b[0] <= flat_at]
+    ordered.sort(key=lambda b: b[0])
+    prev = fill_minute
+    seen_fill = False
+    for bar in ordered:
+        if bar[0] < fill_minute:
+            continue
+        if bar[0] == fill_minute:
+            seen_fill = True
+            prev = fill_minute
+            continue
+        if not seen_fill and prev == fill_minute:
+            seen_fill = True
+        gap = _minutes(bar[0]) - _minutes(prev)
+        if gap >= HALT_MINUTES:
+            planned = entry - stop
+            realized = entry - bar[1]
+            return {"affected": True, "minute": bar[0], "fill": bar[1], "planned_loss": planned,
+                    "realized_loss": realized, "extra_loss": realized - planned}
+        hit = walk([(bar[0], bar[1], bar[2], bar[3], bar[4])], stop, target, "long", True)
+        if hit and hit[1] in ("stop", "target"):
+            return {"affected": False}
+        prev = bar[0]
+    return {"affected": False}
+
+
+def halt_summary(trades):
+    """Recorded trades whose open path contains a halt. Losses are per share, then summed in dollars.
+
+    `planned_loss` is the stop distance. `realized_loss` is the entry minus the first bar's open
+    after the halt. Both are None when no trade was affected.
+    """
+    affected = [row for row in trades or () if row.get("halt_affected")]
+    if not affected:
+        return {"n": len(trades or ()), "affected": 0, "planned_loss": None, "realized_loss": None,
+                "extra_loss": None, "planned_dollars": None, "realized_dollars": None}
+    planned = realized = planned_dol = realized_dol = 0.0
+    for row in affected:
+        shares = row.get("shares") or 0
+        planned += row["planned_loss"]
+        realized += row["realized_loss"]
+        planned_dol += row["planned_loss"] * shares
+        realized_dol += row["realized_loss"] * shares
+    n = len(affected)
+    return {"n": len(trades or ()), "affected": n, "planned_loss": planned / n,
+            "realized_loss": realized / n, "extra_loss": (realized - planned) / n,
+            "planned_dollars": planned_dol, "realized_dollars": realized_dol}
 
 
 def pick(rows):

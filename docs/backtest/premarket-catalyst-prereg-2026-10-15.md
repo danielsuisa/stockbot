@@ -68,6 +68,14 @@ The recorded book has no fills. The exclusion rate on that list is the rate that
 
 An at-the-market flag beyond the locked S-3 / S-3ASR form screen, and a going-concern flag, need the EDGAR full-text search. They are marked not tested when that search is not run. The reason is stated in the report. The 30-day submissions screen is unchanged.
 
+## Halts and the desk size, added 2026-10-15
+
+Reported beside the main book. Neither one changes the gate, the entry, or the planned stop.
+
+A likely halt is a gap of at least 5 minutes between 1-minute bars from 09:30 through the flat minute. The difference is measured on the bar stamps, so a bar 5 minutes after the previous one counts. The fill for this variant is the open of the first bar after the gap. The report compares that loss per share with the planned stop distance. A stop or a target on an earlier bar means the halt did not affect the trade. A gap that never resumes by the flat minute is not counted. The recorded book has no fills, so the minute bars are not downloaded again for this count.
+
+The desk size is the smaller of 1% of the $460 account at the stop and 2% of the account at the worst case. Worst case per share is the larger of the stop distance and the LULD band: 20% from $0.75 through $3, and 10% above $3. Below $0.75 the rule names no band, so the worst case is the stop. A position under $50 is skipped. The report gives the share of recorded signals that survive. On this account the 20% band caps the position at $46, so a signal from $0.75 through $3 does not survive.
+
 ## Tax line, added 2026-10-15
 
 Reports written from this date on include an after-tax line. Israeli capital-gains tax is 25% of a calendar year's net realized gain. A realized loss offsets a realized gain in the same year. There is no carryforward and no refund. Buy-and-hold SPY is taxed once, at the end. The pre-tax gate is unchanged. A book that never bought has no tax, and the SPY end-tax comparison does not apply to it.
