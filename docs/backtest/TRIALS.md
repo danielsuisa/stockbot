@@ -82,6 +82,18 @@ The only return tests left are Faber, GEM with AGG, and GEM-BIL. The September 2
 
 Every return report also shows buy-and-hold VT beside SPY. SPY stays the primary bar. VT exists for the whole decision window. Daily strategy returns and daily SPY returns are saved under `docs/backtest/series/`.
 
+## Results, computed after the lock
+
+The decision is GEM with AGG: **NO-GO**. Faber and GEM-BIL are also NO-GO. GEM-BIL was not preferred to GEM. Reports: `docs/backtest/faber-10m-2026-10-15.md`, `docs/backtest/gem-agg-2026-10-15.md`, `docs/backtest/gem-bil-2026-10-15.md`. Daily returns are in `docs/backtest/series/`.
+
+| Book | Verdict | CAGR | SPY CAGR | Bootstrap |
+|---|---|---:|---:|---:|
+| Faber, SPYM whole shares | NO-GO | +6.32% | +11.24% | 2.3% |
+| GEM, AGG, the decision | NO-GO | +6.48% | +11.24% | 0.1% |
+| GEM-BIL | NO-GO | +6.50% | +11.24% | 1.0% |
+
+GEM-BIL also fails 2014–2021 on its own (CAGR +5.21% against SPY +12.04%, bootstrap 0%). Each book fails both pass conditions. The first executable fill is 5 shares of SPYM at 84.00 on 2014-02-03, with $38.96 left in cash.
+
 ## Sector rotation is closed
 
 `docs/backtest/T5_TURNOVER.md` counts the preregistered book from 2007-01-31 through 2026-09-30. The average is 9.82 single-fund replacements per year. The gate was 2. T5 is closed NO-GO. No return test is run. The earlier sector return report stays a prior trial under the old gate. It does not add a cluster beyond the one already counted.
