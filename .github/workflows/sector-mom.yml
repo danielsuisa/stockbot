@@ -1,0 +1,35 @@
+name: Sector momentum
+
+# Sector momentum on Yahoo adjusted closes. Research only: no order is placed or transmitted.
+# workflow_dispatch only. The local run writes the report. A later pull_request trigger would download again.
+# A NO-GO still exits 0. A hole in the download exits 1.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sector-mom-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Replay the pre-registered sector momentum book
+        timeout-minutes: 20
+        run: python -m bot.sector_mom_backtest
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sector-mom
+          path: docs/backtest/sector-mom-2*
+          if-no-files-found: warn
+          retention-days: 14
