@@ -1,17 +1,11 @@
 name: Post-earnings drift
 
 # PEAD replay. Research only: no order is placed or transmitted.
-# pull_request is only for the start commit. The report commit removes it, because a later push matches
-# the whole pull-request diff and would start a second download.
+# The replay already ran and its report is in docs/backtest/. pull_request is absent on purpose:
+# this pull request's path filter matches the whole branch, so another push would start a second download.
 # A NO-GO still exits 0. A hole in the download exits 1.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - ".github/workflows/pead.yml"
-      - "bot/pead.py"
-      - "bot/pead_backtest.py"
-      - "docs/backtest/pead-prereg-2026-10-15.md"
 
 permissions:
   contents: read

@@ -13,10 +13,10 @@ from pathlib import Path
 from bot import alpaca
 from bot.desk_gate import YEARS, judge
 from bot.pead import (
-    GATE_HOLD, HOLDS, beats_spy, event_ok, gated, headline_matches, in_prior_24h, mark, schedule, score,
+    GATE_HOLD, GAPS, HOLDS, beats_spy, event_ok, gated, headline_matches, in_prior_24h, mark, schedule, score,
     spy_return,
 )
-from bot.premarket_catalyst import GAPS, split_sane, universe
+from bot.premarket_catalyst import split_sane, universe
 from bot.premarket_catalyst_backtest import CACHE, _end, _get, _probe, _spread, corporate_actions, daily
 
 START, OOS, WARM = "2016-01-01", "2023-01-01", "2015-06-01"

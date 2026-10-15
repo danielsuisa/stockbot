@@ -41,4 +41,4 @@ On the 20-session Pro book, out of sample: at least 100 trades, mean net R above
 
 ## Survivorship
 
-The universe is Alpaca's active and inactive asset file, the same inclusion rule as the premarket test. The report counts inactive names and the nine known delistings, and it repeats the same coverage gaps: tickers Alpaca never stored, a reused ticker, a delisting with no inactive row, no CRSP delisting return, and the split-adjusted dollar levels.
+The universe is Alpaca's active and inactive asset file, the same inclusion rule as the premarket test. The report counts inactive names and the nine known delistings. The coverage gaps are: tickers Alpaca never stored, a reused ticker, a delisting with no inactive row, no CRSP delisting return, and a split-adjusted close that a later split can move across $5. Shares outstanding are not a filter. There is no earnings calendar.

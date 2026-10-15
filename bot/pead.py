@@ -37,6 +37,15 @@ ADV_MIN = 20_000_000.0
 HOLDS = (10, 20, 40)
 GATE_HOLD = 20
 EARNINGS_RE = re.compile(r"\bearnings\b|\bresults\b|\bquarter|\bEPS\b|\brevenue\b", re.I)
+GAPS = (
+    "Tickers Alpaca never stored are absent. The nine-name probe counts that hole for those names only.",
+    "A reused ticker is one symbol. The two companies are not split apart.",
+    "A delisting with no inactive asset row is absent.",
+    "Shares outstanding are not used. There is no earnings calendar, so a day without a matching headline is not an event.",
+    "An intraday halt or a delist after the entry exits at the last print. There is no CRSP delisting return.",
+    "The close-above-$5 screen is split-adjusted, so a later split can move an old day across that line.",
+    "OTC names and symbols outside NYSE, NASDAQ, and AMEX are out.",
+)
 
 
 def headline_matches(headline):

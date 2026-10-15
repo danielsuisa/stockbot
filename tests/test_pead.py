@@ -19,6 +19,8 @@ class Lock(unittest.TestCase):
         self.assertIn("IBKR Lite", text)
         self.assertIn("buy-and-hold SPY", text)
         self.assertNotIn("ib_insync", text)
+        self.assertIn("Shares outstanding are not used", " ".join(pead.GAPS))
+        self.assertNotIn("0.50", " ".join(pead.GAPS))
         for word in ("earnings", "results", "quarter", "EPS", "revenue"):
             self.assertTrue(pead.headline_matches(f"the {word} today"))
 
