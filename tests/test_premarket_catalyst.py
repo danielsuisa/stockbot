@@ -114,6 +114,29 @@ class Entry(unittest.TestCase):
     def test_the_quote_is_scaled_into_split_adjusted_dollars(self):
         self.assertAlmostEqual(pc.quote_spread(0.20, 10.0, 1.0), 0.02)
         self.assertIsNone(pc.quote_spread(None, 10.0, 1.0))
+        scaled = pc.scale_quote((10.0, 12.0), 10.0, 1.0)
+        self.assertAlmostEqual(scaled[0], 1.0)
+        self.assertAlmostEqual(scaled[1], 1.2)
+        self.assertIsNone(pc.scale_quote((1.2, 1.0), 10.0, 1.0))
+
+    def test_a_sub_five_fill_uses_the_ask_and_the_bid(self):
+        self.assertEqual((pc.CHEAP_SLIP, pc.CHEAP_SENS), (0.01, (0.005, 0.02)))
+        row = {"entry": 1.20, "exit": 1.40, "stop": 1.00, "short_exit": 1.10}
+        quoted = pc.score(row, (1.10, 1.22), (1.35, 1.50), 0.01)
+        self.assertEqual(quoted["cost_mode"], "quote")
+        self.assertAlmostEqual(quoted["fill_entry"], 1.22)
+        self.assertAlmostEqual(quoted["fill_exit"], 1.35)
+        slipped = pc.score(row, (1.10, 1.22), None, 0.01)
+        self.assertEqual(slipped["cost_mode"], "slip")
+        self.assertAlmostEqual(slipped["fill_entry"], 1.20 * 1.01)
+        self.assertAlmostEqual(slipped["fill_exit"], 1.40 * 0.99)
+        wider = pc.score(row, None, None, 0.02)
+        tighter = pc.score(row, None, None, 0.005)
+        self.assertGreater(tighter["net_r"], slipped["net_r"])
+        self.assertGreater(slipped["net_r"], wider["net_r"])
+        self.assertAlmostEqual(pc.score(row, (1.10, 1.22), (1.35, 1.50), 0.02)["net_r"], quoted["net_r"])
+        self.assertIsNone(pc.score({"entry": 1.0, "exit": 1.2, "stop": 0.99, "short_exit": 1.1},
+                                   (0.90, 0.98), (1.10, 1.20), 0.01))
 
 
 class Universe(unittest.TestCase):

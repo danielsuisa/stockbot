@@ -30,10 +30,14 @@ One name at a time. The same entry day keeps the higher prior ADV, then the symb
 
 ## Costs
 
-Both books pay the spread: the full SIP quote during the 09:30 minute of the entry, scaled by that day's split-adjusted close over the raw close. A missing quote is the 1 percent round-trip haircut.
+Amended 2026-10-15 for an entry print strictly under $5. A print at $5 or above is unchanged.
+
+At $5 or above, both books pay the spread: the full SIP quote during the 09:30 minute of the entry, scaled by that day's split-adjusted close over the raw close, added on top of the printed prices. A missing quote is the 1 percent round-trip haircut.
 
 - IBKR Pro, the gate: $0.0035 a share, $0.35 minimum, both sides, plus the spread.
 - IBKR Lite, reported: commission zero, plus the same spread.
+
+Under $5, the entry fills at the ask and the exit at the bid when both quotes exist. The entry quote is the 09:30 minute. The exit quote is the session close when the hold ends at the close. A stop has no minute on a daily bar, so if either quote is missing the entry print is raised by 1% and the exit print is lowered by 1%. That is 1% on each side, not a 1% round trip. The same quotes at 0.5% and at 2% per side are reported and do not flip the verdict. Pro and Lite still differ only by the commission.
 
 ## Gate
 

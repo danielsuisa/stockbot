@@ -37,8 +37,23 @@ Price-band days 1522111. Relative-volume pass 86582. Primary-source headlines 0.
 | 2026 | 0 | — |
 
 Trades in names Alpaca now marks inactive: 0 of 0.
-Quotes: 0 trades charged the scaled SIP spread, 0 took the 1% haircut.
 The $0.35 minimum binds below 100 shares: 0 of 0.
+
+## Cost model
+
+Every trade in this book is a sub-$5 name. When a SIP quote exists at the entry minute and at the exit minute, the entry fills at the ask and the exit fills at the bid. Both quotes are scaled by that day's split-adjusted close divided by the raw close. If either quote is missing, the entry print is raised by 1% and the exit print is lowered by 1%. That is 1% on each side. It is not a 1% round trip. Commission stays $0.0035 a share with a $0.35 minimum, both sides. The share count is the whole shares of $460 at the ask, or at the slipped entry when the quote is missing. Net R divides the dollar result by the printed entry-to-stop risk.
+
+The gate uses the 1% fallback. The same prints at 0.5% and at 2% per side are a sensitivity check. They do not flip the verdict. When both quotes exist, the three rates are the same fill.
+
+| Fallback per side | Out-of-sample trades | Mean net R | t |
+|---|---:|---:|---:|
+| 1% (the gate) | 0 | — | — |
+| 0.5% | 0 | — | — |
+| 2% | 0 | — | — |
+
+This download had no fills, so the 1%, 0.5%, and 2% books are the same empty book. The screen was not run again for the cost amendment.
+
+Quotes on both sides: 0. Percent slippage: 0.
 
 ## Survivorship
 

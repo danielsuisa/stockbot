@@ -25,7 +25,7 @@ import datetime as dt
 import re
 import statistics
 
-from bot.desk_gate import ACCOUNT, net_r, shares_for, walk
+from bot.desk_gate import ACCOUNT, COMMISSION, MIN_ORDER, shares_for, walk
 
 PRICE_LO, PRICE_HI = 0.50, 5.0
 RVOL_MIN = 5.0
@@ -36,6 +36,9 @@ SHARES_MAX_AGE = 400
 TARGET_R = 2.0
 TICK = 0.01
 ENTRY_FROM, ENTRY_TO = "09:35", "10:30"
+# Amended 2026-10-15 for every name in this book. 1% is each side, not a round trip.
+CHEAP_SLIP = 0.01
+CHEAP_SENS = (0.005, 0.02)
 SPLIT_BAND = 0.25
 EXCHANGES = ("NYSE", "NASDAQ", "AMEX")
 SYMBOL_RE = re.compile(r"^[A-Z]{1,5}(\.[A-Z])?$")
@@ -214,6 +217,67 @@ def quote_spread(raw_spread, raw_close, adj_close):
     return raw_spread * (adj_close / raw_close)
 
 
+def scale_quote(quote, raw_close, adj_close):
+    """Scale a raw `(bid, ask)` into split-adjusted dollars. None when the quote is unusable."""
+    if not quote or not raw_close or not adj_close or raw_close <= 0:
+        return None
+    bid, ask = quote
+    if bid is None or ask is None or bid <= 0 or ask <= 0 or ask < bid:
+        return None
+    scale = adj_close / raw_close
+    return bid * scale, ask * scale
+
+
+def cheap_fill(entry, exit_px, side, entry_quote, exit_quote, slip):
+    """Sub-$5 fill. Both quotes are scaled `(bid, ask)`.
+
+    A long buys the ask and sells the bid. A short sells the bid and covers at the ask. One missing
+    quote drops both sides onto `slip` of the printed price, against the trade. `slip` of 0.01 is 1%
+    on the entry and 1% on the exit.
+    """
+    if entry_quote and exit_quote:
+        if side == "long":
+            return entry_quote[1], exit_quote[0], "quote"
+        return entry_quote[0], exit_quote[1], "quote"
+    if side == "long":
+        return entry * (1 + slip), exit_px * (1 - slip), "slip"
+    return entry * (1 - slip), exit_px * (1 + slip), "slip"
+
+
+def _fee(shares, pro):
+    if not pro:
+        return 0.0
+    return 2 * max(MIN_ORDER, COMMISSION * shares)
+
+
+def cheap_result(entry, exit_px, stop, side, entry_quote, exit_quote, slip, pro=True, shares=None):
+    """Dollar result for one sub-$5 side. Risk stays the printed entry-to-stop distance.
+
+    Shares are the whole shares of $460 at the price actually paid or received on entry. A long whose
+    fill is already at or through the stop is skipped. A short whose sale is already at or through the
+    short stop is skipped.
+    """
+    fill_e, fill_x, mode = cheap_fill(entry, exit_px, side, entry_quote, exit_quote, slip)
+    if fill_e <= 0 or fill_x <= 0:
+        return None
+    if shares is None:
+        shares = shares_for(fill_e if side == "long" else entry, ACCOUNT)
+    if shares < 1:
+        return None
+    short_stop = entry + abs(entry - stop)
+    if side == "long" and fill_e <= stop:
+        return None
+    if side == "short" and fill_e >= short_stop:
+        return None
+    gross = (fill_x - fill_e) if side == "long" else (fill_e - fill_x)
+    pnl = gross * shares - _fee(shares, pro)
+    risk = abs(entry - stop) * shares
+    if not risk:
+        return None
+    return {"fill_entry": fill_e, "fill_exit": fill_x, "shares": shares, "pnl": pnl,
+            "net_r": pnl / risk, "net_return": pnl / (fill_e * shares), "cost_mode": mode, "slip": slip}
+
+
 def setup(minutes, pm_high, or_low, flat_at):
     """The first 1-min close above the premarket high, from 09:35 through 10:30, or None.
 
@@ -254,19 +318,26 @@ def setup(minutes, pm_high, or_low, flat_at):
             "or_low": or_low}
 
 
-def score(row, spread, account=ACCOUNT):
-    """Add the $460 share count and both net R figures. None when one share costs more than $460."""
-    shares = shares_for(row["entry"], account)
-    if shares < 1 or row.get("short_exit") is None:
+def score(row, entry_quote, exit_quote, slip=CHEAP_SLIP, account=ACCOUNT):
+    """Sub-$5 book. Quotes are scaled `(bid, ask)` or None. `slip` is the no-quote rate, each side.
+
+    `account` is accepted so a caller can still name it; share count uses the $460 account. The gate
+    calls this at 1% per side. 0.5% and 2% are the same function and are not gated.
+    """
+    del account
+    if row.get("short_exit") is None:
         return None
-    pnl, r, mode = net_r(row["entry"], row["exit"], row["stop"], shares, spread, "long")
-    spnl, sr, _ = net_r(row["entry"], row["short_exit"], row["stop"], shares, spread, "short")
-    if r is None or sr is None:
+    long = cheap_result(row["entry"], row["exit"], row["stop"], "long", entry_quote, exit_quote, slip, True)
+    short = cheap_result(row["entry"], row["short_exit"], row["stop"], "short", entry_quote, exit_quote, slip,
+                         True, None if not long else long["shares"])
+    bare = cheap_result(row["entry"], row["exit"], row["stop"], "long", entry_quote, exit_quote, slip,
+                        False, None if not long else long["shares"])
+    if not long or not short or not bare or long["net_r"] is None or short["net_r"] is None:
         return None
-    bare = r + (2 * max(0.35, 0.0035 * shares)) / (abs(row["entry"] - row["stop"]) * shares)
     out = dict(row)
-    out.update(shares=shares, pnl=pnl, net_r=r, net_r_short=sr, short_pnl=spnl, cost_mode=mode,
-               net_r_no_commission=bare)
+    out.update(shares=long["shares"], pnl=long["pnl"], net_r=long["net_r"], net_r_short=short["net_r"],
+               short_pnl=short["pnl"], cost_mode=long["cost_mode"], net_r_no_commission=bare["net_r"],
+               fill_entry=long["fill_entry"], fill_exit=long["fill_exit"], slip=slip)
     return out
 
 

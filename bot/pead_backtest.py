@@ -11,13 +11,13 @@ from collections import defaultdict
 from pathlib import Path
 
 from bot import alpaca
-from bot.desk_gate import YEARS, judge
+from bot.desk_gate import YEARS, judge, tstat
 from bot.pead import (
     GATE_HOLD, GAPS, HOLDS, beats_spy, event_ok, gated, headline_matches, in_prior_24h, mark, schedule, score,
     spy_return,
 )
 from bot.premarket_catalyst import split_sane, universe
-from bot.premarket_catalyst_backtest import CACHE, _end, _get, _probe, _spread, corporate_actions, daily
+from bot.premarket_catalyst_backtest import CACHE, _end, _get, _nbbo, _probe, _spread, corporate_actions, daily
 
 START, OOS, WARM = "2016-01-01", "2023-01-01", "2015-06-01"
 NY = alpaca.NY
@@ -139,8 +139,12 @@ def _close_map(rows):
     return {r[0]: r for r in rows}
 
 
-def _books(cands, listed, raw, adj, spy):
-    """Schedule each hold, then price the spread once per taken trade."""
+def _books(cands, listed, raw, adj, spy, cal):
+    """Schedule each hold, then price the spread once per taken trade.
+
+    An entry print strictly under $5 uses the ask and the bid. A stop exit has no minute, so that trade
+    uses the percent slippage. A print at $5 or above keeps the full quoted spread.
+    """
     books = {}
     spy_by = _close_map(spy)
     raw_by = {s: _close_map(rows) for s, rows in raw.items()}
@@ -158,9 +162,21 @@ def _books(cands, listed, raw, adj, spy):
         for c in taken:
             raw_c = (raw_by.get(c["t"]) or {}).get(c["entry_day"])
             adj_c = (adj_by.get(c["t"]) or {}).get(c["entry_day"])
-            spread = _spread(c["t"], c["entry_day"], "09:30", None if not raw_c else raw_c[4],
-                             None if not adj_c else adj_c[4])
-            scored = score(c["entry"], c["exit"], c["short"], c["stop"], spread)
+            raw_px = None if not raw_c else raw_c[4]
+            adj_px = None if not adj_c else adj_c[4]
+            if c["entry"] < 5.0:
+                entry_q = _nbbo(c["t"], c["entry_day"], "09:30", raw_px, adj_px)
+                exit_q = None
+                if c["kind"] in ("time", "last"):
+                    close_hm = (cal.get(c["exit_day"]) or (None, None))[1]
+                    raw_x = (raw_by.get(c["t"]) or {}).get(c["exit_day"])
+                    adj_x = (adj_by.get(c["t"]) or {}).get(c["exit_day"])
+                    exit_q = _nbbo(c["t"], c["exit_day"], close_hm,
+                                   None if not raw_x else raw_x[4], None if not adj_x else adj_x[4])
+                scored = score(c["entry"], c["exit"], c["short"], c["stop"], None, entry_q, exit_q)
+            else:
+                spread = _spread(c["t"], c["entry_day"], "09:30", raw_px, adj_px)
+                scored = score(c["entry"], c["exit"], c["short"], c["stop"], spread)
             if not scored:
                 continue
             spy_e = spy_by.get(c["entry_day"])
@@ -177,6 +193,36 @@ def _books(cands, listed, raw, adj, spy):
 
 def _fmt(x, spec="{:+.3f}"):
     return "—" if x is None else spec.format(x)
+
+
+def _num(x):
+    if x is None or x == "":
+        return None
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+def _cheap_table(n, rows):
+    """Sensitivity for entry prints strictly under $5. An empty set leaves the published hold unchanged."""
+    entries = [x for x in (_num(r.get("entry")) for r in rows) if x is not None]
+    cheap = [r for r in rows if (_num(r.get("entry")) or 0) < 5 and _num(r.get("entry")) is not None]
+    oos = [r for r in cheap if r["day"] >= OOS]
+    lo = min(entries) if entries else None
+    lines = [f"Hold {n}: {len(cheap)} entries under $5, {len(oos)} of them out of sample. "
+             f"Lowest entry print in the hold: {_fmt(lo, '{:.2f}')}.",
+             "",
+             "| Fallback per side | Out-of-sample trades | Mean net R | t |",
+             "|---|---:|---:|---:|"]
+    for label, key in (("1% (the amendment)", "net_r"), ("0.5%", "net_r_0_5"), ("2%", "net_r_2")):
+        xs = [x for x in (_num(r.get(key)) for r in oos) if x is not None]
+        m = sum(xs) / len(xs) if xs else None
+        lines.append(f"| {label} | {len(xs)} | {_fmt(m)} | {_fmt(tstat(xs), '{:.2f}')} |")
+    if not cheap:
+        lines += ["", "No entry in this hold printed under $5. The published book above is unchanged, "
+                  "and the sensitivity has nothing to reprice."]
+    return "\n".join(lines)
 
 
 def _sample_line(name, rows, show):
@@ -201,7 +247,8 @@ def render(result):
         "Long only, one position, $460, settled the session after the exit. The earnings day is an Alpaca "
         "headline in the prior 24 hours matching earnings, results, quarter, EPS, or revenue, plus the locked "
         "gap, volume, range, price, and ADV screen. Prices are split-adjusted. The gated book is the 20-session "
-        "hold with IBKR Pro fees plus the spread. Holds of 10 and 40, and IBKR Lite, are reported. "
+        "hold with IBKR Pro fees plus the spread. An entry print strictly under $5 fills at the ask and "
+        "the bid, or at 1% each side when a quote is missing. Holds of 10 and 40, and IBKR Lite, are reported. "
         "This replay does not place or transmit an order.",
         "",
         f"Window: in-sample {START} through 2022-12-31, out-of-sample entries from {OOS} through {result.get('end')}. "
@@ -254,6 +301,28 @@ def render(result):
         quotes = sum(r.get("cost_mode") == "quote" for r in rows)
         lines += ["", f"Inactive names: {inactive} of {len(rows)}. Quotes: {quotes} scaled SIP spreads, "
                   f"{len(rows) - quotes} haircuts.", ""]
+    lines += ["## Cost model", ""]
+    lines.append(
+        "A name priced at $5 or above keeps the earlier model: the full SIP quote during the 09:30 minute of "
+        "the entry, scaled into split-adjusted dollars, added on top of the printed open and the printed exit. "
+        "A missing quote on that name is the 1% round-trip haircut. IBKR Pro adds $0.0035 a share with a $0.35 "
+        "minimum, both sides. IBKR Lite zeros that commission and keeps the same spread. The gate is the "
+        "20-session Pro book, and its mean net return still has to beat buy-and-hold SPY."
+    )
+    lines.append("")
+    lines.append(
+        "A name whose entry print is strictly under $5 uses the amended model. The entry fills at the ask and "
+        "the exit at the bid when both SIP quotes exist. The entry quote is the 09:30 minute. The exit quote is "
+        "the session close when the exit is a close. A stop has no minute on a daily bar, so a missing side "
+        "drops both sides onto a percent of the print: the entry is raised by 1% and the exit is lowered by 1%. "
+        "That is 1% on each side, not a 1% round trip. The 0.5% and 2% columns use the same quotes and change "
+        "only that fallback. They do not flip the verdict."
+    )
+    lines.append("")
+    for n in HOLDS:
+        rows = (result.get("books") or {}).get(n) or (result.get("books") or {}).get(str(n)) or []
+        lines.append(_cheap_table(n, rows))
+        lines.append("")
     lines += ["## Survivorship", ""]
     probe = result.get("probe") or []
     covered = sum(1 for r in probe if r.get("in_assets") and r.get("bars"))
@@ -296,7 +365,7 @@ def _write(result):
 
 
 def run():
-    run_day, sessions, _cal = _end()
+    run_day, sessions, cal = _end()
     end = sessions[-1]
     assets = alpaca.assets()
     symbols, indexed = universe(assets)
@@ -323,7 +392,7 @@ def run():
     kept, truncated = _with_news(cands)
     print(f"headlines {len(kept)} truncated days {truncated}", flush=True)
     listed = {s: indexed[s].get("status") for s in symbols}
-    books = _books(kept, listed, raw, adj, spy)
+    books = _books(kept, listed, raw, adj, spy, cal)
     result = _result(run_day, end, first, symbols, inactive, with_bars, aapl, skipped, probe,
                      len(cands), len(kept), truncated, books, True)
     result["verdict"] = gated([r for r in books[GATE_HOLD] if r["day"] >= OOS])

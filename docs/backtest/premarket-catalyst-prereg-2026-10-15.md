@@ -34,7 +34,11 @@ One name a day: the highest premarket relative volume, then the symbol.
 
 ## Costs and the gate
 
-The gate is the $460 book in `bot/desk_gate.py`: at least 100 out-of-sample trades, mean net R above 0 with t above 2, mean above the 95th percentile of 20 random-direction means, and mean net R above 0 in 2023 and in 2024 and in 2025 and in 2026. A year with no trades fails. Commission is $0.0035 a share with a $0.35 minimum, both sides. The spread is the full SIP quote during the fill minute, scaled by that day's split-adjusted close divided by that day's raw close, so the quote is in the same dollars as the fill. A missing quote uses the 1% round-trip haircut. The same trades with the commission removed are reported and are not gated.
+Amended 2026-10-15 after the empty download. The screen is unchanged. Every name in this book is under $5, so every trade uses the amended spread.
+
+When a SIP quote exists at the entry minute and at the exit minute, the entry fills at the ask and the exit fills at the bid. Both quotes are scaled by that day's split-adjusted close divided by the raw close. If either quote is missing, the entry print is raised by 1% and the exit print is lowered by 1%. That is 1% on each side. It is not a 1% round trip. The share count is the whole shares of $460 at the price paid. Net R divides the dollar result by the printed entry-to-stop risk. Commission is $0.0035 a share with a $0.35 minimum, both sides. The same trades with the commission removed are reported and are not gated.
+
+The gate uses that 1% fallback: at least 100 out-of-sample trades, mean net R above 0 with t above 2, mean above the 95th percentile of 20 random-direction means, and mean net R above 0 in 2023 and in 2024 and in 2025 and in 2026. A year with no trades fails. The same prints at 0.5% and at 2% per side are reported beside the gate. They do not flip the verdict. When both quotes exist, the three rates are the same fill.
 
 ## Survivorship
 

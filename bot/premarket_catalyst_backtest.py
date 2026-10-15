@@ -20,11 +20,11 @@ from collections import defaultdict
 from pathlib import Path
 
 from bot import alpaca, common
-from bot.desk_gate import YEARS, judge
+from bot.desk_gate import YEARS, judge, tstat
 from bot.premarket_catalyst import (
-    DELISTED, GAPS, ex_dates, filing_blocks, flat_minute, index_assets, opening_low, pick, premarket,
-    price_ok, primary_source, quote_spread, rvol_ok, score, setup, shares_ok, source_name, split_sane,
-    universe,
+    CHEAP_SENS, CHEAP_SLIP, DELISTED, GAPS, ex_dates, filing_blocks, flat_minute, index_assets, opening_low,
+    pick, premarket, price_ok, primary_source, quote_spread, rvol_ok, scale_quote, score, setup, shares_ok,
+    source_name, split_sane, universe,
 )
 
 START, OOS, WARM = "2016-01-01", "2023-01-01", "2015-06-01"
@@ -406,14 +406,27 @@ def _minutes(symbols, day, flat_at):
     return {s: [tuple(r) for r in have.get(s, [])] for s in symbols}
 
 
-def _spread(sym, day, minute, raw_close, adj_close):
+def _quote_end(minute):
     h, m = (int(x) for x in minute.split(":")[:2])
     t = h * 60 + m + 1
-    end = f"{t // 60:02d}:{t % 60:02d}"
-    q = alpaca.quote_at(sym, alpaca.utc(day, end))
+    return f"{t // 60:02d}:{t % 60:02d}"
+
+
+def _spread(sym, day, minute, raw_close, adj_close):
+    q = alpaca.quote_at(sym, alpaca.utc(day, _quote_end(minute)))
     if not q:
         return None
     return quote_spread(q[1] - q[0], raw_close, adj_close)
+
+
+def _nbbo(sym, day, minute, raw_close, adj_close):
+    """Scaled `(bid, ask)` at `minute`, or None. Used for sub-$5 entry and exit fills."""
+    if not minute:
+        return None
+    q = alpaca.quote_at(sym, alpaca.utc(day, _quote_end(minute)))
+    if not q:
+        return None
+    return scale_quote(q, raw_close, adj_close)
 
 
 def _next_minute(hhmm):
@@ -492,9 +505,15 @@ def _play(ready, cal, raw, adj):
             done.append(built)
         chosen = pick(done)
         if chosen:
-            spread = _spread(chosen["t"], day, chosen["fill_minute"], chosen["raw_close"], chosen["adj_close"])
-            scored = score(chosen, spread)
+            raw_c, adj_c = chosen["raw_close"], chosen["adj_close"]
+            entry_q = _nbbo(chosen["t"], day, chosen["fill_minute"], raw_c, adj_c)
+            exit_q = _nbbo(chosen["t"], day, chosen["exit_minute"], raw_c, adj_c)
+            pack = {slip: score(chosen, entry_q, exit_q, slip) for slip in (CHEAP_SLIP, *CHEAP_SENS)}
+            scored = pack[CHEAP_SLIP]
             if scored:
+                for slip, key in ((0.005, "net_r_0_5"), (0.02, "net_r_2")):
+                    alt = pack[slip]
+                    scored[key] = None if not alt else alt["net_r"]
                 books.append(scored)
         if n % 25 == 0:
             print(f"entries {day} trades {len(books)} requests {alpaca.REQUESTS[0]}", flush=True)
@@ -519,6 +538,22 @@ def _probe(end):
 
 def _fmt(x, spec="{:+.3f}"):
     return "—" if x is None else spec.format(x)
+
+
+def _sens_table(rows):
+    """Out-of-sample mean net R at the gated 1% fallback and at the two sensitivity rates."""
+    oos = [r for r in rows if r["day"] >= OOS]
+    lines = ["| Fallback per side | Out-of-sample trades | Mean net R | t |",
+             "|---|---:|---:|---:|"]
+    for label, key in (("1% (the gate)", "net_r"), ("0.5%", "net_r_0_5"), ("2%", "net_r_2")):
+        xs = [r[key] for r in oos if r.get(key) is not None]
+        m = sum(xs) / len(xs) if xs else None
+        lines.append(f"| {label} | {len(xs)} | {_fmt(m)} | {_fmt(tstat(xs), '{:.2f}')} |")
+    if not rows:
+        lines.append("")
+        lines.append("This download had no fills, so the 1%, 0.5%, and 2% books are the same empty book. "
+                     "The screen was not run again for the cost amendment.")
+    return "\n".join(lines)
 
 
 def render(result):
@@ -572,11 +607,27 @@ def render(result):
         part = [r["net_r"] for r in rows if r["day"][:4] == y]
         lines.append(f"| {y} | {len(part)} | {_fmt(sum(part) / len(part) if part else None)} |")
     inactive = [r for r in rows if r.get("listed") == "inactive"]
-    quotes = sum(r.get("cost_mode") == "quote" for r in rows)
     lines += ["",
               f"Trades in names Alpaca now marks inactive: {len(inactive)} of {len(rows)}.",
-              f"Quotes: {quotes} trades charged the scaled SIP spread, {len(rows) - quotes} took the 1% haircut.",
               f"The $0.35 minimum binds below 100 shares: {sum(r['shares'] < 100 for r in rows)} of {len(rows)}.",
+              "",
+              "## Cost model",
+              "",
+              "Every trade in this book is a sub-$5 name. When a SIP quote exists at the entry minute and at "
+              "the exit minute, the entry fills at the ask and the exit fills at the bid. Both quotes are scaled "
+              "by that day's split-adjusted close divided by the raw close. If either quote is missing, the entry "
+              "print is raised by 1% and the exit print is lowered by 1%. That is 1% on each side. It is not a 1% "
+              "round trip. Commission stays $0.0035 a share with a $0.35 minimum, both sides. The share count is "
+              "the whole shares of $460 at the ask, or at the slipped entry when the quote is missing. Net R "
+              "divides the dollar result by the printed entry-to-stop risk.",
+              "",
+              "The gate uses the 1% fallback. The same prints at 0.5% and at 2% per side are a sensitivity check. "
+              "They do not flip the verdict. When both quotes exist, the three rates are the same fill.",
+              "",
+              _sens_table(rows),
+              "",
+              f"Quotes on both sides: {sum(r.get('cost_mode') == 'quote' for r in rows)}. "
+              f"Percent slippage: {sum(r.get('cost_mode') == 'slip' for r in rows)}.",
               "",
               "## Survivorship",
               ""]

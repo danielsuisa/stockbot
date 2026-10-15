@@ -27,6 +27,7 @@ import statistics
 from zoneinfo import ZoneInfo
 
 from bot.desk_gate import ACCOUNT, friction, judge, shares_for, walk
+from bot.premarket_catalyst import CHEAP_SENS, CHEAP_SLIP, cheap_result
 
 NY = ZoneInfo("America/New_York")
 PRICE_MIN = 5.0
@@ -137,8 +138,43 @@ def pnl_r(entry, exit_px, stop, shares, spread, side, pro):
             "shares": shares}
 
 
-def score(entry, exit_px, short_px, stop, spread):
-    """Pro and Lite results for one long, plus the Pro short used by the random-direction check."""
+def _with_sensitivity(primary, entry, exit_px, short_px, stop, entry_quote, exit_quote):
+    """0.5% and 2% per side on the same quotes. A missing alt does not replace the 1% trade."""
+    out = dict(primary)
+    for slip, key in ((CHEAP_SENS[0], "net_r_0_5"), (CHEAP_SENS[1], "net_r_2")):
+        alt = _score_cheap(entry, exit_px, short_px, stop, entry_quote, exit_quote, slip)
+        out[key] = None if not alt else alt["net_r"]
+    return out
+
+
+def _score_cheap(entry, exit_px, short_px, stop, entry_quote, exit_quote, slip):
+    """Under $5: ask/bid when both quotes exist, otherwise `slip` on each side. Pro fee, Lite fee zero."""
+    if short_px is None or entry <= stop:
+        return None
+    pro = cheap_result(entry, exit_px, stop, "long", entry_quote, exit_quote, slip, True)
+    if not pro:
+        return None
+    lite = cheap_result(entry, exit_px, stop, "long", entry_quote, exit_quote, slip, False, pro["shares"])
+    short = cheap_result(entry, short_px, stop, "short", entry_quote, exit_quote, slip, True, pro["shares"])
+    if not lite or not short:
+        return None
+    return {"shares": pro["shares"], "pnl": pro["pnl"], "net_r": pro["net_r"], "net_r_short": short["net_r"],
+            "net_return": pro["net_return"], "lite_pnl": lite["pnl"], "lite_r": lite["net_r"],
+            "lite_return": lite["net_return"], "cost_mode": pro["cost_mode"],
+            "fill_entry": pro["fill_entry"], "fill_exit": pro["fill_exit"]}
+
+
+def score(entry, exit_px, short_px, stop, spread, entry_quote=None, exit_quote=None):
+    """Pro and Lite results for one long, plus the Pro short used by the random-direction check.
+
+    An entry print strictly under $5 uses the sub-$5 model. A print at $5 or above keeps the full
+    quoted spread, or the 1% round-trip haircut when that quote is missing.
+    """
+    if entry < 5.0:
+        primary = _score_cheap(entry, exit_px, short_px, stop, entry_quote, exit_quote, CHEAP_SLIP)
+        if not primary:
+            return None
+        return _with_sensitivity(primary, entry, exit_px, short_px, stop, entry_quote, exit_quote)
     shares = shares_for(entry, ACCOUNT)
     if shares < 1 or short_px is None or entry <= stop:
         return None
