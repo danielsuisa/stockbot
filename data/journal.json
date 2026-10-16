@@ -3996,6 +3996,41 @@
     "0001193125-26-423068"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-16-PEP",
+   "date": "2026-10-16",
+   "ticker": "PEP",
+   "cik": 77476,
+   "company": "PEPSICO INC",
+   "sic": 2080,
+   "kind": "big",
+   "quality": 39,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 20,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 131.49,
+    "asof": "2026-10-16 20:00",
+    "source": "live"
+   },
+   "total": 23686388.88,
+   "insiders": 1,
+   "liquidity": 1355693849.925856,
+   "scores": {
+    "piotroski": "9/9",
+    "altman": "Z 3.44",
+    "beneish": -2.54
+   },
+   "accs": [
+    "0001061272-26-000004"
+   ],
+   "returns": {}
   }
  ]
 }
