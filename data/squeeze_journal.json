@@ -948,6 +948,40 @@
    "price": 7.43,
    "chg": -0.0511,
    "outcome": null
+  },
+  {
+   "date": "2026-10-19",
+   "seen": "2026-10-16",
+   "t": "CELC",
+   "rank": 1,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-30",
+   "float": 29716837,
+   "short_float": 0.3695,
+   "short_ratio": 9.8626,
+   "avg_vol": 1113260,
+   "rel_vol": 3.8688,
+   "pre_vol": null,
+   "price": 56.58,
+   "chg": -0.0617,
+   "outcome": null
+  },
+  {
+   "date": "2026-10-19",
+   "seen": "2026-10-16",
+   "t": "CBRL",
+   "rank": 3,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-30",
+   "float": 20423192,
+   "short_float": 0.2588,
+   "short_ratio": 5.6158,
+   "avg_vol": 941362,
+   "rel_vol": 2.031,
+   "pre_vol": null,
+   "price": 68.97,
+   "chg": 0.027,
+   "outcome": null
   }
  ]
 }
