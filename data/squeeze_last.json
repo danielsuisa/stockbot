@@ -1,74 +1,7 @@
 {
- "date": "2026-10-15",
- "kind": "day",
- "at": "19:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>16.10.2026</code> · מצב ב־<code>02:30</code>\n\nמקום <code>1</code>: <code>BETR</code> · <code>10.76$</code> <code>32.5%▲</code>\nשורט <code>44.1%</code> מהמניות הצפות · <code>5.5</code> ימים לכיסוי · מחזור פי <code>5.0</code> מהרגיל\n\nמקום <code>2</code>: <code>BKV</code> · <code>22.30$</code> <code>3.5%▼</code>\nשורט <code>33.8%</code> מהמניות הצפות · <code>6.7</code> ימים לכיסוי · מחזור פי <code>2.2</code> מהרגיל\n\nמקום <code>3</code>: <code>DFH</code> · <code>8.44$</code> <code>13.7%▲</code>\nשורט <code>32.8%</code> מהמניות הצפות · <code>9.6</code> ימים לכיסוי · מחזור פי <code>4.4</code> מהרגיל\n\nמקום <code>4</code>: <code>MMYT</code> · <code>46.78$</code> <code>7.2%▲</code>\nשורט <code>28.3%</code> מהמניות הצפות · <code>10.0</code> ימים לכיסוי · מחזור פי <code>2.0</code> מהרגיל\n\nמקום <code>5</code>: <code>TSSI</code> · <code>7.43$</code> <code>5.1%▼</code>\nשורט <code>21.5%</code> מהמניות הצפות · <code>5.2</code> ימים לכיסוי · מחזור פי <code>2.4</code> מהרגיל\n\nמקום <code>6</code>: <code>TNXP</code> · <code>6.42$</code> <code>0.3%▲</code>\nשורט <code>20.8%</code> מהמניות הצפות · <code>5.1</code> ימים לכיסוי · מחזור פי <code>4.2</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
- "rows": [
-  {
-   "t": "BETR",
-   "price": 10.76,
-   "chg": 0.3251,
-   "avg_vol": 676329,
-   "rel_vol": 4.9807,
-   "short_ratio": 5.5165,
-   "float": 8454368,
-   "short_float": 0.4413,
-   "options": true
-  },
-  {
-   "t": "BKV",
-   "price": 22.3,
-   "chg": -0.0346,
-   "avg_vol": 1589792,
-   "rel_vol": 2.2403,
-   "short_ratio": 6.7078,
-   "float": 31568964,
-   "short_float": 0.3378,
-   "options": true
-  },
-  {
-   "t": "DFH",
-   "price": 8.44,
-   "chg": 0.1375,
-   "avg_vol": 909729,
-   "rel_vol": 4.4373,
-   "short_ratio": 9.6339,
-   "float": 26715461,
-   "short_float": 0.3281,
-   "options": true
-  },
-  {
-   "t": "MMYT",
-   "price": 46.78,
-   "chg": 0.072,
-   "avg_vol": 827276,
-   "rel_vol": 2.0186,
-   "short_ratio": 9.9526,
-   "float": 29143752,
-   "short_float": 0.2825,
-   "options": true
-  },
-  {
-   "t": "TSSI",
-   "price": 7.43,
-   "chg": -0.0511,
-   "avg_vol": 897090,
-   "rel_vol": 2.4022,
-   "short_ratio": 5.1902,
-   "float": 21612421,
-   "short_float": 0.2154,
-   "options": true
-  },
-  {
-   "t": "TNXP",
-   "price": 6.42,
-   "chg": 0.0031,
-   "avg_vol": 573056,
-   "rel_vol": 4.1848,
-   "short_ratio": 5.126,
-   "float": 14116665,
-   "short_float": 0.2081,
-   "options": true
-  }
- ]
+ "date": "2026-10-16",
+ "kind": "pre",
+ "at": "04:15",
+ "text": "🌅 <b>רשימת סקוויז לפני הפתיחה</b>\nיום ו׳ <code>16.10.2026</code> · מצב ב־<code>11:15</code>\n\n🤷 אף מניה לא עומדת כרגע בכל התנאים.\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
+ "rows": []
 }
