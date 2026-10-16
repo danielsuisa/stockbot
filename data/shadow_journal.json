@@ -582,6 +582,102 @@
     }
    ],
    "gaps": 0
+  },
+  "2026-10-15": {
+   "top": [
+    "DFH",
+    "ARES",
+    "DOCN",
+    "CGNX",
+    "PNC",
+    "MKSI",
+    "FER",
+    "INDV",
+    "SCHW",
+    "GEV",
+    "IP",
+    "SLGN",
+    "GFL",
+    "INIO",
+    "VRT",
+    "NVT",
+    "USB",
+    "ETN",
+    "CORZ",
+    "KMB"
+   ],
+   "reasons": {
+    "spread": 14,
+    "trigger": 3
+   },
+   "dropped": {
+    "Rule 201": 2
+   },
+   "trades": [
+    {
+     "t": "GEV",
+     "rank": 10,
+     "side": -1,
+     "at": "09:36",
+     "level": 898,
+     "R": 3.9831,
+     "shares": 25,
+     "spread": 0.38,
+     "fill": 898,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1024,
+     "net_r": -1.1024
+    }
+   ],
+   "optimistic": [
+    {
+     "t": "DOCN",
+     "rank": 3,
+     "side": -1,
+     "at": "09:54",
+     "level": 99.51,
+     "R": 0.8896,
+     "shares": 112,
+     "spread": 0.19,
+     "fill": 99.51,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2214,
+     "net_r": -1.2214
+    },
+    {
+     "t": "GEV",
+     "rank": 10,
+     "side": -1,
+     "at": "09:36",
+     "level": 898,
+     "R": 3.9831,
+     "shares": 25,
+     "spread": 0.38,
+     "fill": 898,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1024,
+     "net_r": -1.1024
+    },
+    {
+     "t": "CORZ",
+     "rank": 19,
+     "side": -1,
+     "at": "09:35",
+     "level": 12.42,
+     "R": 0.0949,
+     "shares": 1053,
+     "spread": 0.01,
+     "fill": 12.42,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1791,
+     "net_r": -1.1791
+    }
+   ],
+   "gaps": 0
   }
  }
 }
