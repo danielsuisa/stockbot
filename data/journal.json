@@ -4031,6 +4031,80 @@
     "0001061272-26-000004"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-16-SAFX",
+   "date": "2026-10-16",
+   "ticker": "SAFX",
+   "cik": 2019793,
+   "company": "XCF Global, Inc.",
+   "sic": 2860,
+   "kind": "big",
+   "quality": 20,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 20,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 0.1403,
+    "asof": "2026-10-16 20:00",
+    "source": "live"
+   },
+   "total": 142083450.54,
+   "insiders": 1,
+   "liquidity": 1456193.4587537565,
+   "scores": {
+    "piotroski": "2/5",
+    "altman": "Z -1.06",
+    "beneish": null
+   },
+   "accs": [
+    "0002106572-26-000003"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-16-SAH",
+   "date": "2026-10-16",
+   "ticker": "SAH",
+   "cik": 1043509,
+   "company": "SONIC AUTOMOTIVE INC",
+   "sic": 5500,
+   "kind": "big",
+   "quality": 17,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 17,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 63.61,
+    "asof": "2026-10-16 20:00",
+    "source": "live"
+   },
+   "total": 4584694.44,
+   "insiders": 1,
+   "liquidity": 24207169.730203804,
+   "scores": {
+    "piotroski": "7/9",
+    "altman": "Z'' 1.58",
+    "beneish": -2.85
+   },
+   "accs": [
+    "0001460471-26-000005",
+    "0001460471-26-000006",
+    "0001460471-26-000007",
+    "0001460471-26-000008",
+    "0001460471-26-000009"
+   ],
+   "returns": {}
   }
  ]
 }
