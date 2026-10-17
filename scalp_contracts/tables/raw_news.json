@@ -1,24 +1,97 @@
 {
   "table": "raw_news",
-  "schema_version": 1,
+  "schema_version": 2,
   "description": "News and event items (Alpaca news, GDELT, RSS, EDGAR filings index). event_at is the publisher's time; availability for features is ingested_at for live data, and for backfills the later of event_at and updated_at plus the source's documented delay (ADR 0001 section 3.6).",
   "layer": "raw",
   "append_only": true,
   "time_column": "event_at",
   "columns": [
-    {"name": "event_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "Published or created time, UTC."},
-    {"name": "updated_at", "type": "timestamp[us, tz=UTC]", "nullable": true, "description": "Vendor's last update time; symbol tags may have changed then."},
-    {"name": "item_id", "type": "string", "nullable": false, "description": "Vendor id, or sha256 of url for sources without ids."},
-    {"name": "headline", "type": "string", "nullable": false, "description": "As received."},
-    {"name": "summary", "type": "string", "nullable": true, "description": "As received."},
-    {"name": "url", "type": "string", "nullable": true, "description": "Canonical URL."},
-    {"name": "symbols", "type": "list<string>", "nullable": true, "description": "Vendor symbol tags as received at ingested_at."},
-    {"name": "provider", "type": "string", "nullable": true, "description": "Original publisher (Benzinga, AP, SEC, ...)."},
-    {"name": "request_id", "type": "string", "nullable": false, "description": "sha256 of the canonical request."},
-    {"name": "ingested_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "When the row was received."},
-    {"name": "source", "type": "string", "nullable": false, "description": "alpaca_news | gdelt | rss | edgar."},
-    {"name": "schema_version", "type": "int32", "nullable": false, "description": "1."}
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Published or created time, UTC."
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "Vendor's last update time; symbol tags may have changed then."
+    },
+    {
+      "name": "item_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Vendor id, or sha256 of url for sources without ids."
+    },
+    {
+      "name": "headline",
+      "type": "string",
+      "nullable": false,
+      "description": "As received."
+    },
+    {
+      "name": "summary",
+      "type": "string",
+      "nullable": true,
+      "description": "As received."
+    },
+    {
+      "name": "url",
+      "type": "string",
+      "nullable": true,
+      "description": "Canonical URL."
+    },
+    {
+      "name": "symbols",
+      "type": "list<string>",
+      "nullable": true,
+      "description": "Vendor symbol tags as received at ingested_at."
+    },
+    {
+      "name": "provider",
+      "type": "string",
+      "nullable": true,
+      "description": "Original publisher (Benzinga, AP, SEC, ...)."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none' (not a market-data feed)."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "sha256 of the canonical request."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the row was received."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "alpaca_news | gdelt | rss | edgar."
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "1."
+    }
   ],
-  "primary_key": ["source", "item_id", "ingested_at"],
-  "partitioning": ["source={source}", "date={date}"]
+  "primary_key": [
+    "source",
+    "item_id",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
 }

@@ -1,0 +1,126 @@
+{
+  "table": "asset_snapshots",
+  "schema_version": 1,
+  "description": "Alpaca /v2/assets?status=all (us_equity) as listed at ingested_at. Attributes are as of that time, not point-in-time.",
+  "layer": "reference",
+  "append_only": true,
+  "time_column": "event_at",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Snapshot time (= ingested_at of the listing)."
+    },
+    {
+      "name": "asset_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Vendor asset id."
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": "Symbol as listed (may carry _DELISTED)."
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "nullable": true,
+      "description": "Vendor name; empty for many inactive assets."
+    },
+    {
+      "name": "exchange",
+      "type": "string",
+      "nullable": false,
+      "description": "Listing venue."
+    },
+    {
+      "name": "asset_class",
+      "type": "string",
+      "nullable": false,
+      "description": "us_equity."
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "nullable": false,
+      "description": "active | inactive."
+    },
+    {
+      "name": "tradable",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "marginable",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "shortable",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "easy_to_borrow",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "fractionable",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "attributes",
+      "type": "list<string>",
+      "nullable": true,
+      "description": "Vendor attribute flags."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "sha256 of the canonical request (endpoint + params) that produced the row."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the row was received from the vendor."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "alpaca"
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "Contract version of the row."
+    }
+  ],
+  "primary_key": [
+    "asset_id",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
+}

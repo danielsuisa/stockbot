@@ -1,25 +1,117 @@
 {
   "table": "corporate_actions",
-  "schema_version": 1,
+  "schema_version": 2,
   "description": "Splits, dividends, symbol changes, mergers, delistings. Bars stay raw; adjustments are applied at read time only for actions whose ex date is at or before the decision time and whose ingested_at is not after the replay's as_of time (P0 audit A5.3).",
   "layer": "reference",
   "append_only": true,
   "time_column": "event_at",
   "columns": [
-    {"name": "event_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "Ex / effective date at 00:00 America/New_York, in UTC."},
-    {"name": "action_type", "type": "string", "nullable": false, "description": "split | reverse_split | cash_dividend | stock_dividend | name_change | merger | spinoff | delisting."},
-    {"name": "symbol", "type": "string", "nullable": false, "description": "Symbol before the action."},
-    {"name": "new_symbol", "type": "string", "nullable": true, "description": "Symbol after the action, if it changes."},
-    {"name": "ratio_new", "type": "int64", "nullable": true, "description": "Split ratio numerator (new shares)."},
-    {"name": "ratio_old", "type": "int64", "nullable": true, "description": "Split ratio denominator (old shares)."},
-    {"name": "cash_amount", "type": "string", "nullable": true, "description": "Decimal string, per share."},
-    {"name": "declared_at", "type": "timestamp[us, tz=UTC]", "nullable": true, "description": "Declaration time if known; the earliest the action could be known."},
-    {"name": "vendor_id", "type": "string", "nullable": true, "description": "Vendor's action id."},
-    {"name": "request_id", "type": "string", "nullable": false, "description": "sha256 of the canonical request."},
-    {"name": "ingested_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "When the row was received. Alpaca gives no guarantee on creation time, so this bounds availability."},
-    {"name": "source", "type": "string", "nullable": false, "description": "alpaca | edgar | yfinance."},
-    {"name": "schema_version", "type": "int32", "nullable": false, "description": "1."}
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Ex / effective date at 00:00 America/New_York, in UTC."
+    },
+    {
+      "name": "action_type",
+      "type": "string",
+      "nullable": false,
+      "description": "split | reverse_split | cash_dividend | stock_dividend | name_change | merger | spinoff | delisting."
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": "Symbol before the action."
+    },
+    {
+      "name": "new_symbol",
+      "type": "string",
+      "nullable": true,
+      "description": "Symbol after the action, if it changes."
+    },
+    {
+      "name": "ratio_new",
+      "type": "int64",
+      "nullable": true,
+      "description": "Split ratio numerator (new shares)."
+    },
+    {
+      "name": "ratio_old",
+      "type": "int64",
+      "nullable": true,
+      "description": "Split ratio denominator (old shares)."
+    },
+    {
+      "name": "cash_amount",
+      "type": "string",
+      "nullable": true,
+      "description": "Decimal string, per share."
+    },
+    {
+      "name": "declared_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "Declaration time if known; the earliest the action could be known."
+    },
+    {
+      "name": "vendor_id",
+      "type": "string",
+      "nullable": true,
+      "description": "Vendor's action id."
+    },
+    {
+      "name": "process_date",
+      "type": "date32",
+      "nullable": true,
+      "description": "Vendor process date."
+    },
+    {
+      "name": "raw",
+      "type": "string",
+      "nullable": false,
+      "description": "The vendor record as canonical JSON (sorted keys)."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "sha256 of the canonical request."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the row was received. Alpaca gives no guarantee on creation time, so this bounds availability."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "alpaca | edgar | yfinance."
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "1."
+    }
   ],
-  "primary_key": ["source", "symbol", "action_type", "event_at", "ingested_at"],
-  "partitioning": ["source={source}", "date={date}"]
+  "primary_key": [
+    "source",
+    "symbol",
+    "action_type",
+    "event_at",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
 }

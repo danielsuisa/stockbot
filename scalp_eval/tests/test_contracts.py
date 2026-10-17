@@ -12,8 +12,9 @@ EXAMPLE = c.CONTRACTS / "examples" / "recommendation.example.json"
 class Tables(unittest.TestCase):
     def test_all_table_contracts_valid_with_mandatory_columns(self):
         tables = c.table_contracts()
-        self.assertEqual(set(tables), {"raw_bars_1m", "raw_quotes", "raw_news", "corporate_actions",
-                                       "universe_snapshots", "feature_values"})
+        self.assertEqual(set(tables), {"raw_bars_1m", "raw_bars_1d", "raw_quotes", "raw_quote_samples", "raw_news",
+                                       "corporate_actions", "universe_snapshots", "feature_values", "calendar",
+                                       "asset_snapshots"})
         for name, t in tables.items():
             with self.subTest(table=name):
                 cols = {col["name"] for col in t["columns"]}

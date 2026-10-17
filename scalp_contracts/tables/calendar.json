@@ -1,0 +1,96 @@
+{
+  "table": "calendar",
+  "schema_version": 1,
+  "description": "NYSE trading calendar from Alpaca /v2/calendar, incl. early closes. All trading-day logic reads this table.",
+  "layer": "reference",
+  "append_only": true,
+  "time_column": "event_at",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "trading_date 00:00 America/New_York, in UTC."
+    },
+    {
+      "name": "trading_date",
+      "type": "date32",
+      "nullable": false,
+      "description": "Session date (America/New_York)."
+    },
+    {
+      "name": "session_open_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Pre-market open (04:00 ET)."
+    },
+    {
+      "name": "open_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Regular open."
+    },
+    {
+      "name": "close_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Regular close (13:00 ET on early-close days)."
+    },
+    {
+      "name": "session_close_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Post-market close."
+    },
+    {
+      "name": "early_close",
+      "type": "bool",
+      "nullable": false,
+      "description": "close_at before 16:00 ET."
+    },
+    {
+      "name": "settlement_date",
+      "type": "date32",
+      "nullable": true,
+      "description": "Vendor settlement date."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "sha256 of the canonical request (endpoint + params) that produced the row."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the row was received from the vendor."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "alpaca"
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "Contract version of the row."
+    }
+  ],
+  "primary_key": [
+    "trading_date",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
+}

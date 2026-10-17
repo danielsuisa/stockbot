@@ -1,0 +1,136 @@
+{
+  "table": "raw_quote_samples",
+  "schema_version": 1,
+  "description": "SIP NBBO sampled at fixed ET times (09:30..11:30 every 5 min, 15:55) for that day's top500 members: the prevailing quote at the sample time.",
+  "layer": "raw",
+  "append_only": true,
+  "time_column": "event_at",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Sample time, UTC."
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": "Ticker."
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "nullable": false,
+      "description": "ok | missing (no quote within lookback_ms) | after_close (sample time after an early close; not requested)."
+    },
+    {
+      "name": "quote_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "Timestamp of the prevailing quote (<= event_at)."
+    },
+    {
+      "name": "bid_price",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "bid_size",
+      "type": "int64",
+      "nullable": true,
+      "description": "In size_unit."
+    },
+    {
+      "name": "ask_price",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "ask_size",
+      "type": "int64",
+      "nullable": true,
+      "description": "In size_unit."
+    },
+    {
+      "name": "bid_exchange",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "ask_exchange",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "conditions",
+      "type": "list<string>",
+      "nullable": true,
+      "description": "Quote condition codes."
+    },
+    {
+      "name": "tape",
+      "type": "string",
+      "nullable": true,
+      "description": "A | B | C."
+    },
+    {
+      "name": "size_unit",
+      "type": "string",
+      "nullable": false,
+      "description": "round_lot before 2025-11-03, shares from 2025-11-03 (measured; not restated by the vendor)."
+    },
+    {
+      "name": "lookback_ms",
+      "type": "int64",
+      "nullable": false,
+      "description": "Window searched before event_at: 5000, then 60000 for symbols without a quote."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "sip."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "sha256 of the canonical request (endpoint + params) that produced the row."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the row was received from the vendor."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "alpaca"
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "Contract version of the row."
+    }
+  ],
+  "primary_key": [
+    "source",
+    "feed",
+    "symbol",
+    "event_at",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "feed={feed}",
+    "date={date}"
+  ]
+}

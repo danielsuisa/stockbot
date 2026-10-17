@@ -1,0 +1,118 @@
+{
+  "table": "raw_bars_1d",
+  "schema_version": 1,
+  "description": "Vendor daily OHLCV bars, unadjusted, used for monthly universe reconstitution. Append-only like raw_bars_1m.",
+  "layer": "raw",
+  "append_only": true,
+  "time_column": "event_at",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Bar time from the vendor (session date 00:00 ET), UTC."
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": "Ticker as queried (asof='-')."
+    },
+    {
+      "name": "open",
+      "type": "float64",
+      "nullable": false,
+      "description": "Unadjusted."
+    },
+    {
+      "name": "high",
+      "type": "float64",
+      "nullable": false,
+      "description": "Unadjusted."
+    },
+    {
+      "name": "low",
+      "type": "float64",
+      "nullable": false,
+      "description": "Unadjusted."
+    },
+    {
+      "name": "close",
+      "type": "float64",
+      "nullable": false,
+      "description": "Unadjusted."
+    },
+    {
+      "name": "volume",
+      "type": "int64",
+      "nullable": false,
+      "description": "Shares."
+    },
+    {
+      "name": "vwap",
+      "type": "float64",
+      "nullable": true,
+      "description": "Vendor VWAP."
+    },
+    {
+      "name": "trade_count",
+      "type": "int64",
+      "nullable": true,
+      "description": "Vendor trade count."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "sip."
+    },
+    {
+      "name": "adjustment",
+      "type": "string",
+      "nullable": false,
+      "description": "Always raw."
+    },
+    {
+      "name": "asof",
+      "type": "string",
+      "nullable": false,
+      "description": "Alpaca asof parameter used."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "sha256 of the canonical request (endpoint + params) that produced the row."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the row was received from the vendor."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "alpaca"
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "Contract version of the row."
+    }
+  ],
+  "primary_key": [
+    "source",
+    "feed",
+    "symbol",
+    "event_at",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "feed={feed}",
+    "date={date}"
+  ]
+}

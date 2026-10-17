@@ -17,6 +17,7 @@ MANDATORY_COLUMNS = {
     "event_at": "timestamp[us, tz=UTC]",
     "ingested_at": "timestamp[us, tz=UTC]",
     "source": "string",
+    "feed": "string",
     "schema_version": "int32",
 }
 

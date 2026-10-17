@@ -1,20 +1,75 @@
 {
   "table": "feature_values",
-  "schema_version": 1,
+  "schema_version": 2,
   "description": "Feature store rows (L1). A changed definition is a new feature_id; rows are never rewritten. available_at is the earliest time the value could have been computed from data that existed then; readers filter on available_at <= decision time.",
   "layer": "feature",
   "append_only": true,
   "time_column": "event_at",
   "columns": [
-    {"name": "event_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "Time the feature describes (e.g. bar close)."},
-    {"name": "available_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "max(ingested_at or availability of every input row) plus compute latency; must be >= event_at."},
-    {"name": "symbol", "type": "string", "nullable": false, "description": "Symbol, or _MARKET for market-wide features."},
-    {"name": "feature_id", "type": "string", "nullable": false, "description": "name@semver+code_hash12 (feature_definition.schema.json)."},
-    {"name": "value", "type": "float64", "nullable": true, "description": "Null when inputs were insufficient."},
-    {"name": "ingested_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "When the row was written."},
-    {"name": "source", "type": "string", "nullable": false, "description": "Always scalp_engine."},
-    {"name": "schema_version", "type": "int32", "nullable": false, "description": "1."}
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Time the feature describes (e.g. bar close)."
+    },
+    {
+      "name": "available_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "max(ingested_at or availability of every input row) plus compute latency; must be >= event_at."
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": "Symbol, or _MARKET for market-wide features."
+    },
+    {
+      "name": "feature_id",
+      "type": "string",
+      "nullable": false,
+      "description": "name@semver+code_hash12 (feature_definition.schema.json)."
+    },
+    {
+      "name": "value",
+      "type": "float64",
+      "nullable": true,
+      "description": "Null when inputs were insufficient."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Feed of the inputs (sip | iex | mixed); features are versioned per feed."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the row was written."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "Always scalp_engine."
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "1."
+    }
   ],
-  "primary_key": ["feature_id", "symbol", "event_at", "ingested_at"],
-  "partitioning": ["feature={feature_name}", "version={feature_version}", "date={date}"]
+  "primary_key": [
+    "feature_id",
+    "symbol",
+    "event_at",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "feature={feature_name}",
+    "version={feature_version}",
+    "date={date}"
+  ]
 }

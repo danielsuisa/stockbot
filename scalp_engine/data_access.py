@@ -20,6 +20,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import polars as pl
+
 from scalp_engine.contracts import CONTRACTS, load_flat_yaml
 
 HOLDOUT_FILE = CONTRACTS / "holdout.yaml"
@@ -33,6 +35,10 @@ _UNSEAL_KEYS = {"run_id", "window", "approved_by", "approved_at", "purpose", "ho
 
 class HoldoutSealedError(PermissionError):
     """A read could touch a sealed holdout window without an unseal record."""
+
+
+class MissingPartitionError(LookupError):
+    """A read path needed a partition that is not in the store. Reads never fetch (P1 cache-miss rule)."""
 
 
 @dataclass(frozen=True)
@@ -224,3 +230,57 @@ def _parse_time(value, path, n):
         raise ValueError(f"{path} row {n}: missing time column")
     t = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
     return _utc(t, f"{path} row {n}")
+
+
+# ---------------------------------------------------------------- Parquet (polars)
+
+def partition_dates(root):
+    """{date: [parquet files]} for every date= partition under root. Directory metadata only: no file is opened."""
+    out = {}
+    root = Path(root)
+    if not root.exists():
+        return out
+    for path in sorted(root.rglob("*.parquet")):
+        out.setdefault(_partition_date(path, root), []).append(path)
+    return out
+
+
+def read_frame(root, start, end, *, columns=None, symbols=None, require_dates=None, unseal_run_id=None):
+    """Polars DataFrame of rows with start <= event_at < end from a Parquet table under root.
+
+    Partitions outside the range or inside a sealed window are pruned before any file is opened;
+    the range and the windows are pushed down as predicates into the scan; a post-read assertion
+    checks the result. require_dates: ET dates whose partitions must exist, else MissingPartitionError."""
+    holdout = check_range(start, end, unseal_run_id=unseal_run_id)
+    lo, hi = _utc(start, "start"), _utc(end, "end")
+    parts = partition_dates(root)
+    if require_dates is not None:
+        missing = sorted(set(require_dates) - set(parts))
+        if missing:
+            raise MissingPartitionError(f"{root}: {len(missing)} missing partition(s), first {missing[:3]}")
+    files = []
+    for day, paths in parts.items():
+        day_lo, day_hi = day_bounds(day)
+        if day_hi <= lo or day_lo >= hi:
+            continue
+        if unseal_run_id is None and holdout.overlaps(day_lo, day_hi):
+            continue
+        files += paths
+    if not files:
+        return pl.DataFrame()
+    t = pl.col("event_at")
+    lf = pl.scan_parquet([str(f) for f in sorted(files)], hive_partitioning=False)
+    lf = lf.filter((t >= lo) & (t < hi))
+    if unseal_run_id is None:
+        for w in holdout.windows:
+            lf = lf.filter(~((t >= w.start) & (t < w.end)))
+    if symbols is not None:
+        lf = lf.filter(pl.col("symbol").is_in(sorted(symbols)))
+    if columns is not None:
+        lf = lf.select(["event_at"] + [c for c in columns if c != "event_at"])
+    df = lf.collect()
+    if unseal_run_id is None and df.height:
+        for w in holdout.windows:
+            if df.filter((t >= w.start) & (t < w.end)).height:
+                raise HoldoutSealedError(f"holdout rows of window {w.name!r} materialized from {root}")
+    return df
