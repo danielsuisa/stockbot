@@ -79,10 +79,15 @@ extended hours [61]; IBKR stops are simulated server-side, regular hours by defa
 | Data | IEX for candles (live), SIP for relative volume (15-minute lag respected) | [60] |
 
 Not implemented, deliberately: a daily kill switch (−2% of equity → cancel all, flatten [64]) and LULD-band
-distance [52] need live broker state the bot does not have; both are for the IBKR side. Expected, if the studies
-hold: hit rate 45–50% with positive expectancy from 2:1 — not 70%. Not backtested in this repo yet (the ZBA holdout,
-docs/backtest/ticket-zba-v2-holdout-2026-10-10.md, was NO-GO on a universe dominated by cheap names); the paper
-journal (/intraday stats) is the measurement.
+distance [52] need live broker state the bot does not have; both are for the IBKR side.
+
+**Correction (audit, same day):** this repo already tested the exact [2] spec — same universe — with realistic
+fills across 22 pre-registered variants; the single 2016–2021 holdout was NO-GO (−0.033R, t −0.47) and the ORB line
+was closed on 2026-10-10 (docs/backtest/ticket-zba-v2-holdout-2026-10-10.md; spec section 14.13–14.14). An earlier
+version of this note wrongly said the holdout universe was "dominated by cheap names". The screener's ORB setups are
+therefore contradicted by internal evidence and the other setups are untested; see
+docs/research/intraday-audit-2026-10-17.md for the evidence map and the pre-registered plan. The paper journal
+cannot settle the question in usable time (section 15 arithmetic); it is a signal log for the experiments.
 
 ## 3. Sources
 

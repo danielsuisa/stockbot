@@ -342,6 +342,8 @@ def scan(watch, day, now_hhmm, risk, max_pos):
 
 
 # ---------- messages ----------
+LABEL = ("תווית: מחוץ למסלול שנבדק — פריצת נר הפתיחה על מניות במשחק נפסלה בבדיקת 2016–2021 של המאגר (NO-GO), ושאר "
+         "התבניות טרם נבדקו; כרטיס למחקר בלבד (הביקורת: docs/research)")
 SETUP_NAMES = {"orb5": "פריצת טווח פתיחה 5 דק׳", "orb15": "פריצת טווח פתיחה 15 דק׳", "vwap_hammer": "פטיש על VWAP",
                "vwap_engulf": "בליעה שורית על VWAP", "flag": "דגל שורי", "red_to_green": "מאדום לירוק"}
 
@@ -373,6 +375,7 @@ def ticket_text(t, day, E=None):
         + (f" ({code(format(t['risk'] / E * 100, '.2f') + '%')} מההון)" if E else " (סיכון קבוע: לא נקבע הון, /equity)"),
         "ב־IBKR: פקודת bracket אחת — BUY STP LMT (סטופ ולימיט שלמעלה), ילדים: SELL STP סטופ לוס ו־SELL LMT יעד, "
         "OCA, תוקף DAY · סטופ מתחת לנר ההדק ולא מתחת ליעד",
+        LABEL,
     ]
     return "\n".join(lines)
 
