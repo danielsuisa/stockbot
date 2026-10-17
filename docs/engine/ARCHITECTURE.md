@@ -6,7 +6,7 @@ An autonomous learning network that screens, times, and recommends bracket order
 
 ## 0. Correcting the objective
 
-"Infinite money" is not an engineering target. Four hard limits block it: capacity (any intraday strategy starts moving price above a few hundred thousand dollars per trade), costs (spread + slippage eat a thin edge), the PDT rule (below $25,000 you get 3 day trades per 5 trading days), and overfitting (ZBA failed on exactly this).
+"Infinite money" is not an engineering target. Four hard limits block it: capacity (any intraday strategy starts moving price above a few hundred thousand dollars per trade), costs (spread + slippage eat a thin edge), the PDT rule (below $25,000, 3 day trades per 5 trading days) until the broker moves the account to FINRA's 2026 intraday-margin standard; brokers may phase in until 2027-10-20 (ADR 0001 §7), and overfitting (ZBA failed on exactly this).
 
 **The target defined in this document:** proven positive expectancy out-of-sample after costs, bounded drawdown, and compounding over time. "Infinite" is excluded from the design on purpose: a system that plans for infinity scales size until it dies.
 
@@ -113,7 +113,7 @@ L6
 
 - Daily loss limit 2%: after it, the system stops recommending until the next day.
 - Maximum 3 concurrent positions, pairwise correlation of open positions below 0.6.
-- PDT enforcement when equity is below $25,000: the counter is part of the system, not of memory.
+- PDT enforcement is a config flag `broker_pdt_active` (default `true`). While `true` and equity is below $25,000, the 3-in-5 day-trade counter is part of the system, not of memory. The owner sets it to `false` only after confirming that IBKR has transitioned the account. Every recommendation records the flag in its `pdt` risk check (ADR 0001 §7).
 - Event blackouts from L4; block any stock halted in the last 48 hours.
 - Every block is logged with a reason; a blocked recommendation is kept in the journal to measure what the risk layer cost.
 

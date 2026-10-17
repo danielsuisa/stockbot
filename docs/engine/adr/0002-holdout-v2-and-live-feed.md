@@ -1,0 +1,110 @@
+# ADR 0002: Holdout v2, the deferred live-feed decision, and P1 foundations
+
+- **Status:** Accepted (2026-10-17). It records the user's decisions of 2026-10-17, accepted via the orchestrator.
+- **Supersedes:** ADR 0001 §4 (the single holdout window).
+- **Branch:** `engine/p1`
+
+## 1. Context
+
+ADR 0001 was accepted with D1 = (c), refined to two sealed windows. The user has no IBKR real-time US market-data
+subscription, and Alpaca's free live feed is IEX only, while historical bars are available from both SIP and IEX
+(P0 audit A6).
+
+## 2. Holdout v2
+
+`scalp_contracts/holdout.yaml` is now `schema_version: 2`. It defines named windows of America/New_York trading
+dates with inclusive bounds. Loaders convert each window to the UTC half-open interval
+`[first 00:00 ET, (last + 1 day) 00:00 ET)`.
+
+| Window | ET trading days | UTC interval | Role | Rationale |
+|---|---|---|---|---|
+| `legacy_2016_2021` | 2016-01-04 .. 2021-12-31 | [2016-01-04T05:00Z, 2022-01-01T05:00Z) | `veto_only` | Evaluated once by ZBA (3cbde91); its trades were analysed again afterwards; ZBA development read Nov–Dec 2021 for warm-up. Run once at P7: a fail blocks GO, a pass adds no evidence |
+| `forward_2026q4` | 2026-11-02 .. 2027-01-29 (61 sessions) | [2026-11-02T05:00Z, 2027-01-30T05:00Z) | `confirmation` | No one can have seen it: the data did not exist when it was sealed. Evaluated once, on a frozen model, after the window closes and before the P7 live shadow, which cannot start before 2027-02-01 |
+
+**Rules:**
+- Both guards (`scalp_engine/data_access.py`, `scalp_eval/data_access.py`) raise `HoldoutSealedError` for any read
+  whose range overlaps **any** window, and for unbounded ranges.
+- Ingestion requests go through the same `check_range` before any network call.
+- **Unsealing is per window.**
+  - A ledger record has exactly these keys: `run_id`, `window`, `approved_by`, `approved_at`, `purpose`,
+    `holdout_sha256`.
+  - A read overlapping several windows needs one record per window.
+  - The ledger stays empty and only the owner writes it.
+- `holdout_sha256` is computed over the file with line endings normalized to LF, so it is identical on every checkout.
+
+**Change from v1:**
+- v1 sealed the ET calendar days 2016-01-01..2021-12-31. v2 uses the user's trading-day bounds, so 2016-01-01..03 (a
+  holiday and a weekend) are no longer sealed.
+- Those days have no trading rows. Dated non-price rows (news, filings) from them would be readable.
+- P1 ingests no news. See "Decisions needed" in the P1 report.
+
+**File format:** still the flat `key: value` subset, with dotted keys such as `window.<name>.<field>`. It stays
+valid YAML, and both sides parse it with their own strict loader.
+
+## 3. Live feed: decision deferred to before P7
+
+- P1 ingests raw 1-minute bars from **both** SIP and IEX.
+- **SIP** is the reference for labels, costs and fills: it covers 100% of volume.
+- **IEX** feeds the features that must match what is available live (about 2–3% of volume; P0 audit A5.7).
+- The `feed` column is mandatory on every table, and features are versioned per feed.
+- **P3 measures the cost of the gap:** the same baseline trained on IEX features versus SIP features, evaluated by L7
+  on SIP fills.
+- Whether to pay for a consolidated live feed is decided before P7 on that evidence (R3: the user's approval).
+
+## 4. Replay ordering and publish delays
+
+The replay emits events in the total order `(available_at, priority, symbol, feed, seq)`. These values are explicit
+config in `scalp_engine/config/replay.yaml`:
+
+| Key | Value | Meaning |
+|---|---|---|
+| `bar_publish_delay_ms` | 2000 | A 1-minute bar with open time `t` becomes available at `t + 60 s + 2 s`. Live Alpaca minute bars are pushed shortly after the minute closes; 2 s is a conservative allowance |
+| `quote_sample_delay_ms` | 0 | A quote sample taken at `t` describes the prevailing quote at `t` and is available at `t` |
+| Corporate actions | — | Available at their `event_at` (ex/effective date 00:00 ET) |
+| Session markers | — | Pre-market open, open, close (including early closes), post-market close: available at their scheduled times from the calendar table |
+
+**Priority**, which only matters when `available_at` ties: `session` 0 < `corporate_action` 1 < `bar` 2 <
+`quote_sample` 3.
+
+`seq` is the row's position after a stable sort on the remaining keys. The order is therefore total and independent
+of file order, thread scheduling and `PYTHONHASHSEED`.
+
+## 5. Dependencies and environments
+
+**Pinned dependencies**, both sides, with every PyPI file hash for each version:
+
+| Package | Pin | Notes |
+|---|---|---|
+| `polars` | 1.44.2 | Plus its runtime `polars-runtime-32` 1.44.2. The ARCHITECTURE Parquet choice |
+| `tzdata` | 2026.5 | Windows has no IANA database |
+| `cryptography` | 50.0.2 | Unchanged from ADR 0001. Its dependencies `cffi` 2.1.1, `pycparser` 3.11 and `typing-extensions` 4.16.0 are pinned too (the last only on Python < 3.11) |
+
+- The requirement files are generated by `D:\scalp-env\gen_reqs.py`, which takes hashes from PyPI's JSON API. That
+  script lives outside the repo and is not part of the build.
+- **Why polars 1.44.2 and not 2.0.0:** 2.0.0 was released on 2026-10-06, eleven days before this ADR, and is a new
+  major version. 1.44.2 (2026-09-09) is the newest 1.x. The upgrade is revisited at P2.
+- polars 1.44.2 is the AVX2 build; the local CPU, an i5-1235U, supports AVX2.
+- DuckDB is not added. Polars' lazy `scan_parquet` gives predicate pushdown, which is all the data-access modules need.
+
+**Environments:**
+- `D:\scalp-env\engine` and `D:\scalp-env\eval`, outside the repo.
+- CPython 3.11.9, the newest installed. 3.12 is not installed, and the system Python was not changed.
+
+**pip and TLS under Avast:**
+- Python 3.11's bundled pip 24.0 cannot verify TLS here: Avast's interception root is in the Windows store but not
+  in certifi.
+- **Fix:** each venv's pip was upgraded to 26.2.1. pip ≥ 24.2 vendors `truststore` and uses the OS trust store by
+  default, so no extra package is needed.
+- The 26.2.1 wheel was fetched by Python 3.10's pip 25 (which also uses truststore), checked against the PyPI JSON
+  sha256, and installed offline.
+- All further installs use `--require-hashes` with verification on. TLS verification is never disabled.
+
+**Engine HTTP:**
+- The engine uses stdlib `urllib`. On Windows its default SSL context loads the OS store.
+- A request from the engine venv to `data.alpaca.markets` verified successfully (HTTP 401 without keys).
+
+## 6. Data root
+
+- Raw and derived data live under `SCALP_DATA_ROOT`, by default `D:\scalp-data`, outside every repository.
+- Layout: `<root>/<table>/<partitions>/part-*.parquet`, plus `<root>/manifests/*.jsonl`.
+- Nothing under the data root is ever committed (ADR 0001 decision record, D2).

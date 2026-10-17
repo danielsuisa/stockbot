@@ -1,6 +1,6 @@
 # ADR 0001: Scalping engine foundations
 
-- **Status:** Proposed. Only the owner may change this to Accepted.
+- **Status:** Accepted (2026-10-17). See the decision record at the end of this file.
 - **Date:** 2026-10-17
 - **Branch:** `engine/p0`
 - **Context documents:**
@@ -287,3 +287,24 @@ halts plus forward archiving. No paid source. Revisit after P3 if the baseline's
 - P1 cannot read 2016–2021 at all, warm-up included, and must fetch fresh data: there is no cache (A4.1).
 - Adding a Parquet backend, and any CI for the engine, are explicit P1 decisions.
 - Any change to `holdout.yaml` needs a new ADR, and invalidates existing unseal approvals through `holdout_sha256`.
+
+## Decision record
+
+- **Date:** 2026-10-17
+- **Decision:** ADR 0001 accepted, including the PDT amendment (§7). Accepted by the user via the orchestrator.
+- **D1, holdout:** option (c), refined to two sealed windows; specified in ADR 0002 §2.
+  - `legacy_2016_2021`: ET trading days 2016-01-04..2021-12-31, role `veto_only`. Run once at P7; a fail blocks GO,
+    a pass adds no evidence.
+  - `forward_2026q4`: ET trading days 2026-11-02..2027-01-29 (61 sessions), role `confirmation`. Evaluated once, on
+    a frozen model, after the window closes and before the P7 live shadow, which cannot start before 2027-02-01.
+- **D2, repository:**
+  - Code stays public in stockbot.
+  - The journal, models and processed artifacts go to the private `stockbot-data` repo, from P3 on.
+  - Raw vendor data never enters any git repository (Alpaca forbids redistribution).
+- **D3, data gaps:** no paid data.
+  - Spread and imbalance come from SIP NBBO quotes sampled at fixed times, plus a bar-based spread estimator (P2).
+  - VIX, breadth, halts and earnings use free proxies (P2).
+- **Live feed:** no IBKR real-time US subscription; Alpaca's free live feed is IEX. P1 ingests both SIP and IEX
+  1-minute bars. Whether to pay for a consolidated live feed is decided before P7 (ADR 0002 §3).
+- **Approved:** fast-forwarding local `main`; the pinned dependencies `tzdata` and one Parquet library; no CI workflow
+  in P1.
