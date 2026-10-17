@@ -1,0 +1,26 @@
+{
+  "table": "universe_snapshots",
+  "schema_version": 1,
+  "description": "Daily point-in-time snapshot of the tradable asset list, taken before 08:30 America/New_York. Backtests build universes from the snapshot dated on or before the trading day, never from today's listings (survivorship; P0 audit A5.1).",
+  "layer": "reference",
+  "append_only": true,
+  "time_column": "event_at",
+  "columns": [
+    {"name": "event_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "Snapshot as-of time, UTC."},
+    {"name": "snapshot_date", "type": "date32", "nullable": false, "description": "Trading date (America/New_York) the snapshot is for."},
+    {"name": "symbol", "type": "string", "nullable": false, "description": "Symbol on snapshot_date."},
+    {"name": "asset_id", "type": "string", "nullable": true, "description": "Vendor's stable asset id (survives symbol changes)."},
+    {"name": "exchange", "type": "string", "nullable": true, "description": "Primary listing exchange."},
+    {"name": "status", "type": "string", "nullable": false, "description": "active | inactive."},
+    {"name": "tradable", "type": "bool", "nullable": true, "description": "Vendor flag."},
+    {"name": "shortable", "type": "bool", "nullable": true, "description": "Vendor flag."},
+    {"name": "easy_to_borrow", "type": "bool", "nullable": true, "description": "Vendor flag."},
+    {"name": "backfilled", "type": "bool", "nullable": false, "description": "true when reconstructed after the fact (e.g. from today's list); such rows carry survivorship bias and must be flagged in reports."},
+    {"name": "request_id", "type": "string", "nullable": false, "description": "sha256 of the canonical request."},
+    {"name": "ingested_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "When the row was received."},
+    {"name": "source", "type": "string", "nullable": false, "description": "alpaca | ibkr | edgar."},
+    {"name": "schema_version", "type": "int32", "nullable": false, "description": "1."}
+  ],
+  "primary_key": ["source", "snapshot_date", "symbol", "ingested_at"],
+  "partitioning": ["source={source}", "date={date}"]
+}

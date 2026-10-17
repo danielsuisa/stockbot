@@ -1,0 +1,2 @@
+# scalp_engine runtime dependencies (ADR 0001 section 6). stockbot itself stays stdlib-only.
+cryptography>=42  # Ed25519 signing of recommendations; the stdlib has no Ed25519

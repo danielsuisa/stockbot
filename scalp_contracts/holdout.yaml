@@ -1,0 +1,17 @@
+# Sealed holdout for the scalping engine (ARCHITECTURE.md R2; ADR 0001 section 4).
+#
+# Dates are America/New_York calendar dates; both bounds are inclusive.
+# Loaders convert them to the UTC half-open interval
+#   [first_date 00:00 America/New_York, (last_date + 1 day) 00:00 America/New_York)
+# which for this window is [2016-01-01T05:00:00Z, 2022-01-01T05:00:00Z).
+#
+# Trading days covered: exactly stockbot's ZBA holdout, NY sessions 2016-01-04 .. 2021-12-31
+# (bot/zba_v2.py:24). The calendar bounds also seal the non-trading days 2016-01-01 .. 2016-01-03,
+# so dated non-price rows (news, filings) from those days are sealed too.
+#
+# Flat "key: value" lines only; both sides parse this file with a strict subset parser.
+# Changing any value requires the owner's decision recorded in docs/engine/adr/ (D1 in ADR 0001).
+schema_version: 1
+timezone: America/New_York
+first_date: 2016-01-01
+last_date: 2021-12-31

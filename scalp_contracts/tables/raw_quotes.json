@@ -1,0 +1,28 @@
+{
+  "table": "raw_quotes",
+  "schema_version": 1,
+  "description": "Historical NBBO quotes (Alpaca SIP is the only free source; P0 audit A6). Expected to be sampled around decision minutes, not the full tape (ADR 0001 D3).",
+  "layer": "raw",
+  "append_only": true,
+  "time_column": "event_at",
+  "columns": [
+    {"name": "event_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "Quote timestamp from the SIP, UTC."},
+    {"name": "symbol", "type": "string", "nullable": false, "description": "Vendor symbol as of event_at."},
+    {"name": "bid_price", "type": "float64", "nullable": false, "description": "Best bid."},
+    {"name": "bid_size", "type": "int64", "nullable": false, "description": "In size_unit."},
+    {"name": "ask_price", "type": "float64", "nullable": false, "description": "Best ask."},
+    {"name": "ask_size", "type": "int64", "nullable": false, "description": "In size_unit."},
+    {"name": "bid_exchange", "type": "string", "nullable": true, "description": "Exchange code."},
+    {"name": "ask_exchange", "type": "string", "nullable": true, "description": "Exchange code."},
+    {"name": "conditions", "type": "list<string>", "nullable": true, "description": "Quote condition codes."},
+    {"name": "tape", "type": "string", "nullable": true, "description": "A | B | C."},
+    {"name": "size_unit", "type": "string", "nullable": false, "description": "round_lot | shares. Alpaca switched CTA/UTP sizes from round lots to shares on 2025-11-03."},
+    {"name": "feed", "type": "string", "nullable": false, "description": "sip | iex | ibkr_bid_ask."},
+    {"name": "request_id", "type": "string", "nullable": false, "description": "sha256 of the canonical request."},
+    {"name": "ingested_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "When the row was received."},
+    {"name": "source", "type": "string", "nullable": false, "description": "alpaca | ibkr."},
+    {"name": "schema_version", "type": "int32", "nullable": false, "description": "1."}
+  ],
+  "primary_key": ["source", "feed", "symbol", "event_at", "ingested_at"],
+  "partitioning": ["source={source}", "feed={feed}", "date={date}"]
+}

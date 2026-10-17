@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scalp_contracts/schemas/signed_recommendation.schema.json",
+  "title": "Signed recommendation envelope, schema_version 1",
+  "description": "payload must also validate against recommendation.schema.json. The signature covers the bytes DOMAIN + 0x0A + canonical(payload), with DOMAIN = 'scalp-engine/recommendation/v1' (ADR 0001 section 5).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "payload", "signature"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "payload": {"type": "object"},
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "canonicalization", "key_id", "value"],
+      "properties": {
+        "alg": {"const": "Ed25519"},
+        "canonicalization": {"const": "RFC8785-ascii-nofloat"},
+        "key_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$",
+          "description": "First 16 hex chars of sha256 of the raw 32-byte public key."
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{86}$",
+          "description": "64-byte Ed25519 signature, base64url without padding."
+        }
+      }
+    }
+  }
+}

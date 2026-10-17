@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scalp_contracts/schemas/table_contract.schema.json",
+  "title": "Parquet table contract (meta-schema for scalp_contracts/tables/*.json)",
+  "description": "Every table carries event_at (UTC), ingested_at (UTC), source and schema_version; tests on both sides enforce it. Raw tables are append-only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["table", "schema_version", "description", "layer", "append_only", "time_column", "columns", "primary_key", "partitioning"],
+  "properties": {
+    "table": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+    "schema_version": {"type": "integer", "minimum": 1},
+    "description": {"type": "string"},
+    "layer": {"enum": ["raw", "reference", "feature"]},
+    "append_only": {"type": "boolean"},
+    "time_column": {"const": "event_at"},
+    "columns": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "type", "nullable", "description"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+          "type": {"enum": ["timestamp[us, tz=UTC]", "date32", "string", "float64", "int64", "int32", "bool", "list<string>"]},
+          "nullable": {"type": "boolean"},
+          "description": {"type": "string"}
+        }
+      }
+    },
+    "primary_key": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "partitioning": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^[a-z_]+=\\{[a-z_]+\\}$"},
+      "description": "Hive-style directory segments in order. {date} is the America/New_York calendar date of event_at; the data-access modules prune partitions on it before opening any file."
+    }
+  }
+}

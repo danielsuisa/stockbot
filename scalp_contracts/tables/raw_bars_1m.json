@@ -1,0 +1,27 @@
+{
+  "table": "raw_bars_1m",
+  "schema_version": 1,
+  "description": "Vendor 1-minute OHLCV bars exactly as received, unadjusted. One part file per ingestion batch; a re-fetch appends a new part, never overwrites. Readers resolve duplicates by the latest ingested_at not after their as_of time.",
+  "layer": "raw",
+  "append_only": true,
+  "time_column": "event_at",
+  "columns": [
+    {"name": "event_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "Bar open time, UTC."},
+    {"name": "symbol", "type": "string", "nullable": false, "description": "Vendor symbol as of event_at."},
+    {"name": "open", "type": "float64", "nullable": false, "description": "Unadjusted."},
+    {"name": "high", "type": "float64", "nullable": false, "description": "Unadjusted."},
+    {"name": "low", "type": "float64", "nullable": false, "description": "Unadjusted."},
+    {"name": "close", "type": "float64", "nullable": false, "description": "Unadjusted."},
+    {"name": "volume", "type": "int64", "nullable": false, "description": "Shares, as reported by the feed."},
+    {"name": "vwap", "type": "float64", "nullable": true, "description": "Vendor VWAP of the bar, if provided."},
+    {"name": "trade_count", "type": "int64", "nullable": true, "description": "Vendor trade count, if provided."},
+    {"name": "feed", "type": "string", "nullable": false, "description": "sip | iex | ibkr_trades. Live IEX and historical SIP are different distributions (P0 audit A5.7)."},
+    {"name": "adjustment", "type": "string", "nullable": false, "description": "Always raw in this table."},
+    {"name": "request_id", "type": "string", "nullable": false, "description": "sha256 of the canonical request (endpoint + params) that produced the row."},
+    {"name": "ingested_at", "type": "timestamp[us, tz=UTC]", "nullable": false, "description": "When the row was received from the vendor."},
+    {"name": "source", "type": "string", "nullable": false, "description": "alpaca | ibkr | yfinance."},
+    {"name": "schema_version", "type": "int32", "nullable": false, "description": "1."}
+  ],
+  "primary_key": ["source", "feed", "symbol", "event_at", "ingested_at"],
+  "partitioning": ["source={source}", "feed={feed}", "date={date}"]
+}
