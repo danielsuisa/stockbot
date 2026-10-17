@@ -67,11 +67,11 @@ def utc(day, hhmm):
     return t.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _bars(symbols, start, end, timeframe):
+def _bars(symbols, start, end, timeframe, feed="sip"):
     """Every page of Alpaca's multi-symbol bars -> {symbol: [raw bar dicts]} (every requested symbol present)."""
     out, token = {s: [] for s in symbols}, None
     while True:
-        q = {"symbols": ",".join(symbols), "timeframe": timeframe, "start": start, "end": end, "feed": "sip",
+        q = {"symbols": ",".join(symbols), "timeframe": timeframe, "start": start, "end": end, "feed": feed,
              "adjustment": "raw", "limit": LIMIT, "sort": "asc", **({"page_token": token} if token else {})}
         js = _get(f"{DATA}/bars", q)
         for s, items in (js.get("bars") or {}).items():
@@ -100,6 +100,18 @@ def minute_bars(symbols, day):
             if not live:
                 _write(path(s), out[s])
     return {s: [tuple(b) for b in v] for s, v in out.items()}
+
+
+def live_bars(symbols, day, start, end, timeframe="1Min", feed="iex"):
+    """A live look at New York `day` between `start` and `end` ("HH:MM") -> {symbol: [("HH:MM", o, h, l, c, v, vw)]}
+    ascending (every requested symbol present). The IEX feed has no 15-minute lag on the free plan (prices are
+    IEX-only: a fraction of consolidated volume); feed="sip" is the consolidated tape, 15 minutes behind. Never
+    cached: the session is still trading."""
+    out = {}
+    for i in range(0, len(symbols), CHUNK):
+        got = _bars(symbols[i:i + CHUNK], utc(day, start), utc(day, end), timeframe, feed)
+        out.update({s: [tuple(_row(b, "%H:%M")) for b in got.get(s, [])] for s in symbols[i:i + CHUNK]})
+    return out
 
 
 def bars(symbol, start, end, timeframe):

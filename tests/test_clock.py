@@ -40,6 +40,8 @@ class Due(unittest.TestCase):
         want.add(("09-29 05:30", "scan:morning:2026-09-29"))  # Tuesday's morning scan of Monday's filings
         for h in range(6):  # the screen hourly through the regular session: 10:30-15:30 New York = 14:30-19:30 UTC
             want.add((f"09-28 {14 + h}:30", f"squeeze:reg{h + 1}:2026-09-28"))
+        want |= {("09-28 13:37", "intraday:morning:2026-09-28"), ("09-28 18:57", "intraday:power:2026-09-28"),
+                 ("09-28 20:20", "intraday:followup:2026-09-28")}  # 09:37 / 14:57 / 16:20 EDT
         self.assertEqual(got, want)
 
     def test_a_winter_tuesday_and_the_after_midnight_1930_run(self):
@@ -51,6 +53,8 @@ class Due(unittest.TestCase):
         for utc_t, slot in (("12-01 21:30", "post1"), ("12-02 00:30", "post2")):
             want |= {(utc_t, f"squeeze:{slot}:2026-12-01"), (utc_t, f"insider:{slot}:2026-12-01")}
         want |= {(f"12-01 {15 + h}:30", f"squeeze:reg{h + 1}:2026-12-01") for h in range(6)}  # EST: 15:30-20:30 UTC
+        want |= {("12-01 14:37", "intraday:morning:2026-12-01"), ("12-01 19:57", "intraday:power:2026-12-01"),
+                 ("12-01 21:20", "intraday:followup:2026-12-01")}
         self.assertEqual(got, want)
 
     def test_every_started_slot_is_the_slot_its_run_serves(self):
@@ -63,6 +67,9 @@ class Due(unittest.TestCase):
                     continue
                 if key.startswith("shadow:"):  # 07:00 UTC Tuesday-Saturday: the session before
                     self.assertEqual((wf, mode), ("shadow.yml", "slot"))
+                    continue
+                if key.startswith("intraday:"):  # the candlestick screener: its mode is its slot
+                    self.assertEqual((wf, mode), ("intraday.yml", key.split(":")[1]))
                     continue
                 name, slot, _ = key.split(":")
                 now = utc(f"{end[:4]}-{t[:5]}T{t[6:]}").astimezone(sessions.NY)

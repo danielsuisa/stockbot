@@ -11,7 +11,7 @@ import time
 import urllib.error
 from pathlib import Path
 
-from bot import (check, clock, common, equity, fundamentals, health, journal, market, scan, shadow, squeeze_live,
+from bot import (check, clock, common, equity, fundamentals, health, intraday, journal, market, scan, shadow, squeeze_live,
                  ticket_command)
 from bot.common import code
 
@@ -28,6 +28,7 @@ COMMANDS = (("check", "דוח על מניה, למשל /check AAPL"), ("scan", "�
             ("squeeze", "סקוויז: /squeeze, /squeeze now, /squeeze GME, /squeeze stats"),
             ("shadow", "מעקב הצל: מה השיטה עושה היום, מה־pre market"),
             ("ticket", "כרטיס מסחר למניה: כניסה, סטופ, יעד וגודל, למשל /ticket AAPL"),
+            ("intraday", "סורק נרות יומי: /intraday, /intraday now, /intraday AAPL, /intraday stats"),
             ("equity", "ההון לחישוב גודל הכרטיסים, למשל /equity 25000"), ("help", "רשימת הפקודות"))
 HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, או עם דולר, {code('$msft')} (עד {code(MAX)} בהודעה)."
         f" לרשימת הפקודות: {code('/help')}.")
@@ -52,6 +53,12 @@ HELP = "\n".join((
     f"👻 מעקב הצל של שיטת הכניסה (נשלח לבד כל בוקר אחרי יום מסחר). מה היא עושה היום, מה־pre market: {code('/shadow')}",
     "",
     f"🎫 כרטיס מסחר למניה (כניסה, סטופ לוס, יעד, טריילינג, גודל ועלות; ללא יתרון מוכח): {code('/ticket AAPL')}",
+    "",
+    "🕯️ סורק נרות יומי (רץ לבד 09:40–11:30 ו־15:00–15:45 ניו־יורק, כרטיסי bracket על מניות במשחק):",
+    f"• המניות במשחק היום והכרטיסים שנשלחו: {code('/intraday')}",
+    f"• סריקה עכשיו: {code('/intraday now')}",
+    f"• לבדוק מניה: {code('/intraday AAPL')}",
+    f"• תוצאות היום: {code('/intraday stats')}",
     "",
     f"💼 ההון לחישוב גודל הכרטיסים (נשמר רק בטלגרם, בהודעה נעוצה): {code('/equity 25000')}; בלי סכום: ההגדרה הנוכחית",
     "",
@@ -154,6 +161,8 @@ def handle(text):
         return ticket_cmd(rest)
     if cmd == "equity":
         return equity_cmd(rest)
+    if cmd == "intraday":
+        return intraday_cmd(rest)
     common.send(HELP)  # /help, /start and any unknown command
     common.tg("setMyCommands", commands=[{"command": c, "description": d} for c, d in COMMANDS])  # Telegram's "/" menu
     return 0
@@ -251,6 +260,47 @@ def squeeze_cmd(rest):
         common.send(f"⚠️ בדיקת הסקוויז של {code(known[0])} נכשלה. נסו שוב מאוחר יותר.", source=squeeze_live.SOURCE)
         return 1
     return 0
+
+
+def intraday_cmd(rest):
+    """/intraday: today's watchlist and sent tickets; now: one scan (dispatched on Actions); TICKER: one symbol
+    against the setups now; stats: today's paper outcomes."""
+    arg = rest.split()[0].lower() if rest.split() else ""
+    on_actions = common.env("GITHUB_REPOSITORY") and common.env("GITHUB_TOKEN")
+    if not arg:
+        st = intraday.load(None)
+        if not st or not st["watch"]:
+            common.send(f"עוד אין רשימת מניות במשחק להיום. היא נבנית ב־09:38 ניו־יורק, או עכשיו עם {code('/intraday now')}.",
+                        source=intraday.SOURCE)
+            return 0
+        text = intraday.watch_text(st["watch"], st["day"])
+        if st["journal"]:
+            text += "\n\n" + "\n\n".join(intraday.ticket_text(t, st["day"]) for t in st["journal"])
+        common.send(text, source=intraday.SOURCE)
+        return 0
+    if arg in ("now", "stats"):
+        mode = "once" if arg == "now" else "followup"
+        if on_actions:
+            err = common.dispatch("intraday.yml", {"mode": mode})
+            if err:
+                print(f"workflow dispatch failed: {err}")
+                common.send(f"⚠️ לא הצלחתי להפעיל את הסורק היומי ב־GitHub ({code(err)}).", source=intraday.SOURCE)
+                return 1
+            common.send("⏳ הסורק היומי רץ. התשובה תגיע בעוד כ־2–3 דקות.", source=intraday.SOURCE)
+            return 0
+        return intraday.main(["--mode", mode])
+    sym = rest.split()[0].upper()
+    if not sym.isalpha() or len(sym) > 5:
+        common.send(f"כתבו טיקר אחרי הפקודה, למשל {code('/intraday AAPL')}.", source=intraday.SOURCE)
+        return 0
+    if on_actions:
+        err = common.dispatch("intraday.yml", {"mode": "symbol", "symbol": sym})
+        if err:
+            common.send(f"⚠️ לא הצלחתי להפעיל את הסורק היומי ב־GitHub ({code(err)}).", source=intraday.SOURCE)
+            return 1
+        common.send(f"⏳ בודק את {code(sym)} מול תבניות הסורק. התשובה תגיע בעוד כ־2–3 דקות.", source=intraday.SOURCE)
+        return 0
+    return intraday.main(["--symbol", sym])
 
 
 def squeeze_now():

@@ -1,0 +1,73 @@
+name: Intraday screener
+
+on:
+  # No GitHub schedule (it starts late): the listener's clock (bot/clock.py) dispatches mode=morning at 09:37,
+  # mode=power at 14:57 and mode=followup at 16:20 New York on weekdays; /intraday now, /intraday stats and
+  # /intraday TICKER dispatch once, followup and symbol.
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "morning / power = loop over the window; once = one scan now; followup = today's outcomes; symbol = one ticker"
+        type: choice
+        options: [morning, power, once, followup, symbol]
+        default: once
+      symbol:
+        description: "the ticker for mode=symbol"
+        type: string
+        default: ""
+
+permissions:
+  contents: write  # commit data/intraday_state.json (watchlist, sent tickets, journal)
+
+concurrency:
+  group: intraday-${{ inputs.mode }}
+  cancel-in-progress: false
+
+jobs:
+  intraday:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Scan
+        timeout-minutes: 140
+        run: |
+          if [ "$MODE" = symbol ]; then python -m bot.intraday --symbol "$SYMBOL"; else python -m bot.intraday --mode "$MODE"; fi
+        env:
+          MODE: ${{ inputs.mode }}
+          SYMBOL: ${{ inputs.symbol }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          TICKET_RISK_PCT: ${{ vars.TICKET_RISK_PCT }}
+      - name: Commit the state (the window runs and the follow-up only)
+        if: always() && contains('morning power followup', inputs.mode)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -f data/intraday_state.json ]; then git add data/intraday_state.json; fi
+          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          git commit -m "Update intraday state"
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            sleep $((i * 5))
+            git pull --rebase || git rebase --abort || true
+          done
+          exit 1
+      - name: Report a failure the run could not report itself
+        if: failure() || cancelled()
+        run: |
+          text="$(printf '❌ הסורק היומי נכשל ב־GitHub Actions: %s\n\n%s' "$RUN_URL" "$DISCLAIMER")"
+          curl -fsS --retry 3 -o /dev/null "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" --data-urlencode "text=${text}"
+        env:
+          DISCLAIMER: "⚠️ מידע לצורכי מחקר בלבד ואינו ייעוץ השקעות."
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
