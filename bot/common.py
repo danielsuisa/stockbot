@@ -183,28 +183,32 @@ def freshness():
     return "🕒 נתונים עדכניים ל: " + " · ".join(parts) if parts else ""
 
 
-def send(text, chat_id=None, signal=False, source=None):
+def send(text, chat_id=None, signal=False, source=None, buttons=None):
     """Send HTML text to Telegram, split on lines; every message ends with [the manual-check prompt when it carries
     a signal], the data-freshness line and the disclaimer, or with `source` (its own disclaimer and data source) for
-    messages whose data is not SEC's. Prints instead when TG_TOKEN is unset (dry run)."""
+    messages whose data is not SEC's. `buttons` (a Telegram reply_markup) rides on the last part only.
+    Prints instead when TG_TOKEN is unset (dry run)."""
     chat = chat_id or env("TG_CHAT_ID")
     if not (env("TG_TOKEN") and chat) and env("GITHUB_ACTIONS"):  # a misnamed secret must fail the run loudly
         sys.exit("TG_TOKEN / TG_CHAT_ID secret is missing or misnamed - nothing was sent")
     fresh = freshness()
     tail = "\n".join(([CHECK_PROMPT] if signal else [])
                      + ([source] if source else ([fresh, ""] if fresh else []) + [DISCLAIMER]))
-    for part in chunks(text.strip(), 4000 - visible(tail)):
+    parts = chunks(text.strip(), 4000 - visible(tail))
+    for i, part in enumerate(parts):
         part = f"{part}\n\n{tail}"
+        markup = {"reply_markup": buttons} if buttons and i == len(parts) - 1 else {}
         if not (env("TG_TOKEN") and chat):
             print(part, end="\n\n")
             continue
         time.sleep(max(0.0, _sent[0] + 1.1 - time.monotonic()))  # Telegram: ~1 message/second per chat
         try:
-            tg("sendMessage", chat_id=chat, text=part, parse_mode="HTML", link_preview_options={"is_disabled": True})
+            tg("sendMessage", chat_id=chat, text=part, parse_mode="HTML", link_preview_options={"is_disabled": True},
+               **markup)
         except urllib.error.HTTPError as e:
             if e.code != 400:
                 raise
-            tg("sendMessage", chat_id=chat, text=html.unescape(re.sub(r"<[^>]+>", "", part)))  # bad HTML -> plain
+            tg("sendMessage", chat_id=chat, text=html.unescape(re.sub(r"<[^>]+>", "", part)), **markup)  # bad HTML
         _sent[0] = time.monotonic()
 
 

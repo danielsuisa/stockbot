@@ -30,6 +30,10 @@ COMMANDS = (("check", "דוח על מניה, למשל /check AAPL"), ("scan", "�
             ("ticket", "כרטיס מסחר למניה: כניסה, סטופ, יעד וגודל, למשל /ticket AAPL"),
             ("intraday", "סורק נרות יומי: /intraday, /intraday now, /intraday AAPL, /intraday stats"),
             ("equity", "ההון לחישוב גודל הכרטיסים, למשל /equity 25000"), ("help", "רשימת הפקודות"))
+# A persistent reply keyboard: each button sends its own text, so handle() treats it as the typed command
+KEYBOARD = {"keyboard": [[{"text": "/intraday now"}, {"text": "/intraday"}],
+                         [{"text": "/intraday stats"}, {"text": "/help"}]],
+            "resize_keyboard": True, "is_persistent": True, "input_field_placeholder": "טיקר, למשל AAPL"}
 HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}, או עם דולר, {code('$msft')} (עד {code(MAX)} בהודעה)."
         f" לרשימת הפקודות: {code('/help')}.")
 HELP = "\n".join((
@@ -163,7 +167,7 @@ def handle(text):
         return equity_cmd(rest)
     if cmd == "intraday":
         return intraday_cmd(rest)
-    common.send(HELP)  # /help, /start and any unknown command
+    common.send(HELP, buttons=KEYBOARD)  # /help, /start and any unknown command
     common.tg("setMyCommands", commands=[{"command": c, "description": d} for c, d in COMMANDS])  # Telegram's "/" menu
     return 0
 
@@ -271,12 +275,12 @@ def intraday_cmd(rest):
         st = intraday.load(None)
         if not st or not st["watch"]:
             common.send(f"עוד אין רשימת מניות במשחק להיום. היא נבנית ב־09:38 ניו־יורק, או עכשיו עם {code('/intraday now')}.",
-                        source=intraday.SOURCE)
+                        source=intraday.SOURCE, buttons=KEYBOARD)
             return 0
         text = intraday.watch_text(st["watch"], st["day"])
         if st["journal"]:
             text += "\n\n" + "\n\n".join(intraday.ticket_text(t, st["day"]) for t in st["journal"])
-        common.send(text, source=intraday.SOURCE)
+        common.send(text, source=intraday.SOURCE, buttons=KEYBOARD)
         return 0
     if arg in ("now", "stats"):
         mode = "once" if arg == "now" else "followup"
@@ -284,21 +288,21 @@ def intraday_cmd(rest):
             err = common.dispatch("intraday.yml", {"mode": mode})
             if err:
                 print(f"workflow dispatch failed: {err}")
-                common.send(f"⚠️ לא הצלחתי להפעיל את הסורק היומי ב־GitHub ({code(err)}).", source=intraday.SOURCE)
+                common.send(f"⚠️ לא הצלחתי להפעיל את הסורק היומי ב־GitHub ({code(err)}).", source=intraday.SOURCE, buttons=KEYBOARD)
                 return 1
-            common.send("⏳ הסורק היומי רץ. התשובה תגיע בעוד כ־2–3 דקות.", source=intraday.SOURCE)
+            common.send("⏳ הסורק היומי רץ. התשובה תגיע בעוד כ־2–3 דקות.", source=intraday.SOURCE, buttons=KEYBOARD)
             return 0
         return intraday.main(["--mode", mode])
     sym = rest.split()[0].upper()
     if not sym.isalpha() or len(sym) > 5:
-        common.send(f"כתבו טיקר אחרי הפקודה, למשל {code('/intraday AAPL')}.", source=intraday.SOURCE)
+        common.send(f"כתבו טיקר אחרי הפקודה, למשל {code('/intraday AAPL')}.", source=intraday.SOURCE, buttons=KEYBOARD)
         return 0
     if on_actions:
         err = common.dispatch("intraday.yml", {"mode": "symbol", "symbol": sym})
         if err:
-            common.send(f"⚠️ לא הצלחתי להפעיל את הסורק היומי ב־GitHub ({code(err)}).", source=intraday.SOURCE)
+            common.send(f"⚠️ לא הצלחתי להפעיל את הסורק היומי ב־GitHub ({code(err)}).", source=intraday.SOURCE, buttons=KEYBOARD)
             return 1
-        common.send(f"⏳ בודק את {code(sym)} מול תבניות הסורק. התשובה תגיע בעוד כ־2–3 דקות.", source=intraday.SOURCE)
+        common.send(f"⏳ בודק את {code(sym)} מול תבניות הסורק. התשובה תגיע בעוד כ־2–3 דקות.", source=intraday.SOURCE, buttons=KEYBOARD)
         return 0
     return intraday.main(["--symbol", sym])
 

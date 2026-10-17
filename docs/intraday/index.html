@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="סורק נרות">
+<meta name="robots" content="noindex">
+<title>סורק הנרות היומי</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column of "order slips" under a sticky command bar; numbers in mono, LTR-isolated */
+:root {
+  --bg: #eef1f4; --card: #ffffff; --ink: #14202b; --muted: #5d6b78; --line: #d5dce3;
+  --accent: #1f5fa8; --accent-ink: #ffffff; --up: #127a4a; --down: #b4322b; --warn: #9a6400;
+  --f-ui: 'Heebo', 'Assistant', 'Noto Sans Hebrew', system-ui, sans-serif;
+  --f-num: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #0f151b; --card: #17202a; --ink: #e4ebf1; --muted: #93a2b0; --line: #2a3643;
+  --accent: #5d9ee6; --accent-ink: #0b1218; --up: #4cc58b; --down: #f07a70; --warn: #e2b04f;
+  color-scheme: dark; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 16px/1.6 var(--f-ui); word-spacing: .05em;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+}
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+header.bar { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-block: 12px; }
+h1 { font-size: 1.25rem; font-weight: 800; margin: 0; flex: 1 1 auto; text-wrap: balance; }
+.day { color: var(--muted); font-size: .9rem; }
+.actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-block: 16px; }
+button, .btn {
+  font: 600 1rem var(--f-ui); border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  padding: 12px 14px; min-height: 48px; cursor: pointer; text-decoration: none; text-align: center;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:disabled { opacity: .55; cursor: wait; }
+button:focus-visible, .btn:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.sym-row { display: flex; gap: 8px; }
+.sym-row input { flex: 1; min-width: 0; }
+input {
+  font: 600 1rem var(--f-num); direction: ltr; text-align: end; text-transform: uppercase; padding: 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink); min-height: 48px;
+}
+input::placeholder { font-family: var(--f-ui); text-transform: none; font-weight: 400; }
+#toast { min-height: 1.6em; font-size: .95rem; margin-block: 4px 12px; }
+#toast.ok { color: var(--up); } #toast.err { color: var(--down); }
+section { margin-block: 24px; }
+h2 { font-size: 1.05rem; margin: 0 0 10px; display: flex; gap: 8px; align-items: baseline; }
+h2 .count { color: var(--muted); font-weight: 500; font-size: .9rem; }
+.empty { color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: 12px; padding: 16px; }
+.table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { padding: 9px 12px; text-align: start; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; font-size: .8rem; }
+tr:last-child td { border-bottom: 0; }
+td a { color: var(--accent); font-weight: 700; text-decoration: none; font-family: var(--f-num); }
+.up { color: var(--up); } .down { color: var(--down); }
+.slips { display: grid; gap: 12px; }
+.slip { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; }
+.slip-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; }
+.slip-head .sym { font: 700 1.3rem var(--f-num); color: var(--accent); text-decoration: none; }
+.slip-head .setup { font-weight: 700; }
+.slip-head .when { color: var(--muted); font-size: .88rem; }
+.pill { font-size: .8rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; border: 1px solid currentColor; margin-inline-start: auto; }
+.pill.target { color: var(--up); } .pill.stop { color: var(--down); } .pill.time { color: var(--warn); } .pill.none, .pill.open { color: var(--muted); }
+.legs { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.leg { border-inline-start: 3px solid var(--line); padding-inline-start: 10px; }
+.leg.entry { border-color: var(--accent); } .leg.sl { border-color: var(--down); } .leg.tp { border-color: var(--up); }
+.leg .k { color: var(--muted); font-size: .78rem; display: block; }
+.leg .v { font: 600 1.05rem var(--f-num); direction: ltr; unicode-bidi: isolate; }
+.why { color: var(--muted); font-size: .9rem; }
+.ibkr { font-size: .85rem; background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+.summary { display: flex; flex-wrap: wrap; gap: 8px 20px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.summary b { font-family: var(--f-num); }
+details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+summary { cursor: pointer; font-weight: 700; }
+details p { color: var(--muted); font-size: .9rem; margin-block: 8px; }
+details input { width: 100%; text-transform: none; font-size: .85rem; direction: ltr; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.run { color: var(--muted); font-size: .88rem; }
+.run a { color: var(--accent); }
+footer { color: var(--muted); font-size: .82rem; margin-top: 28px; }
+@media (prefers-reduced-motion: no-preference) { button { transition: transform .08s; } button:active { transform: scale(.98); } }
+</style>
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <h1>🕯️ סורק הנרות היומי</h1>
+  <span class="day" id="day">טוען…</span>
+</div></header>
+
+<main class="wrap">
+  <div class="actions">
+    <button class="primary" id="b-now" type="button">🔎 סרוק עכשיו</button>
+    <button id="b-stats" type="button">📊 תוצאות היום</button>
+    <button id="b-refresh" type="button">↻ רענן לוח</button>
+    <a class="btn" href="https://t.me/Danielsuibot" target="_blank" rel="noopener">✈️ פתח בטלגרם</a>
+  </div>
+  <form class="sym-row" id="f-sym" autocomplete="off">
+    <input id="sym" dir="auto" maxlength="5" placeholder="טיקר, למשל AAPL" aria-label="טיקר לבדיקה" inputmode="text" autocapitalize="characters">
+    <button type="submit" id="b-sym">בדוק מניה</button>
+  </form>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div class="run" id="run"></div>
+
+  <section id="s-summary" hidden>
+    <h2>תוצאות נייר</h2>
+    <div class="summary" id="summary"></div>
+  </section>
+
+  <section>
+    <h2>🎫 כרטיסים <span class="count" id="t-count"></span></h2>
+    <div class="slips" id="tickets"></div>
+  </section>
+
+  <section>
+    <h2>👀 מניות במשחק <span class="count" id="w-count"></span></h2>
+    <div id="watch"></div>
+  </section>
+
+  <details id="settings">
+    <summary>⚙️ חיבור ל־GitHub (פעם אחת)</summary>
+    <p>הכפתורים "סרוק עכשיו", "תוצאות היום" ו"בדוק מניה" מפעילים את הסורק ב־GitHub Actions, והתשובה מגיעה לבוט בטלגרם בתוך 2–3 דקות. לשם כך צריך טוקן GitHub: Fine-grained token, גישה רק לריפו <span class="num">stockbot</span>, הרשאה <span class="num">Actions: Read and write</span>.</p>
+    <p>הטוקן נשמר רק בדפדפן הזה (localStorage) ונשלח רק ל־<span class="num">api.github.com</span>.</p>
+    <input id="tok" type="password" dir="ltr" placeholder="github_pat_…" aria-label="טוקן GitHub">
+    <div class="row">
+      <button type="button" id="b-save">שמור טוקן</button>
+      <button type="button" id="b-clear">מחק טוקן</button>
+      <a class="btn" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">צור טוקן ב־GitHub</a>
+    </div>
+  </details>
+
+  <footer>
+    כרטיסים מחושבים בלבד, לא ייעוץ השקעות. הבוט לא שולח פקודות; ניירת בלבד. הלוח מציג את מה שנשמר בריצות הבוקר (09:40–11:30), אחר הצהריים (15:00–15:45) והמעקב (16:20) ניו־יורק; תוצאות של "סרוק עכשיו" ו"בדוק מניה" מגיעות לטלגרם בלבד.
+  </footer>
+</main>
+
+<script>
+const REPO = "danielsuisa/stockbot", API = "https://api.github.com/repos/" + REPO;
+const SETUPS = {orb5: "פריצת טווח פתיחה 5 דק׳", orb15: "פריצת טווח פתיחה 15 דק׳", vwap_hammer: "פטיש על VWAP",
+  vwap_engulf: "בליעה שורית על VWAP", flag: "דגל שורי", red_to_green: "מאדום לירוק"};
+const RESULTS = {target: ["יעד", "target"], stop: ["סטופ", "stop"], time: ["יציאה בזמן", "time"]};
+const $ = id => document.getElementById(id);
+
+function store(k, v) { try { if (v === undefined) return localStorage.getItem(k) || ""; v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) { return ""; } }
+function token() { return store("gh_token"); }
+function headers(json) {
+  const h = {Accept: "application/vnd.github+json"};
+  if (token()) h.Authorization = "Bearer " + token();
+  if (json) h["Content-Type"] = "application/json";
+  return h;
+}
+function el(tag, attrs, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) k === "class" ? n.className = v : n.setAttribute(k, v);
+  for (const k of kids) n.append(k instanceof Node ? k : document.createTextNode(String(k)));
+  return n;
+}
+const num = (t, cls) => el("span", {class: "num" + (cls ? " " + cls : "")}, t);
+const usd = x => x == null ? "—" : "$" + Number(x).toFixed(Number(x) < 1 ? 4 : 2);
+const pct = x => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(1) + "%";
+const chart = s => el("a", {href: "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(s), target: "_blank", rel: "noopener"}, s);
+function ilTime(day, hhmm) {
+  try {  // New York wall time -> Israel wall time, via the two zones' offsets on that day
+    const [h, m] = hhmm.split(":").map(Number), base = new Date(day + "T12:00:00Z");
+    const off = tz => { const p = new Intl.DateTimeFormat("en-US", {timeZone: tz, hour: "numeric", hour12: false}).format(base); return Number(p) - 12; };
+    let t = h * 60 + m + (off("Asia/Jerusalem") - off("America/New_York")) * 60;
+    t = (t + 1440) % 1440;
+    return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0");
+  } catch (e) { return ""; }
+}
+function toast(msg, kind) { const t = $("toast"); t.textContent = msg; t.className = kind || ""; }
+
+async function loadState() {
+  const r = await fetch(API + "/contents/data/intraday_state.json?ref=main&t=" + Date.now(),
+    {headers: {...headers(), Accept: "application/vnd.github.raw+json"}, cache: "no-store"});
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error("GitHub " + r.status);
+  return r.json();
+}
+
+function renderWatch(st) {
+  const box = $("watch"); box.replaceChildren();
+  const w = (st && st.watch) || [];
+  $("w-count").textContent = w.length ? "(" + w.length + ")" : "";
+  if (!w.length) { box.append(el("div", {class: "empty"}, "עוד אין רשימה להיום. היא נבנית ב־09:38 ניו־יורק (16:38 ישראל) בימי מסחר.")); return; }
+  const rows = w.map(x => el("tr", {},
+    el("td", {}, chart(x.symbol)),
+    el("td", {}, num(pct(x.gap), x.gap >= 0 ? "up" : "down")),
+    el("td", {}, num((x.pre_rel * 100).toFixed(1) + "%")),
+    el("td", {}, x.open_relvol ? num(x.open_relvol.toFixed(1)) : "—"),
+    el("td", {}, num((x.atr / x.prev_close * 100).toFixed(1) + "%")),
+    el("td", {}, num(usd(x.prev_close)))));
+  box.append(el("div", {class: "table-wrap"}, el("table", {},
+    el("thead", {}, el("tr", {}, ...["מניה", "פער", "נפח לפני פתיחה", "נפח פתיחה יחסי", "ATR", "סגירה קודמת"].map(h => el("th", {scope: "col"}, h)))),
+    el("tbody", {}, ...rows))));
+}
+
+function renderTickets(st) {
+  const box = $("tickets"); box.replaceChildren();
+  const js = (st && st.journal) || [];
+  $("t-count").textContent = js.length ? "(" + js.length + ")" : "";
+  if (!js.length) { box.append(el("div", {class: "empty"}, "אין כרטיסים היום. כרטיס נשלח רק כשנר נסגר בתבנית על מניה מהרשימה.")); return; }
+  for (const t of js) {
+    const o = t.outcome, res = o ? (RESULTS[o.result] || ["לא מולא", "none"]) : ["פתוח", "open"];
+    const rTxt = o && o.fill ? num((o.r >= 0 ? "+" : "−") + Math.abs(o.r).toFixed(2) + "R") : "";
+    const leg = (cls, k, v) => el("div", {class: "leg " + cls}, el("span", {class: "k"}, k), el("span", {class: "v"}, v));
+    box.append(el("article", {class: "slip"},
+      el("div", {class: "slip-head"},
+        el("a", {class: "sym", href: "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(t.symbol), target: "_blank", rel: "noopener"}, t.symbol),
+        el("span", {class: "setup"}, SETUPS[t.setup] || t.setup),
+        el("span", {class: "when"}, "נר ", num(t.at), " ניו־יורק · ", num(ilTime(st.day, t.at)), " ישראל"),
+        el("span", {class: "pill " + res[1]}, res[0], rTxt ? " · " : "", rTxt)),
+      el("div", {class: "legs"},
+        leg("entry", "כניסה (BUY STP)", usd(t.entry_stop)),
+        leg("entry", "לימיט", usd(t.limit)),
+        leg("sl", "סטופ לוס", usd(t.stop_loss)),
+        leg("tp", "יעד 2R", usd(t.target)),
+        leg("", "כמות", String(t.shares)),
+        leg("", "סיכון", usd(t.risk))),
+      el("div", {class: "why"}, t.note || ""),
+      el("div", {class: "ibkr"}, "IBKR: bracket אחד, BUY STP LMT ", num(usd(t.entry_stop) + " / " + usd(t.limit)),
+        " · ילדים SELL STP ", num(usd(t.stop_loss)), " ו־SELL LMT ", num(usd(t.target)), " · OCA · DAY · יציאה בזמן ", num(t.time_exit || "15:55"))));
+  }
+}
+
+function renderSummary(st) {
+  const js = ((st && st.journal) || []).filter(j => j.outcome);
+  $("s-summary").hidden = !js.length;
+  if (!js.length) return;
+  const filled = js.filter(j => j.outcome.fill), wins = filled.filter(j => j.outcome.r > 0);
+  const tot = filled.reduce((a, j) => a + j.outcome.r, 0);
+  $("summary").replaceChildren(
+    el("span", {}, "כרטיסים ", el("b", {}, js.length)), el("span", {}, "מולאו ", el("b", {}, filled.length)),
+    el("span", {}, "רווחיים ", el("b", {}, wins.length)),
+    el("span", {}, "סך הכול ", num((tot >= 0 ? "+" : "−") + Math.abs(tot).toFixed(2) + "R", tot >= 0 ? "up" : "down")));
+}
+
+async function loadRun() {
+  try {
+    const r = await fetch(API + "/actions/workflows/intraday.yml/runs?per_page=1", {headers: headers(), cache: "no-store"});
+    if (!r.ok) return;
+    const run = ((await r.json()).workflow_runs || [])[0];
+    if (!run) return;
+    const words = {completed: run.conclusion === "success" ? "✅ הסתיימה" : "❌ " + (run.conclusion || "נכשלה"), in_progress: "⏳ רצה עכשיו", queued: "⏳ בתור"};
+    const when = new Date(run.run_started_at || run.created_at).toLocaleString("he-IL", {timeZone: "Asia/Jerusalem", weekday: "short", hour: "2-digit", minute: "2-digit"});
+    $("run").replaceChildren("ריצה אחרונה: ", words[run.status] || run.status, " · ", when, " · ",
+      el("a", {href: run.html_url, target: "_blank", rel: "noopener"}, "פרטים"));
+  } catch (e) { /* the status line is optional */ }
+}
+
+async function refresh() {
+  $("b-refresh").disabled = true;
+  try {
+    const st = await loadState();
+    $("day").textContent = st ? new Date(st.day + "T12:00:00Z").toLocaleDateString("he-IL", {weekday: "long", day: "numeric", month: "numeric", year: "numeric"}) : "אין עדיין נתונים";
+    renderSummary(st); renderTickets(st); renderWatch(st);
+  } catch (e) {
+    toast("לא הצלחתי לקרוא את הלוח מ־GitHub (" + e.message + "). נסה שוב בעוד דקה.", "err");
+  } finally { $("b-refresh").disabled = false; }
+  loadRun();
+}
+
+async function dispatch(inputs, btn, okMsg) {
+  if (!token()) { $("settings").open = true; $("tok").focus(); toast("צריך לשמור טוקן GitHub פעם אחת (למטה) כדי להפעיל את הסורק.", "err"); return; }
+  btn.disabled = true; toast("שולח…");
+  try {
+    const r = await fetch(API + "/actions/workflows/intraday.yml/dispatches",
+      {method: "POST", headers: headers(true), body: JSON.stringify({ref: "main", inputs})});
+    if (r.status === 204) { toast(okMsg, "ok"); setTimeout(loadRun, 4000); }
+    else if (r.status === 401 || r.status === 403 || r.status === 404) toast("GitHub דחה את הטוקן (" + r.status + "). בדוק שיש לו גישה ל־stockbot והרשאת Actions: Read and write.", "err");
+    else toast("GitHub החזיר " + r.status + ". נסה שוב.", "err");
+  } catch (e) { toast("אין חיבור ל־GitHub. נסה שוב.", "err"); }
+  finally { btn.disabled = false; }
+}
+
+$("b-now").onclick = e => dispatch({mode: "once"}, e.currentTarget, "✅ הסורק הופעל. הכרטיסים יגיעו לטלגרם בעוד 2–3 דקות.");
+$("b-stats").onclick = e => dispatch({mode: "followup"}, e.currentTarget, "✅ חישוב התוצאות הופעל. הלוח יתעדכן כשהריצה תסתיים (רענן בעוד 2–3 דקות).");
+$("b-refresh").onclick = refresh;
+$("f-sym").onsubmit = e => {
+  e.preventDefault();
+  const s = $("sym").value.trim().toUpperCase();
+  if (!/^[A-Z]{1,5}$/.test(s)) { toast("טיקר באותיות לועזיות בלבד, עד 5 תווים, למשל AAPL.", "err"); return; }
+  dispatch({mode: "symbol", symbol: s}, $("b-sym"), "✅ בודק את " + s + ". התשובה תגיע לטלגרם בעוד 2–3 דקות.");
+};
+$("b-save").onclick = () => { const v = $("tok").value.trim(); if (!v) return; store("gh_token", v); $("tok").value = ""; $("settings").open = false; toast("הטוקן נשמר בדפדפן הזה.", "ok"); loadRun(); };
+$("b-clear").onclick = () => { store("gh_token", null); toast("הטוקן נמחק מהדפדפן.", "ok"); };
+if (token()) $("tok").placeholder = "טוקן שמור ✓";
+refresh();
+</script>
+</body>
+</html>

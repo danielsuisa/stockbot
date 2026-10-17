@@ -451,25 +451,31 @@ def _sleep_until(t_ny):
         time.sleep(min(d, 30))
 
 
-def send(text, dry, signal=False):
+def chart_buttons(symbols, per_row=4):
+    """Inline URL buttons, one per symbol, opening its TradingView chart (no listener round-trip needed)."""
+    keys = [{"text": f"📈 {s}", "url": f"https://www.tradingview.com/chart/?symbol={s}"} for s in dict.fromkeys(symbols)]
+    return {"inline_keyboard": [keys[i:i + per_row] for i in range(0, len(keys), per_row)]} if keys else None
+
+
+def send(text, dry, signal=False, symbols=()):
     if dry:
         print(text, end="\n\n")
     else:
-        common.send(text, signal=signal, source=SOURCE)
+        common.send(text, signal=signal, source=SOURCE, buttons=chart_buttons(symbols))
 
 
 def run_scan(state, day, before, now_hhmm, dry):
     risk, max_pos, E = sizing()
     if now_hhmm >= "09:55" and state["watch"] and not state["watch"][0].get("open_relvol"):
         state["watch"] = rerank(state["watch"], day, before)
-        send(watch_text(state["watch"], day), dry)
+        send(watch_text(state["watch"], day), dry, symbols=[w["symbol"] for w in state["watch"]])
     tickets = [t for t in scan(state["watch"], day, now_hhmm, risk, max_pos)
                if f"{t['symbol']}:{t['setup']}" not in state["sent"]][:MAX_TICKETS]
     for t in tickets:
         state["sent"][f"{t['symbol']}:{t['setup']}"] = now_hhmm
         state["journal"].append(t)
     if tickets:
-        send(list_text(tickets, day, now_hhmm, E), dry, signal=True)
+        send(list_text(tickets, day, now_hhmm, E), dry, signal=True, symbols=[t["symbol"] for t in tickets])
     return tickets
 
 
@@ -506,12 +512,12 @@ def main(argv=None):
         rows[0].update(atr=stats[sym]["atr"], prev_close=stats[sym]["close"])
         risk, max_pos, E = sizing()
         got = scan(rows, day, now.strftime("%H:%M"), risk, max_pos)
-        send(list_text(got, day, now.strftime("%H:%M"), E), a.dry, signal=bool(got))
+        send(list_text(got, day, now.strftime("%H:%M"), E), a.dry, signal=bool(got), symbols=[t["symbol"] for t in got])
         return 0
 
     if not state["watch"]:
         state["watch"], before = watchlist(day, cal)
-        send(watch_text(state["watch"], day), a.dry)
+        send(watch_text(state["watch"], day), a.dry, symbols=[w["symbol"] for w in state["watch"]])
         if not a.dry:
             save(state)
     if a.mode == "watch":
