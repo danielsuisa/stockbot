@@ -84,6 +84,9 @@ class FlatYaml(unittest.TestCase):
         self.assertEqual(self._load("# c\na: 1\nb: 2016-01-01  # note\nc: America/New_York\nd: 'q'\n"),
                          {"a": 1, "b": dt.date(2016, 1, 1), "c": "America/New_York", "d": "q"})
 
+    def test_dotted_keys(self):
+        self.assertEqual(self._load("window.x_1.role: veto_only\n"), {"window.x_1.role": "veto_only"})
+
     def test_rejects_richer_yaml(self):
         for text in ("a:\n  b: 1\n", "a: [1, 2]\n", "a: 1\na: 2\n", "a: &x 1\n", "- a\n", "a: |\n"):
             with self.subTest(text=text), self.assertRaises(c.ContractError):

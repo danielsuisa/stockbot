@@ -27,7 +27,7 @@ class ContractError(ValueError):
 
 # ---------------------------------------------------------------- flat YAML subset
 
-_KEY = re.compile(r"^([a-z][a-z0-9_]*):\s*(.*)$")
+_KEY = re.compile(r"^([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*):\s*(.*)$")  # dotted keys allowed: window.x.first_date
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _INT = re.compile(r"^-?\d+$")
 
