@@ -1,0 +1,51 @@
+name: Intraday signal count (cache only)
+
+# The free step of docs/research/intraday-audit-2026-10-17.md section 4: count the H1 signals on 2024 from the ZBA
+# development run's request cache. No Alpaca secrets are given to the job, and the script blocks every request, so
+# nothing can be downloaded; a missing cache shows up as zero coverage in the report.
+on:
+  workflow_dispatch:
+  push:
+    paths: [bot/intraday_count.py]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: intraday-count
+  cancel-in-progress: false
+
+jobs:
+  count:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Restore the ZBA development request cache (read only; never saved back)
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/alpaca
+          key: zba-v2-dev-never-matches
+          restore-keys: zba-v2-dev-
+      - name: Count (no network; every Alpaca request is blocked)
+        run: |
+          du -sh .cache/alpaca 2>/dev/null || echo "no cache restored"
+          python -m bot.intraday_count --year 2024
+      - name: Commit the report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/backtest/intraday-signal-count-2024.md docs/backtest/intraday-signal-count-2024.csv
+          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          git commit -m "Intraday signal count 2024 (cache only, run ${{ github.run_id }})"
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            sleep $((i * 5))
+            git pull --rebase || git rebase --abort || true
+          done
+          exit 1
