@@ -214,3 +214,24 @@ class LiveBars(unittest.TestCase):
         self.assertEqual(got, {"ACME": [("09:30", 1, 2, 0.5, 1.5, 10, 1.2)], "NONE": []})
         self.assertEqual(g.call_args[0][1]["feed"], "iex")
         self.assertEqual(g.call_args[0][1]["start"], "2026-09-29T13:30:00Z")
+
+
+class EvidenceRules(unittest.TestCase):
+    def test_stop_floor_by_price_and_adv_cap(self):
+        t = intraday.bracket("ACME", intraday._ticket("orb5", 100.0, None, "x", 3.0), 0.5, 100.0)  # 10% ATR = 0.05 < 0.3%
+        self.assertEqual(t["R"], 0.30)
+        self.assertTrue(t["r_floored"])
+        t = intraday.bracket("ACME", intraday._ticket("flag", 20.9, 20.55, "x", 2.0), ATR, 10_000.0, adv=100_000)
+        self.assertEqual(t["shares"], 850)  # 1% of 85% of the average day
+
+    def test_afternoon_needs_an_up_day_above_vwap(self):
+        up = minutes("09:30", [(20, 20.5, 19.8, 20.3, 100), (20.3, 20.45, 20.1, 20.4, 90), (20.4, 20.8, 20.35, 20.7, 300)])
+        down = minutes("09:30", [(21, 21.5, 20.8, 21.3, 100), (21.3, 21.45, 21.1, 21.4, 90), (21.4, 21.8, 21.35, 21.7, 300)])
+        watch = [{"symbol": "UP", "gap": 0.0, "pre_rel": 0.2, "atr": ATR, "prev_close": PREV, "open_relvol": 2.0},
+                 {"symbol": "DOWN", "gap": 0.0, "pre_rel": 0.2, "atr": ATR, "prev_close": PREV, "open_relvol": 2.0}]
+        with mock.patch.object(intraday.alpaca, "live_bars", return_value={"UP": up, "DOWN": down}):
+            morning = intraday.scan(watch, "2026-10-19", "09:45", 100.0, None)
+            self.assertEqual(sorted(t["symbol"] for t in morning), ["DOWN", "UP"])
+            with mock.patch.object(intraday, "candles", side_effect=lambda b, now: (lambda c: (c.__setitem__(0, {**c[0], "o": 25.0}) if b is down else None) or c)(intraday.with_vwap(b, intraday.ticket.to5(b)))):
+                late = intraday.scan(watch, "2026-10-19", "15:05", 100.0, None)
+        self.assertEqual([t["symbol"] for t in late], ["UP"])  # DOWN opened at 25 and is below it

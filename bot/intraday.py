@@ -45,7 +45,10 @@ OPEN_RELVOL, STRONG_RELVOL = 1.0, 5.0  # 09:30-09:35 volume / its mean over RELV
 RELVOL_SESSIONS = 14
 WATCH = 20  # the watchlist (Zarattini & Aziz: the top 20 stocks in play)
 TARGET_R, STOP_ATR_FLOOR, STOP_ATR_CAP = 2.0, 0.10, 1.0
+STOP_MIN_PCT = 0.003  # R >= 0.3% of the entry: spread plus slippage (~0.1% on liquid $5+ names) stays under a third of R
 LIMIT_ATR = 0.05  # the stop-limit's limit: entry + 5% of ATR14 (no chasing beyond it)
+MAX_ADV_SHARE, INTRADAY_ADV = 0.01, 0.85  # shares <= 1% of the intraday volume (the close auction's ~12% is not there by 15:55)
+LATE_FROM = "15:00"  # the afternoon window: only names trending up all day (close-to-15:30 trend beats the opening bar, Baltussen 2021)
 TICK = 0.01
 TIME_EXIT = "15:55"
 MAX_TICKETS = 5  # a scan sends at most this many, by score
@@ -205,22 +208,25 @@ def setups(bars5, atr, prev_close):
 
 
 # ---------- the bracket ----------
-def bracket(symbol, s, atr, risk, max_position_value=None):
+def bracket(symbol, s, atr, risk, max_position_value=None, adv=None):
     """Entry, stop, target and size for setup `s` -> ticket dict, or {"ok": False, "reason"}."""
     entry = levels.px(s["trigger_high"] + TICK)
     r_raw = entry - s["stop_ref"] + TICK if s["stop_ref"] is not None else STOP_ATR_FLOOR * atr
-    R = min(max(r_raw, STOP_ATR_FLOOR * atr), STOP_ATR_CAP * atr) if atr else r_raw
+    floor = max(STOP_ATR_FLOOR * atr, STOP_MIN_PCT * entry) if atr else STOP_MIN_PCT * entry
+    R = min(max(r_raw, floor), max(STOP_ATR_CAP * atr, floor)) if atr else max(r_raw, floor)
     if R <= 0:
         return {"ok": False, "symbol": symbol, "reason": "stop not below entry"}
     shares = int(risk / R + levels.EPS)
     if max_position_value:
         shares = min(shares, int(max_position_value / entry + levels.EPS))
+    if adv:
+        shares = min(shares, int(MAX_ADV_SHARE * INTRADAY_ADV * adv + levels.EPS))
     if shares < levels.MIN_SHARES:
         return {"ok": False, "symbol": symbol, "reason": "shares below 2"}
     return {"ok": True, "symbol": symbol, "setup": s["setup"], "note": s["note"], "score": s["score"],
             "entry_stop": entry, "limit": levels.px(entry + LIMIT_ATR * atr) if atr else levels.px(entry * 1.002),
             "stop_loss": levels.px(entry - R), "target": levels.px(entry + TARGET_R * R), "R": levels.px(R, ref=entry),
-            "r_floored": r_raw < STOP_ATR_FLOOR * atr if atr else False, "shares": shares, "risk": round(shares * R, 2),
+            "r_floored": r_raw < floor, "shares": shares, "risk": round(shares * R, 2),
             "time_exit": TIME_EXIT, "atr": atr}
 
 
@@ -321,13 +327,15 @@ def scan(watch, day, now_hhmm, risk, max_pos):
         b5 = candles(bars.get(w["symbol"], []), now_hhmm)
         if not b5:
             continue
+        if now_hhmm >= LATE_FROM and not (b5[-1]["c"] > b5[0]["o"] and b5[-1]["c"] > (b5[-1].get("vwap") or 0)):
+            continue  # the afternoon: only a day that trended up and still holds above VWAP
         for s in setups(b5, w["atr"], w["prev_close"]):
-            t = bracket(w["symbol"], s, w["atr"], risk, max_pos)
+            t = bracket(w["symbol"], s, w["atr"], risk, max_pos, w.get("adv"))
             if t["ok"]:
                 t.update(gap=w["gap"], pre_rel=w["pre_rel"], open_relvol=w.get("open_relvol"), at=now_hhmm,
                          last=b5[-1]["c"], vwap=b5[-1].get("vwap"))
-                rv = w.get("open_relvol") or w["pre_rel"] * 10
-                t["score"] += min(rv, STRONG_RELVOL) / STRONG_RELVOL + min(abs(w["gap"]) / 0.05, 1)
+                rv = w.get("open_relvol") or w["pre_rel"] * 10  # relative volume is the measured edge; the gap is not
+                t["score"] += min(rv, STRONG_RELVOL) / STRONG_RELVOL
                 out.append(t)
                 break  # one ticket per symbol per scan: its best setup
     return sorted(out, key=lambda t: -t["score"])
@@ -357,8 +365,9 @@ def ticket_text(t, day, E=None):
         f"מחיר אחרון {code(price(t['last']))}" + (f" · VWAP {code(price(t['vwap']))}" if t.get("vwap") else ""),
         f"כניסה: קניית פריצה — סטופ {code(price(P))} · לימיט {code(price(t['limit']))} (תקף להיום בלבד)",
         f"סטופ לוס: {code(price(t['stop_loss']))} (סיכון {code(price(t['R']))} למניה"
-        + (", הורחב ל־10% מה־ATR" if t["r_floored"] else "") + ")",
-        f"יעד: {code(price(t['target']))} (פי {code(format(TARGET_R, 'g'))} מהסיכון)",
+        + (", הורחב למינימום: 10% מה־ATR או 0.3% מהמחיר" if t["r_floored"] else "") + ")",
+        f"יעד: {code(price(t['target']))} (פי {code(format(TARGET_R, 'g'))} מהסיכון) · אחרי רווח של יחידת סיכון אחת: "
+        "סטופ לנקודת הכניסה או ל־VWAP, הגבוה מביניהם",
         f"יציאה בזמן: {code(t['time_exit'])} ניו־יורק ({code(il_time(day, t['time_exit']))} ישראל) אם לא נסגר קודם",
         f"כמות: {code(t['shares'])} מניות · סיכון {code(price(t['risk']))}"
         + (f" ({code(format(t['risk'] / E * 100, '.2f') + '%')} מההון)" if E else " (סיכון קבוע: לא נקבע הון, /equity)"),
