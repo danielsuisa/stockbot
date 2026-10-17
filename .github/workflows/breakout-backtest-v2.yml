@@ -1,0 +1,18 @@
+name: Breakout backtest v2
+
+# The v2 replay already ran and its report is in docs/backtest/. pull_request is absent on purpose:
+# this pull request's path filter matches the whole branch, so another push would start a second download
+# on the same Alpaca limit. Dispatch does not rerun the replay from this file.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: v2 replay already recorded
+        run: echo "v2 report is already in docs/backtest. This job does not download market data."

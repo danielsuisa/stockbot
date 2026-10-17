@@ -1,0 +1,56 @@
+name: Premarket mid
+
+# $3–$20 parallel of the premarket catalyst. Research only: no order is placed or transmitted.
+# pull_request was removed so later commits on this branch do not start another download.
+# A finished NO-GO exits 0. A hole in the download exits 1.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: premarket-mid-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: |
+            .cache/alpaca
+            .cache/sec-t3
+          key: t3-mid-${{ github.sha }}
+          restore-keys: |
+            t3-mid-
+            t3-alpaca-
+      - name: Replay the pre-registered $3–$20 premarket book
+        timeout-minutes: 340
+        run: python -m bot.premarket_mid_backtest
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          SEC_UA: ${{ secrets.SEC_UA }}
+      - uses: actions/cache/save@v4
+        if: always() && steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            .cache/alpaca
+            .cache/sec-t3
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: premarket-mid
+          path: docs/backtest/premarket-mid-2*
+          if-no-files-found: warn
+          retention-days: 14

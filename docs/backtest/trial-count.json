@@ -1,0 +1,21 @@
+{
+  "completed_tests": 9,
+  "go": 0,
+  "completed_prior": [
+    "breakout",
+    "noise",
+    "penny",
+    "swing",
+    "sector",
+    "vix"
+  ],
+  "completed_added": [
+    "faber",
+    "gem",
+    "gem-bil"
+  ],
+  "dsr_n_next": 18,
+  "gem_agg_verdict": "NO-GO",
+  "counter_includes_pending_replication": true,
+  "effective_trials": 9
+}

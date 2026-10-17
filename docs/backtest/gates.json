@@ -1,0 +1,61 @@
+{
+  "locked": "2026-10-15",
+  "note": "Thresholds, the completed-test list, and the replication rule. This file stores no return, no bootstrap rate, and no verdict. completed_prior plus completed_added is the trial counter. That counter moves when a test is run, including while the verdict is PENDING-REPLICATION. Only the verdict waits for docs/backtest/replication.json. dsr_n_next is the variant count the next test's deflated Sharpe uses.",
+  "completed_prior": ["breakout", "noise", "penny", "swing", "sector", "vix"],
+  "completed_added": ["faber", "gem", "gem-bil"],
+  "go_count": 0,
+  "dsr_n_earlier_variants": 15,
+  "dsr_n_next": 18,
+  "replication": {
+    "required_before_verdict": true,
+    "max_cagr_gap": 0.005,
+    "max_mismatch_periods": 2
+  },
+  "symmetry": {
+    "rows": ["fractional", "whole_share"],
+    "verdict_row": "whole_share",
+    "account": 460,
+    "spy_exposure": "SPYM",
+    "out_of_market": "cash",
+    "note": "Row (a) is fractional units for the strategy and the benchmark. Row (b) is whole shares of a $460 account for both, and SPY exposure uses SPYM because one SPY share costs more than $460. The verdict is row (b). Faber, when out of the market, holds cash at 0%. A BIL sleeve is information only and does not add a trial. A bug-fix re-run does not change dsr_n_next."
+  },
+  "trials": {
+    "t3": {"status": "CLOSED-COST"},
+    "t3-mid": {"status": "CLOSED-COST"},
+    "t4": {"status": "CLOSED-COST"},
+    "t6": {"status": "CLOSED-COST"},
+    "t7": {"status": "CLOSED-COST"},
+    "t8": {"status": "CLOSED-COST"},
+    "t9": {"status": "CLOSED-COST"},
+    "gem-agg": {
+      "kind": "trend",
+      "requires_early_window": false,
+      "cagr_max_shortfall": 0.01,
+      "bootstrap_floor": 0.8,
+      "bootstrap_draws": 1000,
+      "bootstrap_block": 3,
+      "bootstrap_seed": 20261015,
+      "drawdown_fraction": "2/3"
+    },
+    "gem-bil": {
+      "kind": "trend",
+      "requires_early_window": true,
+      "cagr_max_shortfall": 0.01,
+      "bootstrap_floor": 0.8,
+      "bootstrap_draws": 1000,
+      "bootstrap_block": 3,
+      "bootstrap_seed": 20261015,
+      "drawdown_fraction": "2/3"
+    },
+    "faber-spy": {
+      "kind": "trend",
+      "requires_early_window": false,
+      "cagr_max_shortfall": 0.01,
+      "bootstrap_floor": 0.8,
+      "bootstrap_draws": 1000,
+      "bootstrap_block": 3,
+      "bootstrap_seed": 20261015,
+      "drawdown_fraction": "2/3"
+    }
+  }
+}

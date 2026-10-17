@@ -1,0 +1,38 @@
+name: Noise Area backtest
+
+# The Noise Area replay already ran and its report is in docs/backtest/. pull_request is absent on purpose:
+# this pull request's path filter matches the whole branch, so another push would start a second download.
+# A NO-GO still exits 0. A hole in the download exits 1.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: noise-area-backtest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Replay the pre-registered Noise Area rule
+        timeout-minutes: 160
+        run: python -m bot.noise_area_backtest
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: noise-area-backtest
+          path: docs/backtest/noise-qqq-*
+          if-no-files-found: warn
+          retention-days: 14

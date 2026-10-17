@@ -1,0 +1,24 @@
+name: Breakout backtest
+
+# The v1 replay already ran and its report is committed. This job stays on pull_request only so a new push
+# joins the same concurrency group and cancels a stale v1 replay. It does not call Alpaca. Two replays at
+# once share the free plan's request limit and a 429 turns into a failed session, which the gate calls NO-GO.
+# To rerun v1 for real, dispatch is not enough with this file: restore the replay step first.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: breakout-backtest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: v1 replay already recorded
+        run: echo "v1 report is already in docs/backtest. This job does not download market data."

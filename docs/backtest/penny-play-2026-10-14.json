@@ -1,0 +1,78 @@
+{
+ "run": "2026-10-14",
+ "end": "2026-10-13",
+ "first_bar": "2016-01-04",
+ "universe": 8020,
+ "inactive_names": 1427,
+ "gap_candidates": 30539,
+ "rvol_pass": 15183,
+ "with_news": 8953,
+ "news": {
+  "used": true,
+  "earliest": "2015-01-01T19:14:12Z"
+ },
+ "complete": true,
+ "requests": 11679,
+ "orb": {
+  "n": 896,
+  "mean": -0.17789938131504957,
+  "t": -4.127269557781796,
+  "p95": -0.08437843793770816,
+  "years": {
+   "2023": -0.11582263331490587,
+   "2024": -0.003900617639386145,
+   "2025": -0.2735921446620617,
+   "2026": -0.3355435139516606
+  },
+  "checks": [
+   [
+    "at least 100 trades (896)",
+    true
+   ],
+   [
+    "mean net R > 0 with t > 2",
+    false
+   ],
+   [
+    "mean net R above the 95th percentile of 20 random-direction means",
+    false
+   ],
+   [
+    "mean net R > 0 in 2023 and in 2024 and in 2025 and in 2026",
+    false
+   ]
+  ],
+  "go": false
+ },
+ "vwap": {
+  "n": 927,
+  "mean": -0.2489098358362694,
+  "t": -5.335453196499757,
+  "p95": -0.10621844047300785,
+  "years": {
+   "2023": -0.1803804300741245,
+   "2024": -0.16284655769989267,
+   "2025": -0.28299942235320097,
+   "2026": -0.39665890793309594
+  },
+  "checks": [
+   [
+    "at least 100 trades (927)",
+    true
+   ],
+   [
+    "mean net R > 0 with t > 2",
+    false
+   ],
+   [
+    "mean net R above the 95th percentile of 20 random-direction means",
+    false
+   ],
+   [
+    "mean net R > 0 in 2023 and in 2024 and in 2025 and in 2026",
+    false
+   ]
+  ],
+  "go": false
+ }
+}

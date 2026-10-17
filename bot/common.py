@@ -183,18 +183,23 @@ def freshness():
     return "🕒 נתונים עדכניים ל: " + " · ".join(parts) if parts else ""
 
 
-def send(text, chat_id=None, signal=False, source=None):
+def send(text, chat_id=None, signal=False, source=None, footer=True):
     """Send HTML text to Telegram, split on lines; every message ends with [the manual-check prompt when it carries
     a signal], the data-freshness line and the disclaimer, or with `source` (its own disclaimer and data source) for
-    messages whose data is not SEC's. Prints instead when TG_TOKEN is unset (dry run)."""
+    messages whose data is not SEC's. `footer=False` sends the text alone (the breakout pings). Prints instead when
+    TG_TOKEN is unset (dry run)."""
     chat = chat_id or env("TG_CHAT_ID")
     if not (env("TG_TOKEN") and chat) and env("GITHUB_ACTIONS"):  # a misnamed secret must fail the run loudly
         sys.exit("TG_TOKEN / TG_CHAT_ID secret is missing or misnamed - nothing was sent")
-    fresh = freshness()
-    tail = "\n".join(([CHECK_PROMPT] if signal else [])
-                     + ([source] if source else ([fresh, ""] if fresh else []) + [DISCLAIMER]))
+    if footer:
+        fresh = freshness()
+        tail = "\n".join(([CHECK_PROMPT] if signal else [])
+                         + ([source] if source else ([fresh, ""] if fresh else []) + [DISCLAIMER]))
+    else:
+        tail = ""
     for part in chunks(text.strip(), 4000 - visible(tail)):
-        part = f"{part}\n\n{tail}"
+        if tail:
+            part = f"{part}\n\n{tail}"
         if not (env("TG_TOKEN") and chat):
             print(part, end="\n\n")
             continue

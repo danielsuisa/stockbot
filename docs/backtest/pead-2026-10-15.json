@@ -1,0 +1,222 @@
+{
+ "run": "2026-10-15",
+ "end": "2026-10-14",
+ "first_bar": "2016-01-04",
+ "universe": 6379,
+ "inactive_names": 745,
+ "inactive_with_bars": 726,
+ "aapl": {
+  "from": "2020-08-28",
+  "to": "2020-08-31",
+  "jump": 0.033891515102956404
+ },
+ "split_days": 3808,
+ "probe": [
+  {
+   "symbol": "LNKD",
+   "last": "2016-12-07",
+   "bars": 28,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "YHOO",
+   "last": "2017-06-16",
+   "bars": 29,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "WFM",
+   "last": "2017-08-25",
+   "bars": 30,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "MON",
+   "last": "2018-06-06",
+   "bars": 28,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "TWX",
+   "last": "2018-06-14",
+   "bars": 28,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "SHLD",
+   "last": "2018-10-15",
+   "bars": 29,
+   "in_assets": true,
+   "status": "inactive"
+  },
+  {
+   "symbol": "SPLS",
+   "last": "2017-09-12",
+   "bars": 28,
+   "in_assets": true,
+   "status": "active"
+  },
+  {
+   "symbol": "PNRA",
+   "last": "2017-07-17",
+   "bars": 28,
+   "in_assets": false,
+   "status": null
+  },
+  {
+   "symbol": "CAB",
+   "last": "2017-09-22",
+   "bars": 29,
+   "in_assets": false,
+   "status": null
+  }
+ ],
+ "events": 5653,
+ "with_news": 2892,
+ "news_truncated": 0,
+ "complete": true,
+ "requests": 2380,
+ "verdict": {
+  "n": 69,
+  "mean": -0.2669907445608363,
+  "t": -1.2399575876744953,
+  "p95": -0.08540132782215691,
+  "years": {
+   "2023": -0.48228642933453114,
+   "2024": 0.03465635204928079,
+   "2025": 0.0904343317554087,
+   "2026": -0.7796952740309431
+  },
+  "checks": [
+   [
+    "at least 100 trades (69)",
+    false
+   ],
+   [
+    "mean net R > 0 with t > 2",
+    false
+   ],
+   [
+    "mean net R above the 95th percentile of 20 random-direction means",
+    false
+   ],
+   [
+    "mean net R > 0 in 2023 and in 2024 and in 2025 and in 2026",
+    false
+   ],
+   [
+    "mean net return above buy-and-hold SPY over the same holding windows",
+    false
+   ]
+  ],
+  "go": false,
+  "spy_ok": false
+ },
+ "books": {
+  "10": {
+   "n": 103,
+   "mean": -0.006041394733199107,
+   "t": -0.04329627779102683,
+   "p95": 0.0328098545406849,
+   "years": {
+    "2023": 0.1334593920639152,
+    "2024": 0.13769188018335315,
+    "2025": -0.11855741632304198,
+    "2026": -0.1695453657184706
+   },
+   "checks": [
+    [
+     "at least 100 trades (103)",
+     true
+    ],
+    [
+     "mean net R > 0 with t > 2",
+     false
+    ],
+    [
+     "mean net R above the 95th percentile of 20 random-direction means",
+     false
+    ],
+    [
+     "mean net R > 0 in 2023 and in 2024 and in 2025 and in 2026",
+     false
+    ]
+   ],
+   "go": false,
+   "spy_ok": false
+  },
+  "20": {
+   "n": 69,
+   "mean": -0.2669907445608363,
+   "t": -1.2399575876744953,
+   "p95": -0.08540132782215691,
+   "years": {
+    "2023": -0.48228642933453114,
+    "2024": 0.03465635204928079,
+    "2025": 0.0904343317554087,
+    "2026": -0.7796952740309431
+   },
+   "checks": [
+    [
+     "at least 100 trades (69)",
+     false
+    ],
+    [
+     "mean net R > 0 with t > 2",
+     false
+    ],
+    [
+     "mean net R above the 95th percentile of 20 random-direction means",
+     false
+    ],
+    [
+     "mean net R > 0 in 2023 and in 2024 and in 2025 and in 2026",
+     false
+    ],
+    [
+     "mean net return above buy-and-hold SPY over the same holding windows",
+     false
+    ]
+   ],
+   "go": false,
+   "spy_ok": false
+  },
+  "40": {
+   "n": 45,
+   "mean": -0.2752084229590487,
+   "t": -1.1977033118471703,
+   "p95": 0.15144408052396116,
+   "years": {
+    "2023": -0.31825116009074905,
+    "2024": 0.17989454906927396,
+    "2025": -0.02453815584430972,
+    "2026": -0.7099310353748979
+   },
+   "checks": [
+    [
+     "at least 100 trades (45)",
+     false
+    ],
+    [
+     "mean net R > 0 with t > 2",
+     false
+    ],
+    [
+     "mean net R above the 95th percentile of 20 random-direction means",
+     false
+    ],
+    [
+     "mean net R > 0 in 2023 and in 2024 and in 2025 and in 2026",
+     false
+    ]
+   ],
+   "go": false,
+   "spy_ok": false
+  }
+ }
+}

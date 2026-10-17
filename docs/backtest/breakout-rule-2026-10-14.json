@@ -1,0 +1,58 @@
+{
+  "start": "2024-01-02",
+  "end": "2026-10-13",
+  "complete": true,
+  "failed": [],
+  "counts": {
+    "tracked": 18985,
+    "none": 5902,
+    "fire": 10168,
+    "filled": 7902,
+    "grade C": 7902,
+    "no trigger": 1836,
+    "drop": 2915,
+    "no quote": 49,
+    "few shares": 231,
+    "limit": 150
+  },
+  "go": false,
+  "checks": [
+    [
+      "at least 100 trades (0)",
+      false
+    ],
+    [
+      "mean net R > 0 with t >= 2",
+      false
+    ],
+    [
+      "mean net R above the 95th percentile of 20 random-direction means",
+      false
+    ],
+    [
+      "mean net R > 0 in 2024 and in 2025 and in 2026",
+      false
+    ]
+  ],
+  "stats": {
+    "n": 0,
+    "mean": null,
+    "t": null,
+    "win": null,
+    "median": null,
+    "years": {},
+    "buckets": {},
+    "exits": {}
+  },
+  "p95": null,
+  "streak": 0,
+  "slip": null,
+  "book": {
+    "total": 0.0,
+    "cagr": 0.0,
+    "sharpe": null,
+    "max_dd": 0.0,
+    "days": 698
+  },
+  "live_book": {}
+}
