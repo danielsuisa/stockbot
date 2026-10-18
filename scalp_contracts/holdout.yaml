@@ -1,6 +1,7 @@
 # Sealed holdout windows for the scalping engine (ARCHITECTURE.md R2; ADR 0001 decision record; ADR 0002 section 2).
 #
-# Each window lists America/New_York trading dates; both bounds are inclusive. Loaders convert a window to the UTC
+# Each window lists America/New_York dates; both bounds are inclusive. legacy_2016_2021 starts on the calendar
+# date 2016-01-01 (not its first session, 2016-01-04) so dated non-price rows from 2016-01-01..03 are sealed too. Loaders convert a window to the UTC
 # half-open interval [first_date 00:00 America/New_York, (last_date + 1 day) 00:00 America/New_York).
 # Any read or ingestion request that overlaps any window raises HoldoutSealedError, unless the owner has written an
 # unseal record for that run and that window to holdout_ledger.jsonl.
@@ -10,7 +11,7 @@
 schema_version: 2
 timezone: America/New_York
 
-window.legacy_2016_2021.first_date: 2016-01-04
+window.legacy_2016_2021.first_date: 2016-01-01
 window.legacy_2016_2021.last_date: 2021-12-31
 window.legacy_2016_2021.role: veto_only
 window.legacy_2016_2021.rationale: "Evaluated once by ZBA (3cbde91), its trades analysed again afterwards, and ZBA dev runs read Nov-Dec 2021 for warm-up. Run once at P7; a fail blocks GO, a pass adds no evidence."

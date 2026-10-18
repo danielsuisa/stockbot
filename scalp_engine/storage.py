@@ -65,8 +65,9 @@ def validate(table, df):
     for col in c["columns"]:
         if not col["nullable"] and df[col["name"]].null_count():
             raise ValueError(f"{table}: column {col['name']!r} has nulls")
-    if df.height and (df["schema_version"] != c["schema_version"]).any():
-        raise ValueError(f"{table}: schema_version must be {c['schema_version']}")
+    # rows written under an older contract version (read back with new columns null) may be copied as they are
+    if df.height and ((df["schema_version"] > c["schema_version"]) | (df["schema_version"] < 1)).any():
+        raise ValueError(f"{table}: schema_version must be in 1..{c['schema_version']}")
     return df
 
 

@@ -18,7 +18,7 @@ dates with inclusive bounds. Loaders convert each window to the UTC half-open in
 
 | Window | ET trading days | UTC interval | Role | Rationale |
 |---|---|---|---|---|
-| `legacy_2016_2021` | 2016-01-04 .. 2021-12-31 | [2016-01-04T05:00Z, 2022-01-01T05:00Z) | `veto_only` | Evaluated once by ZBA (3cbde91); its trades were analysed again afterwards; ZBA development read Nov–Dec 2021 for warm-up. Run once at P7: a fail blocks GO, a pass adds no evidence |
+| `legacy_2016_2021` | 2016-01-01 (calendar) .. 2021-12-31; first session 2016-01-04 | [2016-01-01T05:00Z, 2022-01-01T05:00Z) | `veto_only` | Evaluated once by ZBA (3cbde91); its trades were analysed again afterwards; ZBA development read Nov–Dec 2021 for warm-up. Run once at P7: a fail blocks GO, a pass adds no evidence |
 | `forward_2026q4` | 2026-11-02 .. 2027-01-29 (61 sessions) | [2026-11-02T05:00Z, 2027-01-30T05:00Z) | `confirmation` | No one can have seen it: the data did not exist when it was sealed. Evaluated once, on a frozen model, after the window closes and before the P7 live shadow, which cannot start before 2027-02-01 |
 
 **Rules:**
@@ -32,11 +32,15 @@ dates with inclusive bounds. Loaders convert each window to the UTC half-open in
   - The ledger stays empty and only the owner writes it.
 - `holdout_sha256` is computed over the file with line endings normalized to LF, so it is identical on every checkout.
 
-**Change from v1:**
-- v1 sealed the ET calendar days 2016-01-01..2021-12-31. v2 uses the user's trading-day bounds, so 2016-01-01..03 (a
-  holiday and a weekend) are no longer sealed.
-- Those days have no trading rows. Dated non-price rows (news, filings) from them would be readable.
-- P1 ingests no news. See "Decisions needed" in the P1 report.
+**Change from v1, and amendment of 2026-10-18:**
+- v1 sealed the ET calendar days 2016-01-01..2021-12-31.
+- v2 as first accepted used the trading-day bounds 2016-01-04..2021-12-31. That left 2016-01-01..03 (a holiday and a
+  weekend) unsealed.
+- **Amended 2026-10-18 by the user's decision:** `legacy_2016_2021` starts on calendar date 2016-01-01. Dated
+  non-price rows (news, filings) from 2016-01-01..03 are sealed too. The end date and `forward_2026q4` are
+  unchanged.
+- The new `holdout_sha256` (`4d4c266e…`) is pinned in the tests on both sides. The ledger is still empty, so no
+  approval was invalidated.
 
 **File format:** still the flat `key: value` subset, with dotted keys such as `window.<name>.<field>`. It stays
 valid YAML, and both sides parse it with their own strict loader.
@@ -138,6 +142,13 @@ of file order, thread scheduling and `PYTHONHASHSEED`.
 - The prevailing SIP NBBO at 09:30–11:30 ET every 5 minutes, and at 15:55.
 - Lookback is 5 s, then 60 s for the symbols still without a quote; after that the sample is `missing`.
 - On early-close days the 15:55 sample is `after_close` and is not requested.
+- **Amended 2026-10-18 (P2 Stage 0.3):** the last sample is the session close minus 5 minutes, from the
+  calendar (`sample_rule = close_minus_5m_v2`).
+  - The 7 early-close sessions were re-sampled into an appended part.
+  - `data_access.quote_view` uses only v2 rows on those dates.
+  - `raw_quote_samples` contract v2 adds `sample_rule`.
+  - Older files are read with the new column as null; the scan uses the contract schema with
+    `missing_columns='insert'`.
 - `size_unit` is `round_lot` before 2025-11-03 and `shares` from that date, as measured.
 
 **Request discipline.**

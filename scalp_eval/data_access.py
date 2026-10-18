@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 
 import polars as pl
 
-from scalp_eval.contracts import CONTRACTS, load_flat_yaml
+from scalp_eval.contracts import CONTRACTS, load_flat_yaml, table_contracts
 
 HOLDOUT_FILE = CONTRACTS / "holdout.yaml"
 LEDGER_FILE = CONTRACTS / "holdout_ledger.jsonl"
@@ -35,6 +35,29 @@ _UNSEAL_KEYS = {"run_id", "window", "approved_by", "approved_at", "purpose", "ho
 
 class HoldoutSealedError(PermissionError):
     """A read could touch a sealed holdout window without an unseal record."""
+
+
+_PL_TYPES = {
+    "timestamp[us, tz=UTC]": pl.Datetime("us", "UTC"), "date32": pl.Date, "string": pl.Utf8, "float64": pl.Float64,
+    "int64": pl.Int64, "int32": pl.Int32, "bool": pl.Boolean, "list<string>": pl.List(pl.Utf8),
+}
+
+
+def _contract_schema(root):
+    """Polars schema of the table stored under root, if root is a contract table (schema evolution: files written
+    under an older contract version are read with the newer columns as null)."""
+    contract = table_contracts().get(Path(root).name)
+    return None if contract is None else {c["name"]: _PL_TYPES[c["type"]] for c in contract["columns"]}
+
+
+def quote_view(df):
+    """raw_quote_samples rows to use: for a date with any close_minus_5m_v2 rows, only those; else the P1 rows
+    (sample_rule null = fixed_1555_v1). ADR 0003 section 0."""
+    if df.height == 0 or "sample_rule" not in df.columns:
+        return df
+    d = pl.col("event_at").dt.convert_time_zone("America/New_York").dt.date()
+    v2_days = df.filter(pl.col("sample_rule") == "close_minus_5m_v2").select(d.alias("_d")).unique()["_d"].to_list()
+    return df.filter(pl.col("sample_rule").is_not_null() | ~d.is_in(v2_days))
 
 
 class MissingPartitionError(LookupError):
@@ -269,7 +292,10 @@ def read_frame(root, start, end, *, columns=None, symbols=None, require_dates=No
     if not files:
         return pl.DataFrame()
     t = pl.col("event_at")
-    lf = pl.scan_parquet([str(f) for f in sorted(files)], hive_partitioning=False)
+    schema = _contract_schema(root)
+    lf = (pl.scan_parquet([str(f) for f in sorted(files)], hive_partitioning=False, schema=schema,
+                          missing_columns="insert") if schema else
+          pl.scan_parquet([str(f) for f in sorted(files)], hive_partitioning=False))
     lf = lf.filter((t >= lo) & (t < hi))
     if unseal_run_id is None:
         for w in holdout.windows:

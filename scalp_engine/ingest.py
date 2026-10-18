@@ -26,8 +26,11 @@ from scalp_engine.data_access import ET, day_bounds, partition_dates, read_frame
 UTC = dt.timezone.utc
 SOURCE = "alpaca"
 SIZE_UNIT_SWITCH = dt.date(2025, 11, 3)  # Alpaca CTA/UTP quote sizes: round lots before, shares from (measured)
-# ET sample times: 09:30, 09:35, ..., 11:30 (25) and 15:55
-QUOTE_TIMES = [dt.time(9 + (30 + 5 * i) // 60, (30 + 5 * i) % 60) for i in range(25)] + [dt.time(15, 55)]
+# ET sample times: 09:30, 09:35, ..., 11:30 (25), plus the session close - 5 minutes from the calendar
+# (15:55 on a normal day, 12:55 on an early close). P1 used a fixed 15:55 (fixed_1555_v1).
+QUOTE_TIMES = [dt.time(9 + (30 + 5 * i) // 60, (30 + 5 * i) % 60) for i in range(25)]
+CLOSE_SAMPLE_OFFSET = dt.timedelta(minutes=5)
+SAMPLE_RULE = "close_minus_5m_v2"
 QUOTE_LOOKBACKS_MS = (5_000, 60_000)
 WARMUP_SESSIONS = 30
 SYMBOL_CHUNK = 400
@@ -415,12 +418,16 @@ def minute_task(client, table, feed, d, symbols, dropper):
     return df.height
 
 
-def quote_task(client, d, members, close_at, dropper):
+def sample_times(d, close_at):
+    """UTC sample times of session d under SAMPLE_RULE."""
+    return [et(d, tt) for tt in QUOTE_TIMES] + [close_at - CLOSE_SAMPLE_OFFSET]
+
+
+def quote_task(client, d, members, close_at, dropper, part="sip-samples-v1"):
     table = "raw_quote_samples"
     unit = "round_lot" if d < SIZE_UNIT_SWITCH else "shares"
     rows, rids = [], []
-    for tt in QUOTE_TIMES:
-        t = et(d, tt)
+    for t in sample_times(d, close_at):
         got = now()
         if t > close_at:
             rows += [_q_row(t, s, "after_close", None, unit, 0, "none", got) for s in members]
@@ -451,8 +458,24 @@ def quote_task(client, d, members, close_at, dropper):
             else:
                 rows.append(_q_row(t, s, "missing", None, unit, QUOTE_LOOKBACKS_MS[-1], "none", got))
     df = storage.frame(table, rows)
-    storage.write_partition(table, df, part="sip-samples-v1", request_ids=rids, source=SOURCE, feed="sip", date=d)
+    storage.write_partition(table, df, part=part, request_ids=rids, source=SOURCE, feed="sip", date=d)
     return df.height
+
+
+def resample_early_closes(client, start, end, workers):
+    """0.3 (P2): re-sample every early-close session under SAMPLE_RULE as a new part; P1 parts stay as they are."""
+    table, part = "raw_quote_samples", "sip-samples-v2"
+    plan, cal = day_plan(start, end)
+    done = storage.completed(table, part=part)
+    days = [(r["trading_date"], r["close_at"]) for r in cal.filter(pl.col("early_close")).iter_rows(named=True)
+            if plan[r["trading_date"]][0]
+            and storage.partition_key(table, source=SOURCE, feed="sip", date=r["trading_date"]) not in done]
+    dropper = SymbolDropper(table)
+    log(f"resample-close: {len(days)} early-close sessions to re-sample")
+    with cf.ThreadPoolExecutor(workers) as ex:
+        for d, n in zip([x[0] for x in days], ex.map(lambda x: quote_task(client, x[0], plan[x[0]][0], x[1], dropper, part),
+                                                      days)):
+            log(f"resample-close: {d} {n} rows")
 
 
 def _parse_ns(s):
@@ -468,7 +491,8 @@ def _q_row(t, sym, status, tq, unit, lb, rid, got):
             "bid_price": q.get("bp"), "bid_size": _int_or_none(q.get("bs")), "ask_price": q.get("ap"),
             "ask_size": _int_or_none(q.get("as")), "bid_exchange": q.get("bx"), "ask_exchange": q.get("ax"),
             "conditions": q.get("c") if tq else None, "tape": q.get("z"), "size_unit": unit, "lookback_ms": lb,
-            "feed": "sip", "request_id": rid, "ingested_at": got, "source": SOURCE, "schema_version": 1}
+            "sample_rule": SAMPLE_RULE, "feed": "sip", "request_id": rid, "ingested_at": got, "source": SOURCE,
+            "schema_version": 2}
 
 
 def ingest_minute(client, start, end, workers, feeds=("sip", "iex"), quotes=True):
@@ -516,8 +540,8 @@ def budget(start, end, sip_rows=445, iex_rows=214, quote_req_per_sample=4.5, per
             rows[feed] += r
             req[feed] += max(1, -(-r // 10000)) + (len(syms) - 1) // SYMBOL_CHUNK
         if members:
-            req["quotes"] += int(len(QUOTE_TIMES) * quote_req_per_sample)
-            rows["quotes"] += len(QUOTE_TIMES) * len(members)
+            req["quotes"] += int((len(QUOTE_TIMES) + 1) * quote_req_per_sample)
+            rows["quotes"] += (len(QUOTE_TIMES) + 1) * len(members)
     total = sum(req.values())
     bpr = bytes_per_row or {"sip": 22, "iex": 22, "quotes": 40}
     disk = sum(rows[k] * bpr[k] for k in rows)
@@ -532,7 +556,8 @@ def budget(start, end, sip_rows=445, iex_rows=214, quote_req_per_sample=4.5, per
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="python -m scalp_engine.ingest")
-    ap.add_argument("step", choices=["calendar", "assets", "actions", "daily", "universe", "plan", "minute", "all"])
+    ap.add_argument("step", choices=["calendar", "assets", "actions", "daily", "universe", "plan", "minute",
+                                     "resample-close", "all"])
     ap.add_argument("--start", required=True, type=dt.date.fromisoformat)
     ap.add_argument("--end", required=True, type=dt.date.fromisoformat)
     ap.add_argument("--workers", type=int, default=8)
@@ -561,6 +586,8 @@ def main(argv=None):
             ingest_universe(a.start, a.end)
         elif step == "plan":
             print(json.dumps(budget(a.start, a.end, per_minute=a.per_minute), indent=2))
+        elif step == "resample-close":
+            resample_early_closes(client, a.start, a.end, a.workers)
         elif step == "minute":
             ingest_minute(client, a.start, a.end, a.workers, tuple(a.feeds.split(",")), not a.no_quotes)
     if client:

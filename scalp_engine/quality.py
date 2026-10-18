@@ -11,7 +11,7 @@ from pathlib import Path
 import polars as pl
 
 from scalp_engine import storage, universe
-from scalp_engine.data_access import day_bounds, load_holdout, partition_dates, read_frame
+from scalp_engine.data_access import day_bounds, load_holdout, partition_dates, quote_view, read_frame
 
 TABLES = ["calendar", "asset_snapshots", "corporate_actions", "raw_bars_1d", "universe_snapshots", "raw_bars_1m",
           "raw_quote_samples"]
@@ -95,7 +95,7 @@ def report(start, end):
                 cov_rows.append((str(d), r["symbol"], (r["sip_n"] or 0) / expected, gone, c["early_close"]))
                 if r["sip_vol"]:
                     ratio_rows.append((r["iex_vol"] or 0) / r["sip_vol"])
-            qs = read_frame(root / "raw_quote_samples", dlo, dhi)
+            qs = quote_view(read_frame(root / "raw_quote_samples", dlo, dhi))
             if qs.height == 0:
                 days_missing["raw_quote_samples"].append(str(d))
             else:

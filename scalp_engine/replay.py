@@ -26,7 +26,7 @@ from pathlib import Path
 import polars as pl
 
 from scalp_engine.contracts import load_flat_yaml
-from scalp_engine.data_access import day_bounds, read_frame
+from scalp_engine.data_access import day_bounds, quote_view, read_frame
 
 CONFIG = Path(__file__).resolve().parent / "config" / "replay.yaml"
 PRIORITY = {"session": 0, "corporate_action": 1, "bar": 2, "quote_sample": 3}
@@ -34,7 +34,7 @@ _EPOCH = dt.datetime(1970, 1, 1, tzinfo=dt.timezone.utc)
 _BAR_KEY = ["source", "feed", "symbol", "event_at"]
 _BAR_FIELDS = ["open", "high", "low", "close", "volume", "vwap", "trade_count"]
 _QUOTE_FIELDS = ["status", "quote_at", "bid_price", "bid_size", "ask_price", "ask_size", "bid_exchange",
-                 "ask_exchange", "conditions", "tape", "size_unit", "lookback_ms"]
+                 "ask_exchange", "conditions", "tape", "size_unit", "lookback_ms", "sample_rule"]
 _ACTION_FIELDS = ["action_type", "new_symbol", "ratio_new", "ratio_old", "cash_amount", "vendor_id"]
 
 
@@ -148,7 +148,7 @@ class HistoricalSource(StreamSource):
         for r in bars.select(["event_at", "symbol", "feed"] + _BAR_FIELDS).iter_rows(named=True):
             raw.append((us(r["event_at"] + delay), "bar", r["symbol"], r["feed"],
                         {"event_at": r["event_at"], **{k: r[k] for k in _BAR_FIELDS}}))
-        quotes = self._latest(self._read("raw_quote_samples", day, False), _BAR_KEY)
+        quotes = self._latest(quote_view(self._read("raw_quote_samples", day, False)), _BAR_KEY)
         for r in quotes.iter_rows(named=True):
             raw.append((us(r["event_at"] + self.cfg["quote_delay"]), "quote_sample", r["symbol"], r["feed"],
                         {"event_at": r["event_at"], **{k: r[k] for k in _QUOTE_FIELDS}}))

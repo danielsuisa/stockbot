@@ -94,17 +94,27 @@ therefore the less-traded members and minutes, not missing downloads: zero-bar m
 
 ## Quote samples
 
-The samples are the prevailing SIP NBBO at 26 ET times per session (09:30–11:30 every 5 minutes, and 15:55), for
-that month's 500 members.
+**Updated in P2 (Stage 0.3, 2026-10-18).**
+- The sampling rule is now `close_minus_5m_v2`: the samples are taken at 09:30–11:30 ET every 5 minutes, and at the
+  session close minus 5 minutes from the calendar. That is 15:55 on a normal day and 12:55 on an early close.
+- P1's fixed 15:55 sample fell after the close on the 7 early-close days.
+- Those 7 sessions were re-sampled under the new rule as an appended part, `sip-samples-v2`: 424 requests, 7.5 min,
+  91,000 rows. The P1 parts are unchanged.
+- Readers use `data_access.quote_view`: for a date with v2 rows, only the v2 rows count.
+- The figures below are through that view.
+
+The samples are the prevailing SIP NBBO at 26 times per session for that month's 500 members.
 
 | Status | Count |
 |---|---|
-| ok | 10,127,463 |
-| missing (no quote within 60 s) | 61,037 |
-| after_close (15:55 on an early-close day, not requested) | 3,500 |
+| ok | 10,130,955 |
+| missing (no quote within 60 s) | 61,045 |
+| after_close | 0 (P1 had 3,500; superseded by the v2 re-sample) |
 
-- **Missing rate**, excluding `after_close`: **0.60%**.
+- **Missing rate:** **0.60%**.
 - **By year:** 2023 0.31%, 2024 0.28%, 2025 0.72%, 2026 0.97%.
+- **Duplicate keys** in the view: 0.
+- **Store:** 791 files in 784 partitions, 122.0 MB.
 - **Lookback:** 5 s first; a 60 s retry for the symbols still without a quote.
 - **Anomalies among `ok` samples:** 415 crossed quotes (bid > ask) and 1 non-positive. They are kept as received
   and flagged for P2.

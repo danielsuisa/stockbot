@@ -1,7 +1,7 @@
 {
   "table": "raw_quote_samples",
-  "schema_version": 1,
-  "description": "SIP NBBO sampled at fixed ET times (09:30..11:30 every 5 min, 15:55) for that day's top500 members: the prevailing quote at the sample time.",
+  "schema_version": 2,
+  "description": "SIP NBBO sampled at fixed ET times (09:30..11:30 every 5 min, plus session close - 5 min) for that day's top500 members: the prevailing quote at the sample time.",
   "layer": "raw",
   "append_only": true,
   "time_column": "event_at",
@@ -89,6 +89,12 @@
       "type": "int64",
       "nullable": false,
       "description": "Window searched before event_at: 5000, then 60000 for symbols without a quote."
+    },
+    {
+      "name": "sample_rule",
+      "type": "string",
+      "nullable": true,
+      "description": "Sampling rule: close_minus_5m_v2 = 09:30..11:30 every 5 min plus session close - 5 min (from the calendar). Null on P1 rows = fixed_1555_v1 (15:55 ET, 'after_close' on early-close days). For a date with any close_minus_5m_v2 rows, readers use only those (data_access.quote_view)."
     },
     {
       "name": "feed",

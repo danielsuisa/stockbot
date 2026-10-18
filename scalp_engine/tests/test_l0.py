@@ -111,6 +111,41 @@ class ParquetGuard(TempRoot):
         self.assertEqual(df.columns, ["event_at", "symbol", "close"])
 
 
+class QuoteSampleVersions(TempRoot):
+    """0.3 (P2): a P1 part (contract v1, no sample_rule) and a v2 re-sample of the same early-close day."""
+
+    def test_schema_evolution_and_quote_view(self):
+        day = dt.date(2024, 11, 29)
+        folder = storage.partition_path("raw_quote_samples", source="synthetic", feed="sip", date=day)
+        folder.mkdir(parents=True)
+        v1 = storage.frame("raw_quote_samples", [self.q(utc(2024, 11, 29, 14, 30), "ok", None),
+                                                 self.q(utc(2024, 11, 29, 20, 55), "after_close", None)]).drop("sample_rule")
+        v1.with_columns(pl.lit(1, dtype=pl.Int32).alias("schema_version")).write_parquet(folder / "part-v1.parquet")
+        storage.write_partition("raw_quote_samples", storage.frame("raw_quote_samples", [
+            self.q(utc(2024, 11, 29, 14, 30), "ok", "close_minus_5m_v2"),
+            self.q(utc(2024, 11, 29, 17, 55), "ok", "close_minus_5m_v2")]), part="v2", source="synthetic",
+            feed="sip", date=day)
+        df = da.read_frame(Path(self.tmp.name) / "raw_quote_samples", *da.day_bounds(day))
+        self.assertEqual(df.height, 4)
+        self.assertEqual(df["sample_rule"].null_count(), 2)  # v1 rows read with the new column as null
+        view = da.quote_view(df)
+        self.assertEqual(sorted(view["event_at"].to_list()), [utc(2024, 11, 29, 14, 30), utc(2024, 11, 29, 17, 55)])
+        self.assertNotIn("after_close", view["status"].to_list())
+
+    def test_close_sample_is_session_close_minus_5m(self):
+        early = ingest.sample_times(dt.date(2024, 11, 29), utc(2024, 11, 29, 18))
+        normal = ingest.sample_times(dt.date(2024, 4, 17), utc(2024, 4, 17, 20))
+        self.assertEqual((len(early), early[-1], normal[-1]), (26, utc(2024, 11, 29, 17, 55), utc(2024, 4, 17, 19, 55)))
+
+    @staticmethod
+    def q(t, status, rule):
+        return {"event_at": t, "symbol": "TEST", "status": status, "quote_at": t if status == "ok" else None,
+                "bid_price": 10.0 if status == "ok" else None, "bid_size": 1, "ask_price": 10.01 if status == "ok" else None,
+                "ask_size": 1, "bid_exchange": "Q", "ask_exchange": "Q", "conditions": None, "tape": "C",
+                "size_unit": "round_lot", "lookback_ms": 5000, "sample_rule": rule, "feed": "sip", "request_id": "r",
+                "ingested_at": utc(2026, 10, 18), "source": "synthetic", "schema_version": 2}
+
+
 class Universe(unittest.TestCase):
     def a(self, symbol, name, exchange="NYSE", status="active"):
         return {"id": symbol, "symbol": symbol, "name": name, "exchange": exchange, "status": status}
@@ -201,9 +236,8 @@ class Helpers(unittest.TestCase):
         self.assertEqual(ingest._parse_ns("2024-06-12T13:59:59Z"), utc(2024, 6, 12, 13, 59, 59))
 
     def test_quote_times(self):
-        self.assertEqual(len(ingest.QUOTE_TIMES), 26)
-        self.assertEqual((ingest.QUOTE_TIMES[0], ingest.QUOTE_TIMES[24], ingest.QUOTE_TIMES[25]),
-                         (dt.time(9, 30), dt.time(11, 30), dt.time(15, 55)))
+        self.assertEqual(len(ingest.QUOTE_TIMES), 25)
+        self.assertEqual((ingest.QUOTE_TIMES[0], ingest.QUOTE_TIMES[24]), (dt.time(9, 30), dt.time(11, 30)))
 
     def test_et_conversion_across_dst(self):
         self.assertEqual(ingest.et(dt.date(2024, 6, 12), dt.time(9, 30)), utc(2024, 6, 12, 13, 30))

@@ -157,8 +157,8 @@ def build_day(root, close_shift=0.0, extra_part=None):
             "event_at": open_at + dt.timedelta(minutes=5), "symbol": s, "status": "ok",
             "quote_at": open_at + dt.timedelta(minutes=5, seconds=-1), "bid_price": 10.0, "bid_size": 3,
             "ask_price": 10.02, "ask_size": 4, "bid_exchange": "Q", "ask_exchange": "N", "conditions": ["R"],
-            "tape": "C", "size_unit": "round_lot", "lookback_ms": 5000, "feed": "sip", "request_id": "r",
-            "ingested_at": ing, "source": "synthetic", "schema_version": 1} for s in ("BBB", "AAA")]),
+            "tape": "C", "size_unit": "round_lot", "lookback_ms": 5000, "sample_rule": "close_minus_5m_v2", "feed": "sip",
+            "request_id": "r", "ingested_at": ing, "source": "synthetic", "schema_version": 2} for s in ("BBB", "AAA")]),
             part="q", source="synthetic", feed="sip", date=DAY)
 
 

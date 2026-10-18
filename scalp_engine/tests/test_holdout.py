@@ -12,6 +12,7 @@ from scalp_engine import data_access as da
 
 UTC = dt.timezone.utc
 LEGACY, FORWARD = "legacy_2016_2021", "forward_2026q4"
+HOLDOUT_SHA256 = "4d4c266ea095715209bd9b81472e9c09863bba141a0d7d34dbbadb3e9315a7d1"
 
 
 def utc(*a):
@@ -30,8 +31,8 @@ class Boundaries(unittest.TestCase):
 
     def test_et_trading_dates_converted_to_utc(self):
         legacy, forward = self.w[LEGACY], self.w[FORWARD]
-        self.assertEqual((legacy.first_date, legacy.last_date), (dt.date(2016, 1, 4), dt.date(2021, 12, 31)))
-        self.assertEqual((legacy.start, legacy.end), (utc(2016, 1, 4, 5), utc(2022, 1, 1, 5)))  # EST both ends
+        self.assertEqual((legacy.first_date, legacy.last_date), (dt.date(2016, 1, 1), dt.date(2021, 12, 31)))
+        self.assertEqual((legacy.start, legacy.end), (utc(2016, 1, 1, 5), utc(2022, 1, 1, 5)))  # EST both ends
         self.assertEqual((forward.first_date, forward.last_date), (dt.date(2026, 11, 2), dt.date(2027, 1, 29)))
         self.assertEqual((forward.start, forward.end), (utc(2026, 11, 2, 5), utc(2027, 1, 30, 5)))  # DST ended 11-01
 
@@ -76,12 +77,26 @@ class RangeCheck(unittest.TestCase):
         da.check_range(utc(2027, 2, 1, 5), utc(2027, 2, 2, 5))  # Mon 2027-02-01
 
     def test_legacy_start_midnight_utc(self):
-        da.check_range(utc(2015, 12, 31), utc(2016, 1, 4, 5))  # through Sun 2016-01-03 ET
-        da.check_range(utc(2016, 1, 3), utc(2016, 1, 4))  # 2016-01-04T00:00Z is still Jan 3 ET
+        # the window starts on calendar date 2016-01-01 00:00 ET = 05:00Z (ADR 0002 section 2, amended 2026-10-18)
+        da.check_range(utc(2015, 12, 31), utc(2016, 1, 1))  # 2016-01-01T00:00Z is still Dec 31 ET
         with self.assertRaises(da.HoldoutSealedError):
-            da.check_range(utc(2016, 1, 3), utc(2016, 1, 5))  # UTC Jan 4 reaches ET Jan 4
+            da.check_range(utc(2015, 12, 31), utc(2016, 1, 2))  # UTC Jan 1 reaches ET Jan 1
         with self.assertRaises(da.HoldoutSealedError):
-            da.check_range(utc(2016, 1, 3), utc(2016, 1, 4, 5, 0, 0, 1))
+            da.check_range(utc(2015, 12, 31, 5), utc(2016, 1, 1, 5, 0, 0, 1))
+
+    def test_event_dated_2015_12_31_passes(self):
+        h = da.load_holdout()
+        self.assertFalse(h.contains(utc(2015, 12, 31, 21)))  # 16:00 ET on the last session before
+        self.assertFalse(h.contains(utc(2016, 1, 1, 4, 59, 59)))  # 23:59:59 ET on 2015-12-31
+        da.check_range(utc(2015, 12, 31, 5), utc(2016, 1, 1, 5))
+
+    def test_saturday_2016_01_02_is_sealed(self):
+        h = da.load_holdout()
+        self.assertTrue(h.contains(utc(2016, 1, 2, 15)))  # a filing or news item on a non-trading day
+        with self.assertRaises(da.HoldoutSealedError):
+            da.check_range(utc(2016, 1, 2, 5), utc(2016, 1, 3, 5))
+        with self.assertRaises(da.HoldoutSealedError):  # the first session still raises
+            da.check_range(utc(2016, 1, 4, 5), utc(2016, 1, 5, 5))
 
     def test_legacy_end_midnight_utc(self):
         with self.assertRaises(da.HoldoutSealedError):  # 2022-01-01T00:00Z = 2021-12-31 19:00 ET
@@ -193,6 +208,8 @@ class Ledger(unittest.TestCase):
             crlf.write_bytes(text.replace(b"\n", b"\r\n"))
             self.assertEqual(da.load_holdout(lf).sha256, da.load_holdout(crlf).sha256)
             self.assertEqual(da.load_holdout(lf).sha256, self.h.sha256)
+        # pinned: any edit to holdout.yaml must update this value together with an ADR
+        self.assertEqual(self.h.sha256, HOLDOUT_SHA256)
 
     def _rec(self, run, window, sha=None):
         return {"run_id": run, "window": window, "approved_by": "owner", "approved_at": "2027-02-01T00:00:00Z",
