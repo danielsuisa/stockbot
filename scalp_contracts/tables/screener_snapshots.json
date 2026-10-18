@@ -1,0 +1,308 @@
+{
+  "table": "screener_snapshots",
+  "schema_version": 1,
+  "layer": "feature",
+  "append_only": true,
+  "time_column": "event_at",
+  "description": "L2 screener output (ADR 0003 section 6): every top500 member at every snapshot time, per variant, with filter results, feature values and feature ids.",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Snapshot time (UTC); 08:30..11:30 ET every 5 min."
+    },
+    {
+      "name": "snapshot_date",
+      "type": "date32",
+      "nullable": false,
+      "description": "Session date (ET)."
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "variant",
+      "type": "string",
+      "nullable": false,
+      "description": "iex_live (primary) | sip_research."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Variant feed for intraday features: iex | sip."
+    },
+    {
+      "name": "member_rank",
+      "type": "int32",
+      "nullable": true,
+      "description": "top500_v3 rank of the month."
+    },
+    {
+      "name": "regime",
+      "type": "string",
+      "nullable": false,
+      "description": "trend | chop | event (ADR 0003 section 5)."
+    },
+    {
+      "name": "candidate",
+      "type": "bool",
+      "nullable": false,
+      "description": "All filters pass."
+    },
+    {
+      "name": "pass_price",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "pass_adv",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "pass_rvol",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "pass_atr",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "pass_spread",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "pass_dilution",
+      "type": "bool",
+      "nullable": false,
+      "description": "Not excluded by the dilution filter (unknown passes, Proposed)."
+    },
+    {
+      "name": "catalyst",
+      "type": "string",
+      "nullable": false,
+      "description": "true | false | unknown (flag only, not a filter)."
+    },
+    {
+      "name": "dilution",
+      "type": "string",
+      "nullable": false,
+      "description": "true | false | unknown."
+    },
+    {
+      "name": "px",
+      "type": "float64",
+      "nullable": true,
+      "description": "Price used by the price filter: last_price, else prev_close."
+    },
+    {
+      "name": "last_price",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "prev_close",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "gap_pct",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "adv20",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "atr14_pct",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "rvol",
+      "type": "float64",
+      "nullable": true,
+      "description": "RVOL used: rvol_pre at t <= 09:30 ET, else rvol_open."
+    },
+    {
+      "name": "rvol_pre",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "rvol_open",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "vwap_dev_pct",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "pm_range_pct",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "minutes_since_open",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "spread_used",
+      "type": "float64",
+      "nullable": true,
+      "description": "Spread used by the filter (ADR 0003 section 4)."
+    },
+    {
+      "name": "spread_source",
+      "type": "string",
+      "nullable": false,
+      "description": "nbbo | cs | ar | none."
+    },
+    {
+      "name": "spread_cs",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "spread_ar",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "spread_nbbo_delayed",
+      "type": "float64",
+      "nullable": true,
+      "description": "sip_delayed_15m."
+    },
+    {
+      "name": "spread_nbbo_rt",
+      "type": "float64",
+      "nullable": true,
+      "description": "research_only; never used by iex_live."
+    },
+    {
+      "name": "earnings_8k",
+      "type": "bool",
+      "nullable": true,
+      "description": "Null = no CIK."
+    },
+    {
+      "name": "dilution_filing",
+      "type": "bool",
+      "nullable": true,
+      "description": "Null = no CIK."
+    },
+    {
+      "name": "macro_day",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "sector_etf",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "spy_rv_intraday",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "vix_prev_close",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "spy_ret20",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "spy_sma20_dev",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "inputs_available_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "Latest available_at of any input used; <= event_at (leakage test 2)."
+    },
+    {
+      "name": "feature_versions",
+      "type": "list<string>",
+      "nullable": false,
+      "description": "Feature ids used (registry_p2.json)."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "derived:screener-v1."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the row was computed."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "scalp_engine."
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "1."
+    }
+  ],
+  "primary_key": [
+    "variant",
+    "symbol",
+    "event_at",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
+}
