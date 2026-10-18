@@ -294,7 +294,7 @@ def ingest_daily(client, start, end, workers):
     if pending:  # resume an interrupted set with its own part name
         part, symbols = pending[-1]["part"], pending[-1]["symbols"]
     else:
-        symbols = sorted(set(pool) - covered)
+        symbols = sorted((set(pool) | set(universe.MARKET_SET)) - covered)  # ETFs: sector and regime inputs (P2)
         if not symbols:
             log("daily: every pool symbol already covered")
             return

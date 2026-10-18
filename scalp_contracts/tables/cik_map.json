@@ -1,0 +1,78 @@
+{
+  "table": "cik_map",
+  "schema_version": 1,
+  "description": "Ticker -> SEC CIK for every top500 member (ADR 0003 section 6). event_at = time the map was built.",
+  "layer": "reference",
+  "append_only": true,
+  "time_column": "event_at",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "member_status",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "cik",
+      "type": "string",
+      "nullable": true,
+      "description": "10-digit CIK; null = unknown."
+    },
+    {
+      "name": "method",
+      "type": "string",
+      "nullable": false,
+      "description": "company_tickers | rename | fts_exact | fts_frequency | fts_rejected | none"
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "sha256 of the request URL."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the response was received."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "sec"
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "1."
+    }
+  ],
+  "primary_key": [
+    "symbol",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
+}

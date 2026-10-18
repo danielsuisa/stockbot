@@ -1,0 +1,84 @@
+{
+  "table": "vix_daily",
+  "schema_version": 1,
+  "description": "Cboe VIX daily OHLC (whole-history file; only dates in the ingest range are kept at parse time, ADR 0003 section 0.2).",
+  "layer": "reference",
+  "append_only": true,
+  "time_column": "event_at",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Session date 16:15 ET (close), UTC."
+    },
+    {
+      "name": "trading_date",
+      "type": "date32",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "open",
+      "type": "float64",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "high",
+      "type": "float64",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "low",
+      "type": "float64",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "close",
+      "type": "float64",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "sha256 of the request URL."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the response was received."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "cboe"
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "1."
+    }
+  ],
+  "primary_key": [
+    "trading_date",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
+}

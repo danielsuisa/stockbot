@@ -1,0 +1,85 @@
+{
+  "table": "edgar_filings",
+  "schema_version": 1,
+  "description": "EDGAR filings of mapped CIKs from the submissions API. event_at = true UTC acceptance time (ADR 0003 section 0.3).",
+  "layer": "raw",
+  "append_only": true,
+  "time_column": "event_at",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Acceptance time, UTC."
+    },
+    {
+      "name": "cik",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "accession",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "form",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "items",
+      "type": "string",
+      "nullable": true,
+      "description": "8-K items, comma-separated."
+    },
+    {
+      "name": "filing_date",
+      "type": "date32",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "sha256 of the request URL."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the response was received."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "sec"
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "1."
+    }
+  ],
+  "primary_key": [
+    "cik",
+    "accession",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
+}

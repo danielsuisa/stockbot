@@ -1,0 +1,79 @@
+{
+  "table": "macro_events",
+  "schema_version": 1,
+  "description": "Scheduled macro releases: FOMC decision days (federalreserve.gov), CPI and NFP release days (bls.gov archives).",
+  "layer": "reference",
+  "append_only": true,
+  "time_column": "event_at",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Release time: FOMC 14:00 ET, CPI/NFP 08:30 ET, in UTC."
+    },
+    {
+      "name": "event_date",
+      "type": "date32",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "event_type",
+      "type": "string",
+      "nullable": false,
+      "description": "fomc | cpi | nfp"
+    },
+    {
+      "name": "unscheduled",
+      "type": "bool",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source_url",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "sha256 of the request URL."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the response was received."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "official"
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "1."
+    }
+  ],
+  "primary_key": [
+    "event_type",
+    "event_date",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
+}
