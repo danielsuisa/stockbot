@@ -1,0 +1,86 @@
+{
+  "table": "oos_scores",
+  "schema_version": 1,
+  "layer": "feature",
+  "append_only": true,
+  "time_column": "event_at",
+  "description": "Out-of-sample scores of every test decision point from the reproduced P3 final models (ADR 0006 section 1).",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Decision time (UTC)."
+    },
+    {
+      "name": "decision_date",
+      "type": "date32",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "model",
+      "type": "string",
+      "nullable": false,
+      "description": "p3 model: live|research - h30|h60|h90."
+    },
+    {
+      "name": "month",
+      "type": "string",
+      "nullable": false,
+      "description": "Test month YYYY-MM."
+    },
+    {
+      "name": "p",
+      "type": "float64",
+      "nullable": false,
+      "description": "Predicted probability from the reproduced P3 final model."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "none."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "derived:rescore-<model>."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "scalp_engine."
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "1."
+    }
+  ],
+  "primary_key": [
+    "model",
+    "symbol",
+    "event_at",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
+}
