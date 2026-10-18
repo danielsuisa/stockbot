@@ -14,7 +14,7 @@ class Tables(unittest.TestCase):
         tables = c.table_contracts()
         self.assertEqual(set(tables), {"raw_bars_1m", "raw_bars_1d", "raw_quotes", "raw_quote_samples", "raw_news",
                                        "corporate_actions", "universe_snapshots", "feature_values", "calendar",
-                                       "asset_snapshots", "vix_daily", "macro_events", "cik_map", "edgar_filings", "feature_daily", "screener_snapshots"})
+                                       "asset_snapshots", "vix_daily", "macro_events", "cik_map", "edgar_filings", "feature_daily", "screener_snapshots", "decision_points"})
         for name, t in tables.items():
             with self.subTest(table=name):
                 cols = {col["name"] for col in t["columns"]}

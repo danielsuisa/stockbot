@@ -1,0 +1,451 @@
+{
+  "table": "decision_points",
+  "schema_version": 1,
+  "layer": "feature",
+  "append_only": true,
+  "time_column": "event_at",
+  "description": "P3 decision points (ADR 0005): tradable members at 22 decision times per session, live and research features, triple-barrier labels for H 30/60/90.",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Decision time (UTC); 09:45..11:30 ET every 5 min."
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "px",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "last_price",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "prev_close",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "adv20",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "atr14_pct",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "rvol_open",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "rvol_pre",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "gap_pct",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "vwap_dev_pct",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "pm_range_pct",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "minutes_since_open",
+      "type": "float64",
+      "nullable": false,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "spread_ar",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "spread_nbbo_delayed",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "earnings_8k",
+      "type": "bool",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "macro_day",
+      "type": "bool",
+      "nullable": false,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "sector_etf",
+      "type": "string",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "spy_rv_intraday",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "vix_prev_close",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "spy_ret20",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "spy_sma20_dev",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "regime",
+      "type": "string",
+      "nullable": false,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "inputs_available_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "rvol_open_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "rvol_pre_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "vwap_dev_pct_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "pm_range_pct_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "spread_ar_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "spread_nbbo_rt_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "spy_rv_intraday_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "inputs_available_at_sip",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "dilution_v2",
+      "type": "string",
+      "nullable": false,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "pass_dilution_v2",
+      "type": "bool",
+      "nullable": false,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "dilution_avail",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "pass_price",
+      "type": "bool",
+      "nullable": false,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "pass_adv",
+      "type": "bool",
+      "nullable": false,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "pass_spread_delayed",
+      "type": "bool",
+      "nullable": false,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "ret_5m",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "ret_15m",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "ret_30m",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "ret_open",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "range_open_pct",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "mom_avail",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "ret_5m_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "ret_15m_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "ret_30m_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "ret_open_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "range_open_pct_sip",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "mom_avail_sip",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "sigma_1m_5d",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "dist_stop_pct",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "entry_ref_h30",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "label_h30",
+      "type": "int32",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "r_h30",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "label_end_h30",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "entry_ref_h60",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "label_h60",
+      "type": "int32",
+      "nullable": true,
+      "description": "Primary label (ADR 0005 section 2): 1 if the target is touched first."
+    },
+    {
+      "name": "r_h60",
+      "type": "float64",
+      "nullable": true,
+      "description": "Realized gross R under the label geometry (engine metric only)."
+    },
+    {
+      "name": "label_end_h60",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "entry_ref_h90",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "label_h90",
+      "type": "int32",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "r_h90",
+      "type": "float64",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "label_end_h90",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": true,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "features_available_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Latest availability of any feature input; <= event_at (leakage test)."
+    },
+    {
+      "name": "decision_date",
+      "type": "date32",
+      "nullable": false,
+      "description": "See ADR 0005 sections 2-3."
+    },
+    {
+      "name": "feature_versions",
+      "type": "list<string>",
+      "nullable": false,
+      "description": "Feature ids (registry_p2 + registry_p3)."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "mixed: live (IEX + SIP eod) and research (SIP real-time) columns."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "derived:decision-v1."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "When the row was computed."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": "scalp_engine."
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": "1."
+    }
+  ],
+  "primary_key": [
+    "symbol",
+    "event_at",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
+}

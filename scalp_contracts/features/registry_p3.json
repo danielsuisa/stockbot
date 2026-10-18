@@ -1,0 +1,198 @@
+[
+  {
+    "schema_version": 2,
+    "name": "ret_5m",
+    "version": "1.0.0",
+    "code_hash": "063d85c4b0079deada1973e61753264596eaaa5717b5e4afb6beb0f88cda9bb9",
+    "feature_id": "ret_5m@1.0.0+063d85c4b007",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "iex",
+    "live_profile": "iex_realtime",
+    "availability_rule": "bar open + 62 s",
+    "description": "P3 decision-point feature ret_5m (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "ret_15m",
+    "version": "1.0.0",
+    "code_hash": "063d85c4b0079deada1973e61753264596eaaa5717b5e4afb6beb0f88cda9bb9",
+    "feature_id": "ret_15m@1.0.0+063d85c4b007",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "iex",
+    "live_profile": "iex_realtime",
+    "availability_rule": "bar open + 62 s",
+    "description": "P3 decision-point feature ret_15m (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "ret_30m",
+    "version": "1.0.0",
+    "code_hash": "063d85c4b0079deada1973e61753264596eaaa5717b5e4afb6beb0f88cda9bb9",
+    "feature_id": "ret_30m@1.0.0+063d85c4b007",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "iex",
+    "live_profile": "iex_realtime",
+    "availability_rule": "bar open + 62 s",
+    "description": "P3 decision-point feature ret_30m (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "ret_open",
+    "version": "1.0.0",
+    "code_hash": "063d85c4b0079deada1973e61753264596eaaa5717b5e4afb6beb0f88cda9bb9",
+    "feature_id": "ret_open@1.0.0+063d85c4b007",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "iex",
+    "live_profile": "iex_realtime",
+    "availability_rule": "bar open + 62 s",
+    "description": "P3 decision-point feature ret_open (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "range_open_pct",
+    "version": "1.0.0",
+    "code_hash": "063d85c4b0079deada1973e61753264596eaaa5717b5e4afb6beb0f88cda9bb9",
+    "feature_id": "range_open_pct@1.0.0+063d85c4b007",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "iex",
+    "live_profile": "iex_realtime",
+    "availability_rule": "bar open + 62 s",
+    "description": "P3 decision-point feature range_open_pct (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "ret_5m_sip",
+    "version": "1.0.0",
+    "code_hash": "063d85c4b0079deada1973e61753264596eaaa5717b5e4afb6beb0f88cda9bb9",
+    "feature_id": "ret_5m_sip@1.0.0+063d85c4b007",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "sip",
+    "live_profile": "research_only",
+    "availability_rule": "bar open + 62 s",
+    "description": "P3 decision-point feature ret_5m_sip (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "ret_15m_sip",
+    "version": "1.0.0",
+    "code_hash": "063d85c4b0079deada1973e61753264596eaaa5717b5e4afb6beb0f88cda9bb9",
+    "feature_id": "ret_15m_sip@1.0.0+063d85c4b007",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "sip",
+    "live_profile": "research_only",
+    "availability_rule": "bar open + 62 s",
+    "description": "P3 decision-point feature ret_15m_sip (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "ret_30m_sip",
+    "version": "1.0.0",
+    "code_hash": "063d85c4b0079deada1973e61753264596eaaa5717b5e4afb6beb0f88cda9bb9",
+    "feature_id": "ret_30m_sip@1.0.0+063d85c4b007",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "sip",
+    "live_profile": "research_only",
+    "availability_rule": "bar open + 62 s",
+    "description": "P3 decision-point feature ret_30m_sip (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "ret_open_sip",
+    "version": "1.0.0",
+    "code_hash": "063d85c4b0079deada1973e61753264596eaaa5717b5e4afb6beb0f88cda9bb9",
+    "feature_id": "ret_open_sip@1.0.0+063d85c4b007",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "sip",
+    "live_profile": "research_only",
+    "availability_rule": "bar open + 62 s",
+    "description": "P3 decision-point feature ret_open_sip (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "range_open_pct_sip",
+    "version": "1.0.0",
+    "code_hash": "063d85c4b0079deada1973e61753264596eaaa5717b5e4afb6beb0f88cda9bb9",
+    "feature_id": "range_open_pct_sip@1.0.0+063d85c4b007",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "sip",
+    "live_profile": "research_only",
+    "availability_rule": "bar open + 62 s",
+    "description": "P3 decision-point feature range_open_pct_sip (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "sigma_1m_5d",
+    "version": "1.0.0",
+    "code_hash": "56678b56c3bdddda20760fe4fc0ee7404fcb26ce863addaeebb70f837254a7ef",
+    "feature_id": "sigma_1m_5d@1.0.0+56678b56c3bd",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "sip",
+    "live_profile": "sip_eod",
+    "availability_rule": "prior session 20:00 ET + 15 min",
+    "description": "P3 decision-point feature sigma_1m_5d (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "dist_stop_pct",
+    "version": "1.0.0",
+    "code_hash": "56678b56c3bdddda20760fe4fc0ee7404fcb26ce863addaeebb70f837254a7ef",
+    "feature_id": "dist_stop_pct@1.0.0+56678b56c3bd",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "sip",
+    "live_profile": "sip_eod",
+    "availability_rule": "prior session 20:00 ET + 15 min",
+    "description": "P3 decision-point feature dist_stop_pct (ADR 0005)"
+  },
+  {
+    "schema_version": 2,
+    "name": "dilution_filing",
+    "version": "2.0.0",
+    "code_hash": "60167dfc9e389fb01d2aaba80e26fe206149a230a7c7c851bde6f9a79fdc771a",
+    "feature_id": "dilution_filing@2.0.0+60167dfc9e38",
+    "inputs": [
+      "edgar_filings",
+      "cik_map"
+    ],
+    "window": "see ADR 0005 section 3",
+    "feed": "none",
+    "live_profile": "public_realtime",
+    "availability_rule": "acceptance + 60 s",
+    "description": "P3 decision-point feature dilution_filing (ADR 0005)"
+  }
+]
