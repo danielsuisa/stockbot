@@ -46,9 +46,14 @@ Design: `docs/engine/ARCHITECTURE.md`. Decisions: `docs/engine/adr/`.
   paths outside the repo; the signing code refuses key paths inside the repo.
 - Market data is never committed: Alpaca forbids redistribution. Store it under the gitignored `.cache/`.
 
+## Data and environments
+- Data lives under `SCALP_DATA_ROOT` (default `D:\scalp-data`), never in git. Ingest with
+  `python -m scalp_engine.ingest STEP --start ... --end ...` (explicit end; reruns resume from the manifest).
+- Venvs: `D:\scalp-env\engine` and `D:\scalp-env\eval` (hash-pinned requirements; no tz workaround needed).
+
 ## Tests
 - From the repo root: `python -m unittest discover -s scalp_engine/tests -t .`, and the same for `scalp_eval/tests`.
 - stockbot's suite: `python -m unittest discover -s tests`. It must stay green and unchanged.
-- On Windows, set `PYTHONTZPATH=<tzdata>/zoneinfo` and `PYTHONUTF8=1` first.
+- stockbot on the system Python: set `PYTHONTZPATH=<tzdata>/zoneinfo` and `PYTHONUTF8=1` first.
 - Dependencies: `scalp_engine/requirements.txt` and `scalp_eval/requirements.txt`. Any new one needs a justification
   in an ADR.

@@ -108,3 +108,45 @@ of file order, thread scheduling and `PYTHONHASHSEED`.
 - Raw and derived data live under `SCALP_DATA_ROOT`, by default `D:\scalp-data`, outside every repository.
 - Layout: `<root>/<table>/<partitions>/part-*.parquet`, plus `<root>/manifests/*.jsonl`.
 - Nothing under the data root is ever committed (ADR 0001 decision record, D2).
+
+## 7. L0 ingestion decisions (added with the P1 implementation, 2026-10-18)
+
+**Symbol mapping.**
+- Every bars and quotes request uses `asof='-'`, so a ticker's data is whatever traded under that ticker. That is
+  point-in-time by construction, and it does not depend on the day of the run.
+- Renames and reuse are handled in the universe through corporate-action validity windows (`top500_v3`), not by
+  vendor entity mapping.
+
+**Candidate pool.**
+- Alpaca's asset list (status=all) on NYSE, NASDAQ and AMEX, classified by venue, symbol pattern and name.
+- Plus pre-rename tickers from name-change actions, and delisted tickers from merger and worthless-removal actions.
+- Alpaca's asset list omits most acquired companies (P1 data quality, "Universe").
+
+**Monthly universe.**
+- Rebuilt for each month from daily SIP bars of the 20 sessions before its first session.
+- Requires a last raw close of $5–$200 and at least 15 bars in the window.
+- Keeps the top 500 by median `vwap × volume`.
+- Superseded method versions stay in the append-only store and are selected out by `method_version`.
+
+**Range and warm-up.**
+- 2023-08-01 → 2026-10-16. The end is explicit, and the CLI refuses an end day whose 20:00 ET close was less than
+  15 minutes ago.
+- Warm-up is 30 sessions before first membership, capped at the range start. The September 2023 members get 23
+  sessions.
+
+**Quote samples.**
+- The prevailing SIP NBBO at 09:30–11:30 ET every 5 minutes, and at 15:55.
+- Lookback is 5 s, then 60 s for the symbols still without a quote; after that the sample is `missing`.
+- On early-close days the 15:55 sample is `after_close` and is not requested.
+- `size_unit` is `round_lot` before 2025-11-03 and `shares` from that date, as measured.
+
+**Request discipline.**
+- Read-only endpoints only (an allowlist).
+- `check_range` runs before every request.
+- A shared token bucket at 170/min, with backoff on 429 and 5xx.
+- Every page is logged in `<root>/manifests/<table>.jsonl` with its params, rows and body sha256.
+- A partition is complete once its `partition` record exists; reruns skip it.
+- An orphan part left by a killed run is renamed aside, never read and never overwritten.
+
+**Secrets.** `ALPACA_KEY_ID` and `ALPACA_SECRET_KEY` come from the environment only. They are passed per command and
+never written to disk.
