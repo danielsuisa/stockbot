@@ -30,8 +30,11 @@ class Units(unittest.TestCase):
         t = G.d1_table(frame)
         self.assertAlmostEqual(t["top_decile_r"], 1.5)  # decile 10 = p[900:], all above 0.9 (p[900] = 900/999)
         self.assertAlmostEqual(t["bottom_decile_r"], -0.1)
-        self.assertGreater(t["spearman_decile_r"], 0.5)
         self.assertAlmostEqual(t["auc"], 1.0)
+        # Spearman on a strictly increasing R: deciles 1-9 above all share R = -0.1, so their means differ only by
+        # float rounding and their order is noise
+        mono = frame.with_columns(pl.col("p").alias("r"))
+        self.assertAlmostEqual(G.d1_table(mono)["spearman_decile_r"], 1.0)
 
     def test_payload_hash_is_order_free(self):
         a = [{"rec_id": "b-0000001", "qty": 1}, {"rec_id": "a-0000001", "qty": 2}]
