@@ -1,0 +1,127 @@
+{
+  "table": "feature_daily",
+  "schema_version": 1,
+  "layer": "feature",
+  "append_only": true,
+  "time_column": "event_at",
+  "description": "Daily L1 features per member and decision day (ADR 0003 section 2), split-adjusted as of d.",
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Decision day d at 04:00 ET (UTC)."
+    },
+    {
+      "name": "available_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Prior session 20:00 ET + 15 min (symbols); later of that, prior session 18:00 ET and d 00:00 ET (_MARKET)."
+    },
+    {
+      "name": "trading_date",
+      "type": "date32",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": "Member symbol, or _MARKET for market features."
+    },
+    {
+      "name": "prev_close",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "adv20",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "atr14_pct",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "sector_etf",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "spy_ret20",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "spy_sma20_dev",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "vix_prev_close",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "macro_day",
+      "type": "bool",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "feature_versions",
+      "type": "list<string>",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "sip (daily SIP bars)."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": ""
+    }
+  ],
+  "primary_key": [
+    "symbol",
+    "trading_date",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ]
+}

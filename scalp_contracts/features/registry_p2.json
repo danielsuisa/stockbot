@@ -1,0 +1,358 @@
+[
+  {
+    "schema_version": 2,
+    "name": "prev_close",
+    "version": "1.0.0",
+    "code_hash": "a510373c97acfc375bd80cf6ed54cc7d33638bebf4098fed26b3593243880720",
+    "feature_id": "prev_close@1.0.0+a510373c97ac",
+    "inputs": [
+      "raw_bars_1d",
+      "corporate_actions"
+    ],
+    "window": "last session before d",
+    "feed": "sip",
+    "live_profile": "sip_eod",
+    "availability_rule": "prior session 20:00 ET + 15 min",
+    "description": "Split-adjusted last close"
+  },
+  {
+    "schema_version": 2,
+    "name": "adv20",
+    "version": "1.0.0",
+    "code_hash": "a510373c97acfc375bd80cf6ed54cc7d33638bebf4098fed26b3593243880720",
+    "feature_id": "adv20@1.0.0+a510373c97ac",
+    "inputs": [
+      "raw_bars_1d",
+      "corporate_actions"
+    ],
+    "window": "20 sessions",
+    "feed": "sip",
+    "live_profile": "sip_eod",
+    "availability_rule": "prior session 20:00 ET + 15 min",
+    "description": "Mean split-adjusted daily volume"
+  },
+  {
+    "schema_version": 2,
+    "name": "atr14_pct",
+    "version": "1.0.0",
+    "code_hash": "a510373c97acfc375bd80cf6ed54cc7d33638bebf4098fed26b3593243880720",
+    "feature_id": "atr14_pct@1.0.0+a510373c97ac",
+    "inputs": [
+      "raw_bars_1d",
+      "corporate_actions"
+    ],
+    "window": "14 true ranges",
+    "feed": "sip",
+    "live_profile": "sip_eod",
+    "availability_rule": "prior session 20:00 ET + 15 min",
+    "description": "ATR14 / prev_close"
+  },
+  {
+    "schema_version": 2,
+    "name": "sector_etf",
+    "version": "1.0.0",
+    "code_hash": "ca897ac6a6e9572038073db814d9230a32ab7de05b0305cc9a243ccf746d2a87",
+    "feature_id": "sector_etf@1.0.0+ca897ac6a6e9",
+    "inputs": [
+      "raw_bars_1d"
+    ],
+    "window": "60 sessions before the month",
+    "feed": "sip",
+    "live_profile": "sip_eod",
+    "availability_rule": "prior session 20:00 ET + 15 min",
+    "description": "Most correlated SPDR sector ETF"
+  },
+  {
+    "schema_version": 2,
+    "name": "spy_ret20",
+    "version": "1.0.0",
+    "code_hash": "fa586fb80386d5ccf3f3b822d251274da39dcad9588e2327e1d94caa10b98150",
+    "feature_id": "spy_ret20@1.0.0+fa586fb80386",
+    "inputs": [
+      "raw_bars_1d"
+    ],
+    "window": "21 sessions",
+    "feed": "sip",
+    "live_profile": "sip_eod",
+    "availability_rule": "prior session 20:00 ET + 15 min",
+    "description": "SPY 20-session return"
+  },
+  {
+    "schema_version": 2,
+    "name": "spy_sma20_dev",
+    "version": "1.0.0",
+    "code_hash": "fa586fb80386d5ccf3f3b822d251274da39dcad9588e2327e1d94caa10b98150",
+    "feature_id": "spy_sma20_dev@1.0.0+fa586fb80386",
+    "inputs": [
+      "raw_bars_1d"
+    ],
+    "window": "20 sessions",
+    "feed": "sip",
+    "live_profile": "sip_eod",
+    "availability_rule": "prior session 20:00 ET + 15 min",
+    "description": "SPY close vs its 20-session mean"
+  },
+  {
+    "schema_version": 2,
+    "name": "vix_prev_close",
+    "version": "1.0.0",
+    "code_hash": "fa586fb80386d5ccf3f3b822d251274da39dcad9588e2327e1d94caa10b98150",
+    "feature_id": "vix_prev_close@1.0.0+fa586fb80386",
+    "inputs": [
+      "vix_daily"
+    ],
+    "window": "1 session",
+    "feed": "none",
+    "live_profile": "public_eod",
+    "availability_rule": "session date 18:00 ET",
+    "description": "Cboe VIX close of the prior session"
+  },
+  {
+    "schema_version": 2,
+    "name": "macro_day",
+    "version": "1.0.0",
+    "code_hash": "fa586fb80386d5ccf3f3b822d251274da39dcad9588e2327e1d94caa10b98150",
+    "feature_id": "macro_day@1.0.0+fa586fb80386",
+    "inputs": [
+      "macro_events"
+    ],
+    "window": "the session",
+    "feed": "none",
+    "live_profile": "public_eod",
+    "availability_rule": "00:00 ET of the session",
+    "description": "FOMC, CPI or NFP day"
+  },
+  {
+    "schema_version": 2,
+    "name": "last_price",
+    "version": "1.0.0",
+    "code_hash": "c66651a743b7a4e989e57b9da0cd109783373b34ebbca8c0b3b5c4bbd9844d7c",
+    "feature_id": "last_price@1.0.0+c66651a743b7",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "session to t",
+    "feed": "variant",
+    "live_profile": "variant",
+    "availability_rule": "bar open + 62 s",
+    "description": "Close of the latest available bar"
+  },
+  {
+    "schema_version": 2,
+    "name": "gap_pct",
+    "version": "1.0.0",
+    "code_hash": "d0b345ae6a204fcb296728d05a53abcc4218586b1e65a716c6cba72f5ed7b08a",
+    "feature_id": "gap_pct@1.0.0+d0b345ae6a20",
+    "inputs": [
+      "raw_bars_1m",
+      "raw_bars_1d"
+    ],
+    "window": "session to t",
+    "feed": "variant",
+    "live_profile": "variant",
+    "availability_rule": "bar open + 62 s",
+    "description": "last_price / prev_close - 1"
+  },
+  {
+    "schema_version": 2,
+    "name": "rvol_pre",
+    "version": "1.0.0",
+    "code_hash": "db2513c1106ef18b35e3bb56453b20532a2d85550be491632ce45ab2722b5011",
+    "feature_id": "rvol_pre@1.0.0+db2513c1106e",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "pre-market to t vs 20 sessions",
+    "feed": "variant",
+    "live_profile": "variant",
+    "availability_rule": "bar open + 62 s",
+    "description": "Pre-market relative volume"
+  },
+  {
+    "schema_version": 2,
+    "name": "rvol_open",
+    "version": "1.0.0",
+    "code_hash": "db2513c1106ef18b35e3bb56453b20532a2d85550be491632ce45ab2722b5011",
+    "feature_id": "rvol_open@1.0.0+db2513c1106e",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "09:30 to t vs 20 sessions",
+    "feed": "variant",
+    "live_profile": "variant",
+    "availability_rule": "bar open + 62 s",
+    "description": "Regular-session relative volume"
+  },
+  {
+    "schema_version": 2,
+    "name": "vwap_dev_pct",
+    "version": "1.0.0",
+    "code_hash": "d0b345ae6a204fcb296728d05a53abcc4218586b1e65a716c6cba72f5ed7b08a",
+    "feature_id": "vwap_dev_pct@1.0.0+d0b345ae6a20",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "session to t",
+    "feed": "variant",
+    "live_profile": "variant",
+    "availability_rule": "bar open + 62 s",
+    "description": "last_price / VWAP - 1"
+  },
+  {
+    "schema_version": 2,
+    "name": "pm_range_pct",
+    "version": "1.0.0",
+    "code_hash": "d0b345ae6a204fcb296728d05a53abcc4218586b1e65a716c6cba72f5ed7b08a",
+    "feature_id": "pm_range_pct@1.0.0+d0b345ae6a20",
+    "inputs": [
+      "raw_bars_1m",
+      "raw_bars_1d"
+    ],
+    "window": "pre-market to t",
+    "feed": "variant",
+    "live_profile": "variant",
+    "availability_rule": "bar open + 62 s",
+    "description": "Pre-market range / prev_close"
+  },
+  {
+    "schema_version": 2,
+    "name": "minutes_since_open",
+    "version": "1.0.0",
+    "code_hash": "cf185f701af4924d019e366dd23ef2da45100157ee7ce243307eb8a2db621d9c",
+    "feature_id": "minutes_since_open@1.0.0+cf185f701af4",
+    "inputs": [
+      "clock"
+    ],
+    "window": "-",
+    "feed": "none",
+    "live_profile": "public_realtime",
+    "availability_rule": "t",
+    "description": "Minutes since 09:30 ET"
+  },
+  {
+    "schema_version": 2,
+    "name": "spread_cs",
+    "version": "1.0.0",
+    "code_hash": "cd71e402f0a3f6e77d3e7b210417044908103edc30fec432b894d1e93464f211",
+    "feature_id": "spread_cs@1.0.0+cd71e402f0a3",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "last 30 real bars",
+    "feed": "variant",
+    "live_profile": "variant",
+    "availability_rule": "bar open + 62 s",
+    "description": "Corwin-Schultz high-low spread"
+  },
+  {
+    "schema_version": 2,
+    "name": "spread_ar",
+    "version": "1.0.0",
+    "code_hash": "cf58ef5ac586eddcf720d70bbdcedc908a6cd96cf26d9e5dba03737c1bf6159f",
+    "feature_id": "spread_ar@1.0.0+cf58ef5ac586",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "last 30 real bars",
+    "feed": "variant",
+    "live_profile": "variant",
+    "availability_rule": "bar open + 62 s",
+    "description": "Abdi-Ranaldo close-high-low spread"
+  },
+  {
+    "schema_version": 2,
+    "name": "spread_nbbo_delayed",
+    "version": "1.0.0",
+    "code_hash": "d03c4c7c04a065c9f98310482c3283b92c033222eb267a01a7d0538bf7ee16cb",
+    "feature_id": "spread_nbbo_delayed@1.0.0+d03c4c7c04a0",
+    "inputs": [
+      "raw_quote_samples"
+    ],
+    "window": "latest sample <= t - 15 min",
+    "feed": "sip",
+    "live_profile": "sip_delayed_15m",
+    "availability_rule": "sample time + 15 min",
+    "description": "Delayed NBBO relative spread"
+  },
+  {
+    "schema_version": 2,
+    "name": "spread_nbbo_rt",
+    "version": "1.0.0",
+    "code_hash": "d03c4c7c04a065c9f98310482c3283b92c033222eb267a01a7d0538bf7ee16cb",
+    "feature_id": "spread_nbbo_rt@1.0.0+d03c4c7c04a0",
+    "inputs": [
+      "raw_quote_samples"
+    ],
+    "window": "latest sample <= t",
+    "feed": "sip",
+    "live_profile": "research_only",
+    "availability_rule": "sample time",
+    "description": "Real-time NBBO relative spread"
+  },
+  {
+    "schema_version": 2,
+    "name": "earnings_8k",
+    "version": "1.0.0",
+    "code_hash": "13288cea1c7822222de7999d5c10fb64a9251ce35e841892efe9b341c4cc74c4",
+    "feature_id": "earnings_8k@1.0.0+13288cea1c78",
+    "inputs": [
+      "edgar_filings",
+      "cik_map"
+    ],
+    "window": "since prior regular close",
+    "feed": "none",
+    "live_profile": "public_realtime",
+    "availability_rule": "acceptance + 60 s",
+    "description": "8-K item 2.02 since the prior close"
+  },
+  {
+    "schema_version": 2,
+    "name": "dilution_filing",
+    "version": "1.0.0",
+    "code_hash": "13288cea1c7822222de7999d5c10fb64a9251ce35e841892efe9b341c4cc74c4",
+    "feature_id": "dilution_filing@1.0.0+13288cea1c78",
+    "inputs": [
+      "edgar_filings",
+      "cik_map"
+    ],
+    "window": "30 calendar days",
+    "feed": "none",
+    "live_profile": "public_realtime",
+    "availability_rule": "acceptance + 60 s",
+    "description": "S-1 / S-3 / 424B filing in 30 days"
+  },
+  {
+    "schema_version": 2,
+    "name": "spy_rv_intraday",
+    "version": "1.0.0",
+    "code_hash": "803d16ed2f74b6368e1856f75c1c6ebf1dae06b8f3f6871d587943ecba027517",
+    "feature_id": "spy_rv_intraday@1.0.0+803d16ed2f74",
+    "inputs": [
+      "raw_bars_1m"
+    ],
+    "window": "09:30 to t",
+    "feed": "variant",
+    "live_profile": "variant",
+    "availability_rule": "bar open + 62 s",
+    "description": "SPY intraday realized volatility, annualized"
+  },
+  {
+    "schema_version": 2,
+    "name": "regime",
+    "version": "1.0.0",
+    "code_hash": "7f25a787fa9978ec9b14757625bc483c8e54e23dc8911a80d1942cd76a090744",
+    "feature_id": "regime@1.0.0+7f25a787fa99",
+    "inputs": [
+      "macro_day",
+      "vix_prev_close",
+      "spy_ret20",
+      "spy_sma20_dev",
+      "spy_rv_intraday"
+    ],
+    "window": "-",
+    "feed": "variant",
+    "live_profile": "variant",
+    "availability_rule": "max of its inputs",
+    "description": "trend / chop / event (rules)"
+  }
+]
