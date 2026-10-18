@@ -4,8 +4,8 @@ ticker -> CIK map. Same mechanics as P1: append-only Parquet, manifest per reque
 Whole-document sources (ADR 0003 section 0.2, Proposed): the declared ingest range passes check_range before the
 request; rows dated outside it are dropped at parse time and never stored or inspected.
 
-Identity: SEC_USER_AGENT (name and email) from the environment, sent as User-Agent to sec.gov and bls.gov (BLS refuses
-requests without a contact address). It is never written to disk or logs.
+Identity: SEC_USER_AGENT (name and email) from the environment is sent only to sec.gov hosts. bls.gov gets
+BLS_USER_AGENT; when that is unset the BLS step is skipped (ADR 0004 section 4). Neither is written to disk or logs.
 
     python -m scalp_engine.proxies STEP --start 2023-06-01 --end 2026-10-16
     STEP: vix | macro | cikmap | edgar | all
@@ -63,6 +63,18 @@ class Http:
         self.stats = {"requests": 0, "bytes": 0}
         self.lock = threading.Lock()
 
+    def agent(self, host):
+        """SEC_USER_AGENT for SEC; BLS_USER_AGENT for bls.gov (ADR 0004 section 4); the SEC identity elsewhere is
+        only sent to hosts that need no contact (Cboe, the Fed): they get a generic project agent."""
+        if host == "www.bls.gov":
+            ua = os.environ.get("BLS_USER_AGENT", "").strip()
+            if not ua:
+                raise IdentityMissing("BLS_USER_AGENT is not set")
+            return ua
+        if host.endswith("sec.gov"):
+            return self.ua
+        return "scalp-engine research (+https://github.com/danielsuisa/stockbot)"
+
     def get(self, url, params=None, *, table, declared_range, tries=6):
         host = urllib.parse.urlparse(url).hostname
         if host not in _HOSTS:
@@ -73,7 +85,7 @@ class Http:
         for attempt in range(tries):
             self.limits[host].acquire()
             try:
-                req = urllib.request.Request(full, headers={"User-Agent": self.ua, "Accept-Encoding": "gzip"})
+                req = urllib.request.Request(full, headers={"User-Agent": self.agent(host), "Accept-Encoding": "gzip"})
                 with urllib.request.urlopen(req, timeout=120) as r:
                     body = r.read()
                     if r.headers.get("Content-Encoding") == "gzip":
@@ -197,6 +209,9 @@ def ingest_macro(http, start, end):
     for day, kind, unscheduled in parse_fomc(body.decode("utf-8", "replace"), start, end):
         rows.append(_macro_row(day, "fomc", dt.time(14, 0), FOMC, unscheduled, rid, got))
     for url, prefix, kind in ((BLS_CPI, "cpi", "cpi"), (BLS_NFP, "empsit", "nfp")):
+        if not os.environ.get("BLS_USER_AGENT", "").strip():
+            ingest.log(f"macro: {kind} skipped: BLS_USER_AGENT is not set (ADR 0004 section 4)")
+            continue
         body, rid = http.get(url, table=table, declared_range=rng)
         for day in parse_bls_archive(body.decode("utf-8", "replace"), prefix, start, end):
             rows.append(_macro_row(day, kind, dt.time(8, 30), url, False, rid, got))

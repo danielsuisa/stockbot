@@ -69,6 +69,17 @@ class Identity(unittest.TestCase):
         with mock.patch.dict(os.environ, {"SEC_USER_AGENT": ""}), self.assertRaises(proxies.IdentityMissing):
             proxies.Http()
 
+    def test_bls_gets_only_its_own_agent(self):
+        env = {"SEC_USER_AGENT": "Test Name test@example.com", "BLS_USER_AGENT": ""}
+        with mock.patch.dict(os.environ, env):
+            http = proxies.Http()
+            self.assertEqual(http.agent("data.sec.gov"), "Test Name test@example.com")
+            self.assertNotIn("@", http.agent("cdn.cboe.com"))
+            with self.assertRaises(proxies.IdentityMissing):  # never falls back to the SEC identity
+                http.agent("www.bls.gov")
+        with mock.patch.dict(os.environ, dict(env, BLS_USER_AGENT="Other bls@example.org")):
+            self.assertEqual(proxies.Http().agent("www.bls.gov"), "Other bls@example.org")
+
     def test_sealed_declared_range_never_reaches_network(self):
         with mock.patch.dict(os.environ, {"SEC_USER_AGENT": "Test Name test@example.com"}):
             http = proxies.Http()
