@@ -1,7 +1,7 @@
 # ADR 0005: P3 pre-registered design (labels, LightGBM baseline, L7 evaluator)
 
-- **Status:** Accepted for every item the P3 prompt specifies (user, 2026-10-18). Choices this ADR adds are marked
-  **Proposed** and are listed again under "Decisions needed" in the P3 report.
+- **Status:** Accepted. The items specified by the P3 prompt were accepted at the start (user, 2026-10-18). The six
+  items this ADR marked **Proposed** were accepted afterwards; see the decision record at the end.
 - **Commit order:** this ADR is committed before any label, feature, model or evaluator code runs. Nothing below may
   change after training starts.
 - **Context:** [ADR 0004](0004-p2-failure-plan-change.md) (plan change, $500 cash account, long only) and
@@ -253,3 +253,16 @@ model, with ≥ 100 trades. A window with fewer trades fails.
 - Stage 5 (the evaluation) runs once on committed code. Its timestamp and commit are recorded.
 - The engine's walk-forward run is also recorded.
 - Nothing is re-run and no parameter changes after a gate result.
+
+## Decision record
+
+- **Date:** 2026-10-18.
+- **Accepted by:** the user, via the orchestrator, at the start of P3D.
+- **Outcome:** all six Proposed items of this ADR are **Accepted** as written:
+  1. secondary models reuse the month's `live`/H60 configuration (§4);
+  2. in the fill bar only the stop is checked (§7);
+  3. the spread fallback is the latest earlier `ok` sample (§7);
+  4. the $0.0030/share exchange fee (§8);
+  5. the FINRA TAF rate before the 2026-10-01 fee holiday (§8);
+  6. account equity counted at cost (§8).
+- **P3 stays FAILED, classification (a).** Nothing from P3 is re-run or re-tuned.
