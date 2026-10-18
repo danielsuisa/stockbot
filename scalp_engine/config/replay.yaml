@@ -1,0 +1,6 @@
+# Replay ordering config (ADR 0002 section 4). Flat key: value subset.
+schema_version: 1
+# A 1-minute bar with open time t is available at t + 60 s + bar_publish_delay_ms.
+bar_publish_delay_ms: 2000
+# A quote sample taken at t (the prevailing NBBO at t) is available at t + quote_sample_delay_ms.
+quote_sample_delay_ms: 0
