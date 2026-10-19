@@ -531,8 +531,18 @@ def ingest_october(http, workers=8):
     days = [PARITY_DAYS[0] + dt.timedelta(days=i) for i in range((PARITY_DAYS[1] - PARITY_DAYS[0]).days + 1)]
     days = [d for d in days if d.weekday() < 5]
     done = {r["day"] for r in storage.manifest("insider_filings") if r.get("kind") == "october_day_done"}
+    # EDGAR has no daily index on federal holidays (2026-10-12) and answers 403, not 404, for the missing file: the
+    # quarter's directory listing decides which days exist (as the live scan does, bot/scan.py published()).
+    listing, _ = http.get(DAILY_INDEX.rsplit("/", 1)[0].format(y=days[0].year, q=(days[0].month - 1) // 3 + 1) + "/index.json",
+                          table="insider_filings", declared_range=(midnight_et(days[0]), midnight_et(days[-1] + dt.timedelta(days=1))))
+    published = {x.get("name") for x in json.loads(listing or b"{}").get("directory", {}).get("item", [])}
     for d in days:
         if d.isoformat() in done:
+            continue
+        if f"form.{d:%Y%m%d}.idx" not in published:
+            storage.append_manifest("insider_filings", {"kind": "october_day_done", "day": d.isoformat(), "filings": 0,
+                                                        "note": "no daily index in the quarter listing (holiday)"})
+            log(f"october {d}: no daily index (holiday)")
             continue
         rng = (midnight_et(d - dt.timedelta(days=4)), midnight_et(d + dt.timedelta(days=1)))
         body, rid = http.get(DAILY_INDEX.format(y=d.year, q=(d.month - 1) // 3 + 1, d=d), table="insider_filings",
