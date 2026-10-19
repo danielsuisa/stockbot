@@ -33,6 +33,7 @@ Design: `docs/engine/ARCHITECTURE.md`. Decisions: `docs/engine/adr/`.
 - **A failed gate means stop and report the failing condition.** Never work around it: no loosened thresholds, no
   re-runs until it passes, no relabelling.
 - **Never mark an ADR Accepted.** Only the owner does.
+- **Intraday line closed (ADR 0007). Do not start P4 or retrain intraday models without a new user decision.**
 
 ## stockbot is live: do not touch it
 - Never modify these: `bot/` (including `intraday`, the squeeze screener, the insider scans and the Telegram
