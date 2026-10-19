@@ -1,0 +1,121 @@
+{
+  "table": "insider_lines",
+  "schema_version": 1,
+  "description": "Non-derivative transaction lines (Table I) with transaction date >= 2022-01-03, every code (ADR 0009 sections 1 and 7). event_at = filing date 00:00 ET.",
+  "layer": "raw",
+  "append_only": true,
+  "time_column": "event_at",
+  "primary_key": [
+    "accession",
+    "line_seq",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ],
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Filing date 00:00 America/New_York, as UTC."
+    },
+    {
+      "name": "accession",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "line_seq",
+      "type": "int64",
+      "nullable": false,
+      "description": "NONDERIV_TRANS_SK, or document order for XML."
+    },
+    {
+      "name": "trans_date",
+      "type": "date32",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "trans_code",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "acquired_disposed",
+      "type": "string",
+      "nullable": true,
+      "description": "A or D."
+    },
+    {
+      "name": "shares",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "price",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "shares_after",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "direct_indirect",
+      "type": "string",
+      "nullable": true,
+      "description": "D or I."
+    },
+    {
+      "name": "nature",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "fn_ids",
+      "type": "list<string>",
+      "nullable": true,
+      "description": "Every footnote id referenced by the line."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Source request id (sha256), or derived:<method>."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": ""
+    }
+  ]
+}

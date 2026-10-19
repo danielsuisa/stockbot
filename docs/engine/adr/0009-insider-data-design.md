@@ -22,11 +22,15 @@
     ET+8/+10 rule (`proxies.json_acceptance_utc`).
   - The agreement rate is reported. The JSON time is never used for events.
 - **[P] Required filings.**
-  - Every Form 4 or 4/A in the SEC Insider Transactions Data Sets 2022 Q1–2026 Q3 with at least one non-derivative
-    line coded `P`.
+  - Every Form 4 or 4/A in the SEC Insider Transactions Data Sets 2022 Q1–2026 Q3 with at least one retained
+    non-derivative line coded `P`.
+  - Every 4/A of an issuer that has such a filing, even without a `P` line. An amendment acts from its own
+    acceptance time, and a 4/A without purchases can withdraw an original (`bot/scan.py:193-221`). This was added
+    before the first ingestion request.
   - **Sealed-window edge.** A filing whose `FILING_DATE` is 2022-01-03 may have been accepted after 17:30 ET on
     2021-12-31, inside `legacy_2016_2021`. Its header is requested **only if** one of its `P` lines has a transaction
-    date ≥ 2022-01-03, which makes acceptance ≥ 2022-01-03. Other such filings are dropped and counted.
+    date ≥ 2022-01-03, which makes acceptance ≥ 2022-01-03. Such 4/A filings without a `P` line are dropped and
+    counted.
   - Any filing whose acceptance turns out to be before 2022-01-01 05:00 UTC is dropped and counted.
 - **[P] Lines dated before 2022-01-03** are dropped at parse time and counted. No event window reaches them: the
   earliest event date is 2022-02-01, and its 30-day window starts 2022-01-02, a Sunday.

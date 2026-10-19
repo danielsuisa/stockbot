@@ -1,0 +1,96 @@
+{
+  "table": "issuer_sic",
+  "schema_version": 1,
+  "description": "Current SIC code and annual-report form per CIK from EDGAR submissions JSON; NOT point-in-time (ADR 0009 section 6). event_at = fetch time.",
+  "layer": "reference",
+  "append_only": true,
+  "time_column": "event_at",
+  "primary_key": [
+    "cik",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ],
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Fetch time."
+    },
+    {
+      "name": "cik",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "nullable": false,
+      "description": "ok | missing"
+    },
+    {
+      "name": "sic",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "sic_description",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "tickers",
+      "type": "list<string>",
+      "nullable": true,
+      "description": "Current tickers."
+    },
+    {
+      "name": "annual_form",
+      "type": "string",
+      "nullable": true,
+      "description": "Latest of 10-K / 20-F / 40-F filed 2022-01-03 or later (foreign private issuer test)."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Source request id (sha256), or derived:<method>."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": ""
+    }
+  ]
+}

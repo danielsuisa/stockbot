@@ -1,0 +1,85 @@
+{
+  "table": "filing_acceptance",
+  "schema_version": 1,
+  "description": "EDGAR acceptance time per filing from the SEC header ACCEPTANCE-DATETIME (ET -> UTC via tz database), or the submissions-JSON value for the cross-check sample (ADR 0009 section 1).",
+  "layer": "raw",
+  "append_only": true,
+  "time_column": "event_at",
+  "primary_key": [
+    "accession",
+    "method",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ],
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Acceptance time, UTC (header method); the parsed value for json methods."
+    },
+    {
+      "name": "accession",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "cik",
+      "type": "string",
+      "nullable": false,
+      "description": "CIK used in the request path."
+    },
+    {
+      "name": "raw",
+      "type": "string",
+      "nullable": true,
+      "description": "Raw value as served."
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "nullable": false,
+      "description": "ok | missing | sealed_dropped"
+    },
+    {
+      "name": "method",
+      "type": "string",
+      "nullable": false,
+      "description": "header | json_as_utc | json_et_rule"
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Source request id (sha256), or derived:<method>."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": ""
+    }
+  ]
+}

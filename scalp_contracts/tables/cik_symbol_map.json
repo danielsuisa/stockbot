@@ -1,0 +1,93 @@
+{
+  "table": "cik_symbol_map",
+  "schema_version": 1,
+  "description": "Point-in-time CIK <-> symbol: filed-symbol observations from every Form 3/4/5 in the data sets, and the resolved mapping per event issuer (ADR 0009 section 4).",
+  "layer": "reference",
+  "append_only": true,
+  "time_column": "event_at",
+  "primary_key": [
+    "kind",
+    "cik",
+    "symbol",
+    "event_at",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ],
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Observation (filing) date 00:00 ET, or the entry date for resolutions."
+    },
+    {
+      "name": "kind",
+      "type": "string",
+      "nullable": false,
+      "description": "observation | resolution"
+    },
+    {
+      "name": "cik",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": true,
+      "description": "Normalized."
+    },
+    {
+      "name": "filed_symbol",
+      "type": "string",
+      "nullable": true,
+      "description": "As filed."
+    },
+    {
+      "name": "method",
+      "type": "string",
+      "nullable": false,
+      "description": "filed | rename | recent_filed | unmapped | ambiguous"
+    },
+    {
+      "name": "detail",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Source request id (sha256), or derived:<method>."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": ""
+    }
+  ]
+}

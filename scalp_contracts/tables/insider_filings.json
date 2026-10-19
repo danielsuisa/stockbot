@@ -1,0 +1,151 @@
+{
+  "table": "insider_filings",
+  "schema_version": 1,
+  "description": "SEC Insider Transactions Data Sets (or EDGAR ownership XML for 2026-10 parity): one row per accession and reporting owner (ADR 0009 section 7). event_at = filing date 00:00 ET.",
+  "layer": "raw",
+  "append_only": true,
+  "time_column": "event_at",
+  "primary_key": [
+    "accession",
+    "owner_seq",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ],
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Filing date 00:00 America/New_York, as UTC."
+    },
+    {
+      "name": "accession",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "filing_date",
+      "type": "date32",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "document_type",
+      "type": "string",
+      "nullable": false,
+      "description": "4, 4/A, 3, 5, ..."
+    },
+    {
+      "name": "period_of_report",
+      "type": "date32",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "date_of_orig_sub",
+      "type": "date32",
+      "nullable": true,
+      "description": "Original filing date for amendments."
+    },
+    {
+      "name": "issuer_cik",
+      "type": "string",
+      "nullable": false,
+      "description": "Without leading zeros."
+    },
+    {
+      "name": "issuer_name",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "issuer_symbol",
+      "type": "string",
+      "nullable": true,
+      "description": "Issuer trading symbol as filed."
+    },
+    {
+      "name": "aff10b5one",
+      "type": "string",
+      "nullable": true,
+      "description": "Raw 10b5-1 box value."
+    },
+    {
+      "name": "notes_10b5",
+      "type": "list<string>",
+      "nullable": true,
+      "description": "Footnotes of the filing whose text matches (?i)10b5, as 'id<US>text'."
+    },
+    {
+      "name": "owner_seq",
+      "type": "int64",
+      "nullable": false,
+      "description": "Order of the reporting owner within the filing (0 = first)."
+    },
+    {
+      "name": "owner_cik",
+      "type": "string",
+      "nullable": true,
+      "description": "Without leading zeros."
+    },
+    {
+      "name": "owner_name",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "relationship",
+      "type": "string",
+      "nullable": true,
+      "description": "Director, Officer, TenPercentOwner, Other (comma-separated)."
+    },
+    {
+      "name": "owner_title",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "dataset_quarter",
+      "type": "string",
+      "nullable": false,
+      "description": "e.g. 2024q1, or edgar-2026-10."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Source request id (sha256), or derived:<method>."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": ""
+    }
+  ]
+}

@@ -1,0 +1,168 @@
+{
+  "table": "insider_events",
+  "schema_version": 1,
+  "description": "Insider events (cluster, big) from the stockbot rule at 2ffda0a on the acceptance-time clock (ADR 0009 section 2). event_at = available_at. No outcomes.",
+  "layer": "feature",
+  "append_only": true,
+  "time_column": "event_at",
+  "primary_key": [
+    "event_id",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ],
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "available_at = completing acceptance + 5 min."
+    },
+    {
+      "name": "event_id",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "trigger",
+      "type": "string",
+      "nullable": false,
+      "description": "cluster | big"
+    },
+    {
+      "name": "cik",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": true,
+      "description": "Point-in-time symbol, null if unmapped."
+    },
+    {
+      "name": "map_method",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "accepted_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Acceptance time of the completing filing."
+    },
+    {
+      "name": "entry_date",
+      "type": "date32",
+      "nullable": true,
+      "description": "First regular-session open strictly after available_at."
+    },
+    {
+      "name": "accessions",
+      "type": "list<string>",
+      "nullable": false,
+      "description": "Constituent accessions (cluster: counted officer/director rows; big: the row)."
+    },
+    {
+      "name": "people",
+      "type": "int64",
+      "nullable": true,
+      "description": "Distinct officers/directors (cluster)."
+    },
+    {
+      "name": "total_usd",
+      "type": "float64",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "fpi",
+      "type": "bool",
+      "nullable": true,
+      "description": "Foreign private issuer by current annual-report form."
+    },
+    {
+      "name": "sic",
+      "type": "string",
+      "nullable": true,
+      "description": "Current SIC (not point-in-time)."
+    },
+    {
+      "name": "pre_close",
+      "type": "float64",
+      "nullable": true,
+      "description": "Split-adjusted close of the session before entry."
+    },
+    {
+      "name": "pre_dv20",
+      "type": "float64",
+      "nullable": true,
+      "description": "Median close*volume over 20 sessions ending at that close."
+    },
+    {
+      "name": "pre_spread",
+      "type": "float64",
+      "nullable": true,
+      "description": "Quoted spread (ask-bid)/mid at prior close - 5 min."
+    },
+    {
+      "name": "universe_b",
+      "type": "bool",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "universe_c",
+      "type": "bool",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "flag_detail",
+      "type": "string",
+      "nullable": true,
+      "description": "Why a flag is null/false."
+    },
+    {
+      "name": "rule_version",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Source request id (sha256), or derived:<method>."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": ""
+    }
+  ]
+}
