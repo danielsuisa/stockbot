@@ -176,6 +176,17 @@
    "gain": 0.1287,
    "vol_ratio": 0.2367,
    "si_pct": 0.2027
+  },
+  {
+   "date": "2026-10-19",
+   "session": "pre",
+   "t": "EOSE",
+   "manual": false,
+   "price": 2.04,
+   "ref": 1.82,
+   "gain": 0.1209,
+   "vol_ratio": 0.1164,
+   "si_pct": 0.3703
   }
  ]
 }
