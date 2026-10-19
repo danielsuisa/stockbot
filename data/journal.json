@@ -4184,6 +4184,163 @@
     "0001225208-26-008441"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-19-BPRE",
+   "date": "2026-10-19",
+   "ticker": "BPRE",
+   "cik": 1551047,
+   "company": "Bluerock Private Real Estate Fund",
+   "sic": null,
+   "kind": "cluster+big",
+   "quality": 68,
+   "parts": {
+    "breadth": 20,
+    "seniority": 13,
+    "size": 20,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 12.25,
+    "asof": "2026-10-19 20:00",
+    "source": "live"
+   },
+   "total": 31378253.86,
+   "insiders": 3,
+   "liquidity": 11821845.504908128,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001398344-26-017349",
+    "0001398344-26-017538",
+    "0001398344-26-017550",
+    "0001398344-26-017659",
+    "0001398344-26-017661",
+    "0001398344-26-017904",
+    "0001398344-26-017906",
+    "0001398344-26-018110",
+    "0001398344-26-018199",
+    "0001398344-26-018255",
+    "0001398344-26-018261",
+    "0001398344-26-018404"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-19-CTY",
+   "date": "2026-10-19",
+   "ticker": "CTY",
+   "cik": 2143850,
+   "company": "CITY THERAPEUTICS, INC.",
+   "sic": 2834,
+   "kind": "big",
+   "quality": 20,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 15,
+    "conviction": 1,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 21.46,
+    "asof": "2026-10-19 20:00",
+    "source": "live"
+   },
+   "total": 3060000.0,
+   "insiders": 1,
+   "liquidity": 31496639.463615417,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001104659-26-116965",
+    "0001104659-26-116966"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-19-ECF",
+   "date": "2026-10-19",
+   "ticker": "ECF",
+   "cik": 793040,
+   "company": "ELLSWORTH GROWTH & INCOME FUND LTD",
+   "sic": null,
+   "kind": "big",
+   "quality": 12,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 12,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 11.45,
+    "asof": "2026-10-19 20:00",
+    "source": "live"
+   },
+   "total": 1493788.91,
+   "insiders": 1,
+   "liquidity": 639988.3202856238,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000334",
+    "0001510281-26-000341",
+    "0001510281-26-000345",
+    "0001510281-26-000349",
+    "0001510281-26-000357"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-19-SNES",
+   "date": "2026-10-19",
+   "ticker": "SNES",
+   "cik": 1680378,
+   "company": "SenesTech, Inc.",
+   "sic": 2870,
+   "kind": "big",
+   "quality": 27,
+   "parts": {
+    "breadth": 0,
+    "seniority": 8,
+    "size": 8,
+    "conviction": 11,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 0.7,
+    "asof": "2026-10-19 20:00",
+    "source": "live"
+   },
+   "total": 707345.57,
+   "insiders": 2,
+   "liquidity": 1952315.5987579713,
+   "scores": {
+    "piotroski": "4/9",
+    "altman": "Z -22.61",
+    "beneish": null
+   },
+   "accs": [
+    "0000902664-26-004215",
+    "0001628280-26-063849"
+   ],
+   "returns": {}
   }
  ]
 }
