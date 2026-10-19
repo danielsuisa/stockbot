@@ -187,6 +187,17 @@
    "gain": 0.1209,
    "vol_ratio": 0.1164,
    "si_pct": 0.3703
+  },
+  {
+   "date": "2026-10-19",
+   "session": "post",
+   "t": "VVOS",
+   "manual": false,
+   "price": 0.1747,
+   "ref": 0.1349,
+   "gain": 0.295,
+   "vol_ratio": 5.4192,
+   "si_pct": 0.2061
   }
  ]
 }
