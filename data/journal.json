@@ -4105,6 +4105,42 @@
     "0001460471-26-000009"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-19-APLD",
+   "date": "2026-10-19",
+   "ticker": "APLD",
+   "cik": 1144879,
+   "company": "Applied Digital Corp.",
+   "sic": 7374,
+   "kind": "big",
+   "quality": 45,
+   "parts": {
+    "breadth": 10,
+    "seniority": 14,
+    "size": 18,
+    "conviction": 3,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 18.05,
+    "asof": "2026-10-16 20:00",
+    "source": "live"
+   },
+   "total": 6664686.12,
+   "insiders": 2,
+   "liquidity": 577651356.9676139,
+   "scores": {
+    "piotroski": "6/9",
+    "altman": "Z 0.56",
+    "beneish": 0.66
+   },
+   "accs": [
+    "0001391935-26-000009",
+    "0001900445-26-000006"
+   ],
+   "returns": {}
   }
  ]
 }

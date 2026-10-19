@@ -1,7 +1,5 @@
 {
  "days": {
-  "20260917": "ok",
-  "20260918": "ok",
   "20260921": "ok",
   "20260922": "ok",
   "20260923": "ok",
@@ -24,2941 +22,6 @@
   "20261016": "ok"
  },
  "buys": [
-  {
-   "acc": "0000040417-26-000048",
-   "cik": 40417,
-   "ticker": "GAM",
-   "company": "GENERAL AMERICAN INVESTORS CO INC",
-   "insider": "Jin Samantha X.",
-   "role": "Treasurer/PAO/PFO",
-   "insider_cik": "1764659",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 3000.0,
-   "value": 71040.0,
-   "price": 23.68,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     1000.0,
-     23.66
-    ],
-    [
-     "2026-09-17",
-     2000.0,
-     23.69
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 3000.0,
-   "pct": 1.0,
-   "original": null
-  },
-  {
-   "acc": "0000706863-26-000085",
-   "cik": 706863,
-   "ticker": "UNB",
-   "company": "UNION BANKSHARES INC",
-   "insider": "Cote Steven P",
-   "role": "דירקטור",
-   "insider_cik": "2108967",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 418.0,
-   "value": 9917.05,
-   "price": 23.725,
-   "filed": "2026-10-15",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     418.0,
-     23.725
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 1212.0,
-   "pct": 0.3449,
-   "original": null
-  },
-  {
-   "acc": "0000937797-26-000030",
-   "cik": 1712184,
-   "ticker": "LILA",
-   "company": "Liberty Latin America Ltd.",
-   "insider": "Malone John C",
-   "role": "בעל 10%",
-   "insider_cik": "937797",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-16",
-   "last": "2026-09-17",
-   "shares": 37082.0,
-   "value": 757757.11,
-   "price": 20.4346,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-16",
-     36914.0,
-     20.4346
-    ],
-    [
-     "2026-09-17",
-     168.0,
-     20.4422
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 1388208.0,
-   "pct": 0.0267,
-   "original": null
-  },
-  {
-   "acc": "0001104659-26-108719",
-   "cik": 1625414,
-   "ticker": "BZUN",
-   "company": "Baozun Inc.",
-   "insider": "Qiu Wenbin",
-   "role": "דירקטור, Chief Executive Officer",
-   "insider_cik": "1975717",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-16",
-   "last": "2026-09-17",
-   "shares": 14400.0,
-   "value": 40166.0,
-   "price": 2.7893,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-16",
-     7300.0,
-     2.74
-    ],
-    [
-     "2026-09-17",
-     7100.0,
-     2.84
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 1652872.0,
-   "pct": 0.0087,
-   "original": null
-  },
-  {
-   "acc": "0001104659-26-114344",
-   "cik": 1895249,
-   "ticker": "CNTM",
-   "company": "ConnectM Technology Solutions, Inc.",
-   "insider": "Choudhury Mahesh",
-   "role": "Principal Financial Officer",
-   "insider_cik": "2028701",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-16",
-   "last": "2026-09-17",
-   "shares": 482.0,
-   "value": 2454.56,
-   "price": 5.0924,
-   "filed": "2026-10-07",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-16",
-     382.0,
-     5.08
-    ],
-    [
-     "2026-09-17",
-     100.0,
-     5.14
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 41497.0,
-   "pct": 0.0116,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-394355",
-   "cik": 1525769,
-   "ticker": "PLAY",
-   "company": "Dave & Buster's Entertainment, Inc.",
-   "insider": "Lipman Nathaniel",
-   "role": "דירקטור",
-   "insider_cik": "1413103",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 12000.0,
-   "value": 81300.0,
-   "price": 6.775,
-   "filed": "2026-09-17",
-   "form": "4/A",
-   "sig": [
-    [
-     "2026-09-17",
-     12000.0,
-     6.775
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 30715.0,
-   "pct": 0.3907,
-   "original": "2026-09-17",
-   "amended_by": "0001193125-26-394477"
-  },
-  {
-   "acc": "0001193125-26-396726",
-   "cik": 1889539,
-   "ticker": "CRBG",
-   "company": "Corebridge Financial, Inc.",
-   "insider": "Nippon Life Insurance Co",
-   "role": "בעל 10%",
-   "insider_cik": "905591",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 174760.0,
-   "value": 6150730.63,
-   "price": 35.1953,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     174760.0,
-     35.1953
-    ]
-   ],
-   "indirect": false,
-   "kind": "plan",
-   "plan_value": 6150730.63,
-   "post": 123475852.0,
-   "pct": 0.0014,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-397056",
-   "cik": 1956439,
-   "ticker": "ENHA",
-   "company": "Enhanced Group Inc.",
-   "insider": "Apeiron Investment Group Ltd.",
-   "role": "דירקטור",
-   "insider_cik": "1845711",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 6080047.0,
-   "value": 6992054.05,
-   "price": 1.15,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     6080047.0,
-     1.15
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 43343818.0,
-   "pct": 0.1403,
-   "original": null
-  },
-  {
-   "acc": "0001214659-26-011835",
-   "cik": 102109,
-   "ticker": "UUU",
-   "company": "UNIVERSAL SAFETY PRODUCTS, INC.",
-   "insider": "Ault Milton C Iii",
-   "role": "דירקטור",
-   "insider_cik": "1212502",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 200.0,
-   "value": 972.0,
-   "price": 4.86,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     200.0,
-     4.86
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 10200.0,
-   "pct": 0.0196,
-   "original": null
-  },
-  {
-   "acc": "0001214659-26-011836",
-   "cik": 896493,
-   "ticker": "GPUS",
-   "company": "Hyperscale Data, Inc.",
-   "insider": "Ault Milton C Iii",
-   "role": "דירקטור, Executive Chairman",
-   "insider_cik": "1212502",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 37500.0,
-   "value": 6842.5,
-   "price": 0.1825,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     12500.0,
-     0.177
-    ],
-    [
-     "2026-09-17",
-     25000.0,
-     0.1852
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 3760192.0,
-   "pct": 0.01,
-   "original": null
-  },
-  {
-   "acc": "0001322325-26-000004",
-   "cik": 1041368,
-   "ticker": "RVSB",
-   "company": "RIVERVIEW BANCORP INC",
-   "insider": "Sherman Nicole",
-   "role": "דירקטור, President/CEO",
-   "insider_cik": "1322325",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 1765.0,
-   "value": 10042.85,
-   "price": 5.69,
-   "filed": "2026-09-17",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     1765.0,
-     5.69
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 166482.0,
-   "pct": 0.0106,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-030719",
-   "cik": 1811074,
-   "ticker": "TPL",
-   "company": "Texas Pacific Land Corp",
-   "insider": "Horizon Kinetics Asset Management Llc",
-   "role": "בעל 10%",
-   "insider_cik": "1056823",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 1.0,
-   "value": 349.35,
-   "price": 349.35,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     1.0,
-     349.35
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 3390849.0,
-   "pct": 0.0,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-030720",
-   "cik": 919567,
-   "ticker": "RCG",
-   "company": "RENN Fund, Inc.",
-   "insider": "Horizon Kinetics Asset Management Llc",
-   "role": "בעל 10%",
-   "insider_cik": "1056823",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 756.0,
-   "value": 2298.24,
-   "price": 3.04,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     756.0,
-     3.04
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 969708.0,
-   "pct": 0.0008,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-030745",
-   "cik": 1408534,
-   "ticker": "FGBI",
-   "company": "First Guaranty Bancshares, Inc.",
-   "insider": "McAnally Bruce",
-   "role": "דירקטור",
-   "insider_cik": "2050381",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-15",
-   "last": "2026-09-17",
-   "shares": 1380.0,
-   "value": 24408.3,
-   "price": 17.6872,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-15",
-     125.0,
-     17.72
-    ],
-    [
-     "2026-09-15",
-     165.0,
-     17.72
-    ],
-    [
-     "2026-09-15",
-     570.0,
-     17.75
-    ],
-    [
-     "2026-09-16",
-     20.0,
-     17.6
-    ],
-    [
-     "2026-09-17",
-     500.0,
-     17.6
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 3130.0,
-   "pct": 0.4409,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-030775",
-   "cik": 1006830,
-   "ticker": "CBKM",
-   "company": "CONSUMERS BANCORP INC /OH/",
-   "insider": "Lober Ralph J II",
-   "role": "דירקטור, CEO & President",
-   "insider_cik": "1401124",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 70.0,
-   "value": 2281.3,
-   "price": 32.59,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     70.0,
-     32.59
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 80153.739,
-   "pct": 0.0009,
-   "original": null
-  },
-  {
-   "acc": "0001456817-26-000015",
-   "cik": 1561921,
-   "ticker": "TELA",
-   "company": "TELA Bio, Inc.",
-   "insider": "Capper Joseph H",
-   "role": "דירקטור",
-   "insider_cik": "1456817",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-16",
-   "last": "2026-09-17",
-   "shares": 75000.0,
-   "value": 88795.0,
-   "price": 1.1839,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-16",
-     50000.0,
-     1.1653
-    ],
-    [
-     "2026-09-17",
-     25000.0,
-     1.2212
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 179827.0,
-   "pct": 0.4171,
-   "original": null
-  },
-  {
-   "acc": "0001493152-26-043246",
-   "cik": 946644,
-   "ticker": "AIM",
-   "company": "AIM ImmunoTech Inc.",
-   "insider": "Equels Thomas K",
-   "role": "דירקטור, CEO & President",
-   "insider_cik": "1450324",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 24000.0,
-   "value": 4992.0,
-   "price": 0.208,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     24000.0,
-     0.208
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 126822.0,
-   "pct": 0.1892,
-   "original": null
-  },
-  {
-   "acc": "0001493152-26-043332",
-   "cik": 1081745,
-   "ticker": "INLX",
-   "company": "INTELLINETICS, INC.",
-   "insider": "Seid Paul",
-   "role": "דירקטור",
-   "insider_cik": "1573636",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-16",
-   "last": "2026-09-17",
-   "shares": 716.0,
-   "value": 3651.6,
-   "price": 5.1,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-16",
-     689.0,
-     5.1
-    ],
-    [
-     "2026-09-17",
-     27.0,
-     5.1
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 191340.0,
-   "pct": 0.0037,
-   "original": null
-  },
-  {
-   "acc": "0001493152-26-043437",
-   "cik": 14177,
-   "ticker": "BRID",
-   "company": "BRIDGFORD FOODS CORP",
-   "insider": "Bridgford Allan Jr.",
-   "role": "Consultant",
-   "insider_cik": "1534107",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 1000.0,
-   "value": 5800.0,
-   "price": 5.8,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     1000.0,
-     5.8
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 50000.0,
-   "pct": 0.02,
-   "original": null
-  },
-  {
-   "acc": "0001493152-26-043617",
-   "cik": 1770501,
-   "ticker": "VENU",
-   "company": "Venu Holding Corp",
-   "insider": "Cominsky Stephen Joseph",
-   "role": "דירקטור",
-   "insider_cik": "1561819",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 3234.0,
-   "value": 5497.8,
-   "price": 1.7,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     3234.0,
-     1.7
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 86116.0,
-   "pct": 0.0376,
-   "original": null
-  },
-  {
-   "acc": "0001493152-26-043791",
-   "cik": 788611,
-   "ticker": "NTRP",
-   "company": "NextTrip, Inc.",
-   "insider": "Kaplan Andrew Jay",
-   "role": "דירקטור",
-   "insider_cik": "2078356",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 52910.0,
-   "value": 99999.9,
-   "price": 1.89,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     52910.0,
-     1.89
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 104492.0,
-   "pct": 0.5064,
-   "original": null
-  },
-  {
-   "acc": "0001534574-26-000016",
-   "cik": 92230,
-   "ticker": "TFC",
-   "company": "TRUIST FINANCIAL CORP",
-   "insider": "Lyons Michael P.",
-   "role": "דירקטור, President & CEO",
-   "insider_cik": "1534574",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 21000.0,
-   "value": 1015576.8,
-   "price": 48.3608,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     21000.0,
-     48.3608
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 21000.0,
-   "pct": 1.0,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-062623",
-   "cik": 1715497,
-   "ticker": "BORR",
-   "company": "Borr Drilling Ltd",
-   "insider": "Troim Tor Olav",
-   "role": "דירקטור",
-   "insider_cik": "1709630",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 150000.0,
-   "value": 656925.0,
-   "price": 4.3795,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     150000.0,
-     4.3795
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 30535941.0,
-   "pct": 0.0049,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-062756",
-   "cik": 1822523,
-   "ticker": "AFCG",
-   "company": "Advanced Flower Capital Inc.",
-   "insider": "Tannenbaum Leonard M",
-   "role": "דירקטור",
-   "insider_cik": "1200461",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 25000.0,
-   "value": 87500.0,
-   "price": 3.5,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     25000.0,
-     3.5
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 6952446.0,
-   "pct": 0.0036,
-   "original": null
-  },
-  {
-   "acc": "0001903596-26-000357",
-   "cik": 1163389,
-   "ticker": "NWPP",
-   "company": "NEW PEOPLES BANKSHARES INC",
-   "insider": "Cox John D",
-   "role": "דירקטור",
-   "insider_cik": "1290919",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 12000.0,
-   "value": 58800.0,
-   "price": 4.9,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     12000.0,
-     4.9
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 788281.0,
-   "pct": 0.0152,
-   "original": null
-  },
-  {
-   "acc": "0001903596-26-000363",
-   "cik": 1163389,
-   "ticker": "NWPP",
-   "company": "NEW PEOPLES BANKSHARES INC",
-   "insider": "White Blaine Scott",
-   "role": "דירקטור",
-   "insider_cik": "1291662",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-15",
-   "last": "2026-09-17",
-   "shares": 5500.0,
-   "value": 26680.0,
-   "price": 4.8509,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-15",
-     5000.0,
-     4.85
-    ],
-    [
-     "2026-09-17",
-     500.0,
-     4.86
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 267166.0,
-   "pct": 0.0206,
-   "original": null
-  },
-  {
-   "acc": "0001976408-26-000862",
-   "cik": 1901279,
-   "ticker": "NYAX",
-   "company": "Nayax Ltd.",
-   "insider": "Ben-Avi David",
-   "role": "דירקטור, CTO and Co Founder",
-   "insider_cik": "2000237",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 1014.0,
-   "value": 43510.54,
-   "price": 42.9098,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     1014.0,
-     42.9098
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 6590148.0,
-   "pct": 0.0002,
-   "original": null
-  },
-  {
-   "acc": "0001982651-26-000004",
-   "cik": 1617242,
-   "ticker": "KRNY",
-   "company": "Kearny Financial Corp.",
-   "insider": "Wong-Zaza Melvina",
-   "role": "דירקטור",
-   "insider_cik": "1982651",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 1560.0,
-   "value": 15030.6,
-   "price": 9.635,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     1560.0,
-     9.635
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 35470.0,
-   "pct": 0.044,
-   "original": null
-  },
-  {
-   "acc": "0001994334-26-000015",
-   "cik": 730349,
-   "ticker": "TOFB",
-   "company": "TOFUTTI BRANDS INC",
-   "insider": "A-6684 Ltd.",
-   "role": "בעל 10%",
-   "insider_cik": "1994334",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 15000.0,
-   "value": 5250.0,
-   "price": 0.35,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     15000.0,
-     0.35
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 762100.0,
-   "pct": 0.0197,
-   "original": null
-  },
-  {
-   "acc": "0002050978-26-000008",
-   "cik": 1041368,
-   "ticker": "RVSB",
-   "company": "RIVERVIEW BANCORP INC",
-   "insider": "Lightheart Charmaine",
-   "role": "EVP/CRDEO",
-   "insider_cik": "2050978",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 100.0,
-   "value": 568.0,
-   "price": 5.68,
-   "filed": "2026-09-17",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     100.0,
-     5.68
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 8866.0,
-   "pct": 0.0113,
-   "original": null
-  },
-  {
-   "acc": "0002146263-26-000003",
-   "cik": 1419275,
-   "ticker": "RTB",
-   "company": "RTB Digital, Inc.",
-   "insider": "Dorsett Jason Christopher",
-   "role": "בעל 10%",
-   "insider_cik": "2146263",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-17",
-   "last": "2026-09-17",
-   "shares": 19000.0,
-   "value": 196840.0,
-   "price": 10.36,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     19000.0,
-     10.36
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 4193028.0,
-   "pct": 0.0045,
-   "original": null
-  },
-  {
-   "acc": "0000040417-26-000049",
-   "cik": 40417,
-   "ticker": "GAM",
-   "company": "GENERAL AMERICAN INVESTORS CO INC",
-   "insider": "Priest Jeffrey W",
-   "role": "President & CEO",
-   "insider_cik": "1317435",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 4000.0,
-   "value": 93840.0,
-   "price": 23.46,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     4000.0,
-     23.46
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 44691.0,
-   "pct": 0.0895,
-   "original": null
-  },
-  {
-   "acc": "0000851520-26-000101",
-   "cik": 851520,
-   "ticker": "EXPO",
-   "company": "EXPONENT INC",
-   "insider": "Souri Shukri Jeries",
-   "role": "Group Vice President",
-   "insider_cik": "2154478",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 184.0,
-   "value": 12593.92,
-   "price": 68.4452,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     184.0,
-     68.4452
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 40873.0,
-   "pct": 0.0045,
-   "original": null
-  },
-  {
-   "acc": "0000905148-26-004241",
-   "cik": 1031203,
-   "ticker": "GPI",
-   "company": "GROUP 1 AUTOMOTIVE INC",
-   "insider": "Conifer Management, L.L.C.",
-   "role": "בעל 10%",
-   "insider_cik": "1773994",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-17",
-   "last": "2026-09-18",
-   "shares": 65650.0,
-   "value": 16857714.55,
-   "price": 256.7816,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     1200.0,
-     260.8176
-    ],
-    [
-     "2026-09-17",
-     1640.0,
-     266.2282
-    ],
-    [
-     "2026-09-17",
-     2380.0,
-     269.0553
-    ],
-    [
-     "2026-09-17",
-     3181.0,
-     264.1457
-    ],
-    [
-     "2026-09-17",
-     326.0,
-     262.7798
-    ],
-    [
-     "2026-09-17",
-     3920.0,
-     269.8858
-    ],
-    [
-     "2026-09-17",
-     5705.0,
-     261.8366
-    ],
-    [
-     "2026-09-17",
-     820.0,
-     265.288
-    ],
-    [
-     "2026-09-17",
-     8828.0,
-     267.8537
-    ],
-    [
-     "2026-09-18",
-     10821.0,
-     249.0756
-    ],
-    [
-     "2026-09-18",
-     120.0,
-     251.9833
-    ],
-    [
-     "2026-09-18",
-     12079.0,
-     250.072
-    ],
-    [
-     "2026-09-18",
-     1960.0,
-     253.2
-    ],
-    [
-     "2026-09-18",
-     513.0,
-     247.1733
-    ],
-    [
-     "2026-09-18",
-     5395.0,
-     248.3581
-    ],
-    [
-     "2026-09-18",
-     6762.0,
-     251.2432
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 1512290.0,
-   "pct": 0.0434,
-   "original": null
-  },
-  {
-   "acc": "0000912282-26-001299",
-   "cik": 1218683,
-   "ticker": "BGDE",
-   "company": "Big Digital Energy, Inc.",
-   "insider": "Kilgore Joshua Allen",
-   "role": "SEE REMARKS",
-   "insider_cik": "2105932",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 494.0,
-   "value": 2959.06,
-   "price": 5.99,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     494.0,
-     5.99
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 28055.0,
-   "pct": 0.0176,
-   "original": null
-  },
-  {
-   "acc": "0001009165-26-000009",
-   "cik": 1378325,
-   "ticker": "CV",
-   "company": "CapsoVision, Inc",
-   "insider": "Harari Eliyahou Et Al",
-   "role": "בעל 10%",
-   "insider_cik": "1009165",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 1757469.0,
-   "value": 9999998.61,
-   "price": 5.69,
-   "filed": "2026-09-23",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     878734.0,
-     5.69
-    ],
-    [
-     "2026-09-18",
-     878735.0,
-     5.69
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 878734.0,
-   "pct": 1.0,
-   "original": null
-  },
-  {
-   "acc": "0001045463-26-000016",
-   "cik": 1559053,
-   "ticker": "PRTA",
-   "company": "PROTHENA CORP PUBLIC LTD CO",
-   "insider": "Scully William P",
-   "role": "בעל 10%",
-   "insider_cik": "1045463",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 100000.0,
-   "value": 843460.0,
-   "price": 8.4346,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     100000.0,
-     8.4346
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 927000.0,
-   "pct": 0.1079,
-   "original": null
-  },
-  {
-   "acc": "0001079973-26-001266",
-   "cik": 1396536,
-   "ticker": "DUOT",
-   "company": "DUOS TECHNOLOGIES GROUP, INC.",
-   "insider": "Nixon James Craig",
-   "role": "דירקטור",
-   "insider_cik": "1879177",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 5764.2907,
-   "value": 49287.2,
-   "price": 8.5504,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     2857.0,
-     8.5
-    ],
-    [
-     "2026-09-18",
-     2907.2907,
-     8.6
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 84523.2907,
-   "pct": 0.0682,
-   "original": null
-  },
-  {
-   "acc": "0001091482-26-000015",
-   "cik": 1774675,
-   "ticker": "SKIL",
-   "company": "Skillsoft Corp.",
-   "insider": "Hovsepian Ronald W",
-   "role": "דירקטור, CEO & Executive Chair",
-   "insider_cik": "1091482",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-17",
-   "last": "2026-09-18",
-   "shares": 15468.0,
-   "value": 99865.66,
-   "price": 6.4563,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     2691.0,
-     6.1651
-    ],
-    [
-     "2026-09-18",
-     12777.0,
-     6.5176
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 362746.0,
-   "pct": 0.0426,
-   "original": null
-  },
-  {
-   "acc": "0001108524-26-000212",
-   "cik": 1108524,
-   "ticker": "CRM",
-   "company": "Salesforce, Inc.",
-   "insider": "Kirk David Blair",
-   "role": "דירקטור",
-   "insider_cik": "2077892",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 4176.0,
-   "value": 999450.85,
-   "price": 239.3321,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     4176.0,
-     239.3321
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 18748.0,
-   "pct": 0.2227,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-396060",
-   "cik": 1500881,
-   "ticker": "EU",
-   "company": "enCore Energy Corp.",
-   "insider": "Sheriff William M",
-   "role": "דירקטור, Executive Chairman",
-   "insider_cik": "1229379",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 125000.0,
-   "value": 101250.0,
-   "price": 0.81,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     100000.0,
-     0.81
-    ],
-    [
-     "2026-09-18",
-     25000.0,
-     0.81
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 1737169.0,
-   "pct": 0.072,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-397254",
-   "cik": 1638290,
-   "ticker": "MCFT",
-   "company": "MasterCraft Boat Holdings, Inc.",
-   "insider": "Leemputte Peter G",
-   "role": "דירקטור",
-   "insider_cik": "1078565",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 1265.0,
-   "value": 24958.45,
-   "price": 19.73,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     1265.0,
-     19.73
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 38132.0,
-   "pct": 0.0332,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-397672",
-   "cik": 1228454,
-   "ticker": "BCBP",
-   "company": "BCB BANCORP INC",
-   "insider": "Chaudhry Jawad",
-   "role": "CHIEF FINANCIAL OFFICER",
-   "insider_cik": "1953663",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 10000.0,
-   "value": 77500.0,
-   "price": 7.75,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     10000.0,
-     7.75
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 62500.0,
-   "pct": 0.16,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-397677",
-   "cik": 1228454,
-   "ticker": "BCBP",
-   "company": "BCB BANCORP INC",
-   "insider": "OBrien Thomas M",
-   "role": "דירקטור, CHIEF EXECUTIVE OFFICER",
-   "insider_cik": "1381048",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 160000.0,
-   "value": 1240000.0,
-   "price": 7.75,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     160000.0,
-     7.75
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 869220.0,
-   "pct": 0.1841,
-   "original": null
-  },
-  {
-   "acc": "0001193125-26-397991",
-   "cik": 1889539,
-   "ticker": "CRBG",
-   "company": "Corebridge Financial, Inc.",
-   "insider": "Nippon Life Insurance Co",
-   "role": "בעל 10%",
-   "insider_cik": "905591",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 131333.0,
-   "value": 4581512.31,
-   "price": 34.8847,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     131333.0,
-     34.8847
-    ]
-   ],
-   "indirect": false,
-   "kind": "plan",
-   "plan_value": 4581512.31,
-   "post": 123607185.0,
-   "pct": 0.0011,
-   "original": null
-  },
-  {
-   "acc": "0001213900-26-101846",
-   "cik": 1892704,
-   "ticker": "FBDT",
-   "company": "First Breach, Inc.",
-   "insider": "Leith Charles Kenneth",
-   "role": "Chief Revenue Officer",
-   "insider_cik": "2153915",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 50000.0,
-   "value": 45330.0,
-   "price": 0.9066,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     50000.0,
-     0.9066
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 218506.0,
-   "pct": 0.2288,
-   "original": null
-  },
-  {
-   "acc": "0001213900-26-101864",
-   "cik": 1940177,
-   "ticker": "PODC",
-   "company": "PodcastOne, Inc.",
-   "insider": "Merriman D Jonathan",
-   "role": "דירקטור",
-   "insider_cik": "1022711",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 6700.0,
-   "value": 15812.0,
-   "price": 2.36,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     6700.0,
-     2.36
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 368132.0,
-   "pct": 0.0182,
-   "original": null
-  },
-  {
-   "acc": "0001214659-26-011871",
-   "cik": 896493,
-   "ticker": "GPUS",
-   "company": "Hyperscale Data, Inc.",
-   "insider": "Ault Milton C Iii",
-   "role": "דירקטור, Executive Chairman",
-   "insider_cik": "1212502",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 20000.0,
-   "value": 3642.0,
-   "price": 0.1821,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     20000.0,
-     0.1821
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 866500.0,
-   "pct": 0.0231,
-   "original": null
-  },
-  {
-   "acc": "0001214659-26-011872",
-   "cik": 102109,
-   "ticker": "UUU",
-   "company": "UNIVERSAL SAFETY PRODUCTS, INC.",
-   "insider": "Ault Milton C Iii",
-   "role": "דירקטור",
-   "insider_cik": "1212502",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 100.0,
-   "value": 501.0,
-   "price": 5.01,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     100.0,
-     5.01
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 10300.0,
-   "pct": 0.0097,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004615",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Pedras Carlos Henrique Villela",
-   "role": "Executive Officer",
-   "insider_cik": "2125970",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 55850.0,
-   "value": 1004183.0,
-   "price": 17.98,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     55850.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 163646.0,
-   "pct": 0.3413,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004617",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "de Souza Cintia Scovine Barcelos",
-   "role": "Executive Officer",
-   "insider_cik": "2126545",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 60093.0,
-   "value": 1080472.14,
-   "price": 17.98,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     60093.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 275197.0,
-   "pct": 0.2184,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004619",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Panico Alexandre",
-   "role": "Executive Officer",
-   "insider_cik": "2125974",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 43620.0,
-   "value": 784287.6,
-   "price": 17.98,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     43620.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 184984.0,
-   "pct": 0.2358,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004621",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "de Oliveira Andre Luis Duarte",
-   "role": "Executive Officer",
-   "insider_cik": "2125973",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 309111.0,
-   "value": 5557815.78,
-   "price": 17.98,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     309111.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 553173.0,
-   "pct": 0.5588,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004625",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "da Cunha Paulo Roberto Simoes",
-   "role": "דירקטור",
-   "insider_cik": "2126534",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 46874.0,
-   "value": 842794.52,
-   "price": 17.98,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     46874.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 264605.0,
-   "pct": 0.1771,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004633",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Pavarina Denise Pauli",
-   "role": "דירקטור",
-   "insider_cik": "2125969",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 46874.0,
-   "value": 842794.52,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     46874.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 412864.0,
-   "pct": 0.1135,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004635",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Alvarez Denise Aguiar",
-   "role": "דירקטור",
-   "insider_cik": "2126543",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 130596.0,
-   "value": 2348116.08,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     130596.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 6002223.0,
-   "pct": 0.0218,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004638",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Alvarez Rubens Aguiar",
-   "role": "דירקטור",
-   "insider_cik": "2126531",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 46874.0,
-   "value": 842794.52,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     46874.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 264605.0,
-   "pct": 0.1771,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004642",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Marcilio Juliano Ribeiro",
-   "role": "Executive Officer",
-   "insider_cik": "2126140",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 60779.0,
-   "value": 1092806.42,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     60779.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 329067.0,
-   "pct": 0.1847,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004644",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Nunes Regina Helena Jorge",
-   "role": "דירקטור",
-   "insider_cik": "2135664",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 31266.0,
-   "value": 562162.68,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     31266.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 31266.0,
-   "pct": 1.0,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004646",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Ramalho Miranda Jose Augusto",
-   "role": "Executive Officer",
-   "insider_cik": "2127966",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 63719.0,
-   "value": 1145667.62,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     63719.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 220933.0,
-   "pct": 0.2884,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004648",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Freiberger Fernando",
-   "role": "Executive Officer",
-   "insider_cik": "2125967",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 49550.0,
-   "value": 890909.0,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     49550.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 238935.0,
-   "pct": 0.2074,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004650",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Bueno Julio Cesar",
-   "role": "Executive Officer",
-   "insider_cik": "2122582",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 56355.0,
-   "value": 1013262.9,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     56355.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 336549.0,
-   "pct": 0.1674,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004652",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Tescarolo Marcos Valerio",
-   "role": "Executive Officer",
-   "insider_cik": "2125962",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 57012.0,
-   "value": 1025075.76,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     57012.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 296836.0,
-   "pct": 0.1921,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004654",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Fernandes Oswaldo Tadeu",
-   "role": "Executive Officer",
-   "insider_cik": "2126544",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 79782.0,
-   "value": 1434480.36,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     79782.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 348575.0,
-   "pct": 0.2289,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004656",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Mantarro Renata Geiser",
-   "role": "Executive Officer",
-   "insider_cik": "2126532",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 54760.0,
-   "value": 984584.8,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     54760.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 300088.0,
-   "pct": 0.1825,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004658",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Paris Roberto de Jesus",
-   "role": "Executive Officer",
-   "insider_cik": "2126530",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 96702.0,
-   "value": 1738701.96,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     96702.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 367829.0,
-   "pct": 0.2629,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004660",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Machado Silvana Rosa",
-   "role": "Executive Officer",
-   "insider_cik": "2126967",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 62048.0,
-   "value": 1115623.04,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     62048.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 235449.0,
-   "pct": 0.2635,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004662",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "de Oliveira Tulio Xavier",
-   "role": "Executive Officer",
-   "insider_cik": "2126527",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 55444.0,
-   "value": 996883.12,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     55444.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 856009.0,
-   "pct": 0.0648,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004664",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Favarao Vinicius Urias",
-   "role": "Executive Officer",
-   "insider_cik": "2122593",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 60492.0,
-   "value": 1087646.16,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     60492.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 341683.0,
-   "pct": 0.177,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004666",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "Caffarelli Paulo Rogerio",
-   "role": "דירקטור",
-   "insider_cik": "2116145",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 31266.0,
-   "value": 562162.68,
-   "price": 17.98,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     31266.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 31266.0,
-   "pct": 1.0,
-   "original": null
-  },
-  {
-   "acc": "0001292814-26-004938",
-   "cik": 1160330,
-   "ticker": "BBD",
-   "company": "BANK BRADESCO",
-   "insider": "de Oliveira Andre Luis Duarte",
-   "role": "Executive Officer",
-   "insider_cik": "2125973",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 63861.0,
-   "value": 1148220.78,
-   "price": 17.98,
-   "filed": "2026-10-15",
-   "form": "4/A",
-   "sig": [
-    [
-     "2026-09-18",
-     63861.0,
-     17.98
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 307923.0,
-   "pct": 0.2074,
-   "original": "2026-09-18"
-  },
-  {
-   "acc": "0001294280-26-000006",
-   "cik": 723603,
-   "ticker": "CULP",
-   "company": "CULP INC",
-   "insider": "Culp Robert George Iv",
-   "role": "דירקטור, President & CEO",
-   "insider_cik": "1294280",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 4874.0,
-   "value": 18423.72,
-   "price": 3.78,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     4874.0,
-     3.78
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 133959.0,
-   "pct": 0.0364,
-   "original": null
-  },
-  {
-   "acc": "0001379664-26-000002",
-   "cik": 1366868,
-   "ticker": "GSAT",
-   "company": "Globalstar, Inc.",
-   "insider": "Monroe James III",
-   "role": "דירקטור",
-   "insider_cik": "1379664",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 361600.0,
-   "value": 29839232.0,
-   "price": 82.52,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     361600.0,
-     82.52
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 408253.0,
-   "pct": 0.8857,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-030789",
-   "cik": 1811074,
-   "ticker": "TPL",
-   "company": "Texas Pacific Land Corp",
-   "insider": "Horizon Kinetics Asset Management Llc",
-   "role": "בעל 10%",
-   "insider_cik": "1056823",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 1.0,
-   "value": 351.34,
-   "price": 351.34,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     1.0,
-     351.34
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 3390850.0,
-   "pct": 0.0,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-030794",
-   "cik": 919567,
-   "ticker": "RCG",
-   "company": "RENN Fund, Inc.",
-   "insider": "Horizon Kinetics Asset Management Llc",
-   "role": "בעל 10%",
-   "insider_cik": "1056823",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 756.0,
-   "value": 2298.24,
-   "price": 3.04,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     756.0,
-     3.04
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 970464.0,
-   "pct": 0.0008,
-   "original": null
-  },
-  {
-   "acc": "0001437749-26-030860",
-   "cik": 88000,
-   "ticker": "HKHC",
-   "company": "Horizon Kinetics Holding Corp",
-   "insider": "Nagelberg Allison",
-   "role": "דירקטור",
-   "insider_cik": "1408737",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 190.0,
-   "value": 4991.3,
-   "price": 26.27,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     190.0,
-     26.27
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 590.0,
-   "pct": 0.322,
-   "original": null
-  },
-  {
-   "acc": "0001493152-26-043773",
-   "cik": 14177,
-   "ticker": "BRID",
-   "company": "BRIDGFORD FOODS CORP",
-   "insider": "Bridgford Richard Eugene",
-   "role": "Vice President",
-   "insider_cik": "1638258",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 350.0,
-   "value": 2054.5,
-   "price": 5.87,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     350.0,
-     5.87
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 3400.0,
-   "pct": 0.1029,
-   "original": null
-  },
-  {
-   "acc": "0001510281-26-000307",
-   "cik": 858706,
-   "ticker": "GF",
-   "company": "NEW GERMANY FUND INC",
-   "insider": "Saba Capital Management, L.P.",
-   "role": "בעל 10%",
-   "insider_cik": "1510281",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-17",
-   "last": "2026-09-18",
-   "shares": 15443.0,
-   "value": 167445.5,
-   "price": 10.8428,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     1258.0,
-     11.1
-    ],
-    [
-     "2026-09-18",
-     14185.0,
-     10.82
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 3707067.0,
-   "pct": 0.0042,
-   "original": null
-  },
-  {
-   "acc": "0001573298-26-000026",
-   "cik": 1556739,
-   "ticker": "THRY",
-   "company": "Thryv Holdings, Inc.",
-   "insider": "Walsh Joe",
-   "role": "דירקטור, Chairman and CEO",
-   "insider_cik": "1573298",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 25000.0,
-   "value": 45000.0,
-   "price": 1.8,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     25000.0,
-     1.8
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 788099.0,
-   "pct": 0.0317,
-   "original": null
-  },
-  {
-   "acc": "0001594983-26-000015",
-   "cik": 1580345,
-   "ticker": "TPVG",
-   "company": "TriplePoint Venture Growth BDC Corp.",
-   "insider": "Labe James",
-   "role": "דירקטור, Chief Executive Officer",
-   "insider_cik": "1594983",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 313865.22,
-   "value": 1477081.11,
-   "price": 4.7061,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     313865.22,
-     4.7061
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 2312354.22,
-   "pct": 0.1357,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-062758",
-   "cik": 785557,
-   "ticker": "DLHC",
-   "company": "DLH Holdings Corp.",
-   "insider": "Mink Brook Asset Management LLC",
-   "role": "בעל 10%",
-   "insider_cik": "2052205",
-   "od": false,
-   "weight": 0.0,
-   "first": "2026-09-17",
-   "last": "2026-09-18",
-   "shares": 520.0,
-   "value": 2047.58,
-   "price": 3.9376,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-17",
-     204.0,
-     3.956
-    ],
-    [
-     "2026-09-18",
-     316.0,
-     3.9258
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 2186989.0,
-   "pct": 0.0002,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-062804",
-   "cik": 1715497,
-   "ticker": "BORR",
-   "company": "Borr Drilling Ltd",
-   "insider": "Morand De Oliveira Bruno",
-   "role": "Chief Executive Officer",
-   "insider_cik": "2117088",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 45500.0,
-   "value": 200200.0,
-   "price": 4.4,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     45500.0,
-     4.4
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 1015328.0,
-   "pct": 0.0448,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-063027",
-   "cik": 1909747,
-   "ticker": "JUSH",
-   "company": "Jushi Holdings Inc.",
-   "insider": "Cacioppo James",
-   "role": "דירקטור, Chief Executive Officer",
-   "insider_cik": "1455939",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 20.0,
-   "value": 10.2,
-   "price": 0.51,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     20.0,
-     0.51
-    ]
-   ],
-   "indirect": true,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 4723168.0,
-   "pct": 0.0,
-   "original": null
-  },
-  {
-   "acc": "0001628280-26-063099",
-   "cik": 1822523,
-   "ticker": "AFCG",
-   "company": "Advanced Flower Capital Inc.",
-   "insider": "Tannenbaum Leonard M",
-   "role": "דירקטור",
-   "insider_cik": "1200461",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 10000.0,
-   "value": 34900.0,
-   "price": 3.49,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     10000.0,
-     3.49
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 6962446.0,
-   "pct": 0.0014,
-   "original": null
-  },
-  {
-   "acc": "0001662991-26-000158",
-   "cik": 1662991,
-   "ticker": "SEZL",
-   "company": "Sezzle Inc.",
-   "insider": "Hunt Bryan Cecil",
-   "role": "דירקטור",
-   "insider_cik": "2136615",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 250.0,
-   "value": 28965.0,
-   "price": 115.86,
-   "filed": "2026-09-22",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     250.0,
-     115.86
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 3985.0,
-   "pct": 0.0627,
-   "original": null
-  },
-  {
-   "acc": "0001683168-26-007242",
-   "cik": 1953988,
-   "ticker": "HLEO",
-   "company": "Helio Corp /FL/",
-   "insider": "Knauf Mark Harry",
-   "role": "Chief Financial Officer",
-   "insider_cik": "2107652",
-   "od": true,
-   "weight": 1.5,
-   "first": "2026-09-16",
-   "last": "2026-09-18",
-   "shares": 16246.0,
-   "value": 24134.7,
-   "price": 1.4856,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-16",
-     5166.0,
-     1.55
-    ],
-    [
-     "2026-09-17",
-     10700.0,
-     1.46
-    ],
-    [
-     "2026-09-18",
-     380.0,
-     1.33
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 380.0,
-   "pct": 1.0,
-   "original": null
-  },
-  {
-   "acc": "0001700575-26-000005",
-   "cik": 1318008,
-   "ticker": "ZUMZ",
-   "company": "Zumiez Inc",
-   "insider": "Ellis Adam Christopher",
-   "role": "President International",
-   "insider_cik": "1700575",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 10000.0,
-   "value": 134000.0,
-   "price": 13.4,
-   "filed": "2026-09-28",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     10000.0,
-     13.4
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 83664.0,
-   "pct": 0.1195,
-   "original": null
-  },
-  {
-   "acc": "0001712189-26-000061",
-   "cik": 1712189,
-   "ticker": "TH",
-   "company": "Target Hospitality Corp.",
-   "insider": "Schrenk Troy C.",
-   "role": "Chief Commercial Officer",
-   "insider_cik": "1763047",
-   "od": true,
-   "weight": 1.0,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 5907.0,
-   "value": 124992.12,
-   "price": 21.16,
-   "filed": "2026-09-18",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     5907.0,
-     21.16
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 216995.0,
-   "pct": 0.0272,
-   "original": null
-  },
-  {
-   "acc": "0001981599-26-000127",
-   "cik": 1981599,
-   "ticker": "CTRI",
-   "company": "Centuri Holdings, Inc.",
-   "insider": "DeMaria Dustin",
-   "role": "דירקטור",
-   "insider_cik": "2016650",
-   "od": true,
-   "weight": 0.7,
-   "first": "2026-09-18",
-   "last": "2026-09-18",
-   "shares": 5200.0,
-   "value": 100204.0,
-   "price": 19.27,
-   "filed": "2026-09-21",
-   "form": "4",
-   "sig": [
-    [
-     "2026-09-18",
-     5200.0,
-     19.27
-    ]
-   ],
-   "indirect": false,
-   "kind": "open",
-   "plan_value": 0,
-   "post": 12936.0,
-   "pct": 0.402,
-   "original": null
-  },
   {
    "acc": "0000108985-26-000083",
    "cik": 108985,
@@ -21097,6 +18160,37 @@
    "original": null
   },
   {
+   "acc": "0001493152-26-047486",
+   "cik": 1053369,
+   "ticker": "ELTP",
+   "company": "ELITE PHARMACEUTICALS INC /NV/",
+   "insider": "Dash Barry H",
+   "role": "דירקטור",
+   "insider_cik": "1324222",
+   "od": true,
+   "weight": 0.7,
+   "first": "2026-10-09",
+   "last": "2026-10-09",
+   "shares": 100000.0,
+   "value": 25980.0,
+   "price": 0.2598,
+   "filed": "2026-10-19",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-09",
+     100000.0,
+     0.2598
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 3365555.0,
+   "pct": 0.0297,
+   "original": null
+  },
+  {
    "acc": "0001628280-26-065603",
    "cik": 1715497,
    "ticker": "BORR",
@@ -23859,6 +20953,37 @@
    "original": null
   },
   {
+   "acc": "0001391935-26-000009",
+   "cik": 1144879,
+   "ticker": "APLD",
+   "company": "Applied Digital Corp.",
+   "insider": "Cummins Wes",
+   "role": "דירקטור, CEO; Chairman",
+   "insider_cik": "1391935",
+   "od": true,
+   "weight": 1.5,
+   "first": "2026-10-16",
+   "last": "2026-10-16",
+   "shares": 55803.0,
+   "value": 1006686.12,
+   "price": 18.04,
+   "filed": "2026-10-19",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-16",
+     55803.0,
+     18.04
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 5874453.0,
+   "pct": 0.0095,
+   "original": null
+  },
+  {
    "acc": "0001493152-26-047473",
    "cik": 1444192,
    "ticker": "GRCE",
@@ -23900,6 +21025,68 @@
    "original": null
   },
   {
+   "acc": "0001493152-26-047479",
+   "cik": 1602409,
+   "ticker": "FNGR",
+   "company": "FingerMotion, Inc.",
+   "insider": "Polimeni Christopher Vincent",
+   "role": "CFO",
+   "insider_cik": "1974906",
+   "od": true,
+   "weight": 1.5,
+   "first": "2026-10-16",
+   "last": "2026-10-16",
+   "shares": 13500.0,
+   "value": 2469.15,
+   "price": 0.1829,
+   "filed": "2026-10-19",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-16",
+     13500.0,
+     0.1829
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 13500.0,
+   "pct": 1.0,
+   "original": null
+  },
+  {
+   "acc": "0001493152-26-047482",
+   "cik": 1602409,
+   "ticker": "FNGR",
+   "company": "FingerMotion, Inc.",
+   "insider": "Kahn Jolie",
+   "role": "דירקטור, CEO",
+   "insider_cik": "1257450",
+   "od": true,
+   "weight": 1.5,
+   "first": "2026-10-16",
+   "last": "2026-10-16",
+   "shares": 15000.0,
+   "value": 2550.0,
+   "price": 0.17,
+   "filed": "2026-10-19",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-16",
+     15000.0,
+     0.17
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 15000.0,
+   "pct": 1.0,
+   "original": null
+  },
+  {
    "acc": "0001513845-26-000130",
    "cik": 1513845,
    "ticker": "NBIS",
@@ -23933,6 +21120,37 @@
    "plan_value": 50317.04,
    "post": 6181.0,
    "pct": 0.0479,
+   "original": null
+  },
+  {
+   "acc": "0001900445-26-000006",
+   "cik": 1144879,
+   "ticker": "APLD",
+   "company": "Applied Digital Corp.",
+   "insider": "Zhang Jason Gechen",
+   "role": "President",
+   "insider_cik": "1900445",
+   "od": true,
+   "weight": 1.0,
+   "first": "2026-10-16",
+   "last": "2026-10-16",
+   "shares": 300000.0,
+   "value": 5658000.0,
+   "price": 18.86,
+   "filed": "2026-10-19",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-16",
+     300000.0,
+     18.86
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 2839227.0,
+   "pct": 0.1057,
    "original": null
   },
   {
@@ -23975,13 +21193,10 @@
    "0001193125-26-414744"
   ],
   "1031203": [
-   "0000905148-26-004241",
    "0000905148-26-004278",
    "0000905148-26-004310"
   ],
   "1889539": [
-   "0001193125-26-396726",
-   "0001193125-26-397991",
    "0001193125-26-399477"
   ],
   "1326380": [
@@ -24002,19 +21217,9 @@
    "0001493152-26-045954",
    "0001493152-26-047051"
   ],
-  "1366868": [
-   "0001379664-26-000002"
-  ],
-  "1378325": [
-   "0001009165-26-000009"
-  ],
   "1712184": [
-   "0000937797-26-000030",
    "0000937797-26-000032",
    "0000937797-26-000034"
-  ],
-  "1956439": [
-   "0001193125-26-397056"
   ],
   "1747172": [
    "0001183254-26-000006",
@@ -24034,19 +21239,10 @@
    "0001817293-26-000006",
    "0002100573-26-000006"
   ],
-  "1580345": [
-   "0001594983-26-000015"
-  ],
-  "1228454": [
-   "0001193125-26-397672",
-   "0001193125-26-397677"
-  ],
   "1323468": [
    "0001339396-26-000086"
   ],
   "896493": [
-   "0001214659-26-011836",
-   "0001214659-26-011871",
    "0001214659-26-011956",
    "0001214659-26-011988",
    "0001214659-26-012204",
@@ -24054,7 +21250,6 @@
    "0001214659-26-012383"
   ],
   "1559053": [
-   "0001045463-26-000016",
    "0001045463-26-000017",
    "0001045463-26-000018",
    "0001045463-26-000019",
@@ -24065,24 +21260,14 @@
    "0001493152-26-044690",
    "0001493152-26-045511"
   ],
-  "92230": [
-   "0001534574-26-000016"
-  ],
-  "1108524": [
-   "0001108524-26-000212"
-  ],
   "930236": [
    "0001487805-26-000004",
    "0001758710-26-000004"
-  ],
-  "1909747": [
-   "0001628280-26-063027"
   ],
   "1840572": [
    "0001628280-26-063239"
   ],
   "1770501": [
-   "0001493152-26-043617",
    "0001493152-26-045391"
   ],
   "925528": [
@@ -24095,36 +21280,21 @@
   "67215": [
    "0001919348-26-000002"
   ],
-  "1712189": [
-   "0001712189-26-000061"
-  ],
   "40417": [
-   "0000040417-26-000048",
-   "0000040417-26-000049",
    "0000040417-26-000050",
    "0000040417-26-000051",
    "0000040417-26-000052"
   ],
   "1774675": [
-   "0001091482-26-000015",
    "0001091482-26-000017"
   ],
   "1500881": [
-   "0001193125-26-396060",
    "0001193125-26-397218"
   ],
   "1408534": [
-   "0001437749-26-030745",
    "0001437749-26-031876"
   ],
-  "1638290": [
-   "0001193125-26-397254"
-  ],
-  "1892704": [
-   "0001213900-26-101846"
-  ],
   "1396536": [
-   "0001079973-26-001266",
    "0001553350-26-000136"
   ],
   "1584549": [
@@ -24143,29 +21313,7 @@
    "0002026373-26-000010"
   ],
   "1160330": [
-   "0001292814-26-004615",
-   "0001292814-26-004617",
-   "0001292814-26-004619",
-   "0001292814-26-004621",
-   "0001292814-26-004625",
-   "0001292814-26-004633",
-   "0001292814-26-004635",
-   "0001292814-26-004638",
-   "0001292814-26-004642",
-   "0001292814-26-004644",
-   "0001292814-26-004646",
-   "0001292814-26-004648",
-   "0001292814-26-004650",
-   "0001292814-26-004652",
-   "0001292814-26-004654",
-   "0001292814-26-004656",
-   "0001292814-26-004658",
-   "0001292814-26-004660",
-   "0001292814-26-004662",
-   "0001292814-26-004664",
-   "0001292814-26-004666",
-   "0001292814-26-004756",
-   "0001292814-26-004938"
+   "0001292814-26-004756"
   ],
   "1833141": [
    "0000912282-26-001293",
@@ -24179,8 +21327,6 @@
    "0002005037-26-000016"
   ],
   "1715497": [
-   "0001628280-26-062623",
-   "0001628280-26-062804",
    "0001628280-26-065174",
    "0001628280-26-065290",
    "0001628280-26-065416",
@@ -24202,7 +21348,6 @@
    "0001171843-26-006194"
   ],
   "1625414": [
-   "0001104659-26-108719",
    "0001104659-26-109444"
   ],
   "884624": [
@@ -24226,7 +21371,6 @@
    "0001510281-26-000325"
   ],
   "1901279": [
-   "0001976408-26-000862",
    "0001976408-26-000864",
    "0001976408-26-000865",
    "0001976408-26-000874",
@@ -24323,8 +21467,6 @@
    "0001123485-26-000010"
   ],
   "102109": [
-   "0001214659-26-011835",
-   "0001214659-26-011872",
    "0001214659-26-011957",
    "0001214659-26-012438"
   ],
@@ -24350,7 +21492,6 @@
    "0001817646-26-000032"
   ],
   "785557": [
-   "0001628280-26-062758",
    "0001628280-26-063060",
    "0001628280-26-063376",
    "0001628280-26-063818",
@@ -24463,6 +21604,10 @@
   ],
   "2019793": [
    "0002106572-26-000003"
+  ],
+  "1144879": [
+   "0001900445-26-000006",
+   "0001391935-26-000009"
   ]
  },
  "info": [
@@ -24486,14 +21631,6 @@
    "acc": "0002065459-26-000006",
    "cik": 15847,
    "last": "2026-09-21",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001140361-26-037245",
-   "cik": 1444192,
-   "last": "2026-09-17",
    "kinds": {
     "grant": 1
    }
@@ -24531,67 +21668,11 @@
    }
   },
   {
-   "acc": "0001140361-26-037237",
-   "cik": 1444192,
-   "last": "2026-09-17",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001140361-26-037239",
-   "cik": 1444192,
-   "last": "2026-09-17",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001140361-26-037246",
-   "cik": 1444192,
-   "last": "2026-09-17",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-101909",
-   "cik": 1940177,
-   "last": "2026-09-18",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0000921895-26-002616",
-   "cik": 1772720,
-   "last": "2026-09-18",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
    "acc": "0001332596-26-000008",
    "cik": 15847,
    "last": "2026-09-21",
    "kinds": {
     "grant": 1
-   }
-  },
-  {
-   "acc": "0001496862-26-000011",
-   "cik": 1366868,
-   "last": "2026-09-18",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001493152-26-043791",
-   "cik": 788611,
-   "last": "2026-09-17",
-   "kinds": {
-    "other": 1
    }
   },
   {
@@ -24624,38 +21705,6 @@
    "last": "2026-09-21",
    "kinds": {
     "exercise": 4
-   }
-  },
-  {
-   "acc": "0001108524-26-000225",
-   "cik": 1108524,
-   "last": "2026-09-22",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
-   "acc": "0001108524-26-000214",
-   "cik": 1108524,
-   "last": "2026-09-22",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
-   "acc": "0001108524-26-000217",
-   "cik": 1108524,
-   "last": "2026-09-22",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
-   "acc": "0001108524-26-000220",
-   "cik": 1108524,
-   "last": "2026-09-22",
-   "kinds": {
-    "exercise": 1
    }
   },
   {
@@ -24719,46 +21768,6 @@
    }
   },
   {
-   "acc": "0001193125-26-401623",
-   "cik": 1638290,
-   "last": "2026-09-23",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001193125-26-401626",
-   "cik": 1638290,
-   "last": "2026-09-23",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001193125-26-401627",
-   "cik": 1638290,
-   "last": "2026-09-23",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001193125-26-401624",
-   "cik": 1638290,
-   "last": "2026-09-23",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001193125-26-401628",
-   "cik": 1638290,
-   "last": "2026-09-23",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
    "acc": "0001493152-26-044311",
    "cik": 1770501,
    "last": "2026-09-23",
@@ -24788,70 +21797,6 @@
    "last": "2026-09-25",
    "kinds": {
     "other": 2
-   }
-  },
-  {
-   "acc": "0001437749-26-031387",
-   "cik": 1006830,
-   "last": "2026-09-28",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
-   "acc": "0001437749-26-031386",
-   "cik": 1006830,
-   "last": "2026-09-28",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
-   "acc": "0001437749-26-031385",
-   "cik": 1006830,
-   "last": "2026-09-28",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
-   "acc": "0001437749-26-031384",
-   "cik": 1006830,
-   "last": "2026-09-28",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
-   "acc": "0001437749-26-031383",
-   "cik": 1006830,
-   "last": "2026-09-28",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
-   "acc": "0001437749-26-031382",
-   "cik": 1006830,
-   "last": "2026-09-28",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
-   "acc": "0001437749-26-031381",
-   "cik": 1006830,
-   "last": "2026-09-28",
-   "kinds": {
-    "exercise": 2
-   }
-  },
-  {
-   "acc": "0001437749-26-031380",
-   "cik": 1006830,
-   "last": "2026-09-28",
-   "kinds": {
-    "exercise": 2
    }
   },
   {
@@ -24940,14 +21885,6 @@
    "last": "2026-09-28",
    "kinds": {
     "grant": 1
-   }
-  },
-  {
-   "acc": "0001104659-26-111947",
-   "cik": 1712189,
-   "last": "2026-09-25",
-   "kinds": {
-    "other": 4
    }
   },
   {
@@ -25090,14 +22027,6 @@
    "acc": "0001628280-26-064301",
    "cik": 1840572,
    "last": "2026-09-30",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-105891",
-   "cik": 1892704,
-   "last": "2026-09-29",
    "kinds": {
     "grant": 1
    }
@@ -25857,38 +22786,6 @@
    }
   },
   {
-   "acc": "0001628280-26-065489",
-   "cik": 1956439,
-   "last": "2026-10-06",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001628280-26-065486",
-   "cik": 1956439,
-   "last": "2026-10-06",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001628280-26-065487",
-   "cik": 1956439,
-   "last": "2026-10-06",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001628280-26-065488",
-   "cik": 1956439,
-   "last": "2026-10-06",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
    "acc": "0002061890-26-000002",
    "cik": 1805526,
    "last": "2026-10-07",
@@ -26081,22 +22978,6 @@
    }
   },
   {
-   "acc": "0001213900-26-109167",
-   "cik": 1892704,
-   "last": "2026-10-12",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-109166",
-   "cik": 1892704,
-   "last": "2026-10-12",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
    "acc": "0001213900-26-109160",
    "cik": 2002988,
    "last": "2026-10-13",
@@ -26183,54 +23064,6 @@
    "last": "2026-10-09",
    "kinds": {
     "exercise": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-109501",
-   "cik": 1892704,
-   "last": "2026-10-12",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-109500",
-   "cik": 1892704,
-   "last": "2026-10-12",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-109499",
-   "cik": 1892704,
-   "last": "2026-10-12",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-109498",
-   "cik": 1892704,
-   "last": "2026-10-12",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-109497",
-   "cik": 1892704,
-   "last": "2026-10-12",
-   "kinds": {
-    "grant": 1
-   }
-  },
-  {
-   "acc": "0001213900-26-109496",
-   "cik": 1892704,
-   "last": "2026-10-12",
-   "kinds": {
-    "grant": 1
    }
   },
   {
@@ -26551,6 +23384,10 @@
   },
   "SAFX": {
    "price": 0.1403,
+   "asof": "2026-10-16 20:00"
+  },
+  "APLD": {
+   "price": 18.05,
    "asof": "2026-10-16 20:00"
   }
  },
@@ -29502,6 +26339,22 @@
    "0002156505-26-000006",
    "0002158778-26-000004",
    "0002160413-26-000004"
+  ],
+  "20261019": [
+   "0000950103-26-015754",
+   "0000950103-26-015755",
+   "0000950103-26-015756",
+   "0001193125-26-424593",
+   "0001233433-26-000008",
+   "0001391935-26-000009",
+   "0001493152-26-047479",
+   "0001493152-26-047482",
+   "0001493152-26-047486",
+   "0001513845-26-000132",
+   "0001543262-26-000010",
+   "0001573338-26-000021",
+   "0001628280-26-066202",
+   "0001900445-26-000006"
   ]
  },
  "sent": {
@@ -31659,6 +28512,31 @@
     ]
    },
    "acks": []
+  },
+  "1144879": {
+   "id": "2026-10-19-APLD",
+   "date": "2026-10-19",
+   "ticker": "APLD",
+   "total": 6664686.12,
+   "cluster": false,
+   "big": true,
+   "accs": [
+    "0001391935-26-000009",
+    "0001900445-26-000006"
+   ],
+   "rows": {
+    "0001900445-26-000006": [
+     5658000.0,
+     "1900445",
+     true
+    ],
+    "0001391935-26-000009": [
+     1006686.12,
+     "1391935",
+     true
+    ]
+   },
+   "acks": []
   }
  },
  "removed": {},
@@ -31685,12 +28563,6 @@
  },
  "v": 2,
  "slots": {
-  "2026-10-09": [
-   "pre1",
-   "pre2",
-   "post1",
-   "post2"
-  ],
   "2026-10-12": [
    "pre1",
    "pre2",
@@ -31720,13 +28592,16 @@
    "pre2",
    "post1",
    "post2"
+  ],
+  "2026-10-19": [
+   "pre1"
   ]
  },
  "intraday": {
-  "at": "2026-10-16 23:31 UTC",
-  "slot": "post2",
-  "filings": 233,
-  "parsed": 233,
-  "alerts": 2
+  "at": "2026-10-19 11:30 UTC",
+  "slot": "pre1",
+  "filings": 14,
+  "parsed": 14,
+  "alerts": 1
  }
 }
