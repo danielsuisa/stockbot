@@ -1,7 +1,11 @@
 # ADR 0008: Insider-signal validation design
 
-- **Status: Proposed.** Only the user sets it to Accepted. Nothing in it has been run. No signal code exists, and no
-  return has been computed.
+- **Status: Accepted.**
+  - Decided by the user on 2026-10-19, with the decisions recorded in §7 (I1 prompt, "User decisions").
+  - Where §1–§5 below differ from §7 or §8, **§7 and §8 govern**. §1–§5 are kept as the Proposed text that was
+    decided on.
+  - The I2 measurement in §8 is pre-registered. It was committed on `engine/i1` before any I1 ingestion request
+    and before any data exists.
 - **Context:**
   - [ADR 0007](0007-intraday-line-closed.md): intraday line closed, lessons, reusable components.
   - [I0 audit](../I0-audit.md): the stockbot rule, the journal, the data and the engine gaps. Cited as audit I1.x–I5.x.
@@ -205,3 +209,116 @@ The values in brackets are options for E4, not decisions.
 - **New contracts:** `insider_lines`, `insider_events`, `event_returns`, and a trials ledger. Any new dependency is
   justified in a follow-up ADR.
 - **Unchanged:** `bot/`, the live scan and the journal.
+
+## 7. Decision record (user, 2026-10-19; binding)
+
+**E1. Windows.**
+- **Development:** event dates (entry dates) 2022-02-01 → 2024-06-28.
+- **Confirmation:** 2024-07-01 → 2026-07-20.
+- **Post-S1 sub-window:** 2026-04-01 → 2026-07-20. It lies inside confirmation, is reported separately and carries no
+  gate weight.
+- **Overlap note (recorded as required).** Two earlier pieces of work already looked at insider data, so the
+  confirmation window is **not fully untouched** for this signal family:
+  - **STEP 0:** `bot/probe_insider.py`, 2016-01-04 → 2026-03-31. Dispersion only, signed returns blind.
+  - **Ensemble S1:** signal dates 2017-01-03 → 2026-03-31. Its signed mean (−0.032) was observed.
+  - Both keyed on filing date, without 4/A. S1 used ticket-style exits (I0 audit I1.8).
+  - Only 2026-04-01 onward is unseen by both, hence the post-S1 sub-window.
+- **`legacy_2016_2021`:** run **once**, as a veto, at the end of I2, under an unseal ledger record written by the owner
+  at that time. It is not used in I1.
+- **`forward_2026q4`:** stays sealed and unused.
+
+**E2. Signal.**
+- **Primary:** the raw **cluster** rule at stockbot commit `2ffda0a`.
+- **Thresholds:** the repository variables `MIN_INSIDERS`, `MIN_CLUSTER_USD`, `MIN_SINGLE_USD` and `WINDOW_DAYS` were
+  read on 2026-10-19 via `gh api repos/danielsuisa/stockbot/actions/variables`. They are **unset**; the only
+  repository variable is `TICKET_RISK_PCT`. The two environments (`ensemble-verdict`, `index-verdict`) have no
+  variables.
+  - `daily-scan.yml:48-52` passes them as empty strings, and `bot/common.py:30-33` maps an empty value to the default.
+  - **In force:** 3 insiders, $100,000 cluster total, 30-day window, $500,000 single purchase.
+- **Secondary, no gate weight:** the **big** trigger, a single open-market purchase ≥ $500,000.
+- The quality score is **not tested**.
+
+**E3. Universes.** Both are evaluated point-in-time, from data available before the entry decision.
+
+| Universe | Used for | Price | 20-day median dollar volume | Spread |
+|---|---|---|---|---|
+| (b) | Event study | ≥ $1 | ≥ $100K | ≤ 3% |
+| (c) | Tradable version | ≥ $2 | ≥ $1M | ≤ 1% |
+
+- **Price** is the last close before the entry decision, split-adjusted.
+- **Dollar volume:** the median of close × volume over the 20 sessions ending at that close.
+- **Spread:** the quoted spread, (ask − bid) / mid, from the SIP NBBO sample at the prior session's close − 5 minutes
+  (ADR 0009).
+
+**E4. Gate.** Applied **once** in I2, on the confirmation window. Both parts must pass.
+- **(i) Significance.** At H = 20 sessions, the mean abnormal return of **cluster** events against the matched control,
+  on universe (b), is > 0, with a clustered t ≥ 2.0 (§8).
+- **(ii) Economics.** In the L7 tradable version on universe (c), the mean net return per trade is > 0, for a $500 cash
+  account on IBKR Tiered (§8).
+- **Reported only:**
+  - H = 5 and H = 60;
+  - the big trigger;
+  - the post-S1 sub-window.
+- **Legacy veto.** Statistic (i) is computed on 2016-01-01 → 2021-12-31. A mean abnormal return ≤ 0 blocks GO; a pass
+  adds no evidence.
+- This replaces the §4 draft: there is no +2.0 pp floor, no PF ≥ 1.2, and no 100-trade floor.
+
+**E5. Journal.** The live journal (`data/journal.json`) is a **parity oracle only**. No journal returns are used.
+
+## 8. I2 measurement spec (pre-registered; fixed before any data exists)
+
+**8.1 Events entering the measurement.**
+- Events come from the I1 event table (ADR 0009 §2): trigger `cluster` or `big`, with the rule version recorded.
+- An event's **entry date** is the session of the first regular-session open strictly after `available_at`.
+- **Overlap:** if an issuer has several events of the same trigger whose entry dates fall within H sessions of each
+  other, only the **first** is kept, separately for each H. Dropped repeats are counted.
+- **Universe:** an event is in universe (b) or (c) by its flags as of the entry decision (§7, E3).
+
+**8.2 Returns.**
+- **Total return** from the entry-day **open** to the **close of session H**, counting the entry day as session 1.
+  - Splits are applied as price adjustments.
+  - Cash dividends are reinvested at the ex-date close. They are taken from corporate actions (ADR 0009).
+- **Delisting** before session H:
+  - A merger with stated terms (cash and/or stock ratio from the corporate action) is valued at the deal value on the
+    last trading day. A stock component is valued at the acquirer's close that day.
+  - Any other delisting is valued at the last close × (1 − 0.30).
+  - The position then holds that value as cash, earning 0, to session H.
+- **Bad prices:** the rule is defined and tested in I1 (ADR 0009 §4). Flagged bars are excluded before any return is
+  computed. An event or control whose path crosses a flagged bar is dropped and counted.
+
+**8.3 Matched control.**
+- For each event, draw **K = 5** stocks **without replacement** from universe (b) as of the event's entry decision,
+  meeting all of:
+  - the same **2-digit SIC** as the event issuer;
+  - the same **dollar-volume decile**, with deciles computed over universe (b) members on that date;
+  - no `cluster` or `big` event of their own within ±30 calendar days of the event's entry date;
+  - not the event issuer.
+- **Seed:** the integer of the first 8 bytes of SHA-256 of `f"{event_id}|i2-control-v1"`. The candidates are sorted by
+  symbol and a seeded random sample is drawn.
+- If fewer than K qualify, widen to the same **1-digit SIC**, keeping every other condition.
+- If none qualify at 1 digit, drop the event and count it.
+- If 1 ≤ n < K qualify at 1 digit, use the n that qualify, and report how often this happens.
+- **Control returns** use the event's own entry and exit dates, the open-to-close definition, and the same delisting and
+  bad-price rules.
+
+**8.4 Abnormal return.** AR_e(H) = R_e(H) − mean over the event's controls of R_c(H).
+
+**8.5 Inference.**
+- Mean AR, with **standard errors clustered by the ISO calendar week of entry**.
+- t = mean / clustered SE.
+- Report the **minimum detectable effect** per window: 80% power, one-sided α = 0.05, (1.645 + 0.842) × SE.
+
+**8.6 Tradable version (L7, evaluator side).**
+- Each event is simulated on **its own $500 cash account**.
+- **Shares** = floor(500 / entry price). If this is 0, the event is skipped and counted.
+- **Entry** at the entry-day open + ½ spread, from the SIP NBBO sample at **09:35 ET** on the entry day.
+- **Exit** at the session-H close − ½ spread, from the NBBO sample at **close − 5 minutes** on the exit day.
+- **Costs:** IBKR **Tiered** with regulatory fees (`scalp_eval/costs.py`). Net return per trade = net P&L / $500.
+- A missing quote sample on an entry or exit day drops the event from (ii), and the drop is counted.
+- **Account-level simulation:** one $500 account, cash settlement T+1, no overlap. Reported only.
+
+**8.7 Reported statistics.**
+- Per window (development, confirmation, post-S1, and legacy for the veto): n, mean, median, hit rate (share > 0), and
+  a bootstrap 95% CI. The bootstrap uses 10,000 resamples of entry-week blocks, seed `"i2-boot-v1"`.
+- Per horizon H ∈ {5, 20, 60}, per trigger (cluster, big) and per universe.
+- Counts of every drop: overlap, unmapped, no controls, bad price, missing quote, zero shares.
