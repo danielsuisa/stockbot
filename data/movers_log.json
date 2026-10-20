@@ -209,6 +209,17 @@
    "gain": 0.1741,
    "vol_ratio": 1.1195,
    "si_pct": 0.2061
+  },
+  {
+   "date": "2026-10-20",
+   "session": "pre",
+   "t": "HTZ",
+   "manual": false,
+   "price": 2.078,
+   "ref": 1.84,
+   "gain": 0.1293,
+   "vol_ratio": 0.4213,
+   "si_pct": 0.3904
   }
  ]
 }
