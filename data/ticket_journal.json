@@ -272,6 +272,31 @@
    "rank": 1,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-10-19",
+   "signal": "squeeze-list",
+   "symbol": "IRON",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 80.23,
+   "limit": 81.31,
+   "planned_entry": 80.23,
+   "stop_loss": 72.21,
+   "target": 92.26,
+   "trail": 8.02,
+   "shares": 12,
+   "legs": [
+    6,
+    6
+   ],
+   "R": 8.023000000000001,
+   "guard_spread": 0.1599999999999966,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }
