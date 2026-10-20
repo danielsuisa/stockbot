@@ -322,3 +322,34 @@ The values in brackets are options for E4, not decisions.
   a bootstrap 95% CI. The bootstrap uses 10,000 resamples of entry-week blocks, seed `"i2-boot-v1"`.
 - Per horizon H ∈ {5, 20, 60}, per trigger (cluster, big) and per universe.
 - Counts of every drop: overlap, unmapped, no controls, bad price, missing quote, zero shares.
+
+## 9. Amendments (user decisions 2026-10-20, recorded before any outcome exists)
+
+These govern over §4, §7 and §8 where they differ. ADR 0010 holds the I2 implementation design.
+
+**9.1 Gate (ii), economics: measured against SPY.**
+- Gate (ii) is now the **mean over trades of (net trade return − SPY total return over the same entry-open →
+  exit-close dates) > 0**: universe (c), cluster trigger, H = 20, a $500 cash account, IBKR Tiered.
+- The absolute mean net return is reported only.
+- *Reason:* an absolute-return gate credits market drift. A strategy could pass it while earning less than simply
+  holding SPY.
+
+**9.2 E1, the legacy veto, moves to phase I3.**
+- I3 runs **only if the I2 gate passes**.
+- If I2 fails, `legacy_2016_2021` stays sealed and nothing dated 2016–2021 is ingested.
+- The veto's definition is unchanged: statistic (i) on 2016-01-01 → 2021-12-31; a mean abnormal return ≤ 0 blocks
+  GO; a pass adds no evidence.
+- `forward_2026q4` stays sealed and unused.
+
+**9.3 Foreign private issuers are excluded from every primary statistic.**
+- *Reason:* the live rule at `2ffda0a` never journals them (alerts are name-only); the I1 parity found 32 such cases.
+- Their count is reported separately.
+
+**9.4 The dual-CIK exclusion is kept.** The 130 events with a genuine CIK change on one ticker stay excluded and are
+counted; they are not re-mapped.
+
+**9.5 Verdict.**
+- Both (i) and (ii) pass: **provisional GO, pending the I3 legacy veto**.
+- Otherwise **NO-GO**, classified as:
+  - (a) no abnormal return: (i) fails;
+  - (b) abnormal return that is not tradable: (i) passes and (ii) fails.
