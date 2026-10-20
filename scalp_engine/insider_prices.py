@@ -26,7 +26,9 @@ UTC = dt.timezone.utc
 SOURCE = "alpaca"
 FIRST = dt.date(2022, 1, 3)
 LAST = dt.date(2026, 10, 16)              # last complete session when I1 ran (<= 2026-10-30)
-P1_FIRST, P1_LAST = dt.date(2023, 8, 1), dt.date(2026, 9, 30)  # daily bars already stored by P1 (sip-1d-v1..v3)
+# daily bars already stored by P1 (sip-1d-v1..v3). I1 used 2026-09-30 here; P1 actually holds bars to 2026-10-16, so
+# I1's part sip-1d-i1c duplicated 68,174 keys (I1 addendum). step_bars checks this constant against the store.
+P1_FIRST, P1_LAST = dt.date(2023, 8, 1), dt.date(2026, 10, 16)
 DV_SESSIONS, MIN_PRICE_B, MIN_DV_B, MAX_SPREAD_B = 20, 1.0, 100_000.0, 0.03
 MIN_PRICE_C, MIN_DV_C, MAX_SPREAD_C = 2.0, 1_000_000.0, 0.01
 HORIZONS = (5, 20, 60)
@@ -161,6 +163,22 @@ def fetch_daily(cl, symbols, start, end, part, workers=4):
             log(f"bars {part}: {first:%Y-%m} {n} rows; requests {cl.stats['requests']}")
     storage.append_manifest(table, {"kind": "daily_symbol_set", "part": part, "symbols": symbols, "complete": True,
                                     "start": start.isoformat(), "end": end.isoformat()})
+
+
+def bars_plan(syms, p1syms):
+    """[(part, symbols, start, end)] of the I1 daily-bar fetch: every symbol outside P1's dates, and only the symbols
+    P1 lacks inside them. Empty ranges are left out. No range fetches a (symbol, date) P1 holds."""
+    plan = [("sip-1d-i1a", sorted(syms), FIRST, P1_FIRST - dt.timedelta(days=1)),
+            ("sip-1d-i1b", sorted(set(syms) - set(p1syms)), P1_FIRST, P1_LAST),
+            ("sip-1d-i1c", sorted(syms), P1_LAST + dt.timedelta(days=1), LAST)]
+    return [x for x in plan if x[2] <= x[3] and x[1]]
+
+
+def p1_last_session():
+    """Last session date of P1's daily-bar partitions, from the manifest (no file is opened)."""
+    days = [r["partition"].rsplit("date=", 1)[1] for r in storage.manifest("raw_bars_1d")
+            if r.get("kind") == "partition" and r.get("file", "").startswith("part-sip-1d-v")]
+    return dt.date.fromisoformat(max(days)) if days else None
 
 
 def p1_symbols():
@@ -482,9 +500,11 @@ def step_base(cl):
 def step_bars(cl, workers):
     ev = json.loads(derived("i1_events_raw.json").read_text(encoding="utf-8"))["events"]
     syms = pool_symbols({norm(e["filed_symbol"]) for e in ev})
-    fetch_daily(cl, syms, FIRST, P1_FIRST - dt.timedelta(days=1), "sip-1d-i1a", workers)
-    fetch_daily(cl, sorted(set(syms) - p1_symbols()), P1_FIRST, P1_LAST, "sip-1d-i1b", workers)
-    fetch_daily(cl, syms, P1_LAST + dt.timedelta(days=1), LAST, "sip-1d-i1c", workers)
+    held = p1_last_session()
+    if held is not None and held != P1_LAST:
+        raise ValueError(f"P1_LAST {P1_LAST} does not match P1's last stored session {held}")
+    for part, symbols, start, end in bars_plan(syms, p1_symbols()):
+        fetch_daily(cl, symbols, start, end, part, workers)
 
 
 def step_map():
@@ -601,13 +621,11 @@ def step_open_quotes(cl, workers):
     log(f"open-quotes: done; requests {cl.stats['requests']}")
 
 
-def write_event_table(_docs=None):
-    """insider_events (ADR 0009 section 7): events whose entry date is in [2022-02-01, 2026-07-20]."""
+def event_rows(ev, got):
+    """insider_events rows (ADR 0009 section 7) for flagged events whose entry date is in [2022-02-01, 2026-07-20]."""
     from scalp_engine import insider_data as D
     from scalp_engine import insider_rule as R
-    ev = json.loads(derived("i1_events_flagged.json").read_text(encoding="utf-8"))["events"]
     info = {r["cik"]: r for r in D.sic_frame().iter_rows(named=True)}
-    got = ingest.now()
     rows = []
     for e in ev:
         if not e.get("entry_date") or not ("2022-02-01" <= e["entry_date"] <= "2026-07-20"):
@@ -624,6 +642,20 @@ def write_event_table(_docs=None):
                      "universe_b": e.get("universe_b"), "universe_c": e.get("universe_c"), "flag_detail": e.get("flag_detail"),
                      "rule_version": R.RULE_VERSION, "feed": "none", "request_id": "derived:i1-events-v1",
                      "ingested_at": got, "source": "scalp_engine", "schema_version": 1})
+    return rows
+
+
+def canonical_sha256(rows, key, drop=("ingested_at",)):
+    """SHA-256 of rows sorted by `key`, without the ingest timestamp, as canonical JSON (sorted keys)."""
+    body = [{k: v for k, v in r.items() if k not in drop} for r in sorted(rows, key=lambda r: r[key])]
+    blob = json.dumps(body, sort_keys=True, separators=(",", ":"), default=str)
+    return __import__("hashlib").sha256(blob.encode("utf-8")).hexdigest()
+
+
+def write_event_table(_docs=None):
+    """insider_events (ADR 0009 section 7): events whose entry date is in [2022-02-01, 2026-07-20]."""
+    ev = json.loads(derived("i1_events_flagged.json").read_text(encoding="utf-8"))["events"]
+    rows = event_rows(ev, ingest.now())
     df = storage.frame("insider_events", rows)
     if df["event_id"].n_unique() != df.height:
         raise ValueError("duplicate event_id")

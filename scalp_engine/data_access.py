@@ -310,3 +310,18 @@ def read_frame(root, start, end, *, columns=None, symbols=None, require_dates=No
             if df.filter((t >= w.start) & (t < w.end)).height:
                 raise HoldoutSealedError(f"holdout rows of window {w.name!r} materialized from {root}")
     return df
+
+
+def read_parts(root, day, parts):
+    """Rows of named parts of one date partition of a contract table under root, with a `_part` column, for store
+    maintenance (I1 duplicate-key remedy). The date must pass the holdout guard; set-aside files are never read."""
+    check_range(*day_bounds(day))
+    schema = _contract_schema(root)
+    frames = []
+    for path in partition_dates(root).get(day, []):
+        name = Path(path).name[len("part-"):-len(".parquet")]
+        if name in parts:
+            lf = (pl.scan_parquet(str(path), hive_partitioning=False, schema=schema, missing_columns="insert")
+                  if schema else pl.scan_parquet(str(path), hive_partitioning=False))
+            frames.append(lf.collect().with_columns(_part=pl.lit(name)))
+    return pl.concat(frames, how="vertical") if frames else pl.DataFrame()

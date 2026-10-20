@@ -50,6 +50,18 @@ class Symbols(unittest.TestCase):
         self.assertTrue(sm.has_bar_before("NEWCO", 31))
 
 
+class BarsPlan(unittest.TestCase):
+    def test_plan_never_overlaps_p1_dates(self):
+        """I1 fetched 2026-10-01..16 again because P1_LAST was 2026-09-30 (I1 addendum)."""
+        self.assertEqual(P.P1_LAST, dt.date(2026, 10, 16))
+        plan = P.bars_plan(["A", "B", "C"], ["A", "B"])
+        for part, symbols, start, end in plan:
+            overlaps = not (end < P.P1_FIRST or start > P.P1_LAST)
+            if overlaps:  # inside P1's dates only the symbols P1 lacks may be fetched
+                self.assertEqual(symbols, ["C"], part)
+        self.assertEqual([p[0] for p in plan], ["sip-1d-i1a", "sip-1d-i1b"])  # nothing left after P1's last session
+
+
 class Adjustments(unittest.TestCase):
     def test_factors_and_adjust(self):
         acts = pl.DataFrame({"action_type": ["reverse_splits", "forward_splits", "stock_dividends", "cash_dividends"],
