@@ -1078,6 +1078,23 @@
    "price": 79.655,
    "chg": 0.0092,
    "outcome": null
+  },
+  {
+   "date": "2026-10-21",
+   "seen": "2026-10-20",
+   "t": "ANAB",
+   "rank": 1,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-30",
+   "float": 20439677,
+   "short_float": 0.2562,
+   "short_ratio": 10.1458,
+   "avg_vol": 516092,
+   "rel_vol": 2.302,
+   "pre_vol": null,
+   "price": 45.43,
+   "chg": -0.0774,
+   "outcome": null
   }
  ]
 }
