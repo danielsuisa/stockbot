@@ -21,7 +21,7 @@ closed by [ADR 0007](adr/0007-intraday-line-closed.md) and the insider line by
 | I2 | I1 remedy; one confirmation measurement | Process PASS; verdict **NO-GO (a)** | aeea512 (`engine/i2`) | [I2](I2-report.md) |
 | I2C | Close the insider line, pause the engine | See the I2C commits | `engine/i2c` | ADR 0011, this index |
 
-Decisions: [ADR 0001](adr/0001-engine-foundations.md) … [ADR 0011](adr/0011-insider-line-closed-engine-paused.md),
+Decisions: [ADR 0001](adr/0001-engine-foundations.md) … [ADR 0016](adr/0016-t1-pre-registered-design.md),
 in `adr/`.
 
 ## The two research lines
