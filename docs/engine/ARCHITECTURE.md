@@ -1,3 +1,5 @@
+> **Status (2026-10-20): engine resumed only for the swing-ticket line ([ADR 0012](adr/0012-engine-resumed-swing-tickets.md)).**
+>
 > **Status (2026-10-19): the intraday scalping line is closed. See [ADR 0007](adr/0007-intraday-line-closed.md). This document is kept as the historical design.**
 >
 > **Status (2026-10-20): insider line closed and engine paused ([ADR 0011](adr/0011-insider-line-closed-engine-paused.md)).**
