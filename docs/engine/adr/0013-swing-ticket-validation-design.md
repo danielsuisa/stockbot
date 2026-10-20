@@ -1,7 +1,7 @@
 # ADR 0013: Swing-ticket validation design
 
-- **Status: Proposed.** Only the user sets it to Accepted. Nothing in it has run: there is no ticket code, and no
-  outcome has been computed.
+- **Status: Accepted** by the user on 2026-10-20, with the recommended options: G1 (a), G2 (a), G3 (a), G4 (a),
+  G5 (a), and G6 recorded only (§5). Nothing has run: there is no ticket code, and no outcome has been computed.
 - **Context:**
   - [ADR 0012](0012-engine-resumed-swing-tickets.md) (scope, account, ticket format, benchmark);
   - [S0 audit](../S0-audit.md), cited as S0 S1–S7;
@@ -151,3 +151,19 @@ bracket ticket captures that move net of IBKR Tiered costs.
 
 **G6. Delivery.** A later phase could add a stockbot `/swing` Telegram command that sends the frozen ticket text daily.
 It is **out of scope**: recorded only, after a provisional GO and the forward check.
+
+## 5. Decision record (user, 2026-10-20)
+
+| Decision | Chosen | Effect |
+|---|---|---|
+| G1 | (a) | Primary H1 = C5 non-earnings gap-and-hold, with the rules frozen in §1. Secondaries S-a (C2) and S-b (H1 with earnings), reported only |
+| G2 | (a) | Universe: price ≥ $5 and 20-session median dollar volume ≥ $10M (T1 + T2) |
+| G3 | (a) | Development 2022-10 → 2024-12; confirmation 2025-01 → 2026-09-17 (one run). `forward_2026q4` is a reported-only forward check after its window closes, ingested then under a ledger record. `legacy_2016_2021` stays sealed |
+| G4 | (a) | Gate (i): mean net R per filled H1 ticket > 0 with clustered t ≥ 2.0. Gate (ii): mean (ticket − random-entry control) net R > 0. The book vs SPY (idle cash at 0%) is reported only |
+| G5 | (a) | Cash account, T+1 settlement |
+| G6 | recorded only | A `/swing` Telegram command is out of scope until after a provisional GO and the forward check |
+
+Before any outcome, the S1 prerequisites are:
+- a budget-checked data plan (8-K Item 2.02 dates for the full universe, 09:35 samples on fill days, optional minute
+  bars), with credentials via `envload` only;
+- an implementation ADR with the evaluator design and a golden set, committed before the first outcome.
