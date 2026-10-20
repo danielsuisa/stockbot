@@ -803,6 +803,131 @@
     }
    ],
    "gaps": 0
+  },
+  "2026-10-19": {
+   "top": [
+    "SLN",
+    "CLF",
+    "SEI",
+    "HSAI",
+    "BLZE",
+    "VSNT",
+    "CNK",
+    "SHAZ",
+    "TSCO",
+    "BIRK",
+    "GFL",
+    "GLBE",
+    "SLGN",
+    "GTES",
+    "EQPT",
+    "FMC",
+    "COGT",
+    "HAS",
+    "VNO",
+    "EPD"
+   ],
+   "reasons": {
+    "spread": 13,
+    "trigger": 3,
+    "doji": 1
+   },
+   "dropped": {},
+   "trades": [
+    {
+     "t": "SLN",
+     "rank": 1,
+     "side": -1,
+     "at": "09:35",
+     "level": 19.58,
+     "R": 0.0641,
+     "shares": 1560,
+     "spread": 0.01,
+     "fill": 19.58,
+     "kinds": "eod",
+     "gross_r": 0.078,
+     "cost_r": 0.2652,
+     "net_r": -0.1872
+    },
+    {
+     "t": "BLZE",
+     "rank": 5,
+     "side": 1,
+     "at": "15:05",
+     "level": 9.2298,
+     "R": 0.0892,
+     "shares": 1121,
+     "spread": 0.01,
+     "fill": 9.23,
+     "kinds": "eod",
+     "gross_r": 0.8969,
+     "cost_r": 0.1906,
+     "net_r": 0.7063
+    },
+    {
+     "t": "FMC",
+     "rank": 16,
+     "side": -1,
+     "at": "10:01",
+     "level": 5.3,
+     "R": 0.0658,
+     "shares": 1519,
+     "spread": 0.01,
+     "fill": 5.3,
+     "kinds": "stop",
+     "gross_r": -1.0638,
+     "cost_r": 0.2584,
+     "net_r": -1.3222
+    }
+   ],
+   "optimistic": [
+    {
+     "t": "SLN",
+     "rank": 1,
+     "side": -1,
+     "at": "09:35",
+     "level": 19.58,
+     "R": 0.0641,
+     "shares": 1560,
+     "spread": 0.01,
+     "fill": 19.58,
+     "kinds": "eod",
+     "gross_r": 0.078,
+     "cost_r": 0.2652,
+     "net_r": -0.1872
+    },
+    {
+     "t": "BLZE",
+     "rank": 5,
+     "side": 1,
+     "at": "15:05",
+     "level": 9.2298,
+     "R": 0.0892,
+     "shares": 1121,
+     "spread": 0.01,
+     "fill": 9.2298,
+     "kinds": "eod",
+     "gross_r": 0.8991,
+     "cost_r": 0.1906,
+     "net_r": 0.7085
+    },
+    {
+     "t": "FMC",
+     "rank": 16,
+     "side": -1,
+     "at": "10:01",
+     "level": 5.3,
+     "R": 0.0658,
+     "shares": 1519,
+     "spread": 0.01,
+     "fill": 5.3,
+     "kinds": "stop",
+     "gross_r": -1.0638,
+     "cost_r": 0.2584,
+     "net_r": -1.3222
+    }
+   ],
+   "gaps": 0
   }
  }
 }
