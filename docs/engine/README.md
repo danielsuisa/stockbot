@@ -1,8 +1,10 @@
 # Engine index
 
-**Status (2026-10-20): paused.** The intraday line was closed by [ADR 0007](adr/0007-intraday-line-closed.md) and
-the insider line by [ADR 0011](adr/0011-insider-line-closed-engine-paused.md). Nothing starts without a new user
-decision. Rules: [`scalp_engine/CLAUDE.md`](../../scalp_engine/CLAUDE.md). Historical design:
+**Status (2026-10-20, T1): M1 = intraday ticket validation of the live screener's H1 rules, no models
+([ADR 0015](adr/0015-intraday-ticket-validation-m1.md)).** The swing line ([ADR 0012](adr/0012-engine-resumed-swing-tickets.md),
+[ADR 0013](adr/0013-swing-ticket-validation-design.md)) is on hold until after T2. The intraday model line stays
+closed by [ADR 0007](adr/0007-intraday-line-closed.md) and the insider line by
+[ADR 0011](adr/0011-insider-line-closed-engine-paused.md). Rules: [`scalp_engine/CLAUDE.md`](../../scalp_engine/CLAUDE.md). Historical design:
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Phases

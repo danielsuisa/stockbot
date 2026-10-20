@@ -1,3 +1,5 @@
+> **Status (2026-10-20, T1): M1 is intraday ticket validation of the live screener's H1 rules, no models ([ADR 0015](adr/0015-intraday-ticket-validation-m1.md)). The swing line is on hold until after T2.**
+>
 > **Status (2026-10-20): engine resumed only for the swing-ticket line ([ADR 0012](adr/0012-engine-resumed-swing-tickets.md)).**
 >
 > **Status (2026-10-19): the intraday scalping line is closed. See [ADR 0007](adr/0007-intraday-line-closed.md). This document is kept as the historical design.**
