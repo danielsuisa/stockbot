@@ -4488,6 +4488,78 @@
     "0001510281-26-000363"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-20-LEO",
+   "date": "2026-10-20",
+   "ticker": "LEO",
+   "cik": 818972,
+   "company": "BNY MELLON STRATEGIC MUNICIPALS, INC.",
+   "sic": null,
+   "kind": "big",
+   "quality": 13,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 13,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 5.73,
+    "asof": "2026-10-20 20:00",
+    "source": "live"
+   },
+   "total": 1911637.97,
+   "insiders": 1,
+   "liquidity": 1689381.9032033284,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000365"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-20-DX",
+   "date": "2026-10-20",
+   "ticker": "DX",
+   "cik": 826675,
+   "company": "DYNEX CAPITAL INC",
+   "sic": 6798,
+   "kind": "cluster",
+   "quality": 53,
+   "parts": {
+    "breadth": 20,
+    "seniority": 15,
+    "size": 3,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 10.96,
+    "asof": "2026-10-20 20:00",
+    "source": "live"
+   },
+   "total": 195210.0,
+   "insiders": 3,
+   "liquidity": 90001001.93620864,
+   "scores": {
+    "piotroski": "4/6",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0000826675-26-000107",
+    "0000826675-26-000120",
+    "0000826675-26-000121"
+   ],
+   "returns": {}
   }
  ]
 }
