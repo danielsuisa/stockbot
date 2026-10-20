@@ -1,41 +1,7 @@
 {
- "date": "2026-10-19",
- "kind": "day",
- "at": "19:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ג׳ <code>20.10.2026</code> · מצב ב־<code>02:30</code>\n\nמקום <code>1</code>: <code>CELC</code> · <code>57.12$</code> <code>1.0%▲</code>\nשורט <code>36.9%</code> מהמניות הצפות · <code>9.5</code> ימים לכיסוי · מחזור פי <code>2.3</code> מהרגיל\n\nמקום <code>2</code>: <code>HPK</code> · <code>11.39$</code> <code>8.0%▲</code>\nשורט <code>36.6%</code> מהמניות הצפות · <code>15.3</code> ימים לכיסוי · מחזור פי <code>2.2</code> מהרגיל\n\nמקום <code>3</code>: <code>AVTX</code> · <code>11.59$</code> <code>2.8%▲</code>\nשורט <code>28.4%</code> מהמניות הצפות · <code>12.2</code> ימים לכיסוי · מחזור פי <code>2.4</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
- "rows": [
-  {
-   "t": "CELC",
-   "price": 57.12,
-   "chg": 0.0095,
-   "avg_vol": 1160575,
-   "rel_vol": 2.2998,
-   "short_ratio": 9.4605,
-   "float": 29716837,
-   "short_float": 0.3695,
-   "options": true
-  },
-  {
-   "t": "HPK",
-   "price": 11.39,
-   "chg": 0.0796,
-   "avg_vol": 521823,
-   "rel_vol": 2.1521,
-   "short_ratio": 15.3266,
-   "float": 21825754,
-   "short_float": 0.3664,
-   "options": true
-  },
-  {
-   "t": "AVTX",
-   "price": 11.59,
-   "chg": 0.0284,
-   "avg_vol": 932343,
-   "rel_vol": 2.3831,
-   "short_ratio": 12.2329,
-   "float": 40110405,
-   "short_float": 0.2843,
-   "options": true
-  }
- ]
+ "date": "2026-10-20",
+ "kind": "pre",
+ "at": "04:15",
+ "text": "🌅 <b>רשימת סקוויז לפני הפתיחה</b>\nיום ג׳ <code>20.10.2026</code> · מצב ב־<code>11:15</code>\n\n🤷 אף מניה לא עומדת כרגע בכל התנאים.\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
+ "rows": []
 }
