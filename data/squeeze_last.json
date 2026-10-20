@@ -1,18 +1,29 @@
 {
  "date": "2026-10-20",
  "kind": "day",
- "at": "16:12",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ג׳ <code>20.10.2026</code> · מצב ב־<code>23:12</code>\n\nמקום <code>1</code>: <code>ANAB</code> · <code>45.43$</code> <code>7.7%▼</code>\nשורט <code>25.6%</code> מהמניות הצפות · <code>10.1</code> ימים לכיסוי · מחזור פי <code>2.3</code> מהרגיל\n\nמקום <code>2</code>: <code>IRON</code> · <code>79.48$</code> <code>0.7%▲</code>\nשורט <code>22.1%</code> מהמניות הצפות · <code>11.7</code> ימים לכיסוי · מחזור פי <code>3.2</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
+ "at": "16:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ג׳ <code>20.10.2026</code> · מצב ב־<code>23:30</code>\n\nמקום <code>1</code>: <code>ANAB</code> · <code>45.43$</code> <code>7.7%▼</code>\nשורט <code>25.6%</code> מהמניות הצפות · <code>10.1</code> ימים לכיסוי · מחזור פי <code>2.3</code> מהרגיל\n\nמקום <code>2</code>: <code>STOK</code> · <code>26.61$</code> <code>7.2%▲</code>\nשורט <code>25.2%</code> מהמניות הצפות · <code>13.1</code> ימים לכיסוי · מחזור פי <code>2.3</code> מהרגיל\n\nמקום <code>3</code>: <code>IRON</code> · <code>79.48$</code> <code>0.7%▲</code>\nשורט <code>22.1%</code> מהמניות הצפות · <code>11.7</code> ימים לכיסוי · מחזור פי <code>3.5</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
  "rows": [
   {
    "t": "ANAB",
    "price": 45.43,
    "chg": -0.0774,
    "avg_vol": 516092,
-   "rel_vol": 2.302,
+   "rel_vol": 2.3286,
    "short_ratio": 10.1458,
    "float": 20439677,
    "short_float": 0.2562,
+   "options": true
+  },
+  {
+   "t": "STOK",
+   "price": 26.61,
+   "chg": 0.0721,
+   "avg_vol": 879278,
+   "rel_vol": 2.2707,
+   "short_ratio": 13.0851,
+   "float": 45614246,
+   "short_float": 0.2522,
    "options": true
   },
   {
@@ -20,7 +31,7 @@
    "price": 79.48,
    "chg": 0.007,
    "avg_vol": 621385,
-   "rel_vol": 3.2343,
+   "rel_vol": 3.5384,
    "short_ratio": 11.7003,
    "float": 32910730,
    "short_float": 0.2209,
