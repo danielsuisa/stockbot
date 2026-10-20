@@ -4376,6 +4376,118 @@
     "0002151678-26-000007"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-20-ECF",
+   "date": "2026-10-20",
+   "ticker": "ECF",
+   "cik": 793040,
+   "company": "ELLSWORTH GROWTH & INCOME FUND LTD",
+   "sic": null,
+   "kind": "big",
+   "quality": 13,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 13,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 11.46,
+    "asof": "2026-10-20 20:00",
+    "source": "live"
+   },
+   "total": 1880127.59,
+   "insiders": 1,
+   "liquidity": 655960.9554427011,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000334",
+    "0001510281-26-000341",
+    "0001510281-26-000345",
+    "0001510281-26-000349",
+    "0001510281-26-000357",
+    "0001510281-26-000360"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-20-DSM",
+   "date": "2026-10-20",
+   "ticker": "DSM",
+   "cik": 855887,
+   "company": "BNY MELLON STRATEGIC MUNICIPAL BOND FUND, INC.",
+   "sic": null,
+   "kind": "big",
+   "quality": 11,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 11,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 5.31,
+    "asof": "2026-10-20 20:00",
+    "source": "live"
+   },
+   "total": 1168613.14,
+   "insiders": 1,
+   "liquidity": 1497252.5767121997,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000359",
+    "0001510281-26-000362"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-20-JOF",
+   "date": "2026-10-20",
+   "ticker": "JOF",
+   "cik": 859796,
+   "company": "JAPAN SMALLER CAPITALIZATION FUND INC",
+   "sic": null,
+   "kind": "big",
+   "quality": 9,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 9,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 11.83,
+    "asof": "2026-10-20 20:00",
+    "source": "live"
+   },
+   "total": 713820.57,
+   "insiders": 1,
+   "liquidity": 563050.1436687651,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000353",
+    "0001510281-26-000363"
+   ],
+   "returns": {}
   }
  ]
 }
