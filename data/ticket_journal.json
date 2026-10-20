@@ -61,7 +61,13 @@
    ],
    "R": 0.931,
    "guard_spread": 0.01,
-   "outcome": null,
+   "outcome": {
+    "filled": false,
+    "net_r": 0.0,
+    "gross_r": 0.0,
+    "cost_r": 0.0,
+    "closed": "2026-10-16"
+   },
    "source": "squeeze",
    "rank": 2,
    "stop_capped": true,
@@ -86,7 +92,13 @@
    ],
    "R": 0.47900000000000004,
    "guard_spread": 0.01,
-   "outcome": null,
+   "outcome": {
+    "filled": false,
+    "net_r": 0.0,
+    "gross_r": 0.0,
+    "cost_r": 0.0,
+    "closed": "2026-10-16"
+   },
    "source": "squeeze",
    "rank": 3,
    "stop_capped": true,
@@ -152,7 +164,13 @@
    ],
    "R": 0.917,
    "guard_spread": 0.03000000000000025,
-   "outcome": null,
+   "outcome": {
+    "filled": false,
+    "net_r": 0.0,
+    "gross_r": 0.0,
+    "cost_r": 0.0,
+    "closed": "2026-10-19"
+   },
    "source": "squeeze",
    "rank": 1,
    "stop_capped": true,
@@ -177,7 +195,13 @@
    ],
    "R": 0.673,
    "guard_spread": 0.01,
-   "outcome": null,
+   "outcome": {
+    "filled": false,
+    "net_r": 0.0,
+    "gross_r": 0.0,
+    "cost_r": 0.0,
+    "closed": "2026-10-19"
+   },
    "source": "squeeze",
    "rank": 2,
    "stop_capped": true,
