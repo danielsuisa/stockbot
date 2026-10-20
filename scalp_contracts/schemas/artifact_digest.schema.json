@@ -15,7 +15,8 @@
     "kind": {
       "type": "string",
       "enum": [
-        "insider_event_set"
+        "insider_event_set",
+        "intraday_ticket_set"
       ]
     },
     "table": {
@@ -29,6 +30,31 @@
       "minimum": 0
     },
     "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "set": {
+      "type": "string",
+      "enum": [
+        "H1",
+        "ORB5",
+        "H1_SIPSIG",
+        "CONTROLS"
+      ]
+    },
+    "window": {
+      "type": "string",
+      "enum": [
+        "development",
+        "confirmation",
+        "topup"
+      ]
+    },
+    "rules_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "inputs_sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     }
