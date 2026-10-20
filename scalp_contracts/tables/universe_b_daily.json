@@ -1,0 +1,133 @@
+{
+  "table": "universe_b_daily",
+  "schema_version": 1,
+  "description": "Daily universe-(b) candidate table for I2 controls and deciles (ADR 0010 section 1.2). Prior-close data only: no outcome.",
+  "layer": "feature",
+  "append_only": true,
+  "time_column": "event_at",
+  "primary_key": [
+    "session",
+    "symbol",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ],
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Session date 00:00 America/New_York, as UTC."
+    },
+    {
+      "name": "session",
+      "type": "date32",
+      "nullable": false,
+      "description": "Entry session d."
+    },
+    {
+      "name": "prior_session",
+      "type": "date32",
+      "nullable": false,
+      "description": "d - 1: the flags are as of its close."
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "cik",
+      "type": "string",
+      "nullable": true,
+      "description": "Latest filed-symbol observation on or before d within 400 days (ADR 0009 section 4)."
+    },
+    {
+      "name": "sic2",
+      "type": "string",
+      "nullable": true,
+      "description": "First two digits of the current SIC (not point-in-time); null if no CIK or SIC."
+    },
+    {
+      "name": "price",
+      "type": "float64",
+      "nullable": false,
+      "description": "Close of d - 1, split-adjusted to d's share basis."
+    },
+    {
+      "name": "dv20",
+      "type": "float64",
+      "nullable": true,
+      "description": "Median close*volume over the 20 sessions ending d - 1; a session without a bar counts 0."
+    },
+    {
+      "name": "spread",
+      "type": "float64",
+      "nullable": true,
+      "description": "Quoted spread (ask - bid)/mid at d - 1 close - 5 min; null if no valid sample."
+    },
+    {
+      "name": "price_ok",
+      "type": "bool",
+      "nullable": false,
+      "description": ">= $1"
+    },
+    {
+      "name": "dv_ok",
+      "type": "bool",
+      "nullable": false,
+      "description": ">= $100K"
+    },
+    {
+      "name": "spread_ok",
+      "type": "bool",
+      "nullable": false,
+      "description": "<= 3%"
+    },
+    {
+      "name": "universe_b",
+      "type": "bool",
+      "nullable": false,
+      "description": "price_ok and dv_ok and spread_ok"
+    },
+    {
+      "name": "dv_decile",
+      "type": "int64",
+      "nullable": true,
+      "description": "1..10 within universe (b) that day by dv20 (ties by symbol); null outside (b)."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": "derived:<method>"
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": ""
+    }
+  ]
+}

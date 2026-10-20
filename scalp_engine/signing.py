@@ -75,6 +75,22 @@ def verify(envelope, public_key):
     return True
 
 
+ARTIFACT_DOMAIN = b"scalp-engine/artifact/v1"
+
+
+def sign_artifact(payload, private_key):
+    """Sign an artifact digest (ADR 0010 section 1.1): payload validates against artifact_digest.schema.json; the
+    signed bytes are ARTIFACT_DOMAIN + b"\n" + canonical_json(payload)."""
+    validate(payload, load_schema("artifact_digest"))
+    sig = private_key.sign(ARTIFACT_DOMAIN + b"\n" + canonical_json(payload))
+    envelope = {"schema_version": 1, "payload": payload,
+                "signature": {"alg": "Ed25519", "canonicalization": CANONICALIZATION,
+                              "key_id": key_id(private_key.public_key()),
+                              "value": base64.urlsafe_b64encode(sig).rstrip(b"=").decode("ascii")}}
+    validate(envelope, load_schema("signed_artifact"))
+    return envelope
+
+
 def load_private_key(path=None):
     path = path or os.environ.get(KEY_ENV)
     if not path:

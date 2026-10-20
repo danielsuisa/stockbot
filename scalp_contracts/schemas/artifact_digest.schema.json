@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scalp_contracts/schemas/artifact_digest.schema.json",
+  "title": "Digest of an engine artifact (ADR 0010 section 1.1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "table",
+    "rule_version",
+    "rows",
+    "sha256"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "insider_event_set"
+      ]
+    },
+    "table": {
+      "type": "string"
+    },
+    "rule_version": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

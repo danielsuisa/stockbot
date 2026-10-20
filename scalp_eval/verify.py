@@ -42,3 +42,21 @@ def verify(envelope, trusted_keys):
         raise InvalidSignature(f"unknown key_id {sig['key_id']}")
     key.verify(base64.urlsafe_b64decode(sig["value"] + "=="), DOMAIN + b"\n" + canonical_json(payload))
     return payload
+
+
+ARTIFACT_DOMAIN = b"scalp-engine/artifact/v1"
+
+
+def verify_artifact(envelope, trusted_keys):
+    """Return the artifact digest payload if signed by a trusted key under ARTIFACT_DOMAIN (ADR 0010 section 1.1);
+    else raise. Re-derived here from the contract, not imported from scalp_engine (R4)."""
+    validate(envelope, load_schema("signed_artifact"))
+    payload = envelope["payload"]
+    validate(payload, load_schema("artifact_digest"))
+    by_id = {key_id(k): k for k in trusted_keys}
+    sig = envelope["signature"]
+    key = by_id.get(sig["key_id"])
+    if key is None:
+        raise InvalidSignature(f"unknown key_id {sig['key_id']}")
+    key.verify(base64.urlsafe_b64decode(sig["value"] + "=="), ARTIFACT_DOMAIN + b"\n" + canonical_json(payload))
+    return payload

@@ -68,3 +68,23 @@ class CrossProcessRoundTrip(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Artifact(unittest.TestCase):
+    def test_verify_artifact_roundtrip_and_tamper(self):
+        import base64
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from scalp_eval.contracts import canonical_json
+        from scalp_eval.verify import ARTIFACT_DOMAIN, key_id, verify_artifact
+        key = Ed25519PrivateKey.generate()
+        payload = {"kind": "insider_event_set", "table": "insider_events", "rule_version": "x", "rows": 3, "sha256": "b" * 64}
+        sig = key.sign(ARTIFACT_DOMAIN + b"\n" + canonical_json(payload))
+        env = {"schema_version": 1, "payload": payload,
+               "signature": {"alg": "Ed25519", "canonicalization": "RFC8785-ascii-nofloat", "key_id": key_id(key.public_key()),
+                             "value": base64.urlsafe_b64encode(sig).rstrip(b"=").decode("ascii")}}
+        self.assertEqual(verify_artifact(env, [key.public_key()]), payload)
+        env["payload"] = dict(payload, rows=4)
+        with self.assertRaises(Exception):
+            verify_artifact(env, [key.public_key()])
+        with self.assertRaises(Exception):
+            verify_artifact(dict(env, payload=payload), [Ed25519PrivateKey.generate().public_key()])
