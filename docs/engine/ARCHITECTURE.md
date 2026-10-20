@@ -1,4 +1,6 @@
 > **Status (2026-10-19): the intraday scalping line is closed. See [ADR 0007](adr/0007-intraday-line-closed.md). This document is kept as the historical design.**
+>
+> **Status (2026-10-20): insider line closed and engine paused ([ADR 0011](adr/0011-insider-line-closed-engine-paused.md)).**
 
 Intraday scalping · US equities · recommendations only
 
