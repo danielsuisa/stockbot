@@ -21,11 +21,11 @@ Closed lines: intraday models ([ADR 0007](adr/0007-intraday-line-closed.md)), in
 | I2 | I1 remedy; one confirmation measurement | Process PASS; verdict **NO-GO (a)** | aeea512 (`engine/i2`) | [I2](I2-report.md) |
 | I2C | Close the insider line, pause the engine | See the I2C commits | `engine/i2c` | ADR 0011, this index |
 | S0 | Swing tickets scoping | ADR 0012, 0013 Accepted | 886693e (`engine/s0`) | [S0](S0-report.md), [audit](S0-audit.md) |
-| S1 | Swing tickets implementation | **On hold** until after T2 (ADR 0015) | `engine/s1` (local) | — |
+| S1 | Close intraday H1; swing pre-registration, data, signed tickets, evaluator (no outcomes) | PASS | `engine/s1` (on-hold attempt kept as `engine/s1-hold`) | [S1](S1-report.md), ADR 0018, 0019 |
 | T1 | Intraday tickets: pre-registration, data, signed tickets, evaluator (no outcomes) | PASS | `engine/t1` | [T1](T1-report.md) |
 | T2 | Intraday tickets: survivorship, parity, development run | Stopped before confirmation (ORB 5 band, no defect); development H1 −0.154R, t −5.9 | `engine/t2` | [T2](T2-report.md), ADR 0017 |
 
-Decisions: [ADR 0001](adr/0001-engine-foundations.md) … [ADR 0018](adr/0018-intraday-h1-ticket-line-closed.md),
+Decisions: [ADR 0001](adr/0001-engine-foundations.md) … [ADR 0019](adr/0019-swing-ticket-implementation.md),
 in `adr/`.
 
 ## The two research lines
@@ -39,7 +39,7 @@ in `adr/`.
     outperform matched controls over 20 sessions from acceptance + 5 min.
   - **Closed, NO-GO (a):** confirmation mean abnormal return +1.08%, t 1.61 < 2.0; tradable −0.14% vs SPY.
 
-## Reusable components (test counts as of T2: engine 194, eval 119)
+## Reusable components (test counts as of S1: engine 204, eval 143)
 
 | Component | Paths | Tests |
 |---|---|---|
