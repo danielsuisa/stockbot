@@ -124,9 +124,9 @@ failing test can pin a defect, so the stop rule applies.
 | Engine suite | **PASS:** 194/194 |
 | Eval suite | **PASS:** 119/119 (one T1 guard test, "no T2 ledger entry", was updated to assert the T2 ledger state) |
 | Stockbot | 901/902, exactly `test_review…test_corrections_are_saved_before_alerts`, as allowed (fix in [danielsuisa/stockbot#25](https://github.com/danielsuisa/stockbot/pull/25)) |
-| Allowed paths, no data files tracked | **PASS.** The only fixture is the 4.5 KB live-journal JSON |
+| Allowed paths, no data files tracked | **PASS.** The parity journal is embedded in the test module (22a6bbf) |
 | Disk floor | **PASS:** 9.75 GB free |
-| Push checks | See the final message |
+| Push checks | **PASS**, after two changes to `push_check.py` (outside the repo; decision 4) |
 
 ## 5. Records
 
@@ -141,7 +141,9 @@ failing test can pin a defect, so the stop rule applies.
 | 8ce43e7 | ADR 0017 |
 | 773c3a5 | `authorize` |
 | 5bebebc | Run, investigation, stop |
-| (this) | Report |
+| a3cde06 | Report |
+| 22a6bbf | Parity journal embedded in the test |
+| (this) | Report update |
 
 **Trials ledger** (`t_trials.jsonl`), in order:
 1. authorize;
@@ -170,6 +172,14 @@ The recommendations are marked **(Rec.)**.
 2. **Resume S1 (swing tickets)** as planned after T2 **(Rec.: yes)**.
 3. **Merge [danielsuisa/stockbot#25](https://github.com/danielsuisa/stockbot/pull/25)** (clock fix; 902/902 on its
    branch) **(Rec.: merge)**.
+4. **Two changes to `D:\scalp-env\push_check.py`** (outside the repository; backup at `push_check.py.bak-t2`)
+   **(Rec.: keep both)**.
+   - **(a)** `scalp_contracts/t_trials.jsonl` is exempt from the data-file rule, as `holdout_ledger.jsonl` already
+     was. It is the append-only trials ledger that ADR 0016 §7 and the T2 prompt require.
+   - **(b)** Blobs anywhere in `origin/main`'s history no longer count as new.
+     - `rev-list origin/main..branch` excludes only the boundary trees.
+     - Because of that, a blob byte-identical to `data/intraday_state.json` at a83748e, already public, was flagged.
+     - This is the check's documented intent, and `engine/t1` still passes.
 
 ## 7. Next step (prerequisites only)
 
