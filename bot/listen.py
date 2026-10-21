@@ -274,12 +274,12 @@ def intraday_cmd(rest):
     if not arg:
         st = intraday.load(None)
         if not st or not st["watch"]:
-            common.send(f"עוד אין רשימת מניות במשחק להיום. היא נבנית ב־09:38 ניו־יורק, או עכשיו עם {code('/intraday now')}.",
+            common.send(f"עוד אין רשימת מניות במשחק להיום. היא נבנית מ־08:00 ניו־יורק, או עכשיו עם {code('/intraday now')}.",
                         source=intraday.SOURCE, buttons=KEYBOARD)
             return 0
         text = intraday.watch_text(st["watch"], st["day"])
         if st["journal"]:
-            text += "\n\n" + "\n\n".join(intraday.ticket_text(t, st["day"]) for t in st["journal"])
+            text += "\n\n" + "\n\n".join(intraday.ticket_text(t, st["day"]) for t in intraday.sent_tickets(st))
         common.send(text, source=intraday.SOURCE, buttons=KEYBOARD)
         return 0
     if arg in ("now", "stats"):

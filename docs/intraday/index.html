@@ -139,14 +139,16 @@ footer { color: var(--muted); font-size: .82rem; margin-top: 28px; }
   </details>
 
   <footer>
-    כרטיסים מחושבים בלבד, לא ייעוץ השקעות. הבוט לא שולח פקודות; ניירת בלבד. הלוח מציג את מה שנשמר בריצות הבוקר (09:40–11:30), אחר הצהריים (15:00–15:45) והמעקב (16:20) ניו־יורק; תוצאות של "סרוק עכשיו" ו"בדוק מניה" מגיעות לטלגרם בלבד.
+    כרטיסים מחושבים בלבד, לא ייעוץ השקעות. הבוט לא שולח פקודות; ניירת בלבד. הלוח מציג את מה שנשמר בריצת הבוקר (08:00–10:30, התבניות מהמצגת) והמעקב (16:20) ניו־יורק; תוצאות של "סרוק עכשיו" ו"בדוק מניה" מגיעות לטלגרם בלבד.
   </footer>
 </main>
 
 <script>
 const REPO = "danielsuisa/stockbot", API = "https://api.github.com/repos/" + REPO;
-const SETUPS = {orb5: "פריצת טווח פתיחה 5 דק׳", orb15: "פריצת טווח פתיחה 15 דק׳", vwap_hammer: "פטיש על VWAP",
-  vwap_engulf: "בליעה שורית על VWAP", flag: "דגל שורי", red_to_green: "מאדום לירוק"};
+const SETUPS = {hammer: "Hammer על תמיכה", engulf: "Engulfing שורי על תמיכה", inside: "Inside bar", nr7: "NR7",
+  breakout: "פריצה מעל רמה", retest: "Retest של רמה שנפרצה", vwap_hammer: "VWAP pullback עם Hammer",
+  vwap_engulf: "VWAP pullback עם Engulfing", flag: "Bull flag",
+  orb5: "פריצת טווח פתיחה 5 דק׳", orb15: "פריצת טווח פתיחה 15 דק׳", red_to_green: "מאדום לירוק"};
 const RESULTS = {target: ["יעד", "target"], stop: ["סטופ", "stop"], time: ["יציאה בזמן", "time"]};
 const $ = id => document.getElementById(id);
 
