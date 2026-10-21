@@ -108,6 +108,24 @@ class Controls(unittest.TestCase):
         self.assertEqual(P.draw_controls("x", []), [])
 
 
+class AssetClass(unittest.TestCase):
+    def test_etp_or_stock(self):
+        self.assertEqual(P.asset_class("ARCA", "ProShares Ultra Gold"), "etp")
+        self.assertEqual(P.asset_class("ARCA", "United States Oil Fund, LP"), "etp")
+        self.assertEqual(P.asset_class("NASDAQ", "Direxion Daily Semiconductor Bull 3X Shares"), "etp")
+        self.assertEqual(P.asset_class("NYSE", "General Motors Company Common Stock"), "stock")
+        self.assertEqual(P.asset_class("NASDAQ", "Klaviyo, Inc. Series A Common Stock"), "stock")
+        self.assertEqual(P.asset_class(None, None), "stock")
+
+    def test_rows_carry_the_class(self):
+        P.CLASSES["ACME"] = "etp"
+        try:
+            rows, _ = P.build_session(DAY, WATCH, session(), session(), rel)
+        finally:
+            P.CLASSES.pop("ACME")
+        self.assertEqual({r["asset_class"] for r in rows}, {"etp"})  # controls inherit the parent's class
+
+
 class Build(unittest.TestCase):
     def test_session_sets_and_counts(self):
         rows, c = P.build_session(DAY, WATCH, session(), session(), rel)

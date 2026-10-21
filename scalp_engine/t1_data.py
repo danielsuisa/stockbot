@@ -79,15 +79,61 @@ def window_sessions(first, last):
     return [d for d, _ in sessions() if first <= d <= last]
 
 
-def universe():
+def listed_universe(assets=None):
     """The bot's universe() filter on the store's asset snapshot, active and inactive (ADR 0016 section 1)."""
     out = set()
-    for a in ingest.latest_assets():
+    for a in assets if assets is not None else ingest.latest_assets():
         sym, name = a["symbol"], (a.get("name") or "").upper()
         if a.get("exchange") in R.EXCHANGES and sym.isalpha() and len(sym) <= 5 \
                 and not any(w in name.split() for w in R.FUND_WORDS):
             out.add(sym)
     return out
+
+
+def survivor_names(listed, uni, delistings, renames):
+    """{symbol: valid_until} of names Alpaca's asset list omits (ADR 0017 item 7; P1's top500_v3 method): an old
+    ticker renamed into a universe name (valid until the rename), and an acquired or worthless-removed ticker
+    (valid until its last delisting), unless a listed record holds the symbol, the symbol is not 1-5 letters, or
+    the acquirer is a listed non-universe security (a fund reorganization). The rename date wins, as in P1."""
+    def ok(sym):
+        return sym.isalpha() and len(sym) <= 5
+    out = {}
+    for old, new, day in sorted(renames):
+        if old == new or old in listed or not ok(old) or new not in uni:
+            continue
+        out[old] = min(out.get(old, day), day)
+    last = {}
+    for sym, day, acq in sorted(delistings, key=lambda x: (x[0], x[1], x[2] or "")):
+        if sym in listed or not ok(sym) or (acq and acq in listed and acq not in uni):
+            continue
+        last[sym] = max(last.get(sym, day), day)
+    for sym, day in last.items():
+        out.setdefault(sym, day)
+    return out
+
+
+def valid_on(spans, sym, day):
+    """A universe symbol is eligible on `day` unless it was delisted or renamed away on or before it."""
+    until = spans.get(sym)
+    return until is None or day < until
+
+
+_SPANS = {}
+
+
+def universe_spans():
+    """{symbol: valid_until or None}: the listed universe (no end) plus the survivorship names."""
+    if not _SPANS:
+        assets = ingest.latest_assets()
+        listed, uni = {a["symbol"] for a in assets}, listed_universe(assets)
+        added = survivor_names(listed, uni, ingest.delistings(HARD_FIRST, CONF[1]), ingest.renames(HARD_FIRST, CONF[1]))
+        _SPANS.update({x: None for x in uni})
+        _SPANS.update(added)
+    return _SPANS
+
+
+def universe():
+    return set(universe_spans())
 
 
 def coverage_gaps(uni, sets, first, last, session_days=None):
@@ -113,6 +159,19 @@ def coverage_gaps(uni, sets, first, last, session_days=None):
     return [g for g in out if g[2]]
 
 
+FILL_TAG = "t2"  # daily-fill part prefix of this phase (T1 wrote t1f0, t1f1)
+
+
+def spanned_gaps(gaps, spans):
+    """Coverage gaps without the symbols that were no longer valid when the gap starts."""
+    out = []
+    for a, b, miss in gaps:
+        m = [x for x in miss if spans.get(x) is None or a < spans[x]]
+        if m:
+            out.append((a, b, m))
+    return out
+
+
 def daily_sets():
     """Complete daily-bar symbol sets with their ranges (P1's v1-v3 records carry none: P1's range)."""
     out = []
@@ -127,11 +186,11 @@ def daily_sets():
 def step_daily_fill(cl, end=CONF[1]):
     """Daily bars for every (universe symbol, date range) never requested (T1 defect 2026-10-21), one part each."""
     cal = [d for d, _ in sessions(HARD_FIRST, end)]
-    gaps = coverage_gaps(universe() | {"SPY"}, daily_sets(), HARD_FIRST, end, cal)
+    gaps = spanned_gaps(coverage_gaps(universe() | {"SPY"}, daily_sets(), HARD_FIRST, end, cal), universe_spans())
     for k, (a, b, syms) in enumerate(gaps):
         log(f"daily fill {a}..{b}: {len(syms)} symbols")
-        insider_prices.fetch_daily(cl, syms, a, b, part=f"sip-1d-t1f{k}", workers=4)
-    left = coverage_gaps(universe() | {"SPY"}, daily_sets(), HARD_FIRST, end, cal)
+        insider_prices.fetch_daily(cl, syms, a, b, part=f"sip-1d-{FILL_TAG}f{k}", workers=4)
+    left = spanned_gaps(coverage_gaps(universe() | {"SPY"}, daily_sets(), HARD_FIRST, end, cal), universe_spans())
     log(f"daily fill: {len(gaps)} gaps filled, {len(left)} left")
 
 
@@ -141,7 +200,9 @@ class Daily:
 
     def __init__(self, end):
         uni = universe()
-        gaps = coverage_gaps(uni | {"SPY"}, daily_sets(), HARD_FIRST, end, [d for d, _ in sessions(HARD_FIRST, end)])
+        self.spans = universe_spans()
+        gaps = spanned_gaps(coverage_gaps(uni | {"SPY"}, daily_sets(), HARD_FIRST, end,
+                                          [d for d, _ in sessions(HARD_FIRST, end)]), self.spans)
         if gaps:
             raise LookupError(f"daily coverage gaps: {[(str(a), str(b), len(m)) for a, b, m in gaps]}")
         df = insider_prices.bars(HARD_FIRST, end)
@@ -159,6 +220,8 @@ class Daily:
         prev_day, start = before[-1], before[max(0, len(before) - max(R.ADV_SESSIONS, 30) - 1)]
         rows = {}
         for sym, (dates, rs) in self.by.items():
+            if not valid_on(self.spans, sym, day):
+                continue
             lo, hi = bisect.bisect_left(dates, start), bisect.bisect_right(dates, prev_day)
             if hi - lo >= 16:
                 rows[sym] = rs[lo:hi]

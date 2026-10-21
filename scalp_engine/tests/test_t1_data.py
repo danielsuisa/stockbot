@@ -67,6 +67,27 @@ class HeldKeys(unittest.TestCase):
         self.assertEqual(T.drop_held(df, set()).height, 3)
 
 
+class Survivorship(unittest.TestCase):
+    def test_delisted_and_renamed_names_with_their_validity(self):
+        """T2 item 7: names Alpaca's asset list omits (acquired, worthless-removed, renamed away), P1's top500_v3
+        method, each valid only before its delisting or rename; a fund reorganization is skipped."""
+        d = dt.date
+        listed = {"NEW", "ETFX", "KEEP"}
+        uni = {"NEW", "KEEP"}
+        dl = [("GONE", d(2023, 5, 1), None), ("GONE", d(2023, 6, 1), "KEEP"), ("INTOETF", d(2024, 1, 2), "ETFX"),
+              ("KEEP", d(2024, 1, 2), None), ("BAD.W", d(2024, 1, 2), None), ("OLD", d(2025, 1, 2), None)]
+        rn = [("OLD", "NEW", d(2024, 3, 1)), ("OTHER", "ETFX", d(2024, 3, 1)), ("NEW", "NEW", d(2024, 3, 1))]
+        got = T.survivor_names(listed, uni, dl, rn)
+        self.assertEqual(got, {"GONE": d(2023, 6, 1), "OLD": d(2024, 3, 1)})  # the rename date wins, as in P1
+
+    def test_valid_on(self):
+        d = dt.date
+        spans = {"GONE": d(2023, 6, 1), "KEEP": None}
+        self.assertTrue(T.valid_on(spans, "GONE", d(2023, 5, 31)))
+        self.assertFalse(T.valid_on(spans, "GONE", d(2023, 6, 1)))
+        self.assertTrue(T.valid_on(spans, "KEEP", d(2026, 10, 16)))
+
+
 class Cutoff(unittest.TestCase):
     def test_last_complete_session(self):
         et = T.ET

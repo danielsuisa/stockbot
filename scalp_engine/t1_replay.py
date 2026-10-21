@@ -11,6 +11,7 @@ import datetime as dt
 import hashlib
 import json
 import random
+import re
 import sys
 from collections import Counter
 
@@ -92,6 +93,31 @@ def candle_at(bars1, close):
     return b5[-1] if b5 and b5[-1]["end"] == close else None
 
 
+ETP_NAME = re.compile(
+    r"\b(ETFs?|ETNs?|ETP|Funds?|Index|iShares|SPDR|ProShares|Direxion|Select Sector|UltraPro|UltraShort|"
+    r"2X|3X|Daily Target|Exchange[- ]Traded|Trust Units|Trust,? Series)\b", re.I)
+
+
+def asset_class(exchange, name):
+    """'etp' or 'stock' for the reported-only breakdown (ADR 0017 item 1): an NYSE Arca listing, or a name with
+    an exchange-traded-product keyword (P1's classifier words; the bot's fund-word filter lets 'Fund,' and
+    'ProShares' through). A name-less survivorship ticker counts as a stock."""
+    return "etp" if exchange == "ARCA" or (name and ETP_NAME.search(name)) else "stock"
+
+
+def asset_classes():
+    """{symbol: 'etp' | 'stock'} for the universe, from the store's asset snapshot."""
+    from scalp_engine import ingest
+    recs = {}
+    for a in ingest.latest_assets():
+        recs.setdefault(a["symbol"], a)
+    return {s: (asset_class(recs[s].get("exchange"), recs[s].get("name")) if s in recs else "stock")
+            for s in T.universe_spans()}
+
+
+CLASSES = {}  # symbol -> 'etp' | 'stock', filled by build(); 'stock' if unknown
+
+
 def ticket_row(day, t, set_name):
     trigger, stop = t["entry_stop"], t["stop_loss"]
     tid = f"{day.isoformat()}|{t['symbol']}|{t['setup']}|{t['at']}"
@@ -100,7 +126,8 @@ def ticket_row(day, t, set_name):
             "target": t["target"], "r_bot": t["R"], "r_floored": t["r_floored"], "atr": t["atr"],
             "shares": shares_for(trigger, stop), "shares_cap20": shares_for(trigger, stop, cap_share=CAP20),
             "score": t["score"], "gap": t["gap"], "pre_rel": t["pre_rel"], "open_relvol": t.get("open_relvol"),
-            "last": t["last"], "vwap": t.get("vwap"), "parent_id": None, "draw_pool": None, "rules_sha256": R.rules_sha256()}
+            "last": t["last"], "vwap": t.get("vwap"), "parent_id": None, "draw_pool": None, "rules_sha256": R.rules_sha256(),
+            "asset_class": CLASSES.get(t["symbol"], "stock")}
 
 
 def control_rows(day, parent, bars1, signals):
@@ -199,7 +226,7 @@ SCHEMA = {"ticket_id": pl.Utf8, "set": pl.Utf8, "date": pl.Date, "symbol": pl.Ut
           "target": pl.Float64, "r_bot": pl.Float64, "r_floored": pl.Boolean, "atr": pl.Float64, "shares": pl.Int64,
           "shares_cap20": pl.Int64, "score": pl.Float64, "gap": pl.Float64, "pre_rel": pl.Float64,
           "open_relvol": pl.Float64, "last": pl.Float64, "vwap": pl.Float64, "parent_id": pl.Utf8,
-          "draw_pool": pl.Int64, "rules_sha256": pl.Utf8}
+          "draw_pool": pl.Int64, "rules_sha256": pl.Utf8, "asset_class": pl.Utf8}
 
 
 def frame(rows):
@@ -229,6 +256,7 @@ def build(first, last, sign=True):
     days = T.window_sessions(first, last)
     cal = [d for d, _ in T.sessions()]
     daily, opening = T.Daily(max(days)), Opening()
+    CLASSES.update(asset_classes())
     by_window, counts, watch_hash = {}, {}, {}
     for i, d in enumerate(days):
         inp = session_inputs(d, daily, opening, cal)
