@@ -269,10 +269,13 @@ def book_order(ticket_id):
     return hashlib.sha256(f"{ticket_id}|s2-book-v1".encode()).hexdigest()
 
 
-def simulate_book(tickets, mkt, minutes, quotes):
+def simulate_book(tickets, mkt, minutes, quotes, minutes_for=None, quotes_for=None):
     """$2,500 cash, T+1, <= 4 positions, a position <= 40% of equity (scaled down), seeded same-session order, idle
-    cash at 0%. -> dict with trades, skips by reason, final equity."""
-    first = {t["ticket_id"]: run_ticket(t, mkt, minutes, quotes) for t in tickets}
+    cash at 0%. -> dict with trades, skips by reason, final equity. minutes_for(ticket) / quotes_for(ticket), when
+    given, supply each ticket's own minute window and spread tier (S2 driver)."""
+    mins_of = minutes_for or (lambda t: minutes)
+    q_of = quotes_for or (lambda t: quotes)
+    first = {t["ticket_id"]: run_ticket(t, mkt, mins_of(t), q_of(t)) for t in tickets}
     fills = sorted((r["fill_i"], book_order(tid), tid) for tid, r in first.items() if r["filled"])
     by_id = {t["ticket_id"]: t for t in tickets}
     settled, pending, open_pos, equity_cost = BOOK_CASH, [], [], 0.0
@@ -291,7 +294,7 @@ def simulate_book(tickets, mkt, minutes, quotes):
         if q <= 0:
             skips["zero_qty"] += 1
             continue
-        r = run_ticket(by_id[tid], mkt, minutes, quotes, qty=q)
+        r = run_ticket(by_id[tid], mkt, mins_of(by_id[tid]), q_of(by_id[tid]), qty=q)
         need = q * r["fill_px"] + order_cost(PLAN, "buy", q, r["fill_px"], mkt.sessions[r["fill_i"]])
         if need > settled:
             skips["t1_cash"] += 1
@@ -302,6 +305,9 @@ def simulate_book(tickets, mkt, minutes, quotes):
         open_pos.append({"exit_i": r["exit_i"], "cost_basis": need})
         trades.append(r)
     final = settled + sum(c for _, c in pending)
+    if not trades:
+        return {"trades": 0, "skips": skips, "final_equity": final, "return": final / BOOK_CASH - 1.0, "first_i": None,
+                "last_i": None, "fills": len(fills)}
     return {"trades": len(trades), "skips": skips, "final_equity": final, "return": final / BOOK_CASH - 1.0,
             "first_i": trades[0]["fill_i"] if trades else None, "last_i": max((t["exit_i"] for t in trades), default=None)}
 
