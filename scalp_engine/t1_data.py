@@ -172,6 +172,35 @@ def spanned_gaps(gaps, spans):
     return out
 
 
+def fetch_daily_kept(cl, symbols, first, last, part):
+    """SIP daily bars for symbols over [first, last], month by month, as part `part`: only requested symbols, no
+    key any part already holds, one partition per session; a symbol-set record closes the step."""
+    table = "raw_bars_1d"
+    done = storage.completed(table, part=part)
+    dropper = ingest.SymbolDropper(table)
+    cal = [d for d, _ in sessions(first, last)]
+    for m0, m1 in ingest._months(first, last):
+        days = [d for d in cal if m0 <= d <= m1
+                and storage.partition_key(table, source=SOURCE, feed="sip", date=d) not in done]
+        if not days:
+            continue
+        lo, hi = ingest.range_bounds(m0, m1)
+        guard(lo, hi)
+        pages = ingest.fetch_bars(cl, table, symbols, "1Day", lo, hi - dt.timedelta(seconds=1), (lo, hi), "sip", dropper)
+        df = keep_requested(ingest._bars_frame(table, pages, "sip", "-", ingest.now()), symbols)
+        df = df.with_columns(d=pl.col("event_at").dt.convert_time_zone("America/New_York").dt.date())
+        for d in days:
+            rows = df.filter(pl.col("d") == d).drop("d")
+            held = read_frame(storage.data_root() / table, *day_bounds(d), columns=["symbol"], symbols=symbols)
+            rows = drop_held(rows, set(zip(held["symbol"].to_list(), held["event_at"].to_list())) if held.height else set())
+            disk_check()
+            storage.write_partition(table, rows, part=part, request_ids=rows["request_id"].unique().to_list(),
+                                    source=SOURCE, feed="sip", date=d)
+        log(f"daily {part}: {m0:%Y-%m} {df.height} rows; requests {cl.stats['requests']}")
+    storage.append_manifest(table, {"kind": "daily_symbol_set", "part": part, "symbols": sorted(symbols),
+                                    "complete": True, "start": first.isoformat(), "end": last.isoformat()})
+
+
 def daily_sets():
     """Complete daily-bar symbol sets with their ranges (P1's v1-v3 records carry none: P1's range)."""
     out = []
@@ -189,7 +218,7 @@ def step_daily_fill(cl, end=CONF[1]):
     gaps = spanned_gaps(coverage_gaps(universe() | {"SPY"}, daily_sets(), HARD_FIRST, end, cal), universe_spans())
     for k, (a, b, syms) in enumerate(gaps):
         log(f"daily fill {a}..{b}: {len(syms)} symbols")
-        insider_prices.fetch_daily(cl, syms, a, b, part=f"sip-1d-{FILL_TAG}f{k}", workers=4)
+        fetch_daily_kept(cl, syms, a, b, part=f"sip-1d-{FILL_TAG}f{k}")
     left = spanned_gaps(coverage_gaps(universe() | {"SPY"}, daily_sets(), HARD_FIRST, end, cal), universe_spans())
     log(f"daily fill: {len(gaps)} gaps filled, {len(left)} left")
 
@@ -237,6 +266,12 @@ def _p1_held(day, feed):
     return set(df["symbol"].unique().to_list()) if df.height else set()
 
 
+def keep_requested(df, symbols):
+    """Rows of the requested symbols only: Alpaca can return bars under a symbol the request never named (AHPAW,
+    T2 defect 2026-10-21); such rows are not stored."""
+    return df.filter(pl.col("symbol").is_in(sorted(set(symbols)))) if df.height else df
+
+
 def drop_held(df, held):
     """Rows of df whose (symbol, event_at) key no held part has (no key is stored twice)."""
     if not held or df.height == 0:
@@ -271,7 +306,7 @@ def fetch_minutes(cl, day, feed, symbols, first, last, part, dropper):
                 "limit": 10000, "adjustment": "raw", "feed": feed, "asof": "-", "sort": "asc"},
                 "bars", table=BARS, event_range=(lo, hi + dt.timedelta(minutes=1))))
         pages += dropper.run(chunk, fetch)
-    df = ingest._bars_frame(BARS, pages, feed, "-", ingest.now())
+    df = keep_requested(ingest._bars_frame(BARS, pages, feed, "-", ingest.now()), symbols)
     df = drop_held(df, held_minute_keys(day, feed, symbols) if symbols else set())
     with _lock:
         disk_check()
@@ -657,22 +692,35 @@ DEN_REMEDY = {"table": BARS, "old": "sip-1m-t1den", "p1": ("sip-1m-t1s1b",), "ne
               "segments": {"source": SOURCE, "feed": "sip"}}
 
 
-def step_remedy():
-    """T1 duplicate-key remedy (2026-10-21): the t1den keys that t1s1b fetched again (identical values, checked
-    value by value) are set aside with their partition file; the rest of that file is rewritten as t1den2."""
+DAILY_REMEDY = {"table": "raw_bars_1d", "old": "sip-1d-t2f0", "p1": ("sip-1d-t1f0",), "new": "sip-1d-t2f0b",
+                "key": ["symbol", "event_at"],
+                "values": ["open", "high", "low", "close", "volume", "vwap", "trade_count", "feed", "adjustment"],
+                "segments": {"source": SOURCE, "feed": "sip"}}
+
+
+def step_remedy(which="t1den"):
+    """Duplicate-key remedies (I2 routine): the old part's keys held, value for value, by an earlier part are set
+    aside with their partition file; the rest of that file is rewritten as the new part.
+    t1den (T1, 2026-10-21): t1den keys that t1s1b fetched again. daily (T2, 2026-10-21): AHPAW daily keys that
+    t1f0 stored without requesting them and t2f0 requested."""
     from scalp_engine import i1_remedy
-    dates = sorted({dt.date.fromisoformat(r["date"]) for r in storage.manifest(BARS)
-                    if r.get("kind") == "t1_fetch_list" and r["part"] == "sip-1m-t1den"})
-    done = {r["partition"] for r in storage.manifest(BARS) if r.get("kind") == "set_aside"}
+    spec, reason = ((DEN_REMEDY, "T1 duplicate-key remedy (T1 report): t1den keys fetched again by t1s1b with identical "
+                                 "values") if which == "t1den" else
+                    (DAILY_REMEDY, "T2 duplicate-key remedy (T2 report): daily keys t1f0 stored unrequested and t2f0 "
+                                   "fetched again, identical values"))
+    table = spec["table"]
+    dates = sorted({dt.date.fromisoformat(r["partition"].rsplit("date=", 1)[1]) for r in storage.manifest(table)
+                    if r.get("kind") == "partition" and r["file"] == f"part-{spec['old']}.parquet"})
+    done = {r["partition"] for r in storage.manifest(table) if r.get("kind") == "set_aside"}
+    seg = spec["segments"]
     out = []
     for d in dates:
-        if storage.partition_key(BARS, source=SOURCE, feed="sip", date=d) in done:
+        if storage.partition_key(table, date=d, **seg) in done:
             continue
-        r = i1_remedy.remedy_one(DEN_REMEDY, d, reason="T1 duplicate-key remedy (T1 report): t1den keys fetched again "
-                                                       "by t1s1b with identical values")
+        r = i1_remedy.remedy_one(spec, d, reason=reason)
         if r:
             out.append(r)
-    log(f"remedy: {len(out)} partitions, {sum(r['identical_in_p1'] for r in out)} duplicate keys set aside")
+    log(f"remedy {which}: {len(out)} partitions, {sum(r['identical_in_p1'] for r in out)} duplicate keys set aside")
     return out
 
 
@@ -704,7 +752,7 @@ def main(argv=None):
         step_watch(days)
         return 0
     if a.step == "remedy":
-        print(json.dumps(step_remedy(), indent=1))
+        print(json.dumps(step_remedy(a.tag or "t1den"), indent=1))
         return 0
     cl = insider_prices.client()
     if a.step == "topup":

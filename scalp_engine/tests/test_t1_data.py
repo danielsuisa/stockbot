@@ -88,6 +88,15 @@ class Survivorship(unittest.TestCase):
         self.assertTrue(T.valid_on(spans, "KEEP", d(2026, 10, 16)))
 
 
+class Unrequested(unittest.TestCase):
+    def test_only_requested_symbols_are_kept(self):
+        """T2 defect 2026-10-21: Alpaca returned AHPAW's daily bars for a request that never named it (T1 fill), so
+        a later fill that did name it stored them twice (210 keys). A fill keeps only the symbols it requested."""
+        import polars as pl
+        df = pl.DataFrame({"symbol": ["OABIW", "AHPAW"], "event_at": [dt.datetime(2022, 2, 7, 5, tzinfo=UTC)] * 2})
+        self.assertEqual(T.keep_requested(df, ["OABIW"])["symbol"].to_list(), ["OABIW"])
+
+
 class Cutoff(unittest.TestCase):
     def test_last_complete_session(self):
         et = T.ET
