@@ -23,6 +23,7 @@ closed by [ADR 0007](adr/0007-intraday-line-closed.md) and the insider line by
 | S0 | Swing tickets scoping | ADR 0012, 0013 Accepted | 886693e (`engine/s0`) | [S0](S0-report.md), [audit](S0-audit.md) |
 | S1 | Swing tickets implementation | **On hold** until after T2 (ADR 0015) | `engine/s1` (local) | — |
 | T1 | Intraday tickets: pre-registration, data, signed tickets, evaluator (no outcomes) | PASS | `engine/t1` | [T1](T1-report.md) |
+| T2 | Intraday tickets: survivorship, parity, development run | Stopped before confirmation (ORB 5 band, no defect); development H1 −0.154R, t −5.9 | `engine/t2` | [T2](T2-report.md), ADR 0017 |
 
 Decisions: [ADR 0001](adr/0001-engine-foundations.md) … [ADR 0017](adr/0017-t2-decisions.md),
 in `adr/`.
@@ -38,7 +39,7 @@ in `adr/`.
     outperform matched controls over 20 sessions from acceptance + 5 min.
   - **Closed, NO-GO (a):** confirmation mean abnormal return +1.08%, t 1.61 < 2.0; tradable −0.14% vs SPY.
 
-## Reusable components (test counts as of T1: engine 187, eval 114)
+## Reusable components (test counts as of T2: engine 194, eval 119)
 
 | Component | Paths | Tests |
 |---|---|---|
