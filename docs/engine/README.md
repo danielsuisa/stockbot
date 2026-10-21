@@ -20,6 +20,9 @@ closed by [ADR 0007](adr/0007-intraday-line-closed.md) and the insider line by
 | I1 | Pre-registration, ingestion, rule, parity, events | FAIL on duplicate keys, then PASS after the I2 remedy | 28a47e9 (`engine/i1`) | [I1](I1-report.md), [addendum](I1-addendum.md) |
 | I2 | I1 remedy; one confirmation measurement | Process PASS; verdict **NO-GO (a)** | aeea512 (`engine/i2`) | [I2](I2-report.md) |
 | I2C | Close the insider line, pause the engine | See the I2C commits | `engine/i2c` | ADR 0011, this index |
+| S0 | Swing tickets scoping | ADR 0012, 0013 Accepted | 886693e (`engine/s0`) | [S0](S0-report.md), [audit](S0-audit.md) |
+| S1 | Swing tickets implementation | **On hold** until after T2 (ADR 0015) | `engine/s1` (local) | — |
+| T1 | Intraday tickets: pre-registration, data, signed tickets, evaluator (no outcomes) | PASS | `engine/t1` | [T1](T1-report.md) |
 
 Decisions: [ADR 0001](adr/0001-engine-foundations.md) … [ADR 0016](adr/0016-t1-pre-registered-design.md),
 in `adr/`.
@@ -35,7 +38,7 @@ in `adr/`.
     outperform matched controls over 20 sessions from acceptance + 5 min.
   - **Closed, NO-GO (a):** confirmation mean abnormal return +1.08%, t 1.61 < 2.0; tradable −0.14% vs SPY.
 
-## Reusable components (test counts as of I2C: engine 159, eval 94)
+## Reusable components (test counts as of T1: engine 187, eval 114)
 
 | Component | Paths | Tests |
 |---|---|---|
@@ -46,6 +49,9 @@ in `adr/`.
 | Replay | `scalp_engine/replay.py`, `live_source.py` | `test_replay` 7, `test_replay_days` 2 |
 | L7 evaluator, intraday | `scalp_eval/fills.py`, `fills_variants.py`, `costs.py`, `account.py`, `metrics.py` | `test_l7` 17, `test_p3d` 5 |
 | L7 evaluator, daily (event study, controls, trades vs SPY) | `scalp_eval/insider_study.py` | `test_insider_study` 19 (15 hand-computed golden cases) |
+| Live screener rules (copied verbatim from `bot/intraday.py` at 09bfa55), replay, tickets, controls, parity, leakage | `scalp_engine/intraday_rules.py`, `t1_replay.py` | `test_intraday_rules` 13, `test_t1_replay` 8 |
+| T1 ingestion (top-up, stage-1 inputs, top 20, NBBO grid, coverage, remedy) | `scalp_engine/t1_data.py` | `test_t1_data` 7 |
+| L7 evaluator, intraday tickets (fills, exits, costs, book, CR1, T2 guard) | `scalp_eval/intraday_eval.py` | `test_intraday_eval` 20 (golden set) |
 | Insider rule reimplementation, clock, parity, inputs | `scalp_engine/insider_rule.py`, `insider_events.py`, `insider_inputs.py`, `i1_remedy.py` | `test_insider_rule` 17, `test_insider_events` 2, `test_insider_inputs` 3, `test_i1_remedy` 2 |
 | Power / MDE | `scalp_engine/insider_power.py` (multiplier 2.8416 = t 2.0 + z 0.80) | `test_insider_power` 4 |
 | Backup-push checks | `D:\scalp-env\push_check.py` (outside the repo; system Python; credentials via `envload`) | none |
