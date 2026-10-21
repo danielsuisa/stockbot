@@ -1,0 +1,163 @@
+{
+  "table": "swing_tickets",
+  "schema_version": 1,
+  "description": "Swing bracket tickets and random-entry controls (ADR 0013 section 1, ADR 0014 sections 3-4). event_at = issuance t 20:00 ET. No outcome.",
+  "layer": "feature",
+  "append_only": true,
+  "time_column": "event_at",
+  "primary_key": [
+    "set",
+    "ticket_id",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ],
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Issuance: signal date 20:00 America/New_York, as UTC."
+    },
+    {
+      "name": "ticket_id",
+      "type": "string",
+      "nullable": false,
+      "description": "family|symbol|t, controls add |cK."
+    },
+    {
+      "name": "set",
+      "type": "string",
+      "nullable": false,
+      "description": "H1 | S-a | S-b | controls"
+    },
+    {
+      "name": "family",
+      "type": "string",
+      "nullable": false,
+      "description": "gaphold | nday"
+    },
+    {
+      "name": "parent_id",
+      "type": "string",
+      "nullable": true,
+      "description": "Controls: the ticket they control."
+    },
+    {
+      "name": "window",
+      "type": "string",
+      "nullable": false,
+      "description": "development | confirmation"
+    },
+    {
+      "name": "symbol",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "cik",
+      "type": "string",
+      "nullable": true,
+      "description": ""
+    },
+    {
+      "name": "signal_date",
+      "type": "date32",
+      "nullable": false,
+      "description": "t"
+    },
+    {
+      "name": "trigger",
+      "type": "float64",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "limit",
+      "type": "float64",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "stop",
+      "type": "float64",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "target",
+      "type": "float64",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "r",
+      "type": "float64",
+      "nullable": false,
+      "description": "trigger - stop"
+    },
+    {
+      "name": "qty",
+      "type": "int64",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "atr14",
+      "type": "float64",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "expiry_sessions",
+      "type": "int64",
+      "nullable": false,
+      "description": "3"
+    },
+    {
+      "name": "time_exit_sessions",
+      "type": "int64",
+      "nullable": false,
+      "description": "20"
+    },
+    {
+      "name": "rules_sha256",
+      "type": "string",
+      "nullable": false,
+      "description": "SHA-256 of the frozen ADR 0013 section 1 rules text."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": ""
+    }
+  ]
+}

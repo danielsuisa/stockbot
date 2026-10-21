@@ -16,7 +16,8 @@
       "type": "string",
       "enum": [
         "insider_event_set",
-        "intraday_ticket_set"
+        "intraday_ticket_set",
+        "swing_ticket_set"
       ]
     },
     "table": {
@@ -39,7 +40,10 @@
         "H1",
         "ORB5",
         "H1_SIPSIG",
-        "CONTROLS"
+        "CONTROLS",
+        "S-a",
+        "S-b",
+        "controls"
       ]
     },
     "window": {

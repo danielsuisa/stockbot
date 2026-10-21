@@ -1,0 +1,90 @@
+{
+  "table": "issuer_filings",
+  "schema_version": 1,
+  "description": "EDGAR submissions rows (forms 8-K, 8-K/A, 10-K(/A), 20-F(/A), 40-F(/A)) per CIK, filed 2022-01-03 .. 2026-10-19 (ADR 0014 section 2). event_at = filing date 00:00 ET.",
+  "layer": "raw",
+  "append_only": true,
+  "time_column": "event_at",
+  "primary_key": [
+    "accession",
+    "ingested_at"
+  ],
+  "partitioning": [
+    "source={source}",
+    "date={date}"
+  ],
+  "columns": [
+    {
+      "name": "event_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": "Filing date 00:00 America/New_York, as UTC."
+    },
+    {
+      "name": "cik",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "accession",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "form",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "filing_date",
+      "type": "date32",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "items",
+      "type": "string",
+      "nullable": true,
+      "description": "8-K items, comma-separated."
+    },
+    {
+      "name": "acceptance_json",
+      "type": "string",
+      "nullable": true,
+      "description": "submissions-JSON acceptanceDateTime as served (not used for timing; I1)."
+    },
+    {
+      "name": "feed",
+      "type": "string",
+      "nullable": false,
+      "description": "Always 'none'."
+    },
+    {
+      "name": "request_id",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp[us, tz=UTC]",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "nullable": false,
+      "description": ""
+    },
+    {
+      "name": "schema_version",
+      "type": "int32",
+      "nullable": false,
+      "description": ""
+    }
+  ]
+}
