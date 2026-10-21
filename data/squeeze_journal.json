@@ -685,7 +685,16 @@
     "pc_oi": 1.0471,
     "iv30": 129.858
    },
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-07",
+    "end": "2026-10-20",
+    "hit": false,
+    "crash": false,
+    "maxup": 0.0927,
+    "dd": -0.1805,
+    "r10": -0.0634
+   }
   },
   {
    "date": "2026-10-07",
@@ -711,7 +720,16 @@
     "pc_oi": 0.4896,
     "iv30": 96.643
    },
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-07",
+    "end": "2026-10-20",
+    "hit": false,
+    "crash": true,
+    "maxup": 0.0037,
+    "dd": -0.3678,
+    "r10": -0.3484
+   }
   },
   {
    "date": "2026-10-08",
