@@ -459,7 +459,7 @@ def checklist(pat, cs, ctx, now, a5, lv):
     two = b["R"] > 0 and b["stop_loss"] < b["entry_stop"] and b["entry_stop"] > cs[-1]["c"]
     spread = ctx.get("spread")
     c_r = round(cost_usd(b, spread) / (b["shares"] * b["R"]), 3) if spread is not None and b["shares"] > 0 else None
-    in_time = FIRST <= now <= LAST and bool(ctx.get("time_exit")) and (now >= OPEN or pat["setup"] not in VWAP_SETUPS)
+    in_time = FIRST <= now < LAST and bool(ctx.get("time_exit"))  # the order needs time left before 10:30 and (now >= OPEN or pat["setup"] not in VWAP_SETUPS)
     fixed = pat["setup"] in SETUPS and rules_id() == RULES_ID
     items = {
         "context": (ctx_ok, "מגמה עולה" if trend else "סוף ירידה" if ctx_ok else "אין מגמה עולה ואין סוף ירידה"),

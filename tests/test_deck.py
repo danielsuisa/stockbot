@@ -222,6 +222,7 @@ class Checklist(unittest.TestCase):
     def test_7_time(self):
         cs, cx, now = hammer_case()
         self.assertEqual(blocked(cs, cx, "10:35"), [("hammer", "time", "08:00-10:30")])
+        self.assertEqual(blocked(cs, cx, "10:30"), [("hammer", "time", "08:00-10:30")])  # valid to 10:30: no time left
         self.assertEqual(blocked(cs, dict(cx, time_exit=None), now)[0][:2], ("hammer", "time"))
 
     def test_8_fixed_rule(self):

@@ -27,7 +27,7 @@ Source labels used below:
 | The daily candle gives context: yesterday's high, low and close are levels | c1-time, c4-levels | presentation |
 | New tickets 08:00–10:30 ET, scanned every 5 minutes, 25 seconds after each candle closes | – | user |
 | Time exit 15:55 ET, or the close − 5 minutes on early-close days (from the exchange calendar) | c7-a, c5-pullback | presentation, user |
-| Validity: until 10:30 ET, then cancel | c7-a ("until the window's end"), window end moved by the user | presentation, user |
+| Validity: until 10:30 ET, then cancel. Item 7 also needs time left, so the 10:30 scan sends no new ticket | c7-a ("until the window's end"), c7-checklist item 7; the window end is the user's | presentation, user |
 | VWAP is the session's, from 09:30. Before 09:30 the VWAP setups are off and VWAP is not a level; every other setup runs | c5-vwap | presentation, user |
 | A pre-market candle is usable for patterns only with trades in at least 3 of its 5 minutes. A 5-minute slot with no trades is a gap, and no pattern spans it | – | user (`PRE_MIN_TRADES` default) |
 
