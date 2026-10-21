@@ -215,8 +215,8 @@ class Book(unittest.TestCase):
 
 
 class Guard(unittest.TestCase):
-    def test_cli_refuses_without_s2_ledger(self):
-        with self.assertRaises(SystemExit) as cm:  # the repository ledger is empty in S1
+    def test_cli_never_runs_real_sets(self):
+        with self.assertRaises(SystemExit) as cm:  # without the S2 authorize line, and with it (the S2 driver runs them)
             W.main(["--window", "development", "--pubkey", "x"])
         self.assertIn("refused", str(cm.exception))
 

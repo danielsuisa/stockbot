@@ -379,7 +379,8 @@ def main(argv=None):
     if not s2_open():
         raise SystemExit("refused: no S2 authorize record in scalp_contracts/s_trials.jsonl; "
                          "S1 evaluates synthetic data only (ADR 0019 section 8)")
-    raise SystemExit("S2 run driver not implemented in S1")
+    raise SystemExit("refused: real sets run only through python -m scalp_eval.swing_s2 (ADR 0020), which verifies "
+                     "every set against the authorize line and allows one confirmation")
 
 
 if __name__ == "__main__":
