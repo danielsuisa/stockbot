@@ -1,15 +1,37 @@
 {
  "date": "2026-10-21",
  "kind": "day",
- "at": "15:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ד׳ <code>21.10.2026</code> · מצב ב־<code>22:30</code>\n\nמקום <code>1</code>: <code>IRON</code> · <code>76.88$</code> <code>3.3%▼</code>\nשורט <code>22.1%</code> מהמניות הצפות · <code>11.2</code> ימים לכיסוי · מחזור פי <code>5.5</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
+ "at": "16:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ד׳ <code>21.10.2026</code> · מצב ב־<code>23:30</code>\n\nמקום <code>1</code>: <code>FDMT</code> · <code>12.62$</code> <code>3.7%▼</code>\nשורט <code>26.4%</code> מהמניות הצפות · <code>12.0</code> ימים לכיסוי · מחזור פי <code>2.2</code> מהרגיל\n\nמקום <code>2</code>: <code>STOK</code> · <code>25.68$</code> <code>3.5%▼</code>\nשורט <code>25.2%</code> מהמניות הצפות · <code>12.7</code> ימים לכיסוי · מחזור פי <code>2.5</code> מהרגיל\n\nמקום <code>3</code>: <code>IRON</code> · <code>76.00$</code> <code>4.4%▼</code>\nשורט <code>22.1%</code> מהמניות הצפות · <code>11.2</code> ימים לכיסוי · מחזור פי <code>7.1</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
  "rows": [
   {
+   "t": "FDMT",
+   "price": 12.62,
+   "chg": -0.0366,
+   "avg_vol": 938735,
+   "rel_vol": 2.151,
+   "short_ratio": 11.9721,
+   "float": 42553511,
+   "short_float": 0.2641,
+   "options": true
+  },
+  {
+   "t": "STOK",
+   "price": 25.68,
+   "chg": -0.0349,
+   "avg_vol": 908246,
+   "rel_vol": 2.4859,
+   "short_ratio": 12.6677,
+   "float": 45614246,
+   "short_float": 0.2522,
+   "options": true
+  },
+  {
    "t": "IRON",
-   "price": 76.88,
-   "chg": -0.0327,
+   "price": 76.0,
+   "chg": -0.0438,
    "avg_vol": 649921,
-   "rel_vol": 5.515,
+   "rel_vol": 7.0591,
    "short_ratio": 11.1866,
    "float": 32910730,
    "short_float": 0.2209,

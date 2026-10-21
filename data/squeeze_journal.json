@@ -1130,6 +1130,23 @@
    "price": 26.61,
    "chg": 0.0721,
    "outcome": null
+  },
+  {
+   "date": "2026-10-22",
+   "seen": "2026-10-21",
+   "t": "FDMT",
+   "rank": 1,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-09-30",
+   "float": 42553511,
+   "short_float": 0.2641,
+   "short_ratio": 11.9721,
+   "avg_vol": 938735,
+   "rel_vol": 2.151,
+   "pre_vol": null,
+   "price": 12.62,
+   "chg": -0.0366,
+   "outcome": null
   }
  ]
 }
