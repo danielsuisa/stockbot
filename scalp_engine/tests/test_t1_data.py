@@ -35,6 +35,23 @@ class TopupWindow(unittest.TestCase):
         self.assertEqual(hi, dt.datetime(2026, 10, 21, 0, tzinfo=UTC))  # 20:00 ET (EDT)
 
 
+class Coverage(unittest.TestCase):
+    def test_gaps_per_range(self):
+        """Every universe symbol must have been requested for every date range (T1 defect 2026-10-21: the daily
+        store held only the symbol sets earlier phases asked for, so the prefilter silently dropped 2,184 universe
+        symbols, SCO and UGL among them)."""
+        d = dt.date
+        sets = [(d(2022, 1, 3), d(2023, 7, 31), {"A", "B"}), (d(2023, 8, 1), d(2026, 10, 16), {"A"}),
+                (d(2023, 8, 1), d(2026, 9, 30), {"C"})]
+        gaps = T.coverage_gaps({"A", "B", "C"}, sets, d(2022, 1, 3), d(2026, 10, 16))
+        self.assertEqual(gaps, [(d(2022, 1, 3), d(2023, 7, 31), ["C"]), (d(2023, 8, 1), d(2026, 9, 30), ["B"]),
+                                (d(2026, 10, 1), d(2026, 10, 16), ["B", "C"])])
+        self.assertEqual(T.coverage_gaps({"A"}, sets, d(2022, 1, 3), d(2026, 10, 16)), [])
+        weekend = [(d(2026, 10, 1), d(2026, 10, 16), {"A"}), (d(2026, 10, 19), d(2026, 10, 20), {"A"})]
+        self.assertEqual(len(T.coverage_gaps({"A"}, weekend, d(2026, 10, 1), d(2026, 10, 20))), 1)  # 10-17..18
+        self.assertEqual(T.coverage_gaps({"A"}, weekend, d(2026, 10, 1), d(2026, 10, 20), [d(2026, 10, 16), d(2026, 10, 19)]), [])
+
+
 class Cutoff(unittest.TestCase):
     def test_last_complete_session(self):
         et = T.ET

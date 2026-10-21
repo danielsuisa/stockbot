@@ -90,11 +90,60 @@ def universe():
     return out
 
 
+def coverage_gaps(uni, sets, first, last, session_days=None):
+    """[(start, end, sorted missing symbols)]: the date ranges in [first, last] where a universe symbol was never
+    requested by any daily-bar symbol set (start, end, symbols). Adjacent ranges with the same gap are merged."""
+    cuts = {first, last + dt.timedelta(days=1)}
+    for a, b, _ in sets:
+        for x in (a, b + dt.timedelta(days=1)):
+            if first < x <= last:
+                cuts.add(x)
+    cuts = sorted(cuts)
+    out = []
+    for a, nxt in zip(cuts, cuts[1:]):
+        b = nxt - dt.timedelta(days=1)
+        covered = set().union(*[syms for sa, sb, syms in sets if sa <= a and b <= sb]) if sets else set()
+        miss = sorted(set(uni) - covered)
+        if out and out[-1][2] == miss and out[-1][1] + dt.timedelta(days=1) == a:
+            out[-1] = (out[-1][0], b, miss)
+        else:
+            out.append((a, b, miss))
+    if session_days is not None:  # a range without a session (a weekend between two sets) is no gap
+        out = [g for g in out if any(g[0] <= x <= g[1] for x in session_days)]
+    return [g for g in out if g[2]]
+
+
+def daily_sets():
+    """Complete daily-bar symbol sets with their ranges (P1's v1-v3 records carry none: P1's range)."""
+    out = []
+    for r in storage.manifest("raw_bars_1d"):
+        if r.get("kind") == "daily_symbol_set" and r.get("complete"):
+            a = dt.date.fromisoformat(r["start"]) if r.get("start") else P1_FIRST
+            b = dt.date.fromisoformat(r["end"]) if r.get("end") else P1_LAST
+            out.append((a, b, set(r["symbols"])))
+    return out
+
+
+def step_daily_fill(cl, end=CONF[1]):
+    """Daily bars for every (universe symbol, date range) never requested (T1 defect 2026-10-21), one part each."""
+    cal = [d for d, _ in sessions(HARD_FIRST, end)]
+    gaps = coverage_gaps(universe() | {"SPY"}, daily_sets(), HARD_FIRST, end, cal)
+    for k, (a, b, syms) in enumerate(gaps):
+        log(f"daily fill {a}..{b}: {len(syms)} symbols")
+        insider_prices.fetch_daily(cl, syms, a, b, part=f"sip-1d-t1f{k}", workers=4)
+    left = coverage_gaps(universe() | {"SPY"}, daily_sets(), HARD_FIRST, end, cal)
+    log(f"daily fill: {len(gaps)} gaps filled, {len(left)} left")
+
+
 class Daily:
-    """Raw SIP daily bars of the universe, one row per (symbol, session), for the bot's daily_stats()."""
+    """Raw SIP daily bars of the universe, one row per (symbol, session), for the bot's daily_stats(). Refuses to
+    load while a universe symbol was never requested for part of the range (the prefilter would drop it)."""
 
     def __init__(self, end):
         uni = universe()
+        gaps = coverage_gaps(uni | {"SPY"}, daily_sets(), HARD_FIRST, end, [d for d, _ in sessions(HARD_FIRST, end)])
+        if gaps:
+            raise LookupError(f"daily coverage gaps: {[(str(a), str(b), len(m)) for a, b, m in gaps]}")
         df = insider_prices.bars(HARD_FIRST, end)
         df = df.filter(pl.col("symbol").is_in(sorted(uni))).sort(["symbol", "d"])
         self.by = {}
@@ -151,11 +200,12 @@ def fetch_minutes(cl, day, feed, symbols, first, last, part, dropper):
     return df.height
 
 
-def fetch_lists(part):
-    """{(date, feed): set(symbols)} of a T1 part, from its fetch-list records."""
+def fetch_lists(prefix):
+    """{(date, feed): set(symbols)} of every T1 part whose name starts with `prefix` (t1s1 covers t1s1 and t1s1b),
+    from the fetch-list records."""
     out = {}
     for r in storage.manifest(BARS):
-        if r.get("kind") == "t1_fetch_list" and r["part"].endswith(part):
+        if r.get("kind") == "t1_fetch_list" and r["part"].split("-1m-", 1)[1].startswith(prefix):
             out.setdefault((dt.date.fromisoformat(r["date"]), r["feed"]), set()).update(r["symbols"])
     return out
 
@@ -178,25 +228,36 @@ def _run(days, task, workers, label):
     ex.shutdown(wait=True)
 
 
-def step_stage1(cl, days, workers=4):
-    """Stage-1 replay inputs: SIP and IEX 04:00-09:55 for every prefiltered symbol (ADR 0016 section 8, step 2)."""
+def step_stage1(cl, days, workers=4, sfx=""):
+    """Stage-1 replay inputs: SIP and IEX 04:00-09:55 for every prefiltered symbol (ADR 0016 section 8, step 2).
+    With a suffix (a later pass), only symbol-days no earlier t1s1 part fetched; days with none are skipped."""
     daily = Daily(max(days))
-    done = {f: storage.completed(BARS, part=f"{f}-1m-t1s1") for f in ("sip", "iex")}
-    todo = [d for d in days if any(storage.partition_key(BARS, source=SOURCE, feed=f, date=d) not in done[f]
-                                   for f in ("sip", "iex"))]
+    part = "t1s1" + sfx
+    done = {f: storage.completed(BARS, part=f"{f}-1m-{part}") for f in ("sip", "iex")}
+    prior = fetch_lists("t1s1")
+    todo, lists = [], {}
+    for d in days:
+        stats = sorted(daily.stats(d))
+        for f in ("sip", "iex"):
+            if storage.partition_key(BARS, source=SOURCE, feed=f, date=d) in done[f]:
+                continue
+            syms = sorted(set(stats) - prior.get((d, f), set()) - _p1_held(d, f))
+            if syms or not sfx:
+                lists[(d, f)] = syms
+        if any((d, f) in lists for f in ("sip", "iex")):
+            todo.append(d)
     dropper = ingest.SymbolDropper(BARS)
-    pre = {d: sorted(daily.stats(d)) for d in todo}
-    log(f"stage1: {len(todo)} days to fetch, {sum(len(v) for v in pre.values())} prefilter symbol-days")
+    log(f"stage1{sfx}: {len(todo)} days to fetch, {sum(len(v) for v in lists.values())} symbol-day-feeds")
 
     def task(d):
         out = []
         for feed in ("sip", "iex"):
-            if storage.partition_key(BARS, source=SOURCE, feed=feed, date=d) in done[feed]:
+            if (d, feed) not in lists:
                 continue
-            syms = sorted(set(pre[d]) - _p1_held(d, feed))
-            out.append(f"{feed} {len(syms)} syms {fetch_minutes(cl, d, feed, syms, dt.time(4), dt.time(9, 55), 't1s1', dropper)} rows")
+            syms = lists[(d, feed)]
+            out.append(f"{feed} {len(syms)} syms {fetch_minutes(cl, d, feed, syms, dt.time(4), dt.time(9, 55), part, dropper)} rows")
         return f"{d} " + ", ".join(out) + f"; requests {cl.stats['requests']}"
-    _run(todo, task, workers, "stage1")
+    _run(todo, task, workers, "stage1" + sfx)
 
 
 # ---------------------------------------------------------------- the watchlist (pre-re-rank top 20)
@@ -261,8 +322,6 @@ def step_denominators(cl, days, workers=4, tag=""):
     s1 = fetch_lists("t1s1")
     for k, v in fetch_lists("t1den").items():
         s1.setdefault(k, set()).update(v)
-    for k, v in fetch_lists("t1denp").items():
-        s1.setdefault(k, set()).update(v)
     need = {}
     for d in days:
         w = watch_of(d)
@@ -291,24 +350,35 @@ def step_denominators(cl, days, workers=4, tag=""):
     _run([p for p, _ in todo], task, workers, "denominators")
 
 
-def step_top20(cl, days, workers=4):
-    """SIP and IEX 09:56-20:00 for each session's top 20 (pre-re-rank), except P1-held symbol-days."""
-    done = {f: storage.completed(BARS, part=f"{f}-1m-t1top") for f in ("sip", "iex")}
-    todo = [d for d in days if any(storage.partition_key(BARS, source=SOURCE, feed=f, date=d) not in done[f]
-                                   for f in ("sip", "iex"))]
+def step_top20(cl, days, workers=4, sfx=""):
+    """SIP and IEX 09:56-20:00 for each session's top 20 (pre-re-rank), except P1-held symbol-days and (a later
+    pass) symbol-days an earlier t1top part fetched."""
+    part = "t1top" + sfx
+    done = {f: storage.completed(BARS, part=f"{f}-1m-{part}") for f in ("sip", "iex")}
+    prior = fetch_lists("t1top")
+    todo, lists = [], {}
+    for d in days:
+        w = {x["symbol"] for x in watch_of(d)}
+        for f in ("sip", "iex"):
+            if storage.partition_key(BARS, source=SOURCE, feed=f, date=d) in done[f]:
+                continue
+            syms = sorted(w - prior.get((d, f), set()) - _p1_held(d, f))
+            if syms or not sfx:
+                lists[(d, f)] = syms
+        if any((d, f) in lists for f in ("sip", "iex")):
+            todo.append(d)
     dropper = ingest.SymbolDropper(BARS)
-    log(f"top20: {len(todo)} sessions")
+    log(f"top20{sfx}: {len(todo)} sessions")
 
     def task(d):
-        w = [x["symbol"] for x in watch_of(d)]
         out = []
         for feed in ("sip", "iex"):
-            if storage.partition_key(BARS, source=SOURCE, feed=feed, date=d) in done[feed]:
+            if (d, feed) not in lists:
                 continue
-            syms = sorted(set(w) - _p1_held(d, feed))
-            out.append(f"{feed} {len(syms)} {fetch_minutes(cl, d, feed, syms, dt.time(9, 56), dt.time(19, 59), 't1top', dropper)}")
+            syms = lists[(d, feed)]
+            out.append(f"{feed} {len(syms)} {fetch_minutes(cl, d, feed, syms, dt.time(9, 56), dt.time(19, 59), part, dropper)}")
         return f"{d} " + ", ".join(out) + f"; requests {cl.stats['requests']}"
-    _run(todo, task, workers, "top20")
+    _run(todo, task, workers, "top20" + sfx)
 
 
 # ---------------------------------------------------------------- the NBBO grid
@@ -363,12 +433,13 @@ def sample_at(cl, d, symbols, t, dropper):
     return rows, rids
 
 
-def step_grid(cl, days, workers=4):
+def step_grid(cl, days, workers=4, sfx=""):
     closes = dict(sessions())
-    done = storage.completed(QUOTES, part="sip-t1grid")
+    part = "sip-t1grid" + sfx
+    done = storage.completed(QUOTES, part=part)
     todo = [d for d in days if storage.partition_key(QUOTES, source=SOURCE, feed="sip", date=d) not in done]
     dropper = ingest.SymbolDropper(QUOTES)
-    log(f"grid: {len(todo)} sessions")
+    log(f"grid{sfx}: {len(todo)} sessions")
 
     def task(d):
         syms = [x["symbol"] for x in watch_of(d)]
@@ -383,11 +454,13 @@ def step_grid(cl, days, workers=4):
                 rows += r
                 rids += i
         df = storage.frame(QUOTES, rows)
+        if sfx and not rows:
+            return f"{d} nothing new, {skipped} held"
         with _lock:
             disk_check()
-            storage.write_partition(QUOTES, df, part="sip-t1grid", request_ids=rids, source=SOURCE, feed="sip", date=d)
+            storage.write_partition(QUOTES, df, part=part, request_ids=rids, source=SOURCE, feed="sip", date=d)
         return f"{d} {df.height} samples, {skipped} held; requests {cl.stats['requests']}"
-    _run(todo, task, workers, "grid")
+    _run(todo, task, workers, "grid" + sfx)
 
 
 # ---------------------------------------------------------------- top-up and checks
@@ -504,7 +577,9 @@ def budget(days):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["topup", "stage1", "watch", "denominators", "top20", "grid", "dupcheck", "budget"])
+    ap.add_argument("step", choices=["topup", "dailyfill", "stage1", "watch", "denominators", "top20", "grid",
+                                     "dupcheck", "budget"])
+    ap.add_argument("--sfx", default="", help="part suffix for a later pass (fetches only what no earlier part did)")
     ap.add_argument("--from", dest="first", default=DEV[0].isoformat())
     ap.add_argument("--to", dest="last", default=CONF[1].isoformat())
     ap.add_argument("--workers", type=int, default=4)
@@ -523,11 +598,13 @@ def main(argv=None):
     cl = insider_prices.client()
     if a.step == "topup":
         step_topup(cl, min(last, last_complete_session()))
+    elif a.step == "dailyfill":
+        step_daily_fill(cl, last)
     else:
         if a.step == "denominators":
             step_denominators(cl, days, a.workers, a.tag)
         else:
-            {"stage1": step_stage1, "top20": step_top20, "grid": step_grid}[a.step](cl, days, a.workers)
+            {"stage1": step_stage1, "top20": step_top20, "grid": step_grid}[a.step](cl, days, a.workers, a.sfx)
     log(f"{a.step}: done; http {cl.stats}")
     return 0
 
