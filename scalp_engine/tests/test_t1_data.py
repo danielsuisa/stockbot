@@ -26,6 +26,15 @@ class Grid(unittest.TestCase):
         self.assertEqual(T.grid_times(dt.date(2024, 11, 29), dt.time(13))[-1], dt.time(12, 55))
 
 
+class TopupWindow(unittest.TestCase):
+    def test_daily_request_ends_at_2000_et_of_the_last_session(self):
+        """The free plan refuses an end within the last 15 minutes: the day's end (00:00 ET next day) can be in the
+        future when the top-up runs at 21:42 ET; the extended session ends at 20:00 ET."""
+        lo, hi = T.topup_daily_window(dt.date(2026, 10, 19), dt.date(2026, 10, 20))
+        self.assertEqual(lo, dt.datetime(2026, 10, 19, 4, tzinfo=UTC))
+        self.assertEqual(hi, dt.datetime(2026, 10, 21, 0, tzinfo=UTC))  # 20:00 ET (EDT)
+
+
 class Cutoff(unittest.TestCase):
     def test_last_complete_session(self):
         et = T.ET

@@ -450,12 +450,30 @@ def step_topup(cl, end):
         log(f"actions top-up: {written} rows")
     symbols = sorted(universe() | {"SPY"})
     held = {r["partition"] for r in storage.manifest("raw_bars_1d") if r.get("kind") == "partition"}
-    first = TOPUP_FIRST
-    while first <= end and storage.partition_key("raw_bars_1d", source=SOURCE, feed="sip", date=first) in held:
-        first += dt.timedelta(days=1)
-    if first <= end:
-        insider_prices.fetch_daily(cl, symbols, first, end, part=f"sip-1d-{tag}", workers=2)
+    days = [d for d in window_sessions(TOPUP_FIRST, end)
+            if storage.partition_key("raw_bars_1d", source=SOURCE, feed="sip", date=d) not in held]
+    if days:
+        lo, hi = topup_daily_window(days[0], days[-1])
+        guard(lo, hi)
+        dropper = ingest.SymbolDropper("raw_bars_1d")
+        pages = ingest.fetch_bars(cl, "raw_bars_1d", symbols, "1Day", lo, hi, (lo, hi), "sip", dropper)
+        df = ingest._bars_frame("raw_bars_1d", pages, "sip", "-", ingest.now())
+        df = df.with_columns(d=pl.col("event_at").dt.convert_time_zone("America/New_York").dt.date())
+        for d in days:
+            rows = df.filter(pl.col("d") == d).drop("d")
+            disk_check()
+            storage.write_partition("raw_bars_1d", rows, part=f"sip-1d-{tag}b", request_ids=rows["request_id"].unique().to_list(),
+                                    source=SOURCE, feed="sip", date=d)
+        storage.append_manifest("raw_bars_1d", {"kind": "daily_symbol_set", "part": f"sip-1d-{tag}b", "symbols": symbols,
+                                                "complete": True, "start": days[0].isoformat(), "end": days[-1].isoformat()})
+        log(f"daily top-up: {len(days)} sessions, {df.height} rows")
     log(f"top-up to {end} done")
+
+
+def topup_daily_window(first, last):
+    """[first 00:00 ET, last 20:00 ET]: the daily bar of `last` is final after the extended session, and the free
+    plan refuses a request whose end is within the last 15 minutes (the calendar day's end can still be ahead)."""
+    return ingest.et(first, dt.time(0)), ingest.et(last, dt.time(20))
 
 
 def dupcheck(days=None):
