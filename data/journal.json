@@ -4758,6 +4758,123 @@
     "0000826675-26-000124"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-21-BPRE",
+   "date": "2026-10-21",
+   "ticker": "BPRE",
+   "cik": 1551047,
+   "company": "Bluerock Private Real Estate Fund",
+   "sic": null,
+   "kind": "cluster+big",
+   "quality": 68,
+   "parts": {
+    "breadth": 20,
+    "seniority": 13,
+    "size": 20,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 12.3,
+    "asof": "2026-10-21 20:00",
+    "source": "live"
+   },
+   "total": 34723260.03,
+   "insiders": 3,
+   "liquidity": 12122657.766017048,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001398344-26-017349",
+    "0001398344-26-017538",
+    "0001398344-26-017550",
+    "0001398344-26-017659",
+    "0001398344-26-017661",
+    "0001398344-26-017904",
+    "0001398344-26-017906",
+    "0001398344-26-018110",
+    "0001398344-26-018199",
+    "0001398344-26-018255",
+    "0001398344-26-018261",
+    "0001398344-26-018404",
+    "0001398344-26-018550"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-21-FBK",
+   "date": "2026-10-21",
+   "ticker": "FBK",
+   "cik": 1649749,
+   "company": "FB Financial Corp",
+   "sic": 6022,
+   "kind": "big",
+   "quality": 30,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 12,
+    "conviction": 14,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 52.1,
+    "asof": "2026-10-21 20:00",
+    "source": "live"
+   },
+   "total": 1537787.78,
+   "insiders": 1,
+   "liquidity": 29924394.95755976,
+   "scores": {
+    "piotroski": "5/6",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001191473-26-000008"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-21-TENX",
+   "date": "2026-10-21",
+   "ticker": "TENX",
+   "cik": 34956,
+   "company": "TENAX THERAPEUTICS, INC.",
+   "sic": 2834,
+   "kind": "big",
+   "quality": 12,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 12,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 1.63,
+    "asof": "2026-10-21 20:00",
+    "source": "live"
+   },
+   "total": 1463426.21,
+   "insiders": 1,
+   "liquidity": 4213029.81782664,
+   "scores": {
+    "piotroski": "3/8",
+    "altman": "Z -0.82",
+    "beneish": null
+   },
+   "accs": [
+    "0001940272-26-000027"
+   ],
+   "returns": {}
   }
  ]
 }
