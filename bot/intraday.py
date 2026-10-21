@@ -342,8 +342,16 @@ def scan(watch, day, now_hhmm, risk, max_pos):
 
 
 # ---------- messages ----------
-LABEL = ("תווית: מחוץ למסלול שנבדק — פריצת נר הפתיחה על מניות במשחק נפסלה בבדיקת 2016–2021 של המאגר (NO-GO), ושאר "
-         "התבניות טרם נבדקו; כרטיס למחקר בלבד (הביקורת: docs/research)")
+# The ticket's label by setup: what the engine measured (T2: VWAP and flag setups; ZBA and T2: ORB 5), or untested.
+UNTESTED = "מחוץ למסלול שנבדק"
+LABELS = {"vwap_hammer": "נבדק: תוחלת שלילית (T2)", "vwap_engulf": "נבדק: תוחלת שלילית (T2)",
+          "flag": "נבדק: תוחלת שלילית (T2)", "orb5": "נבדק: תוחלת שלילית (ZBA, T2)"}
+
+
+def label(setup):
+    return f"תווית: {LABELS.get(setup, UNTESTED)} · כרטיס למחקר בלבד"
+
+
 SETUP_NAMES = {"orb5": "פריצת טווח פתיחה 5 דק׳", "orb15": "פריצת טווח פתיחה 15 דק׳", "vwap_hammer": "פטיש על VWAP",
                "vwap_engulf": "בליעה שורית על VWAP", "flag": "דגל שורי", "red_to_green": "מאדום לירוק"}
 
@@ -375,7 +383,7 @@ def ticket_text(t, day, E=None):
         + (f" ({code(format(t['risk'] / E * 100, '.2f') + '%')} מההון)" if E else " (סיכון קבוע: לא נקבע הון, /equity)"),
         "ב־IBKR: פקודת bracket אחת — BUY STP LMT (סטופ ולימיט שלמעלה), ילדים: SELL STP סטופ לוס ו־SELL LMT יעד, "
         "OCA, תוקף DAY · סטופ מתחת לנר ההדק ולא מתחת ליעד",
-        LABEL,
+        label(t["setup"]),
     ]
     return "\n".join(lines)
 
