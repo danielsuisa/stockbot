@@ -156,6 +156,24 @@ class Messages(unittest.TestCase):
         self.assertIn("2.00", text)
 
 
+class Labels(unittest.TestCase):
+    """Each ticket carries its setup's measured status: negative (T2; ZBA and T2 for ORB 5) or untested."""
+
+    def test_label_by_setup(self):
+        for s in ("vwap_hammer", "vwap_engulf", "flag"):
+            self.assertEqual(intraday.label(s), "תווית: נבדק: תוחלת שלילית (T2) · כרטיס למחקר בלבד")
+        self.assertEqual(intraday.label("orb5"), "תווית: נבדק: תוחלת שלילית (ZBA, T2) · כרטיס למחקר בלבד")
+        for s in ("orb15", "red_to_green", "some_new_setup"):
+            self.assertEqual(intraday.label(s), "תווית: מחוץ למסלול שנבדק · כרטיס למחקר בלבד")
+
+    def test_every_ticket_shows_its_setup_label(self):
+        for s in intraday.SETUP_NAMES:
+            text = intraday.ticket_text(_t(setup=s), "2026-10-19", 10_000.0)
+            self.assertIn(intraday.label(s), text)
+            self.assertEqual(sum(1 for line in text.splitlines() if line.startswith("תווית:")), 1)
+            self.assertEqual(msgrules.problems(text), [], text)
+
+
 class State(unittest.TestCase):
     def test_run_scan_dedupes_and_journals(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"INTRADAY_DIR": d, "TG_TOKEN": ""}):
