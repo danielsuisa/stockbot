@@ -174,6 +174,25 @@ def _p1_held(day, feed):
     return set(df["symbol"].unique().to_list()) if df.height else set()
 
 
+def drop_held(df, held):
+    """Rows of df whose (symbol, event_at) key no held part has (no key is stored twice)."""
+    if not held or df.height == 0:
+        return df
+    keys = pl.DataFrame({"symbol": [k[0] for k in held], "event_at": [k[1] for k in held]},
+                        schema={"symbol": pl.Utf8, "event_at": df.schema["event_at"]})
+    return df.join(keys, on=["symbol", "event_at"], how="anti")
+
+
+def held_minute_keys(day, feed, symbols):
+    """(symbol, event_at) keys of `day` and `feed` already held by any part, for the given symbols."""
+    lo, hi = day_bounds(day)
+    df = read_frame(storage.data_root() / BARS, lo, hi, columns=["symbol", "feed"], symbols=symbols)
+    if df.height == 0:
+        return set()
+    df = df.filter(pl.col("feed") == feed)
+    return set(zip(df["symbol"].to_list(), df["event_at"].to_list()))
+
+
 def fetch_minutes(cl, day, feed, symbols, first, last, part, dropper):
     """1-minute bars [first, last] ET (both inclusive) of `symbols` on `day` -> partition part, plus a symbol-list
     record (an empty fetch list still writes its empty partition: the step is then complete for that day)."""
@@ -190,6 +209,7 @@ def fetch_minutes(cl, day, feed, symbols, first, last, part, dropper):
                 "bars", table=BARS, event_range=(lo, hi + dt.timedelta(minutes=1))))
         pages += dropper.run(chunk, fetch)
     df = ingest._bars_frame(BARS, pages, feed, "-", ingest.now())
+    df = drop_held(df, held_minute_keys(day, feed, symbols) if symbols else set())
     with _lock:
         disk_check()
         storage.write_partition(BARS, df, part=f"{feed}-1m-{part}", request_ids=df["request_id"].to_list(),
@@ -568,6 +588,31 @@ def dupcheck(days=None):
     return out
 
 
+DEN_REMEDY = {"table": BARS, "old": "sip-1m-t1den", "p1": ("sip-1m-t1s1b",), "new": "sip-1m-t1den2",
+              "key": ["symbol", "event_at"],
+              "values": ["open", "high", "low", "close", "volume", "vwap", "trade_count", "feed", "adjustment"],
+              "segments": {"source": SOURCE, "feed": "sip"}}
+
+
+def step_remedy():
+    """T1 duplicate-key remedy (2026-10-21): the t1den keys that t1s1b fetched again (identical values, checked
+    value by value) are set aside with their partition file; the rest of that file is rewritten as t1den2."""
+    from scalp_engine import i1_remedy
+    dates = sorted({dt.date.fromisoformat(r["date"]) for r in storage.manifest(BARS)
+                    if r.get("kind") == "t1_fetch_list" and r["part"] == "sip-1m-t1den"})
+    done = {r["partition"] for r in storage.manifest(BARS) if r.get("kind") == "set_aside"}
+    out = []
+    for d in dates:
+        if storage.partition_key(BARS, source=SOURCE, feed="sip", date=d) in done:
+            continue
+        r = i1_remedy.remedy_one(DEN_REMEDY, d, reason="T1 duplicate-key remedy (T1 report): t1den keys fetched again "
+                                                       "by t1s1b with identical values")
+        if r:
+            out.append(r)
+    log(f"remedy: {len(out)} partitions, {sum(r['identical_in_p1'] for r in out)} duplicate keys set aside")
+    return out
+
+
 def budget(days):
     daily = Daily(max(days))
     n = {d: len(daily.stats(d)) for d in days}
@@ -578,7 +623,7 @@ def budget(days):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("step", choices=["topup", "dailyfill", "stage1", "watch", "denominators", "top20", "grid",
-                                     "dupcheck", "budget"])
+                                     "dupcheck", "budget", "remedy"])
     ap.add_argument("--sfx", default="", help="part suffix for a later pass (fetches only what no earlier part did)")
     ap.add_argument("--from", dest="first", default=DEV[0].isoformat())
     ap.add_argument("--to", dest="last", default=CONF[1].isoformat())
@@ -594,6 +639,9 @@ def main(argv=None):
         return 0
     if a.step == "watch":
         step_watch(days)
+        return 0
+    if a.step == "remedy":
+        print(json.dumps(step_remedy(), indent=1))
         return 0
     cl = insider_prices.client()
     if a.step == "topup":

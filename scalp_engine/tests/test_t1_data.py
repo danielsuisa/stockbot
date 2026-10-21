@@ -52,6 +52,21 @@ class Coverage(unittest.TestCase):
         self.assertEqual(T.coverage_gaps({"A"}, weekend, d(2026, 10, 1), d(2026, 10, 20), [d(2026, 10, 16), d(2026, 10, 19)]), [])
 
 
+class HeldKeys(unittest.TestCase):
+    def test_rows_already_held_are_dropped_before_writing(self):
+        """T1 defect 2026-10-21: the second stage-1 pass re-fetched FNGU 09:30-09:34 SIP on 13 sessions, which the
+        denominators part already held (65 duplicate keys). A fetch window that overlaps any held part must drop
+        the held keys before the partition is written."""
+        import polars as pl
+        t0 = dt.datetime(2023, 8, 4, 13, 30, tzinfo=UTC)
+        df = pl.DataFrame({"symbol": ["FNGU", "FNGU", "ABC"], "event_at": [t0, t0 + dt.timedelta(minutes=5), t0]})
+        held = {("FNGU", t0)}
+        got = T.drop_held(df, held)
+        self.assertEqual(sorted(zip(got["symbol"].to_list(), got["event_at"].to_list())),
+                         [("ABC", t0), ("FNGU", t0 + dt.timedelta(minutes=5))])
+        self.assertEqual(T.drop_held(df, set()).height, 3)
+
+
 class Cutoff(unittest.TestCase):
     def test_last_complete_session(self):
         et = T.ET

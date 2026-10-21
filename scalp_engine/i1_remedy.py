@@ -88,7 +88,7 @@ def _rows_tuple(df, cols):
     return [tuple(json.dumps(v, default=str, sort_keys=True) for v in r) for r in df.select(cols).iter_rows()]
 
 
-def remedy_one(spec, day):
+def remedy_one(spec, day, reason="I1 duplicate-key remedy (I1 addendum): keys already held by P1 with identical values"):
     table, root = spec["table"], storage.data_root() / spec["table"]
     key, vals = spec["key"], spec["values"]
     df = read_parts(root, day, {spec["old"], *spec["p1"], spec["new"]})
@@ -124,7 +124,7 @@ def remedy_one(spec, day):
         "kind": "set_aside", "table": table, "partition": storage.partition_key(table, **seg), "file": src.name,
         "moved_to": dst.name, "file_sha256": digest, "rows": old.height, "identical_in_p1": dup.height,
         "kept_in_part": spec["new"] if keep.height else None, "kept_rows": keep.height,
-        "reason": "I1 duplicate-key remedy (I1 addendum): keys already held by P1 with identical values",
+        "reason": reason,
         "at": dt.datetime.now(UTC).isoformat()})
     return {"date": day.isoformat(), "rows": old.height, "identical_in_p1": dup.height, "kept": keep.height}
 
