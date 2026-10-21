@@ -928,6 +928,100 @@
     }
    ],
    "gaps": 0
+  },
+  "2026-10-20": {
+   "top": [
+    "BRZE",
+    "RCUS",
+    "HAS",
+    "KVYO",
+    "HLT",
+    "GM",
+    "TW",
+    "AGIO",
+    "MLI",
+    "ELAN",
+    "MMM",
+    "SOLS",
+    "POR",
+    "SYF",
+    "DOCS",
+    "GE",
+    "RTX",
+    "SE",
+    "PPL",
+    "HAL"
+   ],
+   "reasons": {
+    "spread": 14,
+    "trigger": 4
+   },
+   "dropped": {},
+   "trades": [
+    {
+     "t": "BRZE",
+     "rank": 1,
+     "side": -1,
+     "at": "10:00",
+     "level": 45.28,
+     "R": 0.1515,
+     "shares": 660,
+     "spread": 0.01,
+     "fill": 45.28,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1122,
+     "net_r": -1.1122
+    },
+    {
+     "t": "HLT",
+     "rank": 5,
+     "side": 1,
+     "at": "10:39",
+     "level": 357.97,
+     "R": 0.6345,
+     "shares": 157,
+     "spread": 0.12,
+     "fill": 357.98,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2002,
+     "net_r": -1.2002
+    }
+   ],
+   "optimistic": [
+    {
+     "t": "BRZE",
+     "rank": 1,
+     "side": -1,
+     "at": "10:00",
+     "level": 45.28,
+     "R": 0.1515,
+     "shares": 660,
+     "spread": 0.01,
+     "fill": 45.28,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1122,
+     "net_r": -1.1122
+    },
+    {
+     "t": "HLT",
+     "rank": 5,
+     "side": 1,
+     "at": "10:39",
+     "level": 357.97,
+     "R": 0.6345,
+     "shares": 157,
+     "spread": 0.12,
+     "fill": 357.97,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2002,
+     "net_r": -1.2002
+    }
+   ],
+   "gaps": 0
   }
  }
 }
