@@ -191,6 +191,16 @@ class Checklist(unittest.TestCase):
         cs[-1] = dict(cs[-1], n=2, usable=False)  # trades in only 2 of its 5 minutes
         self.assertEqual([b[:2] for b in blocked(cs, cx, "08:55")], [("inside", "shape")])
 
+    def test_3_shape_unusable_hammer_is_blocked_not_a_crash(self):
+        cs, cx, now = hammer_case()
+        cs = [dict(c, start=ticket.hhmm(ticket.mins(c["start"]) - 60), end=ticket.hhmm(ticket.mins(c["end"]) - 60),
+                   vwap=None) for c in cs]
+        cs[-1] = dict(cs[-1], n=1, usable=False)  # replay 2026-10-16: a thin pre-market hammer
+        cx = dict(cx, yday=hammer_case()[0] * 3)
+        self.assertEqual([b[:2] for b in blocked(cs, cx, "08:55")], [("hammer", "shape")])
+        cs[2] = dict(cs[2], l=51.15)  # no 3 lower lows: the ATR branch of "end of decline" runs (it crashed here)
+        self.assertEqual(blocked(cs, cx, "08:55"), [])
+
     def test_4_levels(self):
         cs, cx, now = inside_case()
         stale = {"setup": "inside", "p": len(cs) - 2, "k": 2, "trigger": 30.50, "stop": 29.99, "level": None, "note": ""}

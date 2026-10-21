@@ -172,9 +172,9 @@ def end_of_decline(cs, p, a5):
             all(b["l"] < a["l"] for a, b in zip(four, four[1:])):
         return True
     six = cs[max(0, p - DECLINE_WINDOW):p]
-    low = min(c["l"] for c in cs[p:] if c["usable"])
-    return bool(a5) and len(six) == DECLINE_WINDOW and all(c["usable"] for c in six) and \
-        max(c["h"] for c in six) - low >= DECLINE_ATR * a5
+    lows = [c["l"] for c in cs[p:] if c["o"] is not None]  # the pattern's candles (usability is checklist item 3)
+    return bool(a5) and bool(lows) and len(six) == DECLINE_WINDOW and all(c["usable"] for c in six) and \
+        max(c["h"] for c in six) - min(lows) >= DECLINE_ATR * a5
 
 
 # ---------- levels (c4-levels, c2-hammer, c5-vwap) ----------
