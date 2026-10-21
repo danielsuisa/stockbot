@@ -329,3 +329,15 @@ The slides prevail. Each difference and what the code does:
   - `/intraday stats`;
   - the insider, squeeze and ticket modules;
   - every other workflow.
+
+## 13. Replay of 3 sessions (example cards only, 2026-10-16, 19 and 20)
+
+The screener was replayed on the bot's own read paths: IEX bars and quotes as of each scan, and SIP only when at
+least 15 minutes old. The replay produced cards only, with no fills, outcomes or statistics. What it showed about the
+data:
+- **The pre-market IEX feed is thin.** Of the watchlist's pre-market 5-minute candles, 10%, 16% and 11% had trades in
+  3 of their 5 minutes. So the pre-market setups seldom have usable candles on the free feed.
+- **The first ticket came after 10:00 in all three sessions.** Checklist item 1 needs confirmed swings or a measured
+  decline, and those take several usable candles after the open.
+- **Cards per session:** 7, 12 and 1 (the 10:30-scan cards came before item 7's time-left rule was added). The
+  example cards are in the PR description.
