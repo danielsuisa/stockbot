@@ -1,10 +1,10 @@
 # Engine index
 
-**Status (2026-10-20, T1): M1 = intraday ticket validation of the live screener's H1 rules, no models
-([ADR 0015](adr/0015-intraday-ticket-validation-m1.md)).** The swing line ([ADR 0012](adr/0012-engine-resumed-swing-tickets.md),
-[ADR 0013](adr/0013-swing-ticket-validation-design.md)) is on hold until after T2. The intraday model line stays
-closed by [ADR 0007](adr/0007-intraday-line-closed.md) and the insider line by
-[ADR 0011](adr/0011-insider-line-closed-engine-paused.md). Rules: [`scalp_engine/CLAUDE.md`](../../scalp_engine/CLAUDE.md). Historical design:
+**Status (2026-10-21, S1): engine active only for the swing-ticket line
+([ADR 0012](adr/0012-engine-resumed-swing-tickets.md), [ADR 0013](adr/0013-swing-ticket-validation-design.md)).**
+Closed lines: intraday models ([ADR 0007](adr/0007-intraday-line-closed.md)), intraday H1 tickets
+([ADR 0018](adr/0018-intraday-h1-ticket-line-closed.md)), insider signals
+([ADR 0011](adr/0011-insider-line-closed-engine-paused.md)). Rules: [`scalp_engine/CLAUDE.md`](../../scalp_engine/CLAUDE.md). Historical design:
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Phases
@@ -25,7 +25,7 @@ closed by [ADR 0007](adr/0007-intraday-line-closed.md) and the insider line by
 | T1 | Intraday tickets: pre-registration, data, signed tickets, evaluator (no outcomes) | PASS | `engine/t1` | [T1](T1-report.md) |
 | T2 | Intraday tickets: survivorship, parity, development run | Stopped before confirmation (ORB 5 band, no defect); development H1 −0.154R, t −5.9 | `engine/t2` | [T2](T2-report.md), ADR 0017 |
 
-Decisions: [ADR 0001](adr/0001-engine-foundations.md) … [ADR 0017](adr/0017-t2-decisions.md),
+Decisions: [ADR 0001](adr/0001-engine-foundations.md) … [ADR 0018](adr/0018-intraday-h1-ticket-line-closed.md),
 in `adr/`.
 
 ## The two research lines
