@@ -1,15 +1,15 @@
 {
  "date": "2026-10-21",
  "kind": "day",
- "at": "11:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ד׳ <code>21.10.2026</code> · מצב ב־<code>18:30</code>\n\nמקום <code>1</code>: <code>IRON</code> · <code>80.56$</code> <code>1.4%▲</code>\nשורט <code>22.1%</code> מהמניות הצפות · <code>11.2</code> ימים לכיסוי · מחזור פי <code>4.1</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
+ "at": "12:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ד׳ <code>21.10.2026</code> · מצב ב־<code>19:30</code>\n\nמקום <code>1</code>: <code>IRON</code> · <code>78.67$</code> <code>1.0%▼</code>\nשורט <code>22.1%</code> מהמניות הצפות · <code>11.2</code> ימים לכיסוי · מחזור פי <code>4.6</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
  "rows": [
   {
    "t": "IRON",
-   "price": 80.56,
-   "chg": 0.0136,
+   "price": 78.665,
+   "chg": -0.0103,
    "avg_vol": 649921,
-   "rel_vol": 4.122,
+   "rel_vol": 4.5594,
    "short_ratio": 11.1866,
    "float": 32910730,
    "short_float": 0.2209,

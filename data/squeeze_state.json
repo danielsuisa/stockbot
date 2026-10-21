@@ -115,7 +115,8 @@
    "pm5",
    "pm6",
    "reg1",
-   "reg2"
+   "reg2",
+   "reg3"
   ]
  },
  "static": {
