@@ -332,11 +332,42 @@ def run(window, ledger=LEDGER):
     return out
 
 
+def check(window, sample=3):
+    """No outcome: verify every signed set of the window under the trusted key and its own signed digest, and load
+    the market inputs (SIP minutes, NBBO grid, time exits) of a few sessions. Nothing is simulated."""
+    from cryptography.hazmat.primitives import serialization
+    key = serialization.load_pem_public_key(TRUST_KEY.read_bytes())
+    out, rows = {"rules_file_sha256": file_sha256(RULES_FILE)}, {}
+    for n in SETS:
+        env = json.loads((data_root() / "derived" / "t1" / "sets" / window / f"{n}.signed.json").read_text(encoding="utf-8"))
+        p = verify_artifact(env, [key])
+        df = read_ticket_set(data_root() / p["table"])
+        out[n] = {"rows": df.height, "sha256": p["sha256"], "rederived": canonical_sha256(df) == p["sha256"],
+                  "rules_sha256": p["rules_sha256"]}
+        rows[n] = df
+    first, last = WINDOWS[window]
+    sessions = session_info(first, last)
+    days = sorted(set(rows["H1"]["date"].to_list()))
+    pick = [days[0], days[len(days) // 2], days[-1]][:sample]
+    for d in pick:
+        syms = set(rows["H1"].filter(pl.col("date") == d)["symbol"].to_list())
+        bars, quotes = day_market(d, syms)
+        out[f"market {d}"] = {"symbols": len(syms), "with_bars": sum(1 for s in syms if bars.get(s)),
+                              "minutes": sum(len(v) for v in bars.values()),
+                              "grid_times_ok": sum(1 for s in syms for v in quotes.get(s, {}).values() if v),
+                              "time_exit": sessions[d]}
+    out["spy_return_checked"] = spy_return(first, last) is not None
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run"])
+    ap.add_argument("cmd", choices=["run", "check"])
     ap.add_argument("--window", required=True, choices=sorted(WINDOWS))
     a = ap.parse_args(argv)
+    if a.cmd == "check":
+        print(json.dumps(check(a.window), indent=1, default=str))
+        return 0
     try:
         out = run(a.window)
     except E.Refused as e:
