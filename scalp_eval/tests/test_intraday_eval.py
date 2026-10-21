@@ -163,9 +163,16 @@ class Guard(unittest.TestCase):
             with self.assertRaisesRegex(E.Refused, "intraday_t2"):  # real sets run by window, with every check
                 E.run_real("x.signed.json", ledger=led)
 
-    def test_repository_ledger_has_no_t2_entry(self):
-        self.assertFalse(E.authorized())
+    def test_repository_ledger_state(self):
+        """T2: the ledger holds exactly one authorize line; a single-set run is still refused (exit 2), and the
+        confirmation is refused while the last development run's ORB 5 mean is outside its band."""
+        from scalp_eval import intraday_t2 as T2
+        lines = T2.ledger_lines()
+        self.assertEqual(sum(1 for r in lines if r.get("phase") == "T2" and r.get("kind") == "authorize"), 1)
         self.assertEqual(E.main(["run", "--set", "derived/t1/sets/confirmation/H1.signed.json"]), 2)
+        if any(r.get("kind") == "stop_before_confirmation" for r in lines):
+            with self.assertRaises(E.Refused):
+                T2.preflight("confirmation", lines, lambda: ("x", []))
 
 
 if __name__ == "__main__":
