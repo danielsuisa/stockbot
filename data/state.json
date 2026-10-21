@@ -22573,6 +22573,37 @@
    "original": null
   },
   {
+   "acc": "0002109337-26-000012",
+   "cik": 2025416,
+   "ticker": "OWLS",
+   "company": "OBOOK HOLDINGS INC.",
+   "insider": "Wang Chun Kai",
+   "role": "דירקטור, Chief Executive Officer",
+   "insider_cik": "2109337",
+   "od": true,
+   "weight": 1.5,
+   "first": "2026-10-19",
+   "last": "2026-10-19",
+   "shares": 12192.0,
+   "value": 52036.68,
+   "price": 4.2681,
+   "filed": "2026-10-21",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-19",
+     12192.0,
+     4.2681
+    ]
+   ],
+   "indirect": false,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 3137000.0,
+   "pct": 0.0039,
+   "original": null
+  },
+  {
    "acc": "0000826675-26-000120",
    "cik": 826675,
    "ticker": "DX",
@@ -22683,6 +22714,73 @@
    "plan_value": 0,
    "post": 2990109.0,
    "pct": 0.05,
+   "original": null
+  },
+  {
+   "acc": "0001193125-26-427279",
+   "cik": 1437226,
+   "ticker": "MHH",
+   "company": "Mastech Digital, Inc.",
+   "insider": "Shaw Steven A",
+   "role": "בעל 10%",
+   "insider_cik": "1190614",
+   "od": false,
+   "weight": 0.0,
+   "first": "2026-10-19",
+   "last": "2026-10-20",
+   "shares": 4700.0,
+   "value": 30026.0,
+   "price": 6.3885,
+   "filed": "2026-10-21",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-19",
+     2500.0,
+     6.44
+    ],
+    [
+     "2026-10-20",
+     2200.0,
+     6.33
+    ]
+   ],
+   "indirect": true,
+   "kind": "open",
+   "plan_value": 0,
+   "post": 59700.0,
+   "pct": 0.0787,
+   "original": null
+  },
+  {
+   "acc": "0001493152-26-047849",
+   "cik": 1729173,
+   "ticker": "UXIN",
+   "company": "Uxin Ltd",
+   "insider": "Dai Kun",
+   "role": "דירקטור, Chief Executive Officer",
+   "insider_cik": "1764279",
+   "od": true,
+   "weight": 1.5,
+   "first": "2026-10-20",
+   "last": "2026-10-20",
+   "shares": 5541.0,
+   "value": 5259.52,
+   "price": 0.9492,
+   "filed": "2026-10-21",
+   "form": "4",
+   "sig": [
+    [
+     "2026-10-20",
+     5541.0,
+     0.9492
+    ]
+   ],
+   "indirect": true,
+   "kind": "plan",
+   "plan_value": 5259.52,
+   "post": 106229.0,
+   "pct": 0.0522,
    "original": null
   },
   {
@@ -28304,9 +28402,14 @@
    "0002160652-26-000004"
   ],
   "20261021": [
+   "0001094629-26-000004",
    "0001193125-26-427144",
    "0001193125-26-427145",
-   "0001493152-26-047821"
+   "0001193125-26-427279",
+   "0001493152-26-047821",
+   "0001493152-26-047849",
+   "0001976408-26-000898",
+   "0002109337-26-000012"
   ]
  },
  "sent": {
@@ -30734,14 +30837,15 @@
    "post2"
   ],
   "2026-10-21": [
-   "pre1"
+   "pre1",
+   "pre2"
   ]
  },
  "intraday": {
-  "at": "2026-10-21 11:30 UTC",
-  "slot": "pre1",
-  "filings": 3,
-  "parsed": 3,
+  "at": "2026-10-21 13:15 UTC",
+  "slot": "pre2",
+  "filings": 5,
+  "parsed": 5,
   "alerts": 0
  }
 }
