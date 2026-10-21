@@ -40,6 +40,7 @@ class Golden(unittest.TestCase):
         self.assertAlmostEqual(r["costs"], 1.17072333, places=7)
         self.assertAlmostEqual(r["net"], 48.91 - 1.17072333, places=6)
         self.assertAlmostEqual(r["net_r"], 1.92574734, places=6)  # net / (67 x 0.37)
+        self.assertAlmostEqual(r["gross_r"], 2.0)  # 67 x (21.65 - 20.91) / (67 x 0.37): before spread and fees
 
     def test_02_traded_before_live_filled_at_open(self):
         bars = [m("09:50", 20.80, 20.95, 20.75, 20.90), m("09:51", 20.94, 20.98, 20.90, 20.95)] + quiet("09:52", "15:59", 20.95)
@@ -159,7 +160,7 @@ class Guard(unittest.TestCase):
             with self.assertRaises(E.Refused):
                 E.run_real("x.signed.json", ledger=led)
             led.write_text(json.dumps({"phase": "T2", "kind": "authorize"}) + "\n", encoding="utf-8")
-            with self.assertRaises(NotImplementedError):
+            with self.assertRaisesRegex(E.Refused, "intraday_t2"):  # real sets run by window, with every check
                 E.run_real("x.signed.json", ledger=led)
 
     def test_repository_ledger_has_no_t2_entry(self):

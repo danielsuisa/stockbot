@@ -96,27 +96,29 @@ def simulate(tk, bars, samples, time_exit="15:55", day=dt.date(2024, 6, 12), sha
                 continue
             if q > LIQ_SHARE * v:
                 return {"status": "rejected_liquidity", "fill_minute": m, "minute_volume": v}
-            fill = (i, m, ref + s_in / 2)
+            fill = (i, m, ref + s_in / 2, ref)
             if l <= stop:  # a stop counts in the fill minute; a target never does
-                return _close(tk, q, fill, m, min(stop, o) - s_in / 2 - TICK, "stop", day)
+                return _close(tk, q, fill, m, min(stop, o) - s_in / 2 - TICK, "stop", day, min(stop, o))
             continue
         if l <= stop:  # the stop wins a minute that also trades through the target
-            return _close(tk, q, fill, m, min(stop, o) - s_in / 2 - TICK, "stop", day)
+            return _close(tk, q, fill, m, min(stop, o) - s_in / 2 - TICK, "stop", day, min(stop, o))
         if h > tgt:
-            return _close(tk, q, fill, m, tgt, "target", day)
+            return _close(tk, q, fill, m, tgt, "target", day, tgt)
     if fill is None:
         return {"status": "not_filled", "resting": resting}
     last = [b for b in bars if hm(b[0]) < hm(time_exit)]
-    return _close(tk, q, fill, last[-1][0], last[-1][4] - s_out / 2, "time", day)
+    return _close(tk, q, fill, last[-1][0], last[-1][4] - s_out / 2, "time", day, last[-1][4])
 
 
-def _close(tk, q, fill, m, exit_px, kind, day):
+def _close(tk, q, fill, m, exit_px, kind, day, exit_ref):
+    """gross_r: before spread, the stop's extra tick, commissions and fees (fill and exit at their reference prices)."""
     entry = fill[2]
     cost = costs.order_cost(PLAN, "buy", q, entry, day) + costs.order_cost(PLAN, "sell", q, exit_px, day)
     net = q * (exit_px - entry) - cost
     risk = q * (tk["trigger"] - tk["stop"])
     return {"status": "filled", "entry": entry, "exit": exit_px, "exit_kind": kind, "fill_minute": fill[1],
-            "exit_minute": m, "shares": q, "costs": cost, "net": net, "net_r": net / risk}
+            "exit_minute": m, "shares": q, "costs": cost, "net": net, "net_r": net / risk,
+            "gross_r": q * (exit_ref - fill[3]) / risk}
 
 
 # ---------------------------------------------------------------- controls, book, inference
@@ -222,7 +224,7 @@ def run_real(set_path, ledger=LEDGER):
     if not authorized(ledger):
         raise Refused("refused: no T2 authorize entry in scalp_contracts/t_trials.jsonl (ADR 0016 section 7); "
                       "T1 runs the evaluator on synthetic fixtures only")
-    raise NotImplementedError("the real-set loader is written in T2, under its prompt")
+    raise Refused("real sets run by window, with every check: python -m scalp_eval.intraday_t2 run --window ...")
 
 
 def main(argv=None):

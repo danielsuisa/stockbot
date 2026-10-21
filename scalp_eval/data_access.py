@@ -310,3 +310,15 @@ def read_frame(root, start, end, *, columns=None, symbols=None, require_dates=No
             if df.filter((t >= w.start) & (t < w.end)).height:
                 raise HoldoutSealedError(f"holdout rows of window {w.name!r} materialized from {root}")
     return df
+
+
+def read_ticket_set(path, date_column="date"):
+    """A signed ticket set (derived Parquet, one row per ticket; ADR 0017). Every row's session date must lie
+    outside every sealed window, checked on the materialized rows (no unseal path: sets never cover a window)."""
+    holdout = load_holdout()
+    df = pl.read_parquet(path)
+    for d in df[date_column].unique().to_list():
+        lo, hi = day_bounds(d)
+        if holdout.overlapping(lo, hi):
+            raise HoldoutSealedError(f"{path}: a ticket dated {d} lies in a sealed window")
+    return df
