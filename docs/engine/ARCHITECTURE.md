@@ -1,3 +1,5 @@
+> **Status (2026-10-21, S2C): engine paused ([ADR 0021](adr/0021-swing-h1-line-closed-engine-paused.md)). All four lines are closed: intraday models ([ADR 0007](adr/0007-intraday-line-closed.md)), insider signals ([ADR 0011](adr/0011-insider-line-closed-engine-paused.md)), intraday H1 tickets ([ADR 0018](adr/0018-intraday-h1-ticket-line-closed.md)), swing H1 tickets ([ADR 0021](adr/0021-swing-h1-line-closed-engine-paused.md)). This document is kept as the historical design.**
+>
 > **Status (2026-10-21, S1): engine active only for the swing-ticket line ([ADR 0012](adr/0012-engine-resumed-swing-tickets.md), [ADR 0013](adr/0013-swing-ticket-validation-design.md)). Closed lines: intraday models ([ADR 0007](adr/0007-intraday-line-closed.md)), intraday H1 tickets ([ADR 0018](adr/0018-intraday-h1-ticket-line-closed.md)), insider signals ([ADR 0011](adr/0011-insider-line-closed-engine-paused.md)).**
 >
 > **Status (2026-10-20, T1): M1 is intraday ticket validation of the live screener's H1 rules, no models ([ADR 0015](adr/0015-intraday-ticket-validation-m1.md)). The swing line is on hold until after T2.**

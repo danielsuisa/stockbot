@@ -34,8 +34,9 @@ Design: `docs/engine/ARCHITECTURE.md`. Decisions: `docs/engine/adr/`.
   re-runs until it passes, no relabelling.
 - **Never mark an ADR Accepted.** Only the owner does.
 - **Intraday line closed (ADR 0007). Do not start P4 or retrain intraday models without a new user decision.**
-- **Engine active only for the swing-ticket line (ADR 0012, 0013). Closed lines: intraday models (0007), intraday
-  H1 tickets (0018), insider signals (0011). No outcome before a pre-registered ADR is committed.**
+- **Engine paused (ADR 0021). Closed lines: 0007, 0011, 0018, 0021. Do not start any research line, ingestion or
+  engine change without a new user decision naming a new hypothesis family, and a pre-registered ADR that addresses
+  ADR 0021's cross-line lessons.**
 
 ## stockbot is live: do not touch it
 - Never modify these: `bot/` (including `intraday`, the squeeze screener, the insider scans and the Telegram
