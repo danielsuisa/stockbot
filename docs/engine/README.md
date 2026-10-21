@@ -24,7 +24,7 @@ closed by [ADR 0007](adr/0007-intraday-line-closed.md) and the insider line by
 | S1 | Swing tickets implementation | **On hold** until after T2 (ADR 0015) | `engine/s1` (local) | — |
 | T1 | Intraday tickets: pre-registration, data, signed tickets, evaluator (no outcomes) | PASS | `engine/t1` | [T1](T1-report.md) |
 
-Decisions: [ADR 0001](adr/0001-engine-foundations.md) … [ADR 0016](adr/0016-t1-pre-registered-design.md),
+Decisions: [ADR 0001](adr/0001-engine-foundations.md) … [ADR 0017](adr/0017-t2-decisions.md),
 in `adr/`.
 
 ## The two research lines
