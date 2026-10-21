@@ -9,6 +9,7 @@ from unittest import mock
 from bot import common, form4, health, journal, listen, market, scan
 import msgrules
 from test_bot import NO_ENRICH
+from test_commands import frozen_dt
 from test_reliability import row
 from test_signals import doc, tx
 
@@ -156,7 +157,8 @@ class Signals(unittest.TestCase):
             with mock.patch.dict(os.environ, {"STATE_FILE": p}), mock.patch.object(common, "send") as snd, \
                     mock.patch.object(scan, "scan_day", return_value="ok"), mock.patch("traceback.print_exc"), \
                     mock.patch.object(market, "regime", return_value={"tag": "normal"}), \
-                    mock.patch.object(scan, "alerts", side_effect=RuntimeError("SEC down")):
+                    mock.patch.object(scan, "alerts", side_effect=RuntimeError("SEC down")), \
+                    mock.patch.object(scan, "dt", frozen_dt(TODAY)):  # the fixture's dates are relative to TODAY
                 scan._reported[0] = False
                 with self.assertRaises(RuntimeError):
                     scan.main(["--days", "20260923"])
