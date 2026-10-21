@@ -221,14 +221,35 @@ class Checklist(unittest.TestCase):
 
     def test_7_time(self):
         cs, cx, now = hammer_case()
-        self.assertEqual(blocked(cs, cx, "10:35"), [("hammer", "time", "08:00-10:30")])
-        self.assertEqual(blocked(cs, cx, "10:30"), [("hammer", "time", "08:00-10:30")])  # valid to 10:30: no time left
         self.assertEqual(blocked(cs, dict(cx, time_exit=None), now)[0][:2], ("hammer", "time"))
+        self.assertEqual(blocked(cs, cx, "11:35"), [("hammer", "time", "08:00-11:30, valid to 10:00")])  # after 11:30
+
+    def test_7_time_left_under_both_validity_rules(self):
+        cs, cx, now = hammer_case()  # a reversal: valid until the next candle closes (09:55 signal -> 10:00)
+        self.assertEqual(tickets(cs, cx, now)["hammer"]["valid_until"], "10:00")
+        self.assertEqual(blocked(cs, cx, "10:00"), [("hammer", "time", "08:00-11:30, valid to 10:00")])  # no time left
+        cs, cx, now = inside_case()  # a compression: valid until the window's end
+        self.assertEqual(tickets(cs, cx, "11:25")["inside"]["valid_until"], "11:30")
+        self.assertEqual(blocked(cs, cx, "11:30"), [("inside", "time", "08:00-11:30, valid to 11:30")])
 
     def test_8_fixed_rule(self):
         cs, cx, now = hammer_case()
         with mock.patch.object(deck, "COST_MAX_R", 0.5):  # a rule changed in the moment, not the one decided
             self.assertEqual(blocked(cs, cx, now)[0][:2], ("hammer", "rule"))
+
+
+class Validity(unittest.TestCase):
+    """User decision 2026-10-22: reversal setups live until the next candle closes (c2-hammer), the others to 11:30."""
+
+    def test_each_setup_class(self):
+        want = {hammer_case: ("hammer", "10:00"), engulf_case: ("engulf", "10:05"), vwap_case: ("vwap_hammer", "10:10"),
+                retest_case: ("retest", "10:10"), inside_case: ("inside", "11:30"), nr7_case: ("nr7", "11:30"),
+                breakout_case: ("breakout", "11:30"), flag_case: ("flag", "11:30")}
+        for case, (setup, end) in want.items():
+            cs, cx, now = case()
+            self.assertEqual(tickets(cs, cx, now)[setup]["valid_until"], end, setup)
+        self.assertEqual(set(deck.NEXT_CANDLE), {"hammer", "engulf", "vwap_hammer", "vwap_engulf", "retest"})
+        self.assertEqual((deck.FIRST, deck.LAST), ("08:00", "11:30"))
 
 
 class Filters(unittest.TestCase):

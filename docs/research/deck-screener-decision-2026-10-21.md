@@ -23,7 +23,7 @@
    - from 08:00 ET, refreshed every 5 minutes from the pre-market gap and relative volume available at that moment;
    - re-ranked at 09:55 by the opening 5-minute relative volume.
 4. **Hours:**
-   - new tickets from 08:00 to 10:30 ET;
+   - new tickets from 08:00 to 10:30 ET (11:30 from 2026-10-22, see the addendum);
    - the time exit at 15:55, or 5 minutes before an early close;
    - VWAP from 09:30. Before then the VWAP setups are off, and every other setup runs.
 5. **Checklist:** all 8 items of slide c7-checklist must pass for every setup. Item 6 means an estimated round-trip
@@ -47,3 +47,21 @@
   the cards say so. Every other setup in the deck is untested here.
 - **The insider, squeeze and ticket modules, and every other workflow.**
 - **The journal's schema.** Only new setup names are added.
+
+## Addendum, 2026-10-22: validity, window end, defaults
+
+The user decided, after reviewing PR #27:
+
+1. **Validity by setup class.**
+   - **The reversal setups** (Hammer, bullish Engulfing, the VWAP pullback and the Retest) follow slide c2-hammer:
+     "the next candle trades above the high; without confirmation, no trade". The ticket is valid until the close of
+     the 5-minute candle after the signal candle. If it has not triggered by then, it is cancelled. The card prints
+     the exact ET end time.
+   - **The Inside bar, NR7, the breakout at the level and the Bull flag** are valid until the window's end, 11:30 ET.
+2. **Window end: 11:30 ET**, as on slide c5-pullback. New tickets run 08:00–11:30. The 09:55 re-rank, the 15:55 time
+   exit and VWAP from 09:30 are unchanged. The morning job's time limit rises to 245 minutes, within GitHub's cap.
+3. **Every other default** in the spec's section 11 is confirmed as written, including the cost assumptions and the
+   pre-market stop-limit offset.
+
+The paper follow-up also respects validity: an order not triggered before its validity end counts as cancelled. The
+rule set id changed from `5bbe40952f6f` to `ddcc3dde5bdf`, because `LAST` and the next-candle list are in it.

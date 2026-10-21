@@ -6,7 +6,7 @@
 - **Code.** The rules are pure functions in `bot/deck.py`. The screener around them (watchlist, scans, cards, journal)
   is `bot/intraday.py`. The retired v1 setups are frozen in `bot/intraday_v1.py`, because `bot/intraday_count.py`
   replays them.
-- **Rule set id: `5bbe40952f6f`.** It is a hash of every parameter in the table in section 9. Checklist item 8
+- **Rule set id: `ddcc3dde5bdf`.** It is a hash of every parameter in the table in section 9. Checklist item 8
   ("fixed rule") compares the running parameters with this id. Any change to a number therefore stops every ticket
   until the spec and the id are updated together.
 - **Recommendations only.** The bot never sends an order. The user enters each bracket by hand in IBKR. No
@@ -16,7 +16,7 @@ Source labels used below:
 - **presentation**: the slide states the rule or the number.
 - **bot**: the existing stockbot constant is reused, same name and value.
 - **user**: a user decision of 2026-10-21.
-- **default**: proposed by the orchestrator. The user confirms these (section 11).
+- **default**: proposed by the orchestrator. The user confirmed all of them on 2026-10-22 (section 11).
 - **IBKR**: IBKR's published schedule (section 7).
 
 ## 1. Scope and timing
@@ -25,9 +25,11 @@ Source labels used below:
 |---|---|---|
 | 5-minute candles from the live IEX feed. Long only. Tick $0.01 | c1-time, c2-entry | presentation, user |
 | The daily candle gives context: yesterday's high, low and close are levels | c1-time, c4-levels | presentation |
-| New tickets 08:00–10:30 ET, scanned every 5 minutes, 25 seconds after each candle closes | – | user |
+| New tickets 08:00–11:30 ET, scanned every 5 minutes, 25 seconds after each candle closes | c5-pullback ("until 11:30") | presentation, user (2026-10-22) |
 | Time exit 15:55 ET, or the close − 5 minutes on early-close days (from the exchange calendar) | c7-a, c5-pullback | presentation, user |
-| Validity: until 10:30 ET, then cancel. Item 7 also needs time left, so the 10:30 scan sends no new ticket | c7-a ("until the window's end"), c7-checklist item 7; the window end is the user's | presentation, user |
+| Validity, reversal setups (Hammer, Engulfing, VWAP pullback, Retest): until the close of the 5-minute candle after the signal candle; untriggered by then, the order is cancelled. The card prints the exact ET end | c2-hammer ("the next candle trades above the high; without confirmation, no trade"), c2-entry | presentation, user (2026-10-22) |
+| Validity, the others (Inside bar, NR7, Breakout, Bull flag): until the window's end, 11:30 ET, then cancel | c7-a ("until 11:30, then cancel") | presentation, user (2026-10-22) |
+| Checklist item 7 needs time left on the order: now < its validity end. So a window-class setup gets no ticket from the 11:30 scan; a reversal setup can, valid until 11:35 | c7-checklist item 7 | presentation |
 | VWAP is the session's, from 09:30. Before 09:30 the VWAP setups are off and VWAP is not a level; every other setup runs | c5-vwap | presentation, user |
 | A pre-market candle is usable for patterns only with trades in at least 3 of its 5 minutes. A 5-minute slot with no trades is a gap, and no pattern spans it | – | user (`PRE_MIN_TRADES` default) |
 
@@ -178,7 +180,7 @@ estimate errs high. The free plan serves no live SIP quote.
 
 ## 9. Parameters
 
-Every number in `bot/deck.py`. Checklist item 8 compares the running set against the id `5bbe40952f6f`.
+Every number in `bot/deck.py`. Checklist item 8 compares the running set against the id `ddcc3dde5bdf`.
 
 | Parameter | Value | Slide | Source | Note |
 |---|---|---|---|---|
@@ -231,7 +233,8 @@ Every number in `bot/deck.py`. Checklist item 8 compares the running set against
 | `TAF` | 0.000195 | – | FINRA | per share sold |
 | `TAF_MAX` | 9.79 | – | FINRA | |
 
-The times `FIRST` 08:00 and `LAST` 10:30 (user) and `OPEN` 09:30 (c5-vwap) are in the set too.
+The times `FIRST` 08:00 and `LAST` 11:30 (c5-pullback, user 2026-10-22), `OPEN` 09:30 (c5-vwap) and the list of
+next-candle setups `NEXT_CANDLE` (c2-hammer, user 2026-10-22) are in the set too.
 
 ## 10. Presentation vs the orchestrator's summary
 
@@ -242,10 +245,10 @@ The slides prevail. Each difference and what the code does:
    - c2-hammer and c2-entry ask for confirmation on the next candle: "the next candle trades above the high; without
      confirmation, no trade".
    - The summary states no validity.
-   - The code follows c7-a, mapped to the user's window: valid until 10:30. Validity for the next candle only, per
-     c2-hammer, would be stricter (section 11).
-2. **Trading window.** c5-pullback says "in the live bot: only 09:40 to 11:30". The user's binding decision is
-   08:00–10:30, with VWAP setups from 09:30. The user's decision applies.
+   - **Resolved by the user on 2026-10-22:** c2-hammer for the reversal setups (Hammer, Engulfing, VWAP pullback,
+     Retest): valid until the next candle closes. c7-a for the others: valid until the window's end, 11:30.
+2. **Trading window.** c5-pullback says "in the live bot: only 09:40 to 11:30". The user first set 08:00–10:30, then
+   on 2026-10-22 moved the end to **11:30**, as on c5-pullback. VWAP setups still start at 09:30.
 3. **Limit price.** c7-q and c7-a use a fixed $0.05 above the trigger; c7-stoplimit's example uses $0.10. The summary
    uses the bot's `LIMIT_ATR` (5% of ATR14), which is the same $0.05 at an ATR14 of $1.
 4. **Cash cap.** c7-size compares shares × the entry (trigger) with $2,500. The summary and the code use shares ×
@@ -280,7 +283,9 @@ The slides prevail. Each difference and what the code does:
 16. **Wyckoff.** c6-limits calls it subjective and hard to make mechanical. Per the user it is a tag only, with
     default numbers.
 
-## 11. Defaults the user should confirm
+## 11. Defaults (confirmed by the user, 2026-10-22)
+
+Items 1–9 and 11–13 are confirmed by the user, 2026-10-22, as written. Item 10 was decided differently (below).
 
 1. Hammer upper wick ≤ 0.5 × body (`UPPER_WICK`); Doji body ≤ 5% of the range (`DOJI_BODY`).
 2. End of decline:
@@ -301,7 +306,8 @@ The slides prevail. Each difference and what the code does:
 9. Wyckoff:
    - "Accumulation": a range ≤ 15% over 20 sessions after a fall ≥ 20% over 60;
    - "Spring": a break of the 20-session low within the last 5 sessions that closed back above it.
-10. Validity until 10:30. Alternative: the next candle only (c2-hammer).
+10. **Validity: decided by the user, 2026-10-22.** The next candle only for Hammer, Engulfing, VWAP pullback and
+    Retest (c2-hammer); until 11:30 for Inside bar, NR7, Breakout and Bull flag (c7-a).
 11. One ticket per symbol per scan, in the preference order of section 5.
 12. Cost:
     - both legs take liquidity;
@@ -319,11 +325,12 @@ The slides prevail. Each difference and what the code does:
   - Wyckoff: daily bars.
 - **No paid data.** Keys come from the existing GitHub secrets only.
 - **Schedule.** The listener's clock (`bot/clock.py`) dispatches `intraday.yml` on weekdays:
-  - `morning` at 07:57, which loops 08:00–10:30;
+  - `morning` at 07:57, which loops 08:00–11:30;
   - `exit` at 12:50 and at 15:50. Each run reads the calendar, and only the one that matches today's close sends the
     time-exit reminder, 5 minutes before the close;
   - `followup` at 16:20, unchanged.
-- **Job time limit.** Raised from 150 to 180 minutes, within GitHub's 6-hour cap.
+- **Job time limit.** 245 minutes for the job and 235 for the scan step (was 150 and 140 before D1). The 07:57–11:30
+  loop is 213 minutes, plus stage 1 and set-up; GitHub's cap is 360.
 - **Unchanged:**
   - the journal and its schema; the card's extra fields go to a separate `cards` key in the state file;
   - `/intraday stats`;
@@ -341,3 +348,5 @@ data:
   decline, and those take several usable candles after the open.
 - **Cards per session:** 7, 12 and 1 (the 10:30-scan cards came before item 7's time-left rule was added). The
   example cards are in the PR description.
+- **The replay ran on the D1 rules:** window to 10:30, every ticket valid to 10:30. Its cards were re-rendered with
+  the 2026-10-22 validity (no new data fetched); scans from 10:30 to 11:30 were not replayed.

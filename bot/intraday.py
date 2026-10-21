@@ -8,12 +8,13 @@ the average day); the top WATCH by pre-market relative volume are the watchlist.
 5 minutes from the SIP pre-market bars that are at least 15 minutes old (the free plan); from 09:55 it is re-ranked
 by the 09:30-09:35 SIP bar's relative volume (Zarattini & Aziz 2024, the top 20 by this measure).
 
-Stage 2, every 5 minutes 08:00-10:30: the completed 5-minute candles of the watchlist (IEX feed, no lag; a pre-market
+Stage 2, every 5 minutes 08:00-11:30: the completed 5-minute candles of the watchlist (IEX feed, no lag; a pre-market
 candle counts only with trades in 3 of its 5 minutes) -> the deck's setups (bot/deck.py): Hammer and bullish
 Engulfing on support, Inside bar, NR7, breakout above a level and its Retest, VWAP pullback (from 09:30), Bull flag.
 Each must pass the deck's 8-item checklist, including a round-trip cost of at most 0.3 of its risk. The ticket is a
-bracket: buy stop-limit a tick above the trigger, stop loss a tick under the pattern, target 2 x risk, valid to 10:30,
-time exit 5 minutes before the close. Size = $25 / risk per share, at most what $2,500 of cash buys.
+bracket: buy stop-limit a tick above the trigger, stop loss a tick under the pattern, target 2 x risk, time exit 5
+minutes before the close. Validity: a reversal setup (Hammer, Engulfing, VWAP pullback, Retest) until the next candle
+closes, the others until 11:30. Size = $25 / risk per share, at most what $2,500 of cash buys.
 
     python -m bot.intraday --mode morning     # loop over the window, send new tickets
     python -m bot.intraday --mode once        # one scan now (the /intraday now command)
@@ -313,8 +314,10 @@ def ticket_text(t, day, E=None):
         lines.append("רשימת הבדיקה: " + " · ".join(f"✓ {CHECK_NAMES[k]}" for k in deck.CHECKS))
     if t.get("wyckoff"):
         lines.append("הקשר וייקוף (לא טריגר): " + ", ".join(WYCKOFF_NAMES.get(w, w) for w in t["wyckoff"]))
-    lines.append(f"תוקף: עד {_ny_il(day, t.get('valid_until', deck.LAST))} ואז ביטול · יציאה בזמן: "
-                 f"{_ny_il(day, t['time_exit'])} אם לא נסגר קודם")
+    valid = _ny_il(day, t.get("valid_until", deck.LAST))
+    lines.append((f"תוקף: הנר הבא בלבד — עד {valid}; אם הטריגר לא הופעל עד אז, מבטלים" if t["setup"] in deck.NEXT_CANDLE
+                  else f"תוקף: עד סוף החלון, {valid}, ואז ביטול")
+                 + f" · יציאה בזמן: {_ny_il(day, t['time_exit'])} אם לא נסגר קודם")
     lines.append("ב־IBKR: פקודת bracket אחת — BUY STP LMT (טריגר ולימיט שלמעלה), ילדים: SELL STP סטופ לוס ו־SELL LMT "
                  "יעד, OCA, תוקף DAY")
     if t.get("premarket"):
@@ -360,10 +363,13 @@ def sent_tickets(state):
 def outcome(t, bars1):
     """Paper outcome of ticket `t` from the session's SIP 1-minute bars after its candle: filled at the stop-limit
     (first minute whose high >= entry stop, fill = max(entry, open) if open <= limit), then target / stop / time
-    exit by minute highs and lows (both touched in one minute = stop: conservative)."""
+    exit by minute highs and lows (both touched in one minute = stop: conservative). An order not triggered before its
+    validity end ("valid_until", when the ticket has one) was cancelled."""
     after = [b for b in bars1 if b[0] >= t["at"] and b[0] < "16:00"]
     fill = None
     for m, o, h, l, c, v, vw in after:
+        if fill is None and t.get("valid_until") and m >= t["valid_until"]:
+            return {"result": "not filled (cancelled at its validity end)", "r": 0.0}
         if fill is None:
             if h >= t["entry_stop"]:
                 f = max(t["entry_stop"], o)
@@ -389,8 +395,9 @@ def followup(state):
     todo = [j for j in state["journal"] if not j.get("outcome")]
     if todo:
         bars = alpaca.minute_bars(sorted({j["symbol"] for j in todo}), day)
+        cards = state.get("cards") or {}
         for j in todo:
-            j["outcome"] = outcome(j, bars.get(j["symbol"], []))
+            j["outcome"] = outcome({**j, **cards.get(f"{j['symbol']}:{j['setup']}", {})}, bars.get(j["symbol"], []))
     return stats_text(state)
 
 

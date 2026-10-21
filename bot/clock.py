@@ -19,7 +19,7 @@ JOBS = ([(f"squeeze:{s}", sessions.NY, t, WEEKDAYS, "squeeze.yml", {"mode": "slo
         + [("scan:morning", UTC, dt.time(5, 30), TUE_SAT, "daily-scan.yml", {"mode": "morning"})]
         + [("shadow:morning", UTC, dt.time(7, 0), TUE_SAT, "shadow.yml", {"mode": "slot"})]  # the session before
         + [(f"intraday:{name}", sessions.NY, t, WEEKDAYS, "intraday.yml", {"mode": m})  # the deck screener: the
-           for name, m, t in (("morning", "morning", dt.time(7, 57)),  # 08:00-10:30 window, the time-exit reminder
+           for name, m, t in (("morning", "morning", dt.time(7, 57)),  # 08:00-11:30 window, the time-exit reminder
                               ("exit_early", "exit", dt.time(12, 50)),  # (an early close: the run checks the
                               ("exit", "exit", dt.time(15, 50)),  # calendar and only the matching one sends)
                               ("followup", "followup", dt.time(16, 20)))])

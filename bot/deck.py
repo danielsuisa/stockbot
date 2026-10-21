@@ -33,7 +33,7 @@ NR_N = 7  # c3-nr7
 PRE_MIN_TRADES = 3  # default: a pre-market candle needs trades in 3 of its 5 minutes
 ROUND_STEPS = ((20.0, 1.0), (100.0, 5.0), (math.inf, 10.0))  # default: round numbers by price
 WY_RANGE_N, WY_RANGE_PCT, WY_DECLINE_N, WY_DECLINE_PCT, WY_SPRING_N = 20, 0.15, 60, 0.20, 5  # default (c6-*)
-OPEN, FIRST, LAST = "09:30", "08:00", "10:30"  # VWAP from the open (c5-vwap); new tickets 08:00-10:30 (user)
+OPEN, FIRST, LAST = "09:30", "08:00", "11:30"  # VWAP from the open (c5-vwap); new tickets 08:00-11:30 (c5-pullback, user)
 
 # IBKR Pro Tiered, US stocks (docs/deck-screener-spec.md section "Cost", with the URLs): per share, minimum and
 # maximum per order; third-party fees per share; regulatory fees on the sale.
@@ -47,6 +47,9 @@ SETUPS = ("hammer", "engulf", "vwap_hammer", "vwap_engulf", "inside", "nr7", "br
 CHAPTER = {"hammer": 2, "engulf": 2, "inside": 3, "nr7": 3, "breakout": 4, "retest": 4, "vwap_hammer": 5,
            "vwap_engulf": 5, "flag": 5}
 VWAP_SETUPS = ("vwap_hammer", "vwap_engulf")
+# Validity (user, 2026-10-22): a reversal candle needs the next candle to confirm it (c2-hammer), so its ticket lives
+# until that candle closes; the compression, breakout and flag tickets live until the window's end (LAST).
+NEXT_CANDLE = ("hammer", "engulf", "vwap_hammer", "vwap_engulf", "retest")
 CHECKS = ("context", "level", "shape", "levels", "size", "cost", "time", "rule")
 
 
@@ -60,7 +63,7 @@ def rules_id(r=None):
     return hashlib.sha256(json.dumps(r or rules(), sort_keys=True, default=str).encode()).hexdigest()[:12]
 
 
-RULES_ID = "5bbe40952f6f"  # the id of the rule set written in docs/deck-screener-spec.md (item 8: "fixed rule")
+RULES_ID = "ddcc3dde5bdf"  # the id of the rule set written in docs/deck-screener-spec.md (item 8: "fixed rule")
 
 
 # ---------- candles ----------
@@ -411,6 +414,12 @@ def wyckoff(daily):
     return tags
 
 
+def valid_until(setup, cs):
+    """The order's last minute ("HH:MM" New York): the close of the candle after the signal candle for a reversal
+    setup (c2-hammer: "the next candle trades above the high; without confirmation, no trade"), else the window's end."""
+    return ticket.hhmm(ticket.mins(cs[-1]["end"]) + 5) if setup in NEXT_CANDLE else LAST
+
+
 # ---------- the checklist (c7-checklist) ----------
 def evaluate(symbol, cs, ctx, now):
     """Every setup on the last completed candle, each checked against the 8 items -> {"tickets": [...], "blocked":
@@ -442,7 +451,7 @@ def evaluate(symbol, cs, ctx, now):
                                "level": pat["level"], "checks": {k: items[k][1] for k in CHECKS},
                                "cost_r": items["cost"][2], "wyckoff": wyckoff(ctx.get("daily") or []),
                                "at": now, "last": cs[-1]["c"], "vwap": cs[-1].get("vwap"),
-                               "time_exit": ctx["time_exit"], "valid_until": LAST, "premarket": now < OPEN})
+                               "time_exit": ctx["time_exit"], "valid_until": items["time"][2], "premarket": now < OPEN})
     return out
 
 
@@ -459,7 +468,9 @@ def checklist(pat, cs, ctx, now, a5, lv):
     two = b["R"] > 0 and b["stop_loss"] < b["entry_stop"] and b["entry_stop"] > cs[-1]["c"]
     spread = ctx.get("spread")
     c_r = round(cost_usd(b, spread) / (b["shares"] * b["R"]), 3) if spread is not None and b["shares"] > 0 else None
-    in_time = FIRST <= now < LAST and bool(ctx.get("time_exit"))  # the order needs time left before 10:30 and (now >= OPEN or pat["setup"] not in VWAP_SETUPS)
+    valid = valid_until(pat["setup"], cs)
+    in_time = (FIRST <= now <= LAST and now < valid and bool(ctx.get("time_exit"))  # time left on the order
+               and (now >= OPEN or pat["setup"] not in VWAP_SETUPS))
     fixed = pat["setup"] in SETUPS and rules_id() == RULES_ID
     items = {
         "context": (ctx_ok, "מגמה עולה" if trend else "סוף ירידה" if ctx_ok else "אין מגמה עולה ואין סוף ירידה"),
@@ -468,7 +479,7 @@ def checklist(pat, cs, ctx, now, a5, lv):
         "levels": (two, "טריגר וסטופ במספרים"),
         "size": (b["shares"] >= 1, f"{b['shares']} shares"),
         "cost": (c_r is not None and c_r <= COST_MAX_R + 1e-9, "אין ציטוט" if c_r is None else f"{c_r:.2f}", c_r),
-        "time": (in_time, f"{FIRST}-{LAST}"),
+        "time": (in_time, f"{FIRST}-{LAST}, valid to {valid}", valid),
         "rule": (fixed, RULES_ID),
     }
     if pat["level"] is None and lvl:

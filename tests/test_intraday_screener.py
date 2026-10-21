@@ -3,8 +3,10 @@ the schedule. The rules themselves are tested in tests/test_deck.py."""
 import datetime as dt
 import json
 import os
+import re
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from bot import deck, intraday, ticket
@@ -36,7 +38,7 @@ def _t(**kw):
             "stop_loss": 21.39, "target": 22.95, "R": 0.52, "r_floored": False, "shares": 48, "risk": 24.96,
             "time_exit": "15:55", "atr": ATR, "gap": 0.031, "pre_rel": 0.22, "open_relvol": 3.2, "at": "09:45",
             "last": 21.6, "vwap": 20.5, "ok": True, "stop_limit": 21.34, "r_capped": False, "level": (21.5, "yday_high"),
-            "checks": {k: "" for k in deck.CHECKS}, "cost_r": 0.06, "wyckoff": ["spring"], "valid_until": "10:30",
+            "checks": {k: "" for k in deck.CHECKS}, "cost_r": 0.06, "wyckoff": ["spring"], "valid_until": "11:30",
             "premarket": False}
     return {**base, **kw}
 
@@ -55,6 +57,29 @@ class Outcomes(unittest.TestCase):
         self.assertEqual(intraday.outcome(t, bars)["result"], "stop")
 
 
+    def test_untriggered_reversal_is_cancelled_after_the_next_candle(self):
+        t = _t(setup="hammer", at="09:45", valid_until="09:55", entry_stop=20.91, limit=20.96, stop_loss=20.54,
+               target=21.65, R=0.37)
+        late = minutes("09:45", [(20.6, 20.7, 20.5, 20.65, 1), (20.65, 20.8, 20.6, 20.7, 1),  # no trigger by 09:55
+                                 (20.7, 21.0, 20.7, 20.95, 1), (20.95, 21.7, 20.9, 21.6, 1)])
+        self.assertEqual(intraday.outcome(t, late), {"result": "not filled (cancelled at its validity end)", "r": 0.0})
+        self.assertEqual(intraday.outcome(dict(t, valid_until="11:30"), late)["result"], "target")  # a window ticket
+        early = minutes("09:45", [(20.6, 20.7, 20.5, 20.65, 1), (20.65, 20.95, 20.6, 20.9, 1), (20.9, 21.7, 20.8, 21.6, 1)])
+        self.assertEqual(intraday.outcome(t, early)["result"], "target")  # triggered in the next candle
+
+    def test_followup_reads_the_validity_from_the_card(self):
+        st = intraday.fresh_state(DAY)
+        t = _t(setup="hammer", at="09:45")
+        st["journal"] = [{k: t[k] for k in intraday.JOURNAL_KEYS}]
+        st["cards"] = {"ACME:hammer": {"valid_until": "09:55"}}
+        bars = {"ACME": minutes("09:45", [(21.6, 21.7, 21.5, 21.65, 1), (21.65, 21.8, 21.6, 21.7, 1),
+                                          (21.7, 22.0, 21.7, 21.95, 1)])}
+        with mock.patch.object(intraday.alpaca, "minute_bars", return_value=bars):
+            intraday.followup(st)
+        self.assertEqual(st["journal"][0]["outcome"]["result"], "not filled (cancelled at its validity end)")
+        self.assertEqual(tuple(st["journal"][0]), intraday.JOURNAL_KEYS + ("outcome",))
+
+
 class Messages(unittest.TestCase):
     def test_card_follows_the_message_rules(self):
         for t in (_t(), _t(premarket=True, at="08:35", vwap=None), _t(gap=-0.04, r_floored=True, wyckoff=[]),
@@ -70,11 +95,18 @@ class Messages(unittest.TestCase):
     def test_card_shows_what_the_deck_asks(self):
         text = intraday.ticket_text(_t(), DAY)
         for needle in ("Bull flag (פרק 5 במצגת)", "21.91$", "21.96$", "21.39$", "22.95$", "0.52$", "48", "24.96$",
-                       "0.06", "✓ הקשר", "✓ כלל קבוע", "Spring", "10:30", "15:55", "22:55", "שיא אתמול",
+                       "0.06", "✓ הקשר", "✓ כלל קבוע", "Spring", "עד סוף החלון", "11:30", "18:30", "15:55", "22:55",
+                       "שיא אתמול",
                        "SELL STP סטופ לוס"):
             self.assertIn(needle, text)
         self.assertEqual(sum(text.count(f"✓ {n}") for n in intraday.CHECK_NAMES.values()), 8)
         self.assertNotIn("Fill outside RTH", text)
+
+    def test_reversal_card_prints_the_next_candle_end(self):
+        text = intraday.ticket_text(_t(setup="hammer", at="10:05", valid_until="10:10"), DAY)
+        self.assertIn("תוקף: הנר הבא בלבד — עד <code>10:10</code> ניו־יורק (<code>17:10</code> ישראל)", text)
+        self.assertNotIn("סוף החלון", text)
+        self.assertEqual(msgrules.problems(text), [], text)
 
     def test_premarket_card_has_the_order_settings(self):
         text = intraday.ticket_text(_t(premarket=True, at="08:35"), DAY)
@@ -176,7 +208,14 @@ class Schedule(unittest.TestCase):
                 self.assertEqual(s.call_count, sends, now)
 
     def test_window_is_the_users(self):
-        self.assertEqual(intraday.WINDOWS, {"morning": ("08:00", "10:30")})
+        self.assertEqual(intraday.WINDOWS, {"morning": ("08:00", "11:30")})
+
+    def test_job_limit_covers_the_morning_loop(self):
+        wf = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "intraday.yml").read_text(encoding="utf-8")
+        job, step = [int(x) for x in re.findall(r"timeout-minutes: (\d+)", wf)]
+        loop = ticket.mins(deck.LAST) - ticket.mins("07:57")  # the clock's dispatch to the last scan: 213 minutes
+        self.assertGreaterEqual(step, loop + 15)  # stage 1 and the last candle's 25 seconds fit
+        self.assertTrue(step < job <= 360)  # GitHub's 6-hour cap
 
 
 class Stage1(unittest.TestCase):
