@@ -3,21 +3,36 @@
 | | |
 |---|---|
 | Branch | `feature/screener-engine` (from `origin/main` `4b5f46d`) |
-| Phase | A — repository and environment audit |
-| Gate A | PASSED (audit committed; FROZEN list verified with `git ls-files`: 42 exact paths + 3 globs) |
+| Phase | B — filter catalog |
+| Gate A | PASSED (audit committed; FROZEN list verified with `git ls-files`: 38 exact paths + 3 globs) |
+| Gate B | PASSED (catalog parses; `tests/test_screener_catalog.py` checks 700+ prompt codes and 35 signals) |
 | Baseline | 904 tests, all passing (`PYTHONUTF8=1`, `tzdata` installed locally) |
-| Next action | Phase B: catalog |
+| Next action | Phase C: metric spec |
 
 ## Commits
 
 | Phase | SHA | Subject |
 |---|---|---|
-| A | (this commit) | docs(screener): repo audit |
+| A | c5bfb2d | docs(screener): repo audit |
+| B | (this commit) | feat(screener): filter catalog |
 
 ## Cache locations
 
 - Local: `D:\investor\.cache\screener\` (gitignored through `.cache/`)
 - Actions: `.cache/screener/`, restored and saved with `actions/cache` (key = store + ISO week)
+
+## Catalog verification (Phase B)
+
+finviz loads so far: 6 of 60 (robots.txt, help/screener ×2, the allowed preset `v=340&s=ta_topgainers` ×3 to read its
+embedded filter definitions). Paced ≥ 20.5 s apart, unauthenticated. Only codes, short labels and Elite flags were kept.
+
+| | count |
+|---|---|
+| Filters (OBSERVED definitions) | 82 (77 public + 5 Elite: sh_trades, ah_close, ah_change, news_keywords, etf_heldby) |
+| Option codes | 2459: **2205 OBSERVED**, **172 INFERRED** (prompt codes the UI does not list), the rest of each filter's grammar is INFERRED |
+| Signals | 35 (18 signal presets + 17 chart patterns, OBSERVED in robots.txt and the help page) |
+| Planned status, public filters | 19 EXACT · 44 APPROX · 14 UNAVAILABLE (final statuses re-checked in Phase I) |
+| Planned status, signals | 9 EXACT · 6 APPROX · 20 UNAVAILABLE |
 
 ## Open items
 
