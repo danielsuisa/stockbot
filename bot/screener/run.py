@@ -315,7 +315,8 @@ def refresh_mode(full=False, now=None):
         stats["profile"] = BARS.update_profile(prof, stocks, done, max_calls=PROFILE_CALLS)
         stores.save("profile", prof, "alpaca-sip-1Hour", rows=len(prof.get("days", {})))
     if not late():
-        _, _, stats["ownership"] = OWN.update({str(c) for c in ciks}, done, ck["day"], per_run=OWNERSHIP_FILINGS)
+        _, _, stats["ownership"] = OWN.update({str(c) for c in ciks}, done, ck["day"], per_run=OWNERSHIP_FILINGS,
+                                              late=late)
     stats["minutes"] = round((time.monotonic() - t0) / 60, 1)
     common.log("screener_refresh", **{k: v for k, v in stats.items()}, counts=dict(stores.COUNTS))
     return 0
