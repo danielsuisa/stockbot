@@ -262,24 +262,25 @@ def covered(store, cik):
     return len(st.get("quarters") or []) >= QUARTERS and str(cik) not in set(st.get("pending_issuers") or [])
 
 
-def holders(store, cik, exclude=(), day=None, min_pct=MIN_PCT, passive=False):
+def holders(store, cik, owners=None, day=None, min_pct=MIN_PCT, passive=False):
     """Σ shares of the issuer's 13D/13G holders whose latest filing (filed on/before `day`, ISO; None = latest)
-    reports >= min_pct of the class, leaving out any whose CIKs meet `exclude` (Form 3/4/5 owners: never subtracted
-    twice) and, unless `passive`, the qualified institutions filing a 13G under Rule 13d-1(b) only (funds, advisers,
-    banks: finviz's and Yahoo's floats keep them - AAPL's float is within 1% of its shares outstanding) -> (shares, holders counted); (0.0, 0) when none counts. Point in time by filing date (≈: a holder whose
-    latest filing came after `day` is left out, its earlier filing is not kept)."""
+    reports >= min_pct of the class -> (shares, holders counted); (0.0, 0) when none counts. Unless `passive`, the
+    qualified institutions filing a 13G under Rule 13d-1(b) alone (funds, advisers, banks) are left out: finviz's and
+    Yahoo's floats keep them (AAPL's float is within 1% of its shares outstanding). owners: {CIK: shares} of the
+    issuer's Form 3/4/5 owners: a holder that is also one counts once, at the larger amount (only the excess over
+    its Form 3/4/5 holding is added here - a 13D group often holds more than its Form 4 lines show). Point in time by
+    filing date (≈: a holder whose latest filing came after `day` is left out; its earlier filing is not kept)."""
     rec = ((store or {}).get("issuers") or {}).get(str(cik)) or {}
-    ex = set(exclude)
+    owners = owners or {}
     tot, n = 0.0, 0
     for h in rec.values():
         if day is not None and h["filed"] > day:
-            continue
-        if set(h["ciks"]) & ex:
             continue
         if h.get("passive") and not passive:  # a qualified institution (Rule 13d-1(b)): not closely held
             continue
         if h.get("pct") is not None and h["pct"] < min_pct:
             continue
-        tot += h["shares"]
+        both = [owners[c] for c in h["ciks"] if c in owners]
+        tot += max(0.0, h["shares"] - max(both)) if both else h["shares"]
         n += 1
     return tot, n

@@ -372,6 +372,20 @@ def holdings(store, cik, day=None, roles="do"):
     return (total, n) if n else (None, 0)
 
 
+def owner_holdings(store, cik, day=None, roles="dot"):
+    """{owner CIK: latest holding (as of `day`) of the owner key it belongs to} for the issuer's owners with one of
+    `roles` (a joint filing's members share the group's holding)."""
+    out = {}
+    for key, rec in ((store or {}).get("issuers", {}).get(str(cik)) or {}).items():
+        if not set(rec["role"]) & set(roles):
+            continue
+        h = [x for x in rec["h"] if day is None or x[0] <= day]
+        if h:
+            for c in key.split("+"):
+                out[c] = max(out.get(c, 0.0), h[-1][1])
+    return out
+
+
 def trades(store, kind, since):
     """Recent code-P buys or code-S sales filed on/after `since` (ISO) -> [{"issuer", "symbol", "filed", "shares"}]."""
     return [x for x in (store or {}).get(kind, []) if x["filed"] >= since]

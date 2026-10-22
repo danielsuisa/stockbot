@@ -274,7 +274,8 @@ def _insiders(c, roles, day=None):
 
 def _float(c):
     """Shares outstanding - officers and directors - 10% owners (Forms 3/4/5) - other >= 5% holders (Schedules 13D and
-    13G, qualified institutions under Rule 13d-1(b) kept, a holder that also files Forms 3/4/5 counted once), as of
+    13G, qualified institutions under Rule 13d-1(b) kept, a holder that also files Forms 3/4/5 counted once at the
+    larger amount), as of
     the evaluated day. float_method: "insiders+5pct" (13D/13G coverage complete for the issuer), "insiders" (Forms
     3/4/5, plus any 13D/13G holders read so far), "outstanding_proxy" (no holdings data). Never <= 0: the next
     method is used and float_flag says why. Rule 144 restricted shares are not subtracted (no free source)."""
@@ -286,8 +287,7 @@ def _float(c):
         return float(n)
     day = c.env.day
     held, k = OWN.holdings(c.env.own, c.cik, day, "dot")
-    owners = {x for key in ((c.env.own or {}).get("issuers") or {}).get(str(c.cik), {}) for x in key.split("+")}
-    big, m = HOLD.holders(c.env.holders, c.cik, owners, day)
+    big, m = HOLD.holders(c.env.holders, c.cik, OWN.owner_holdings(c.env.own, c.cik, day), day)
     tries = []
     if k or m:
         tries.append(("insiders+5pct" if HOLD.covered(c.env.holders, c.cik) else "insiders", (held or 0) + big))

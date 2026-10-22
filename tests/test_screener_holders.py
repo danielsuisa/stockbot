@@ -115,6 +115,13 @@ class Float(unittest.TestCase):
         # 60M - (5M officers + 9M 10% owner, Form 4) - 4M (the other 13G holder); the 900 13G is the same 9M
         self.assertEqual((c.get("float"), c.get("float_method")), (42e6, "insiders+5pct"))
 
+    def test_a_13d_group_larger_than_its_form4_lines_counts_once_at_the_larger_amount(self):
+        own = {"issuers": {"101": {"21+22": {"role": "t", "h": [["2026-01-30", 30e6]]}}}}
+        hold = {"quarters": ["q"] * HOLD.QUARTERS, "pending_issuers": [],
+                "issuers": {"101": {"22": holder(34e6, pct=56.7, ciks=("22", "23"))}}}
+        c = self.evaluate(own, hold)  # 60M - 30M (Form 4) - 4M (the 13D group's excess) = 26M
+        self.assertEqual((c.get("float"), c.get("float_method")), (26e6, "insiders+5pct"))
+
     def test_qualified_institutions_and_small_holders_stay_in_the_float(self):
         hold = {"quarters": ["q"] * HOLD.QUARTERS, "pending_issuers": [],
                 "issuers": {"101": {"800": holder(6e6, passive=True), "801": holder(2e6, pct=3.3),
