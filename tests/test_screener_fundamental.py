@@ -97,5 +97,22 @@ class FramesMerge(unittest.TestCase):
         self.assertEqual(FS.periods(dt.date(2026, 10, 21), "I", light=True), ["CY2026Q3I", "CY2026Q2I"])
 
 
+
+class AltShares(unittest.TestCase):
+    """D-054: without a dei cover count, the balance-sheet count, then weighted-average basic shares."""
+
+    def test_fallback_order_and_age(self):
+        from bot.screener.stores import fundamentals as FUND
+        data = {"shares": {}, "shares_alt": {"7": [["2026-03-31", 52e6, 0], ["2026-06-30", 55e6, 0],
+                                                    ["2026-06-30", 70e6, 1]],
+                                              "8": [["2026-06-30", 91e6, 1]], "9": [["2025-12-31", 10e6, 0]]}}
+        self.assertEqual(FUND.shares_at(data, 7, "2026-10-21"), (55e6, "2026-06-30"))
+        self.assertEqual(FUND.shares_at(data, 7, "2026-05-01"), (52e6, "2026-03-31"))  # point in time
+        self.assertEqual(FUND.shares_at(data, 8, "2026-10-21"), (91e6, "2026-06-30"))
+        self.assertEqual(FUND.shares_at(data, 9, "2026-10-21"), (None, None))  # older than 200 days
+        data["shares"]["7"] = [["2026-08-10", "2026-08-01", 54e6]]
+        self.assertEqual(FUND.shares_at(data, 7, "2026-10-21")[0], 54e6)  # the dei cover count wins
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -115,6 +115,30 @@ def shares(today):
     return shorts.shares_index(out)
 
 
+# Companies without a dei cover share count in the frames (multi-class covers are reported per class, with a
+# dimension the frames leave out; 1,564 of 5,807 stocks on 2026-10-21, OBSERVED): us-gaap frames instead (D-054) -
+# the balance-sheet count first, then the quarter's weighted-average basic shares (which can include pre-funded
+# warrants: FDMT 70.3M against 55.2M on the balance sheet).
+ALT_SHARES = (("CommonStockSharesOutstanding", "I"), ("WeightedAverageNumberOfSharesOutstandingBasic", "D"))
+ALT_MAX_AGE = 200  # days
+
+
+def shares_alt(today):
+    """{cik: [[fact date, shares, rank], ...]} from the last 2 quarters of each ALT_SHARES frame."""
+    out = {}
+    for rank, (tag, kind) in enumerate(ALT_SHARES):
+        for period in periods(today, kind, light=True):
+            try:
+                rows = frame(tag, "shares", period)
+            except Exception:
+                common.trace()
+                continue
+            for r in rows:
+                if r.get("val"):
+                    out.setdefault(str(r["cik"]), []).append([r["end"], r["val"], rank])
+    return {c: sorted(v) for c, v in out.items()}
+
+
 def update(today, force=False):
     """The fundamentals store: full refresh when missing or older than 7 days (or forced), else a light refresh of
     the newest periods once a day -> (data {"facts": raw, "shares": {cik: [...]}}, meta)."""
@@ -124,7 +148,7 @@ def update(today, force=False):
         return st["data"], st["meta"]
     full = force or st is None or (st["meta"].get("full_day") or "") < (today - dt.timedelta(7)).isoformat()
     facts = refresh(today, light=not full, old=st["data"]["facts"] if st and not full else None)
-    data = {"facts": facts, "shares": {str(k): v for k, v in shares(today).items()}}
+    data = {"facts": facts, "shares": {str(k): v for k, v in shares(today).items()}, "shares_alt": shares_alt(today)}
     meta = stores.save("fundamentals", data, "sec-xbrl-frames", rows=len(facts), day=today.isoformat(),
                        full_day=today.isoformat() if full else st["meta"].get("full_day"))
     return data, meta
@@ -141,6 +165,20 @@ def shares_at(data, cik, day):
     idx = {int(cik): [tuple(x) for x in (data or {}).get("shares", {}).get(str(cik), [])]} if cik else {}
     n = shorts.shares_at(idx, int(cik), day) if cik else None
     if not n:
-        return None, None
+        return alt_shares_at(data, cik, day)
     facts = [f for f in idx[int(cik)] if f[0] <= day]
     return n, facts[-1][1] if facts else None
+
+
+def alt_shares_at(data, cik, day):
+    """The us-gaap fallback (D-054, "≈") when the dei cover count is missing: the newest balance-sheet count dated
+    within ALT_MAX_AGE days before `day`, else the newest weighted-average basic count -> (shares, date) or (None,
+    None)."""
+    facts = ((data or {}).get("shares_alt") or {}).get(str(cik)) if cik else None
+    cut = (dt.date.fromisoformat(day) - dt.timedelta(ALT_MAX_AGE)).isoformat()
+    ok = [f for f in facts or [] if cut <= f[0] <= day and f[1] >= shorts.MIN_SHARES]
+    for rank in (0, 1):
+        best = [f for f in ok if f[2] == rank]
+        if best:
+            return best[-1][1], best[-1][0]
+    return None, None
