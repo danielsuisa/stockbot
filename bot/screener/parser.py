@@ -53,13 +53,17 @@ def _pairs(text):
         if "?" in tok and ("://" in tok or tok.split("?", 1)[0].endswith((".ashx", "screener"))):
             tok = tok.split("?", 1)[1]
         for part in tok.split("&"):
-            if not part:
-                continue
-            if "=" in part:
-                k, v = part.split("=", 1)
-                out.append((k.lower(), urllib.parse.unquote(v)))
-            else:
-                out.append(("f", part))
+            key, vals = "f", []  # "cap_small,s=ta_x,sh_price_o5" -> f: cap_small; s: ta_x, sh_price_o5
+            for seg in urllib.parse.unquote(part).split(","):
+                if "=" in seg:
+                    if vals:
+                        out.append((key, ",".join(vals)))
+                    key, seg = seg.split("=", 1)
+                    key, vals = key.lower(), []
+                if seg:
+                    vals.append(seg)
+            if vals or key != "f":
+                out.append((key, ",".join(vals)))
     return out
 
 
