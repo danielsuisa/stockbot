@@ -347,8 +347,8 @@ def refresh_mode(full=False, now=None):
 
 
 def _refresh(full, now, late, step):
-    """The stores in the order the slot runs need them (universe and bars, profile, fundamentals, long, reference,
-    then the ownership stores), each saved as soon as it is done; every step and loop checks the deadline (`late`),
+    """The stores in the order the slot runs need them (universe and bars, profile, fundamentals, reference, the
+    ownership stores, then long: on 2026-10-22 a refresh stopped inside long and never reached ownership), each saved as soon as it is done; every step and loop checks the deadline (`late`),
     so a refresh that stops early keeps what it has (the workflow's cache-save step runs: stores.mark_saved)."""
     import time
     now, ck, cal_all, done, _ = clock_now(now)
@@ -389,15 +389,6 @@ def _refresh(full, now, late, step):
         except Exception:
             common.trace()
     if not late():
-        long = (stores.load("long") or {}).get("data") or {}
-        t_long = time.monotonic()
-        try:  # bounded and saved even when stopped: monthly bars resume from each symbol's month marker
-            stats_long = BARS.update_long(long, syms + ["SPY"], cal_all, ck["day"],
-                                          stop=lambda: late() or (time.monotonic() - t_long) / 60 > LONG_MINUTES)
-        finally:
-            stores.save("long", long, "alpaca-sip-1Month+anchors", rows=len(long.get("m", {})))
-        step("long", stats_long)
-    if not late():
         eight = set()
         for d in done[-2:]:
             try:
@@ -413,6 +404,15 @@ def _refresh(full, now, late, step):
         sec_left = SEC_RUN_MAX - 60 - stores.COUNTS["sec"]
         step("holders", HOLD.update({str(c) for c in ciks}, done, ck["day"], priority=small_caps(uni, bars, ck["day"]),
                                     per_run=max(0, min(HOLDER_FILINGS, sec_left)), late=late)[2])
+    if not late():  # last: monthly bars feed only 3Y/5Y performance and beta; ownership feeds float
+        long = (stores.load("long") or {}).get("data") or {}
+        t_long = time.monotonic()
+        try:  # bounded and saved even when stopped: monthly bars resume from each symbol's month marker
+            stats_long = BARS.update_long(long, syms + ["SPY"], cal_all, ck["day"],
+                                          stop=lambda: late() or (time.monotonic() - t_long) / 60 > LONG_MINUTES)
+        finally:
+            stores.save("long", long, "alpaca-sip-1Month+anchors", rows=len(long.get("m", {})))
+        step("long", stats_long)
 
 
 def verify_mode(now=None):
