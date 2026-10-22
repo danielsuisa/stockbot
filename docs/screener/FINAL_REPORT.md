@@ -1,6 +1,69 @@
 # Screener engine — final report
 
-**Status: PARTIALLY COMPLETE.** The engine, Telegram commands, scheduling and workflow are built, tested and
+## Follow-up: float from SEC bulk data, stage 2 sized by budget (this PR)
+
+**Status: COMPLETE.** The done criteria F1–F6 are met; RTH evidence (F4) was taken in today's session.
+Branch `feature/screener-float` (from `origin/main` `c700bfe`, after PR #28); not merged.
+The squeeze is untouched, and moving it onto the engine is the next step (gated on this PR).
+
+### What changed
+
+| item | change | where |
+|---|---|---|
+| A insiders | The last 8 quarters of SEC's **Insider Transactions Data Sets** (flattened Forms 3/4/5, one ZIP a quarter, streamed; 343,199 filings for universe issuers; 9 SEC requests). The daily index covers the days after, skipping accessions already read. Holdings are kept **per line** (class × direct/indirect × nature): a Form 4 that reports one line keeps the others. An amendment supersedes the original in any read order; joint filings, and owners that file jointly on some forms and alone on others, count once. | `stores/ownership.py` (D-045, D-046, D-055) |
+| B 5%+ holders | **Schedules 13D/13G as XML** (OBSERVED on a 13G and a 13D/A). Filings are discovered from the quarterly and daily form indexes, then only the latest per (issuer, filer) is fetched: small caps first, ≤ 300 a night, known 13d-1(b) institutions skipped. Coverage is tracked per issuer. A group counts at its largest reporting person; a holder that also files Forms 3/4/5 counts once, at the larger amount. | `stores/holders.py` (D-047, D-048) |
+| C float | **outstanding − officers/directors − 10% owners − other ≥ 5% holders** (qualified institutions under Rule 13d-1(b) stay in the float), point in time. `float_method`: `insiders+5pct` / `insiders` / `issuer_public_float` (dei:EntityPublicFloat carried by affiliate count × split factor, only without any holdings data) / `outstanding_proxy`. Never ≤ 0 (`float_flag`). Shares outstanding fall back to us-gaap frames where the dei cover count is missing (1,564 → 1,150 stocks without one). Rule 144 shares stay unavailable. The message footnotes the methods. | `metrics/registry.py`, `stores/publicfloat.py`, `stores/fundamentals.py`, `format.py` (D-049, D-053, D-054) |
+| D stage 2 | The fixed 1500 cap is replaced by a **planner**. Estimate = ceil(n/800) requests + ceil(n × bars so far / PAGE_POINTS) pages; every survivor is fetched when the run's remaining budget allows (150 − 10 kept back − calls made). Otherwise the existing ranking cuts and the cut is reported. **OBSERVED:** Alpaca pages 30-minute multi-symbol bars at 588–840 bars, not 10,000, so PAGE_POINTS = 580 and the whole universe (~10,000 symbols, ≈ 255 calls) does not fit. `unusual_volume_liquid`'s stage 1 does. | `evaluate.py` (D-040 revised) |
+| E rel. volume | A **static time-of-day curve** (the median of 4,800 symbol-days, OBSERVED), used from the open when no profile exists ("≈"). A slot whose daily bars stopped at the budget **sends no first list**; the next slot does. | `stores/bars.py`, `evaluate.py`, `run.py` (D-050, D-051) |
+| splits | Holdings, 13D/13G amounts and the share count are **scaled by the splits since their date** (Alpaca corporate actions; BKYI's 1:10 reverse split had left a float of 304k of 1.09M shares). | `stores/splits.py` (D-057) |
+| maintenance | Main's first full refresh (39806511832) hit the 25-min step timeout after OCC's HTTP 522 retries, and because `changed=true` was written only at exit, **every store it had written was lost**. Now: `stores.save` writes `changed=true` **at the first save**; an **18-minute deadline** is checked before every step and inside the bars, profile, long and ownership loops, each store saved when its step stops; the steps run in slot order (universe and bars, profile, short interest and fundamentals, long ≤ 6 min a run and resumable, reference, ownership, 13D/13G); **OCC gets one 30-second try**; a SIGALRM watchdog at 23 min is the last resort; each store logs a step line. The guard counts a path as the branch's change only when it differs from both the merge base and origin/main. | `run.py`, `stores/__init__.py`, `stores/bars.py`, `stores/ownership.py`, `stores/reference.py`, `guard.py` (D-052, D-056, D-058) |
+
+### Done criteria
+
+| | result | evidence |
+|---|---|---|
+| **F1 (a)** float vs Yahoo (squeeze journal, 23 entries, point in time) | **median 6.4%, P90 17.5%** (n = 22; target ≤ 15% / ≤ 35%). PR #28: 41.5% / 246.7% (n = 17) | [parity-report.md § F1](parity-report.md#float-follow-up-2026-10-22-f1f3) |
+| F1 (b) vs dei:EntityPublicFloat (raw close on/before `end`) | all 2,780 companies: median 6.5%, P90 63.1% vs (ii); shares outstanding 10.7% / 99.9%. The 23: 17.9% / 34.1%. Issuer-reported and high by definition, not ground truth | same |
+| F1 (c) hand checks (DEF 14A tables) | BKV: engine and (ii) right (37.44M from the proxy), Yahoo 16% low. BCAX: Yahoo right, engine +22% (an IPO-era Form 3 outside the 8 quarters). AVTX: undetermined (a later offering; 13d-1(c) funds a definition choice) | same |
+| F1 decision | `issuer_public_float` = (ii), only without any holdings data (D-053) | DECISIONS.md |
+| **F2** squeeze replay, 7 sessions (16:30 ET lists of 10-13..10-21) | **mean Jaccard 0.664, mean recall 0.915** (target ≥ 0.50 / ≥ 0.80). PR #28's float: 0.143 / 0.160. Misses: 3 × TNXP (float source: 15.1M vs Yahoo's 14.1M → short float 19.4%) | [parity-report.md § F2](parity-report.md#f2-squeeze-parity-by-historical-replay) |
+| **F3** screens 6 and 7 | engine 15 → **69** and 0 → **6**; the finviz side stays PENDING_MANUAL (robots.txt) | parity-report.md, parity-manual-checklist.md |
+| **F4** Actions on the branch | Maintenance [39810920705](https://github.com/danielsuisa/stockbot/actions/runs/39810920705): green, 23 min (watchdog), SEC 1000, Alpaca 1415, bulk 8 quarters + 2 index days, cache saved. RTH slot [39815969748](https://github.com/danielsuisa/stockbot/actions/runs/39815969748) at 12:41 ET: green, **Alpaca 51 < 150, SEC 0**, `unusual_volume_liquid` stage 1 = stage 2 = 2,980, **truncated 0**, 200 rows, sent. Maintenance on the reordered refresh [39816377737](https://github.com/danielsuisa/stockbot/actions/runs/39816377737): green, 14.9 min, SEC 1233, Alpaca 1206; every step ran: public float 2,768 records, ownership 476 daily filings, 13D/13G discovered 14,597 filings (2 quarters + 14 days), fetched 232, skipped 68 known passive filers, 12,903 pending; long store stopped at its 6 minutes (4,000 symbols, resumes); reference 500; profile 22,443 symbol-days. Final code [39818693372](https://github.com/danielsuisa/stockbot/actions/runs/39818693372): green, 16.0 min, **SEC 1593 < 2000**, Alpaca 1168; splits 3 calls; 13D/13G fetched 296, skipped 1,096 filings of known passive filers, 19,214 pending after 2 more quarters; ownership 786 daily filings; long store resumed (4,000 more symbols); cache saved. After the timeout fix (D-058) [39822178419](https://github.com/danielsuisa/stockbot/actions/runs/39822178419): green, the Screener step **14.8 min** (17:23:11–17:37:59 UTC) with every step reached in the new order (long store stopped at its own 6 minutes, 3,200 more symbols), SEC 806, Alpaca 1037, **the save step ran** (`screener-stores-39822178419`). | Actions logs |
+| **F5** tests | **1034 → 1067**, all green. Known values: a 13G holder that also files Form 4 counts once; a 13D group larger than its Form 4 lines counts once at the larger amount; amendment supersedes in any order; joint filing counts once; a holder filing jointly and alone counts once; float never ≤ 0; holdings and share counts from before a reverse split scaled (BKYI); planner estimate vs the paging rule; a refresh past its deadline stops with its stores saved, and `changed=true` is written at the first save; budget < 150 at full universe; relative volume with an empty profile store at 10:30; a partial slot defers its first list | `tests/test_screener_*.py` |
+| F6 | this report, STATE.md, DECISIONS.md (D-040 revised, D-045..D-058), metric-spec / data-sources / architecture updated; PR opened, not merged | |
+
+Guardrails: no finviz load in this task (G1/G2), no Yahoo/nasdaq.com in the engine (G3: the Yahoo floats are
+the squeeze's own records, read from `data/squeeze_journal.json`). No trading endpoint (G5). Every existing test
+unchanged and green, apart from the screener's own truncation and Budget tests, which the brief asked to update (G6).
+Secrets only via the existing env (G7). Each commit passes the tests and the guard (G8). Every approximation is
+marked "≈" (G9). The FROZEN list is unchanged, and `data/squeeze_*` was read only, from history. Cost $0.
+
+### Remaining gaps
+
+1. **13D/13G coverage builds over nights.** Discovery found 27,347 latest filings for 5,358 issuers. Fetched ≤ 300 a
+   night, small caps first, with known 13d-1(b) institutions skipped, the backlog takes weeks. Until an issuer is
+   covered its float is `insiders` (Forms 3/4/5 plus the holders read so far), which overstates the float where 5%+
+   holders exist.
+2. **Insiders older than 8 quarters** are missed (BCAX's IPO Form 3s of 2024q3). `BULK_QUARTERS` is one constant:
+   12 quarters would cost 4 more requests once.
+3. **1,150 stocks have no share count** in any SEC frame (20-F filers such as MMYT, SPACs), so no float. Reading
+   each filing's inline XBRL would cost 2–3 requests a company.
+4. Point in time is approximate: Forms 3/4/5 by period of report, 13D/13G by filing date, and only each holder's
+   latest 13D/13G is kept.
+5. 13d-1(c) funds (specialist biotech holders) are subtracted. That is a definition choice that F1 (c) could not
+   settle (AVTX).
+6. The relative-volume basis differs from the squeeze's (whole day vs time curve, against RTH volume / 3-month
+   average). It is the main cause of F2's engine-only names. finviz's own basis is "intraday adjusted" (PR #28).
+7. The whole universe does not fit stage 2 at a 30-minute grain (≈ 255 calls). Screens without a stage-1 filter are
+   still cut to the budget, and the cut is reported.
+8. Main's cache is still partial (~4,800 of 11,541 symbols with bars, no profile) after its first refresh was lost;
+   the first refresh after the merge carries on from it and saves what it reaches (D-058).
+
+---
+
+## PR #28 (the engine)
+
+**Status (PR #28): PARTIALLY COMPLETE.** The engine, Telegram commands, scheduling and workflow are built, tested and
 verified on Actions and in the bot chat. Parity is partial:
 - per-metric values match finviz within tolerance, exactly for price, change, volume, previous close and the
   52-week distances;
@@ -102,9 +165,10 @@ squeeze, its frozen variant `w0.7/si0.2/rv2`, its journal and its schedule are u
 1. **Float** = shares outstanding minus officer, director and 10%-owner holdings, which are read from Form 4s from
    the first refresh onward. Until coverage builds up, float falls back to outstanding (flagged "≈"), so short float
    reads low and the low-float screens under-match.
+   **Addressed by the follow-up** (bulk Form 3/4/5 backfill, 13D/13G holders, public-float fallback).
 2. **Signal set overlap**, as described above. A follow-up could test the open hypotheses on the allowed pages: price
    floor, listing status, the pre/post-market high basis for new highs.
-3. **Stage 2 in the regular session is capped at 1500 symbols** (E3). The flagship `unusual_volume_liquid` preset
+3. **Stage 2 in the regular session is capped at 1500 symbols** (E3; **replaced by the budget planner in the follow-up**). The flagship `unusual_volume_liquid` preset
    can be truncated in RTH. The message says so, and raising `SCREENER_STAGE2_MAX` costs ≈ 54 calls at full
    universe (D-040).
 4. **Sector and industry** come from a SIC crosswalk. 15 finviz industries cannot be separated by SIC (for example

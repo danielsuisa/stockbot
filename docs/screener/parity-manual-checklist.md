@@ -10,9 +10,13 @@ Engine run: session CLOSED, last completed session 2026-10-21, universe 11544 sy
 ## Screen 6: `cap_small,sh_float_u50,sh_short_o20`
 
 - finviz URL: https://finviz.com/screener.ashx?v=111&f=cap_small,sh_float_u50,sh_short_o20
-- Engine matches: **15** (ignored codes: none)
+- Engine matches: **69** with the float follow-up (PR #28: **15**, float = shares outstanding for all of them)
+- Float methods of the 69: insiders 54, insiders+5pct 14, outstanding_proxy 1 (13D/13G coverage was complete only
+  for the F1 targets when this was generated; the nightly backlog adds the rest)
 - Approximated metrics: float, market_cap, short_float
-- Engine tickers: CBRL, CRI, GLOB, GRPN, HROW, INBX, MNRO, NGNE, NKTR, OXM, PAR, PCRX, PZZA, SHOE, VITL
+- Engine tickers (2026-10-22 regeneration, same point in time: CLOSED after 2026-10-21, FINRA settlement
+  2026-09-30): AEVA, AKTS, ALKT, ANAB, ANDG, AVBP, AVTX, BCAX, BRVE, CBRL, CLYM, COLL, CRI, CTRN, CYPH, DFH, DMAC, ELMT, EROC, EVER, FDMT, GALT, GIII, GLOB, GOLD, GRPN, GSHD, HLLY, HPK, HROW, HYMC, IIIV, INBX, KARD, KLRA, LBRX, MNRO, MPLT, MQ, NGNE, NKTR, NMAX, NNE, NUTX, OXM, PAR, PCRX, PMTS, PVLA, PZZA, QMCO, SCTX, SGMT, SHAZ, SHOE, SKYH, SPRY, SPTX, STAA, STOK, TRVI, UTZ, VITL, WKC, WLFC, WOLF, WYFI, ZBIO, ZURA
+- PR #28's tickers: CBRL, CRI, GLOB, GRPN, HROW, INBX, MNRO, NGNE, NKTR, OXM, PAR, PCRX, PZZA, SHOE, VITL
 
 | finviz matches | in both | Jaccard | precision | recall | checked on |
 |---|---|---|---|---|---|
@@ -21,10 +25,11 @@ Engine run: session CLOSED, last completed session 2026-10-21, universe 11544 sy
 ## Screen 7: `sh_float_u50,sh_short_o20,sh_avgvol_o500,sh_price_o2,sh_relvol_o2,sh_opt_option`
 
 - finviz URL: https://finviz.com/screener.ashx?v=111&f=sh_avgvol_o500,sh_float_u50,sh_opt_option,sh_price_o2,sh_relvol_o2,sh_short_o20
-- Engine matches: **0** (ignored codes: none)
+- Engine matches: **6** with the float follow-up (PR #28: **0**)
+- Float methods of the 6: insiders+5pct 4, insiders 2
 - Approximated metrics: float, short_float
 - Note: Squeeze-like. The squeeze's short ratio > 5 is not a finviz filter and is not applied here.
-- Engine tickers: (none)
+- Engine tickers (2026-10-22 regeneration, same point in time): ALKT, BETR, CYPH, FDMT, IRON, STOK
 
 | finviz matches | in both | Jaccard | precision | recall | checked on |
 |---|---|---|---|---|---|

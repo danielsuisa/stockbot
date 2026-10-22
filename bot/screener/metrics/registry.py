@@ -11,8 +11,11 @@ from bot.screener.metrics import fundamental as F
 from bot.screener.metrics import technical as T
 from bot.screener.stores import bars as BARS
 from bot.screener.stores import fundamentals as FUND
+from bot.screener.stores import holders as HOLD
 from bot.screener.stores import ownership as OWN
+from bot.screener.stores import publicfloat as PF
 from bot.screener.stores import shortint as SI
+from bot.screener.stores import splits as SPLITS
 
 AVG_N = 63
 INSIDER_TRANS_DAYS = 182
@@ -258,8 +261,15 @@ def _ah_change(c):
 
 
 # ---------- descriptive / ownership ----------
+def _split(c, since):
+    """Shares on `since` x this = shares on the evaluated day (splits in between, D-057)."""
+    return SPLITS.factor(c.env.splits, c.sym, since, c.env.day)
+
+
 def _shares(c):
-    return FUND.shares_at(c.env.fund, c.cik, c.env.day)[0] if c.cik else None
+    """The newest share count usable on the day, scaled by any split since its date (D-057)."""
+    n, d = FUND.shares_at(c.env.fund, c.cik, c.env.day) if c.cik else (None, None)
+    return n * _split(c, d) if n else n
 
 
 def _mcap(c):
@@ -268,17 +278,43 @@ def _mcap(c):
 
 
 def _insiders(c, roles, day=None):
-    return OWN.holdings(c.env.own, c.cik, day, roles)[0] if c.cik else None
+    """Officers' and directors' holdings as of `day`, in today's shares (splits since each filing, D-057)."""
+    return OWN.holdings(c.env.own, c.cik, day, roles, lambda since: _split(c, since))[0] if c.cik else None
 
 
 def _float(c):
+    """Shares outstanding - officers and directors - 10% owners (Forms 3/4/5) - other >= 5% holders (Schedules 13D and
+    13G, qualified institutions under Rule 13d-1(b) kept, a holder that also files Forms 3/4/5 counted once at the
+    larger amount), as of
+    the evaluated day. float_method: "insiders+5pct" (13D/13G coverage complete for the issuer), "insiders" (Forms
+    3/4/5, plus any 13D/13G holders read so far), "issuer_public_float" (no holdings data: the 10-K cover's
+    non-affiliate count carried forward, D-053), "outstanding_proxy" (none of these). Never <= 0: the next method is
+    used and float_flag says why. Rule 144 restricted shares are not subtracted (no free source)."""
     n = c.get("shares_outstanding")
     if not n:
         return None
-    held = _insiders(c, "dot")
-    if held and 0 < held < n:
-        c._c["float_method"] = "insiders"
-        return n - held
+    if not c.cik:
+        c._c["float_method"] = "outstanding_proxy"
+        return float(n)
+    day = c.env.day
+    adj = lambda since: _split(c, since)  # noqa: E731  filings before a split report pre-split shares (D-057)
+    held, k = OWN.holdings(c.env.own, c.cik, day, "dot", adj)
+    big, m = HOLD.holders(c.env.holders, c.cik, OWN.owner_holdings(c.env.own, c.cik, day, adjust=adj), day, adjust=adj)
+    tries = []
+    if k or m:
+        tries.append(("insiders+5pct" if HOLD.covered(c.env.holders, c.cik) else "insiders", (held or 0) + big))
+    if k and m:
+        tries.append(("insiders", held))
+    for method, sub in tries:
+        if n - sub > 0:
+            c._c["float_method"] = method
+            return n - sub
+        c._c["float_flag"] = "holdings >= shares outstanding"
+    if not k and not m:  # no holdings at all: the issuer's own non-affiliate count, carried forward (D-053)
+        v = PF.carried((c.env.public_float or {}).get(str(c.cik)), n)
+        if v and v > 0:
+            c._c["float_method"] = "issuer_public_float"
+            return v
     c._c["float_method"] = "outstanding_proxy"
     return float(n)
 

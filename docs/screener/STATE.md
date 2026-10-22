@@ -1,5 +1,55 @@
 # Screener engine — STATE
 
+## Follow-up: float and stage 2 (`feature/screener-float`)
+
+| | |
+|---|---|
+| Branch | `feature/screener-float` from `origin/main` `c700bfe` (PR #28 merged as `720fdfc`) |
+| Status | DONE: PR opened, not merged (FINAL_REPORT.md is its body) |
+| A insider backfill | DONE: 8 quarters of SEC's Insider Transactions Data Sets (343,199 filings on Actions), line-level store v2, accession dedupe (D-045, D-046, D-055) |
+| B 5%+ holders | DONE: XML Schedules 13D/13G (D-047, D-048); nightly backlog ≤ 300 filings, small caps first, known 13d-1(b) filers skipped |
+| C float | DONE: outstanding − insiders − other ≥ 5% holders; methods `insiders+5pct` / `insiders` / `issuer_public_float` / `outstanding_proxy`; never ≤ 0 (D-049, D-053); shares outstanding fallback (D-054) |
+| D stage 2 | DONE: budget planner at the OBSERVED intraday page size (D-040 revised) |
+| E relative volume | DONE: static fallback curve (D-050); a partial slot defers the first list (D-051) |
+| F1 | PASS on (a): median 6.4%, P90 17.5% (n = 22; MMYT has no share count); (b) and (c) in parity-report.md |
+| F2 | PASS: 7 sessions, mean Jaccard 0.664, mean recall 0.915 |
+| F3 | Screen 6: 15 → 69; screen 7: 0 → 6 (finviz side PENDING_MANUAL) |
+| F4 | Maintenance 39810920705 green (SEC 1000, watchdog at 23 min, cache saved); RTH slot 39815969748 green (Alpaca 51, SEC 0, stage 2 = all 2,980 survivors, not truncated); maintenance 39816377737 (14.9 min, SEC 1233, every step) and 39818693372 on the final code (16.0 min, SEC 1593) green |
+| F5 | 1034 → 1067 tests, all green (`PYTHONUTF8=1`, `tzdata`) |
+| Guard | `python -m bot.screener.guard` clean before every commit (now against the merge base, D-056) |
+
+### Commits
+
+| SHA | Subject |
+|---|---|
+| 4157cc5 | feat(screener): size stage 2 by the run's Alpaca budget; static relative-volume curve; defer a partial first list |
+| 1afb9b7 | feat(screener): insider holdings backfilled from SEC's quarterly Form 3/4/5 data sets |
+| 9178b87 | feat(screener): 5%+ holders from Schedules 13D/13G (XML); float = outstanding - insiders - 5%+ holders |
+| 7ee509a | fix(screener): refresh watchdog and step log; skip known passive 13G filers |
+| 5e95303 | docs(screener): decisions D-045..D-052, D-040 revised; float, rel_volume, sources and architecture |
+| bb6a24d | fix(screener): a holder filing both Forms 3/4/5 and 13D/13G counts once, at the larger amount |
+| 93289db | feat(screener): issuer_public_float fallback (dei:EntityPublicFloat carried by affiliate count x split factor) |
+| 9a80d98 | feat(screener): shares outstanding from us-gaap frames when the dei cover count is missing |
+| 8b45824 | fix(screener): owner groups, a bounded long store, 13D/13G before it; guard diffs the merge base |
+| 9e8cbcb | fix(screener): scale holdings and share counts by the splits since they were filed |
+| 780eeb0 | docs(screener): F1-F5 evidence, state and final report; D-053..D-057 |
+| b2b23b2 | style(screener): wrap long lines |
+| babcc8e | docs(screener): F4 maintenance runs |
+| 45a3d71 | Merge origin/main; guard: both the merge base and origin/main |
+| 954b43a | fix(screener): a refresh that runs out of time keeps its stores |
+| (this commit) | docs(screener): D-058 and its refresh run |
+
+### Open items
+
+- The 13D/13G backlog (27,347 latest filings at discovery, minus known passive filers) clears at ≤ 300 a night;
+  until then most issuers' float is `insiders` (Forms 3/4/5 plus the holders read so far).
+- Insiders whose last Form 3/4/5 is older than the 8 bulk quarters are missed (BCAX's IPO-era Form 3s).
+- 1,150 stocks have no share count in any SEC frame (20-F filers, SPACs): no float, no market cap.
+- Parity screens 6–12: PENDING_MANUAL (owner, in a browser).
+- The squeeze migration onto the engine: the next step, gated on this PR's results.
+
+## PR #28 (the engine)
+
 | | |
 |---|---|
 | Branch | `feature/screener-engine` (from `origin/main` `4b5f46d`) |

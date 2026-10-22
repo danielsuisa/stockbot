@@ -22,12 +22,16 @@ from bot.screener import evaluate, format as fmt, parser, presets, signals, stor
 from bot.screener.metrics import registry
 from bot.screener.stores import bars as BARS
 from bot.screener.stores import fundamentals as FUND
+from bot.screener.stores import holders as HOLD
 from bot.screener.stores import ownership as OWN
+from bot.screener.stores import publicfloat as PF
 from bot.screener.stores import reference as REF
 from bot.screener.stores import shortint as SI
+from bot.screener.stores import splits as SPLITS
 
 NY = alpaca.NY
 SLOT_BARS_CALLS = 60  # a scheduled run may spend this much catching up the daily bars (the rest: maintenance)
+RUN_ALPACA_MAX, ALPACA_RESERVE = 150, 10  # a run's Alpaca budget; stage 2 is sized to what is left (D-040)
 NEWS_PAGES = 40
 CHANGED = [False]  # a store changed this run (the workflow saves the cache then)
 
@@ -84,6 +88,11 @@ def news(since_utc, until_utc):
     return out, pages
 
 
+def alpaca_left():
+    """Alpaca calls this run may still spend (stage-2 planner, D-040)."""
+    return RUN_ALPACA_MAX - ALPACA_RESERVE - max(stores.COUNTS["alpaca"], alpaca.REQUESTS[0])
+
+
 def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS):
     """Load (and cheaply refresh) what `queries` need -> Env."""
     now, ck, cal_all, done, cal_meta = clock_now(now)
@@ -92,7 +101,7 @@ def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS
     if uni_meta and uni_meta.get("as_of", "")[:10] == dt.datetime.now(dt.timezone.utc).date().isoformat():
         CHANGED[0] = True
     bars, bmeta = BARS.load()
-    notes = []
+    notes, partial = [], False
     if update_bars and done:
         checked = dict((bmeta or {}).get("checked") or {})
         stats = BARS.update(bars, sorted(uni), done, max_calls=max_bar_calls, checked=checked)
@@ -101,10 +110,11 @@ def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS
             CHANGED[0] = True
         if stats.get("budget_stop"):
             notes.append("stale: bars (catching up)")
+            partial = True
         common.log("screener_bars", **stats)
     as_of = {"bars": done[-1] if done else None}
     env = evaluate.Env(now=now, session=ck["session"], day=ck["day"], sessions_done=done, universe=uni, bars=bars,
-                       calendar=cal_all)
+                       calendar=cal_all, partial=partial, budget_left=alpaca_left)
     if "long" in need:
         st = stores.load("long")
         env.long = st["data"] if st else {}
@@ -113,6 +123,8 @@ def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS
         st = stores.load("profile")
         env.profile = st["data"] if st else {}
     if need & {"fundamentals", "ownership", "shortint"}:
+        st = stores.load("splits")
+        env.splits = st["data"] if st else {}
         st = stores.load("fundamentals")
         env.fund = st["data"] if st else {}
         as_of["fundamentals"] = st and st["meta"]["as_of"][:10]
@@ -125,6 +137,10 @@ def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS
     if "ownership" in need:
         st = stores.load("ownership")
         env.own = st["data"] if st else {}
+        st = stores.load("holders")
+        env.holders = st["data"] if st else {}
+        st = stores.load("publicfloat")
+        env.public_float = st["data"] if st else {}
     if "shortint" in need and done:
         data, meta = SI.update(done, ck["day"])
         env.short = data
@@ -220,7 +236,8 @@ def delete_mode(name, dry=False):
 
 def slot_mode(slot, dry=False, now=None):
     """A scheduled slot: run every preset due in the current session; alert only on new or changed results (the
-    first list of a day in full)."""
+    first list of a day in full - never from a run whose daily bars stopped at the budget: that preset's first list
+    waits for the next slot)."""
     state = presets.load_state()
     now0, ck, _, done, _ = clock_now(now)
     session = {"PRE": "pre", "RTH": "rth", "POST": "post"}.get(ck["session"])
@@ -245,6 +262,9 @@ def slot_mode(slot, dry=False, now=None):
         rec = state.setdefault("presets", {}).get(p["name"]) or {}
         h = fmt.result_hash(res, q.sort[0] if q.sort else (signals.RULES.get(q.signal["code"], (None,))[0] if q.signal else None))
         first_today = rec.get("day") != ck["day"]
+        if first_today and env.partial:  # the daily bars stopped at the budget: the next slot sends the first list
+            log("slot", res, preset=p["name"], sent=False, deferred="bars catching up")
+            continue
         text = ""
         if first_today:
             text = fmt.screen_text(p.get("title") or p["name"], q, res, env.now, p.get("max_results") or 15)
@@ -263,32 +283,118 @@ def slot_mode(slot, dry=False, now=None):
     return 0
 
 
-REFRESH_MINUTES = 20  # the step allows 25: later stores wait for the next night
-PROFILE_CALLS, OWNERSHIP_FILINGS, REFERENCE_PER_RUN = 500, 800, 500  # SEC < 2000 a run
+REFRESH_MINUTES = 18  # the deadline every step and loop checks (the step allows 25): the rest waits a night
+REFRESH_HARD_MINUTES = 23  # the watchdog (refresh_mode)
+LONG_MINUTES = 6  # the long store's share of a run (an empty cache needs ~14 minutes: it resumes the next night)
+PROFILE_CALLS, OWNERSHIP_FILINGS, REFERENCE_PER_RUN, HOLDER_FILINGS = 500, 800, 500, 300  # SEC < 2000 a run
+SEC_RUN_MAX = 2000  # the 13D/13G filings take what is left below it (index files counted in the 60 kept back)
+
+
+def small_caps(uni, bars, day, cap=2e9):
+    """Issuer CIKs whose market cap (last close x shares outstanding) is under `cap` - where the float matters most
+    (the 13D/13G backlog reads them first)."""
+    st = stores.load("fundamentals")
+    fund = st["data"] if st else {}
+    out = set()
+    for s, u in uni.items():
+        b = bars.get(s)
+        if u.get("cik") and b is not None and len(b):
+            n = FUND.shares_at(fund, u["cik"], day)[0]
+            if n and n * b.c[-1] < cap:
+                out.add(str(u["cik"]))
+    return out
+
+
+class RefreshTimeout(Exception):
+    pass
 
 
 def refresh_mode(full=False, now=None):
-    """Maintenance: every store, within the run's time and request budget (backfills continue on the next run)."""
+    """Maintenance: every store, within the run's time and request budget (backfills continue on the next run). A
+    watchdog ends the run at REFRESH_HARD_MINUTES (Linux), before the step timeout kills it: every store saved so far
+    then still reaches the Actions cache (a killed step saves nothing, so the next run would start over)."""
+    import signal
     import time
     t0 = time.monotonic()
     late = lambda: (time.monotonic() - t0) / 60 > REFRESH_MINUTES  # noqa: E731
+    stats = {}
+
+    def step(name, value=None):
+        if value is not None:
+            stats[name] = value
+        common.log("screener_refresh_step", step=name, minutes=round((time.monotonic() - t0) / 60, 1),
+                   counts=dict(stores.COUNTS))
+
+    def stop(*_):
+        raise RefreshTimeout()
+    alarm = hasattr(signal, "SIGALRM")
+    if alarm:
+        signal.signal(signal.SIGALRM, stop)
+        signal.alarm(REFRESH_HARD_MINUTES * 60)
+    try:
+        _refresh(full, now, late, step)
+    except RefreshTimeout:
+        step("watchdog")
+        stats["stopped"] = "watchdog"
+    finally:
+        if alarm:
+            signal.alarm(0)
+    stats["minutes"] = round((time.monotonic() - t0) / 60, 1)
+    common.log("screener_refresh", **{k: v for k, v in stats.items()}, counts=dict(stores.COUNTS))
+    return 0
+
+
+def _refresh(full, now, late, step):
+    """The stores in the order the slot runs need them (universe and bars, profile, fundamentals, long, reference,
+    then the ownership stores), each saved as soon as it is done; every step and loop checks the deadline (`late`),
+    so a refresh that stops early keeps what it has (the workflow's cache-save step runs: stores.mark_saved)."""
+    import time
     now, ck, cal_all, done, _ = clock_now(now)
     today = dt.date.fromisoformat(ck["day"])
     uni, _ = REF.universe(refresh=True)
     syms = sorted(uni)
-    stats = {}
+    step("universe")
     bars, bmeta = BARS.load()
     checked = dict((bmeta or {}).get("checked") or {})
-    stats["bars"] = BARS.update(bars, syms, done, checked=checked)
-    BARS.save(bars, {"last_session": done[-1] if done else None, "checked": checked})
-    CHANGED[0] = True
-    SI.update(done, ck["day"])
-    FUND.update(today, force=full)
+    try:
+        stats_bars = BARS.update(bars, syms, done, checked=checked, stop=late)
+    finally:
+        BARS.save(bars, {"last_session": done[-1] if done else None, "checked": checked})
+        CHANGED[0] = True
+    step("bars", stats_bars)
+    try:
+        step("splits", {"calls": SPLITS.update(ck["day"])[1]})
+    except Exception:
+        common.trace()
+    if not late():
+        prof = (stores.load("profile") or {}).get("data") or {}
+        stocks = [s for s in syms if not uni[s].get("etf")]
+        try:
+            stats_prof = BARS.update_profile(prof, stocks, done, max_calls=PROFILE_CALLS, stop=late)
+        finally:
+            stores.save("profile", prof, "alpaca-sip-1Hour", rows=len(prof.get("days", {})))
+        step("profile", stats_prof)
+    if not late():
+        SI.update(done, ck["day"])
+        step("shortint")
+    if not late():
+        FUND.update(today, force=full)
+        step("fundamentals")
     ciks = sorted({u["cik"] for u in uni.values() if u.get("cik")})
     if not late():
+        try:
+            step("publicfloat", PF.update(uni, (stores.load("fundamentals") or {}).get("data") or {}, ck["day"])[1])
+        except Exception:
+            common.trace()
+    if not late():
         long = (stores.load("long") or {}).get("data") or {}
-        stats["long"] = BARS.update_long(long, syms + ["SPY"], cal_all, ck["day"])
-        stores.save("long", long, "alpaca-sip-1Month+anchors", rows=len(long.get("m", {})))
+        t_long = time.monotonic()
+        try:  # bounded and saved even when stopped: monthly bars resume from each symbol's month marker
+            stats_long = BARS.update_long(long, syms + ["SPY"], cal_all, ck["day"],
+                                          stop=lambda: late() or (time.monotonic() - t_long) / 60 > LONG_MINUTES)
+        finally:
+            stores.save("long", long, "alpaca-sip-1Month+anchors", rows=len(long.get("m", {})))
+        step("long", stats_long)
     if not late():
         eight = set()
         for d in done[-2:]:
@@ -297,17 +403,14 @@ def refresh_mode(full=False, now=None):
             except Exception:
                 common.trace()
         prio = [c for c in ciks if c in eight][:REFERENCE_PER_RUN]
-        _, _, stats["reference"] = REF.reference(ciks, ck["day"], per_run=REFERENCE_PER_RUN - len(prio), priority=prio)
+        step("reference", REF.reference(ciks, ck["day"], per_run=REFERENCE_PER_RUN - len(prio), priority=prio)[2])
     if not late():
-        prof = (stores.load("profile") or {}).get("data") or {}
-        stocks = [s for s in syms if not uni[s].get("etf")]
-        stats["profile"] = BARS.update_profile(prof, stocks, done, max_calls=PROFILE_CALLS)
-        stores.save("profile", prof, "alpaca-sip-1Hour", rows=len(prof.get("days", {})))
+        step("ownership", OWN.update({str(c) for c in ciks}, done, ck["day"], per_run=OWNERSHIP_FILINGS,
+                                     late=late)[2])
     if not late():
-        _, _, stats["ownership"] = OWN.update({str(c) for c in ciks}, done, ck["day"], per_run=OWNERSHIP_FILINGS)
-    stats["minutes"] = round((time.monotonic() - t0) / 60, 1)
-    common.log("screener_refresh", **{k: v for k, v in stats.items()}, counts=dict(stores.COUNTS))
-    return 0
+        sec_left = SEC_RUN_MAX - 60 - stores.COUNTS["sec"]
+        step("holders", HOLD.update({str(c) for c in ciks}, done, ck["day"], priority=small_caps(uni, bars, ck["day"]),
+                                    per_run=max(0, min(HOLDER_FILINGS, sec_left)), late=late)[2])
 
 
 def verify_mode(now=None):
@@ -366,7 +469,7 @@ def main(argv=None):
         else:
             rc = verify_mode()
     finally:
-        output(changed="true" if CHANGED[0] else "false")
+        output(changed="true" if CHANGED[0] or stores.SAVED[0] else "false")
         common.log("screener_budget", mode=mode, counts=dict(stores.COUNTS), alpaca_total=alpaca.REQUESTS[0])
         common.summary(f"Screener `{mode}`: requests {json.dumps(stores.COUNTS)}")
     return rc

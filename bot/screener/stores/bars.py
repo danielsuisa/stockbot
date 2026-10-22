@@ -156,10 +156,11 @@ def merge(old, rows, keep=KEEP):
     return new.tail(keep), False
 
 
-def update(bars, symbols, sessions_done, max_calls=None, checked=None):
+def update(bars, symbols, sessions_done, max_calls=None, checked=None, stop=None):
     """Bring `bars` (mutated) up to the last completed session for `symbols` -> stats dict. A split re-adjustment
     refetches that symbol's whole window in a second pass. Symbols without any bar are left out of the store.
-    checked (mutated): {symbol: last session asked} so a symbol without new trades is asked once per session."""
+    checked (mutated): {symbol: last session asked} so a symbol without new trades is asked once per session.
+    stop() -> True ends it between requests like the call budget (budget_stop; the rest follows next run)."""
     stats = {"fetched": 0, "split_refetch": 0, "empty": 0, "calls": 0}
     checked = {} if checked is None else checked
     if not sessions_done:
@@ -170,7 +171,7 @@ def update(bars, symbols, sessions_done, max_calls=None, checked=None):
         redo = []
         for start, syms in sorted(groups.items()):
             for i in range(0, len(syms), CHUNK):
-                if max_calls is not None and stores.COUNTS["alpaca"] - before >= max_calls:
+                if (max_calls is not None and stores.COUNTS["alpaca"] - before >= max_calls) or (stop and stop()):
                     stats["calls"] = stores.COUNTS["alpaca"] - before
                     stats["budget_stop"] = True
                     return stats
@@ -198,14 +199,18 @@ def update(bars, symbols, sessions_done, max_calls=None, checked=None):
 
 
 # ---------- long store (monthly bars, anchors) ----------
-def update_long(long, symbols, sessions_all, today):
+def update_long(long, symbols, sessions_all, today, stop=None):
     """Refresh the long store (mutated dict): monthly bars when the month changed (or for symbols missing them),
-    the anchor-window closes when an anchor left its fetched window -> stats."""
+    the anchor-window closes when an anchor left its fetched window -> stats. stop() -> True ends it between
+    requests (the rest follows on the next run: each symbol's month marker says what is done)."""
     stats = {"monthly": 0, "anchors": 0}
     month = today[:7]
     need = [s for s in symbols if (long.get("m", {}).get(s) or {}).get("month") != month]
     end = (dt.date.fromisoformat(today).replace(day=1) - dt.timedelta(1)).isoformat()  # completed months only
     for i in range(0, len(need), CHUNK):
+        if stop and stop():
+            stats["stopped"] = True
+            return stats
         part = need[i:i + CHUNK]
         got = _get_bars(part, HISTORY_START, end, "1Month")
         for s in part:
@@ -218,6 +223,9 @@ def update_long(long, symbols, sessions_all, today):
     for key, n in ANCHORS.items():
         if len(done) <= n:
             continue
+        if stop and stop():
+            stats["stopped"] = True
+            return stats
         anchor = done[-1 - n]
         win = long.setdefault("a", {}).get(key) or {}
         if win.get("from", "~") <= anchor <= win.get("to", ""):
@@ -258,7 +266,7 @@ def cumulative(items):
     return out
 
 
-def update_profile(prof, symbols, sessions_done, max_calls=None):
+def update_profile(prof, symbols, sessions_done, max_calls=None, stop=None):
     """Add the missing completed sessions (up to PROFILE_DAYS back, newest first) to the profile store (mutated:
     {"days": {symbol: {date: [cumulative at MARKS]}}}) -> number of symbol-days added. max_calls bounds a first
     backfill; the rest follows on the next runs."""
@@ -274,7 +282,7 @@ def update_profile(prof, symbols, sessions_done, max_calls=None):
     before = stores.COUNTS["alpaca"]
     for d, syms in sorted(missing.items(), reverse=True):
         for i in range(0, len(syms), CHUNK):
-            if max_calls is not None and stores.COUNTS["alpaca"] - before >= max_calls:
+            if (max_calls is not None and stores.COUNTS["alpaca"] - before >= max_calls) or (stop and stop()):
                 return added
             part = syms[i:i + CHUNK]
             got = _get_bars(part, alpaca.utc(d, "04:00"), alpaca.utc(d, "20:00"), "1Hour")
@@ -285,6 +293,16 @@ def update_profile(prof, symbols, sessions_done, max_calls=None):
         for d in [d for d in by[s] if d not in days]:
             del by[s][d]
     return added
+
+
+# The fallback time-of-day shape (DECISION, "≈"): the median cumulative share of the whole day's volume at each MARKS
+# entry over 4800 symbol-days (800 random stocks with a 63-session average volume >= 200k and a price >= $1, the 6
+# sessions 2026-10-14..21; Alpaca SIP 1Hour bars, OBSERVED 2026-10-22). Used only when neither the symbol's own
+# profile nor the market-wide median over the profile store exists (a fresh cache), and only from the open: the
+# median pre-market share is ~0, so a pre-market ratio against it would be meaningless.
+FALLBACK_CURVE = [0.0, 0.0, 0.0, 0.0, 0.0002, 0.0005, 0.0739, 0.1886, 0.2884, 0.3809, 0.4679, 0.5691, 0.8502, 1.0, 1.0,
+                  1.0, 1.0]
+FALLBACK_FROM = "09:30"
 
 
 def profile_mean(prof, symbol):

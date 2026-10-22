@@ -8,6 +8,7 @@ from pathlib import Path
 
 from bot import common
 
+SAVED = [False]  # a store was written this run (the workflow's cache-save condition, written at once)
 COUNTS = {"alpaca": 0, "sec": 0, "finra": 0, "nt": 0, "occ": 0}
 MAX_AGE_DAYS = {"bars": 4, "long": 40, "profile": 10, "universe": 4, "shortint": 31, "fundamentals": 120,
                 "reference": 200, "ownership": 200}  # calendar days (bars: 1 session plus a weekend and a holiday)
@@ -41,7 +42,20 @@ def save(name, data, source, rows=None, **meta):
     tmp = p.with_name(p.name + ".tmp")
     tmp.write_bytes(gzip.compress(json.dumps({"meta": m, "data": data}, separators=(",", ":")).encode(), 6))
     tmp.replace(p)
+    mark_saved()
     return m
+
+
+def mark_saved():
+    """Record that a store changed, and tell the workflow at once (GITHUB_OUTPUT `changed=true`): a step killed
+    by its timeout never reaches the run's final output, and the cache-save step would skip everything written."""
+    if SAVED[0]:
+        return
+    SAVED[0] = True
+    out = common.env("GITHUB_OUTPUT")
+    if out and common.env("SCREENER_MODE"):
+        with open(out, "a", encoding="utf-8") as fh:
+            fh.write("changed=true\n")
 
 
 def age_days(meta, now=None):
