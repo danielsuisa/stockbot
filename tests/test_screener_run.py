@@ -89,7 +89,9 @@ class PartialSlot(unittest.TestCase):
         e.notes = ["stale: bars (catching up)"] if partial else []
         ck = {"session": "RTH", "day": now.date().isoformat()}
         sent = []
-        with mock.patch.object(run, "clock_now", return_value=(now, ck, DAYS, DAYS, None)),                 mock.patch.object(run, "build_env", return_value=e),                 mock.patch.object(run, "send", side_effect=lambda text, dry: sent.append(text)):
+        with mock.patch.object(run, "clock_now", return_value=(now, ck, DAYS, DAYS, None)), \
+                mock.patch.object(run, "build_env", return_value=e), \
+                mock.patch.object(run, "send", side_effect=lambda text, dry: sent.append(text)):
             run.slot_mode(slot)
         return sent
 
@@ -261,7 +263,9 @@ class Budget(unittest.TestCase):
         days = DAYS[:-1]  # the store is one session behind
         b = {s: series([10.0] * 70, vols=[1e6 if i < liquid else 1e5] * 70, days=days) for i, s in enumerate(syms)}
         stores.COUNTS.update({k: 0 for k in stores.COUNTS})
-        with mock.patch.object(BARS, "_get_bars", side_effect=self.fake_get_bars),                 mock.patch.object(BARS, "end_param", side_effect=lambda d, now=None: d),                 mock.patch.object(run.alpaca, "REQUESTS", [0]):
+        with mock.patch.object(BARS, "_get_bars", side_effect=self.fake_get_bars), \
+                mock.patch.object(BARS, "end_param", side_effect=lambda d, now=None: d), \
+                mock.patch.object(run.alpaca, "REQUESTS", [0]):
             stats = BARS.update(b, syms, DAYS, max_calls=run.SLOT_BARS_CALLS)
             self.assertEqual(stats["fetched"], 10_000)
             daily = stores.COUNTS["alpaca"]

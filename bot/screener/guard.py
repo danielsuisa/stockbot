@@ -1,5 +1,6 @@
 """Pre-commit guard (G4): the FROZEN paths in docs/screener/STATE.md must not appear in the branch's diff against
-its merge base with origin/main. Exact paths or fnmatch globs, one per "- `path`" line between the FROZEN-BEGIN / FROZEN-END markers.
+its merge base with origin/main. Exact paths or fnmatch globs, one per "- `path`" line between the FROZEN-BEGIN /
+FROZEN-END markers.
 
     python -m bot.screener.guard            # exit 1 and list the offending paths
 """

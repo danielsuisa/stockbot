@@ -88,7 +88,9 @@ class Passive(unittest.TestCase):
         st = {"filers": {"900": [3, 0], "901": [3, 1]}, "quarters": HOLD._quarters("2026-10-22", HOLD.QUARTERS), "days": [],
               "issuers": {}, "pending": {"101|900": ["edgar/data/101/a-1.txt", "2026-09-10", "SCHEDULE 13G/A"],
                                          "101|901": ["edgar/data/101/a-2.txt", "2026-09-10", "SCHEDULE 13G/A"]}}
-        with mock.patch.object(HOLD.stores, "load", return_value={"data": st, "meta": {}}),                 mock.patch.object(HOLD.stores, "save", return_value={}),                 mock.patch.object(HOLD.common, "fetch", return_value=g13(filer="901").encode()) as f:
+        with mock.patch.object(HOLD.stores, "load", return_value={"data": st, "meta": {}}), \
+                mock.patch.object(HOLD.stores, "save", return_value={}), \
+                mock.patch.object(HOLD.common, "fetch", return_value=g13(filer="901").encode()) as f:
             store, _, stats = HOLD.update({"101"}, [], "2026-10-22")
         self.assertEqual([c.args[0] for c in f.call_args_list], ["https://www.sec.gov/Archives/edgar/data/101/a-2.txt"])
         self.assertEqual((stats["passive_skipped"], stats["parsed"], store["pending"]), (1, 1, {}))

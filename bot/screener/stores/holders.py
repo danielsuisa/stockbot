@@ -8,14 +8,15 @@ percentOfClass). Older filings (form types SC 13D / SC 13G) are text or HTML and
 
 Discovery: EDGAR's quarterly full index (edgar/full-index/YYYY/QTRn/form.idx, each closed quarter read once) and the
 daily form index for the current quarter. A filing is listed once per party (the subject company and each filer, each
-under its own edgar/data/<cik>/ path - OBSERVED), so the lines are grouped by accession; the pair is (issuer in the universe, the other CIKs). Only the latest filing per
-(issuer, filer) is fetched (one request each), newest first, priority issuers first, at most PER_RUN a run - the
-backlog continues on the next nights and coverage is recorded per issuer. A filer seen PASSIVE_AFTER times as a
-qualified institution only (Rule 13d-1(b): funds, advisers, banks - kept in the float) is not fetched again.
+under its own edgar/data/<cik>/ path - OBSERVED), so the lines are grouped by accession; the pair is (issuer in
+the universe, the other CIKs). Only the latest filing per (issuer, filer) is fetched (one request each), priority
+issuers first, then newest first, at most PER_RUN a run - the backlog continues on the next nights and coverage is
+recorded per issuer. A filer seen PASSIVE_AFTER times as a qualified institution only (Rule 13d-1(b): funds,
+advisers, banks - kept in the float) is not fetched again.
 
 Store: {"v": 1, "quarters": [...], "days": [...], "pending": {"issuer|filer": [path, filed, form]},
-"pending_issuers": [...], "filers": {filer CIK: [passive filings, other filings]}, "issuers": {issuer CIK: {filer key: {"ciks": [CIKs of the filer and reporting persons], "shares": the group's
-aggregate amount (the largest reporting person's: members of a group report the same shares, or parts of the
+"pending_issuers": [...], "filers": {filer CIK: [passive filings, other filings]}, "issuers": {issuer CIK: {filer
+key: {"ciks": [CIKs of the filer and reporting persons], "shares": the group's aggregate amount (the largest reporting person's: members of a group report the same shares, or parts of the
 largest), "pct": class percent, "event", "filed", "acc", "form", "passive": a 13G under Rule 13d-1(b) only,
 "types": reporting person types (IA, BD, IN, CO...)}}}}."""
 import datetime as dt
