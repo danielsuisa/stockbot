@@ -7,7 +7,7 @@ codes, thresholds, metric definitions and screen semantics, on free data (`data-
 text ─▶ parser ─▶ Query{filters:[Predicate], signal, sort, view, ignored}
                      │
 stores (cached) ─▶ evaluate ── stage 1: static + daily filters on the stores (no network)
-                     │        stage 2: today's 30-minute SIP bars for the survivors (≤ 1500, D-040) → intraday metrics
+                     │        stage 2: today's 30-minute SIP bars for the survivors (sized by budget, D-040) → intraday metrics
                      ▼
                signals / sort ─▶ Result{rows, ignored, counts, as_of, truncated} ─▶ format (Hebrew, ≈ marks) ─▶ Telegram
 ```
@@ -23,10 +23,11 @@ stores (cached) ─▶ evaluate ── stage 1: static + daily filters on the st
 | `stores/bars.py` | Daily split-adjusted SIP bars (300 sessions, incremental, split-safe refetch), the long store (monthly bars since 2016, 3Y/5Y/10Y anchors), the 30-minute volume profile, and the live intraday fetch for stage 2. |
 | `stores/shortint.py` | Newest usable FINRA short-interest report (reuses `bot/shorts`). |
 | `stores/fundamentals.py` | SEC XBRL frames → per-CIK quarterly/annual facts with tag fallbacks; TTM with Q4 = FY − 9M. |
-| `stores/ownership.py` | Form 3/4/5 holdings per issuer and reporting owner (EDGAR daily index; own small XML reader, D-012). |
+| `stores/ownership.py` | Form 3/4/5 holdings per issuer, reporting owner and line: the last 8 quarters of SEC's Insider Transactions Data Sets (bulk ZIPs, D-045), then the EDGAR daily index (own small XML reader, D-012), accession dedupe. |
+| `stores/holders.py` | Schedules 13D/13G (XML, D-047): discovery from the form indexes, the latest filing per (issuer, filer) within the night's SEC budget, coverage per issuer (D-048). |
 | `metrics/` | Pure calculators. `technical.py` (SMA, RSI, ATR, volatility, high/low, performance, crosses, beta, candlesticks, SSR), `fundamental.py` (TTM, ratios, growth), `volume.py` (average and relative volume). `metrics/registry.py` holds the registry: metric id → calculator + source + approx flag + evidence. `value(ctx, metric)` returns a `MetricValue(value, as_of, source, approx, evidence)`. |
 | `sic.py` | Static SIC → finviz-style sector/industry crosswalk. `geo.py`: SEC country/state codes → finviz geo slugs. |
-| `evaluate.py` | Builds one lazy per-symbol `Ctx` over the stores and runs the two stages. Stage 2 is capped at 1500 symbols; beyond that it ranks by the sort key on daily data and reports the truncation. |
+| `evaluate.py` | Builds one lazy per-symbol `Ctx` over the stores and runs the two stages. Stage 2 is sized by the run's Alpaca budget (a planner, D-040); beyond what fits it ranks by the sort key on daily data and reports the truncation. |
 | `signals.py` | The `s=` signals: candidate rule, ranking and cap (Top 200 / Top 100 / Top 40 / all). |
 | `sort.py` | `o=` ordering (`None` last), finviz default = ticker ascending, a signal's own ranking when there is no `o=`. |
 | `format.py` | The Telegram text. Up to 15 rows: ticker, price, change and the 3 metrics the filters use, with `≈` on approximated values. Footer: ignored codes and reasons, data time (New York + Israel), sources. Follows `tests/msgrules.py`. |
@@ -57,7 +58,7 @@ Every message states "as of HH:MM New York (≈ 15-min delayed)" and the Israel 
    price) and evaluates the static/daily ones for the whole universe.
    - In PRE/RTH/POST the intraday ones are pre-checked on the last close only when that is safe, which never holds for
      a strict screen. So stage 1 applies only the static/daily ones.
-   - When the stage-1 survivors exceed 1500, they are ranked by the sort key (or the signal's ranking) on daily data,
+   - When the stage-1 survivors do not fit the run's budget, they are ranked by the sort key (or the signal's ranking) on daily data,
      and the cut is reported as "truncated".
 2. **Stage 2** fetches today's 30-minute bars for the survivors (one request per ≤ 800 symbols, paged), appends
    today's partial bar to their daily series, and evaluates every predicate.

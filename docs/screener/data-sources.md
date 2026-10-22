@@ -8,7 +8,7 @@ All sources are free, need no paid key, and are used within their published limi
 | code | source | endpoint | cadence | rate limit (engine) | terms / note |
 |---|---|---|---|---|---|
 | SIP-D | Alpaca market data, free plan, consolidated tape | `GET /v2/stocks/bars?timeframe=1Day&feed=sip&adjustment=split`, ≤ 800 symbols per request, `limit` 10000 points across symbols, paged | daily | 190/min shared pacer (`bot/alpaca._get`), under the plan's 200/min; run budget < 150 calls | SIP only when the query's end is ≥ 15 min old (free plan). OHLC regular-session, volume all day (OBSERVED). Keys from the existing `ALPACA_KEY_ID` / `ALPACA_SECRET_KEY` secrets. |
-| SIP-T | same | `timeframe=30Min`, 04:00 → now − 16 min, stage-2 survivors only (≤ 1500, D-040) | each run | same | Never IEX for volume (IEX is a small slice of the tape). |
+| SIP-T | same | `timeframe=30Min`, 04:00 → now − 16 min, stage-2 survivors sized by the run's budget (D-040; OBSERVED: 588–840 bars a page) | each run | same | Never IEX for volume (IEX is a small slice of the tape). |
 | SIP-H | same | `timeframe=1Hour`, 63 sessions (cumulative volume at each hour mark) | nightly increment, ≤ 500 calls a night | same | Time-of-day volume profile. |
 | SIP-M | same | `timeframe=1Month` since 2016-01 | monthly | same | OBSERVED: history starts 2016-01. |
 | AST | Alpaca trading API, read-only reference | `GET /v2/assets?status=active&asset_class=us_equity` | daily | 1 call | Fields: `shortable`, `easy_to_borrow`, `attributes` (contains `has_options`). No order endpoint is ever called (G5). |
@@ -18,7 +18,9 @@ All sources are free, need no paid key, and are used within their published limi
 | OCC | OCC Directory of Listed Products | `marketdata.theocc.com/delo-download?prodType=EU&downloadFields=OS;US;SN;EXCH&format=txt` | daily | 1 call | Equity option underlyings across all exchanges (6309 lines, OBSERVED 2026-10-21). OCC's site terms not reviewed (flagged). Fallback: Alpaca `has_options`. |
 | SEC-F | SEC XBRL frames | `data.sec.gov/api/xbrl/frames/{taxonomy}/{tag}/{unit}/{CYyyyy[Qq][I]}.json` | weekly full, daily cheap | 8 req/s (`common.fetch`, `SEC_UA`); run budget < 2000 | Public domain. One value per company, concept and calendar period. Fields: `accn, cik, end, start, val` (OBSERVED). Tag fallbacks are required: plain `Revenues` covers 1941 companies in CY2025Q2 (OBSERVED). |
 | SEC-S | SEC submissions | `data.sec.gov/submissions/CIK##########.json` | 30-day rolling refresh; daily for CIKs filing an 8-K | same | `sic`, `addresses`, `stateOfIncorporation`, recent filings with `items` and `acceptanceDateTime`. |
-| SEC-4 | SEC Form 3/4/5 | EDGAR daily index (`scan.index_urls`) → each filing's XML | daily increment, capped per run | same | Holdings after each transaction, per reporting owner. |
+| SEC-4 | SEC Form 3/4/5 | EDGAR daily index → each filing's XML, for the days after the newest bulk quarter (accessions already read are skipped) | daily increment, capped per run | same | Holdings after each transaction, per reporting owner and line. |
+| SEC-345 | SEC Insider Transactions Data Sets (flattened Forms 3/4/5) | ZIP hrefs from `www.sec.gov/data-research/sec-markets-data/insider-transactions-data-sets` (recent quarters under `/files/datastandardsinnovation/...`, older under `/files/structureddata/...`); tables SUBMISSION, REPORTINGOWNER, NONDERIV_TRANS, NONDERIV_HOLDING (D-045) | quarterly; the last 8 quarters once each | 1 call a quarter (+1 listing) | Public domain; "as filed", SEC disclaims accuracy. |
+| SEC-13 | SEC Schedules 13D/13G (XML since 2024-12, D-047) | discovery: `edgar/full-index/YYYY/QTRn/form.idx` (closed quarters once) + the daily form index; then the latest filing per (issuer, filer): `edgar/data/<cik>/<accession>.txt` | nightly, ≤ 300 filings | same SEC budget | Public domain. Text-era `SC 13D/13G` filings are not read. |
 | SEC-T | SEC ticker map | `www.sec.gov/files/company_tickers.json` (`common.tickers`) | daily | 1 call | Ticker → CIK. |
 | FINRA-SI | FINRA consolidated short interest | `api.finra.org/data/group/otcMarket/name/consolidatedShortInterest` (`bot/shorts`) | twice monthly; usable from the 8th session after settlement | paged, 5000 rows | Rule 4560 data. The weekly-reporting proposal SR-FINRA-2026-012 was withdrawn, so twice monthly is assumed. |
 
@@ -115,11 +117,11 @@ Availability: **EXACT** = the definition is reproduced on full-market data. **AP
 | `subtheme` | none | UNAVAILABLE_FREE | — | — | proprietary | — |
 | `shares_outstanding` | SEC-F (dei) | APPROX | weekly | 6 calls | public domain | cover-page shares |
 | `market_cap` | SEC-F, SIP | APPROX | each run | | | price × shares |
-| `float` | SEC-F, SEC-4 | APPROX | daily | ≤ 600 Form 4/run | public domain | outstanding − insiders |
+| `float` | SEC-F, SEC-345, SEC-4, SEC-13 | APPROX | daily | 9 bulk calls once; ≤ 800 Form 4 + ≤ 300 13D/13G a night | public domain | outstanding − insiders − other ≥ 5% holders (D-049) |
 | `float_pct` | derived | APPROX | daily | | | float / outstanding |
 | `short_float` | FINRA-SI, derived | APPROX | twice monthly | 2–3 pages | FINRA data | SI / float |
 | `short_ratio` | FINRA-SI, SIP-D | APPROX | twice monthly | | | SI / avg volume |
-| `insider_own` | SEC-4 | APPROX | daily | ≤ 600/run | public domain | Σ holdings / outstanding |
+| `insider_own` | SEC-345, SEC-4 | APPROX | daily | ≤ 800/run | public domain | Σ holdings / outstanding |
 | `insider_trans` | SEC-4 | APPROX | daily | | | 6-month change |
 | `inst_own` | none | UNAVAILABLE_FREE | — | — | D-021 | — |
 | `inst_trans` | none | UNAVAILABLE_FREE | — | — | D-021 | — |
@@ -181,7 +183,7 @@ older than its max age: bars 1 session, short interest 20 sessions, fundamentals
 | `bars` | per symbol, the last 320 sessions of split-adjusted daily OHLCV + trade count. Backfilled once; afterwards each daily run appends the newest sessions. A full refetch when an overlap bar moved more than 0.5% (split adjustment) | daily | backfill ≈ 13 chunks × 26 pages ≈ 340 calls once; daily ≈ 13 calls |
 | `long` | per symbol, monthly closes/highs/lows since 2016-01 (beta, all-time high/low) and the 3Y/5Y/10Y anchor closes | monthly / anchor windows monthly | ≈ 150 + 3 × 26 calls a month |
 | `profile` | per symbol, the cumulative volume at each hour mark (04:00–20:00) for each of the last 63 sessions (mean taken at use) | nightly increment | ≈ 20 calls a night once built; the first backfill is bounded at 500 calls a night |
-| `intraday` | today's 30-minute bars for stage-2 survivors (never cached across runs) | each run | ≤ 1500 symbols ≈ 5 calls |
+| `intraday` | today's 30-minute bars for stage-2 survivors (never cached across runs) | each run | sized by the run's Alpaca budget (D-040): ≈ 18–30 calls for `unusual_volume_liquid` |
 | `shortint` | the newest usable FINRA report and the previous 5 | on publication days | 2–3 FINRA pages |
 | `fundamentals` | per CIK: quarterly and annual facts for about 30 concepts (with fallbacks), from frames | weekly full (≈ 300 frame calls); daily for the latest quarter only | ≤ 2000 SEC calls a run |
 | `reference` | per CIK: SIC, country, state, 8-K Item 2.02 times | rolling (400 CIKs a run) + every CIK in today's 8-K index | ≤ 600 SEC calls a run |
@@ -194,11 +196,11 @@ state goes to git, through the existing commit-with-retry step: `data/screener_p
 
 **Two-stage evaluation (E3).**
 - Stage 1 evaluates the static and daily filters on the stores, with no network call.
-- Stage 2 fetches 5-minute SIP bars only for the survivors, capped at 1500 symbols. Beyond the cap, symbols are ranked
-  by the screen's sort key on daily data and the truncation is reported.
+- Stage 2 fetches 30-minute SIP bars only for the survivors, as many as the run's remaining Alpaca budget allows (D-040: estimate = requests + pages at the OBSERVED ~580-bar page). Beyond that, symbols are ranked by the sort key on daily data and the cut is reported.
 
-**Budget assertion.** Each run logs request counts per source (`alpaca`, `sec`, `finra`, `nt`, `occ`). The planner test
-asserts that a full scheduled run stays under 150 Alpaca calls and 2000 SEC calls.
+**Budget assertion.** Each run logs request counts per source (`alpaca`, `sec`, `finra`, `nt`, `occ`). The planner tests
+assert that a full-universe scheduled RTH run stays under 150 Alpaca calls (stage 2 cut to what fits) and 2000 SEC
+calls, and that `unusual_volume_liquid`'s stage 1 is fetched whole.
 
 ## Gate D totals
 
