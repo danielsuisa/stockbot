@@ -1022,6 +1022,100 @@
     }
    ],
    "gaps": 0
+  },
+  "2026-10-21": {
+   "top": [
+    "ROIV",
+    "AVEX",
+    "AMX",
+    "BRZE",
+    "ALK",
+    "ELS",
+    "UDR",
+    "HSAI",
+    "QGEN",
+    "IRON",
+    "ISRG",
+    "ABT",
+    "DHR",
+    "PEGA",
+    "NFLX",
+    "SMCI",
+    "FITB",
+    "AXTA",
+    "VERA",
+    "ADC"
+   ],
+   "reasons": {
+    "spread": 12,
+    "trigger": 6
+   },
+   "dropped": {},
+   "trades": [
+    {
+     "t": "NFLX",
+     "rank": 15,
+     "side": 1,
+     "at": "09:45",
+     "level": 66.33,
+     "R": 0.1729,
+     "shares": 578,
+     "spread": 0.02,
+     "fill": 66.325,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1562,
+     "net_r": -1.1562
+    },
+    {
+     "t": "FITB",
+     "rank": 17,
+     "side": -1,
+     "at": "09:39",
+     "level": 52.67,
+     "R": 0.1121,
+     "shares": 892,
+     "spread": 0.02,
+     "fill": 52.67,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2409,
+     "net_r": -1.2409
+    }
+   ],
+   "optimistic": [
+    {
+     "t": "NFLX",
+     "rank": 15,
+     "side": 1,
+     "at": "09:45",
+     "level": 66.33,
+     "R": 0.1729,
+     "shares": 578,
+     "spread": 0.02,
+     "fill": 66.33,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.1562,
+     "net_r": -1.1562
+    },
+    {
+     "t": "FITB",
+     "rank": 17,
+     "side": -1,
+     "at": "09:39",
+     "level": 52.67,
+     "R": 0.1121,
+     "shares": 892,
+     "spread": 0.02,
+     "fill": 52.67,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2409,
+     "net_r": -1.2409
+    }
+   ],
+   "gaps": 0
   }
  }
 }
