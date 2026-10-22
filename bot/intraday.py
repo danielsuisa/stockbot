@@ -1,23 +1,26 @@
-"""Intraday candlestick screener: the long setups the most consistently profitable US day traders screen for, on
-5-minute candles, each with a full bracket-order ticket (research and parameter sources:
-docs/research/intraday-strategies-2026-10-17.md). Long only; nothing is sent to a broker.
+"""Intraday screener: the user's presentation "נרות יפניים ופקודות Bracket" as a live screener (rules and their slides:
+docs/deck-screener-spec.md; the user's decision: docs/research/deck-screener-decision-2026-10-21.md). Long only;
+nothing is sent to a broker: every ticket is a recommendation the user enters by hand in IBKR.
 
-Stage 1, 09:38 New York: "stocks in play" (universe: Alpaca assets on NYSE/Nasdaq/Arca, $5-$500, 20-session
+Stage 1, from 08:00 New York: "stocks in play" (universe: Alpaca assets on NYSE/Nasdaq/Arca, $5-$500, 20-session
 average volume >= 1M shares and $20M, ATR14 >= 2% of the close, gap >= 2% either way or pre-market volume >= 10% of
-the average day); the top WATCH by pre-market relative volume are the watchlist. From 09:55 the watchlist is
-re-ranked by the 09:30-09:35 SIP bar's relative volume (Zarattini & Aziz 2024, the top 20 by this measure).
+the average day); the top WATCH by pre-market relative volume are the watchlist. Before the open it is rebuilt every
+5 minutes from the SIP pre-market bars that are at least 15 minutes old (the free plan); from 09:55 it is re-ranked
+by the 09:30-09:35 SIP bar's relative volume (Zarattini & Aziz 2024, the top 20 by this measure).
 
-Stage 2, every 5 minutes 09:40-11:30 and 15:00-15:45: completed 5-minute candles (IEX feed, no lag) of the
-watchlist -> setups: opening-range breakout (5 and 15 minutes), VWAP pullback with a bullish reversal candle
-(hammer or bullish engulfing), bull flag (micro pullback after an impulse), red-to-green. Each setup gives a
-bracket: buy stop-limit above the trigger candle, stop loss below it (floored at 10% of ATR14, capped at 1 x ATR14),
-take profit at TARGET_R x risk, time exit 15:55 New York. Size = risk per trade (equity x TICKET_RISK_PCT, as
-/ticket) / risk per share. Every ticket is journaled and its outcome filled in after the close (paper only).
+Stage 2, every 5 minutes 08:00-11:30: the completed 5-minute candles of the watchlist (IEX feed, no lag; a pre-market
+candle counts only with trades in 3 of its 5 minutes) -> the deck's setups (bot/deck.py): Hammer and bullish
+Engulfing on support, Inside bar, NR7, breakout above a level and its Retest, VWAP pullback (from 09:30), Bull flag.
+Each must pass the deck's 8-item checklist, including a round-trip cost of at most 0.3 of its risk. The ticket is a
+bracket: buy stop-limit a tick above the trigger, stop loss a tick under the pattern, target 2 x risk, time exit 5
+minutes before the close. Validity: a reversal setup (Hammer, Engulfing, VWAP pullback, Retest) until the next candle
+closes, the others until 11:30. Size = $25 / risk per share, at most what $2,500 of cash buys.
 
-    python -m bot.intraday --mode morning|power   # loop over the window, send new tickets
-    python -m bot.intraday --mode once            # one scan now (the /intraday now command)
-    python -m bot.intraday --mode followup        # outcomes of today's tickets, stats
-    python -m bot.intraday --symbol AAPL          # one symbol against the setups now
+    python -m bot.intraday --mode morning     # loop over the window, send new tickets
+    python -m bot.intraday --mode once        # one scan now (the /intraday now command)
+    python -m bot.intraday --mode exit        # the time-exit reminder (5 minutes before the close)
+    python -m bot.intraday --mode followup    # outcomes of today's tickets, stats
+    python -m bot.intraday --symbol AAPL      # one symbol against the setups now
     --dry: print instead of sending, write nothing"""
 import argparse
 import datetime as dt
@@ -26,41 +29,40 @@ import sys
 import time
 from pathlib import Path
 
-from bot import alpaca, common, equity, levels, list_tickets, ticket
+from bot import alpaca, common, deck, ticket
 from bot.common import code, il_date, price
+# The retired v1 setups (bot/intraday_v1.py) keep these names for bot/intraday_count.py's frozen 2024 count.
+from bot.intraday_v1 import LATE_FROM, candles, setups  # noqa: F401
 
 NY = alpaca.NY
 STATE = "intraday_state.json"
 SOURCE = ("⚠️ כרטיס מחושב בלבד, לא ייעוץ השקעות: הבוט לא שולח פקודות. ניירת בלבד.\n"
-          f"מקור: נרות של {code('Alpaca')} — {code('IEX')} בזמן אמת לנרות, {code('SIP')} (באיחור 15 דקות) לנפח "
-          "· סורק הנרות היפניים")
+          f"מקור: נרות של {code('Alpaca')} — {code('IEX')} בזמן אמת לנרות ולציטוט, {code('SIP')} (באיחור 15 דקות) לנפח "
+          "· סורק התבניות מהמצגת")
 
-# ---------- parameters (docs/research/intraday-strategies-2026-10-17.md, section "screener") ----------
+# ---------- stage 1 parameters (docs/research/intraday-strategies-2026-10-17.md, section "screener") ----------
 PRICE = (5.0, 500.0)  # liquid names with real spreads; below $5 the costs ate the ZBA edge (docs/backtest)
 ADV_SHARES, ADV_DOLLARS, ADV_SESSIONS = 1_000_000, 20_000_000.0, 20
 ATR_PCT, ATR_ABS = 0.02, 0.50  # ATR14: >= 2% of the close (a 2:1 target fits a session) and >= $0.50 (Z&A 2024)
-GAP_PCT = 0.02  # |open - previous close| / previous close: a catalyst that was priced over night
+GAP_PCT = 0.02  # |price - previous close| / previous close: a catalyst that was priced over night
 PRE_VOL_SHARE = 0.10  # pre-market volume >= 10% of the average day: in play without a gap
 OPEN_RELVOL, STRONG_RELVOL = 1.0, 5.0  # 09:30-09:35 volume / its mean over RELVOL_SESSIONS: in play (Z&A), strong (Cameron)
 RELVOL_SESSIONS = 14
 WATCH = 20  # the watchlist (Zarattini & Aziz: the top 20 stocks in play)
-TARGET_R, STOP_ATR_FLOOR, STOP_ATR_CAP = 2.0, 0.10, 1.0
-STOP_MIN_PCT = 0.003  # R >= 0.3% of the entry: spread plus slippage (~0.1% on liquid $5+ names) stays under a third of R
-LIMIT_ATR = 0.05  # the stop-limit's limit: entry + 5% of ATR14 (no chasing beyond it)
-MAX_ADV_SHARE, INTRADAY_ADV = 0.01, 0.85  # shares <= 1% of the intraday volume (the close auction's ~12% is not there by 15:55)
-LATE_FROM = "15:00"  # the afternoon window: only names trending up all day (close-to-15:30 trend beats the opening bar, Baltussen 2021)
-TICK = 0.01
-TIME_EXIT = "15:55"
+SIP_DELAY = 15  # minutes: the free plan's SIP data ends this long before now
+PRE_REFRESH_UNTIL = "09:35"  # the watchlist is rebuilt every scan up to here (the 09:35 build uses the IEX open)
+RERANK_AT = "09:55"
+TICK = deck.TICK
+TIME_EXIT = "15:55"  # a full session's time exit; early closes use the calendar's close - 5 minutes
 MAX_TICKETS = 5  # a scan sends at most this many, by score
 EXCHANGES = {"NYSE", "NASDAQ", "ARCA"}
 FUND_WORDS = ("ETF", "ETN", "FUND", "TRUST", "INDEX", "PORTFOLIO", "SHARES")
-WINDOWS = {"morning": ("09:40", "11:30"), "power": ("15:00", "15:45")}
+WINDOWS = {"morning": (deck.FIRST, deck.LAST)}
 STEP = 5  # minutes between scans
-CANDLE_RELVOL = 1.5  # the trigger candle's volume vs the session's mean 5-minute volume so far (a real breakout)
-HAMMER_WICK, ENGULF = 2.0, 1.0  # hammer: lower wick >= 2 x body and close in the upper third; engulfing: body covers
-VWAP_NEAR = 0.003  # a pullback "touches" VWAP when its low is within 0.3% of it
-FLAG_PULLBACK, FLAG_MAX_BARS = 0.5, 4  # a flag keeps more than half of the impulse, over 2-4 small candles
-IMPULSE_ATR = 0.5  # the impulse: a rise of at least half an ATR14 over 1-3 candles
+# One ticket per symbol per scan (the bot's rule): the more specific setup first when one candle fits several.
+PREFER = ("vwap_hammer", "vwap_engulf", "retest", "breakout", "flag", "hammer", "engulf", "inside", "nr7")
+JOURNAL_KEYS = ("ok", "symbol", "setup", "note", "score", "entry_stop", "limit", "stop_loss", "target", "R",
+                "r_floored", "shares", "risk", "time_exit", "atr", "gap", "pre_rel", "open_relvol", "at", "last", "vwap")
 
 
 # ---------- files ----------
@@ -82,161 +84,7 @@ def save(obj):
 
 
 def fresh_state(day):
-    return {"day": day, "watch": [], "sent": {}, "journal": [], "stats": None}
-
-
-# ---------- candle shapes (pure) ----------
-def body(b):
-    return abs(b["c"] - b["o"])
-
-
-def is_bull(b):
-    return b["c"] > b["o"]
-
-
-def is_hammer(b):
-    rng = b["h"] - b["l"]
-    if rng <= 0:
-        return False
-    lower = min(b["o"], b["c"]) - b["l"]
-    return lower >= HAMMER_WICK * max(body(b), rng * 0.05) and b["c"] >= b["h"] - rng / 3
-
-
-def is_bull_engulfing(prev, b):
-    return (is_bull(b) and not is_bull(prev) and b["o"] <= prev["c"] and b["c"] >= prev["o"] * (1 + 1e-9)
-            and body(b) >= ENGULF * body(prev) and body(prev) > 0)
-
-
-def mean_volume(bars5):
-    vols = [b["v"] for b in bars5 if b["v"] > 0]
-    return sum(vols) / len(vols) if vols else 0.0
-
-
-# ---------- setups (pure functions over completed 5-minute candles of the regular session) ----------
-def _ticket(kind, trigger, stop, note, score):
-    return {"setup": kind, "trigger_high": trigger, "stop_ref": stop, "note": note, "score": score}
-
-
-def orb(bars5, minutes):
-    """Opening-range breakout: the last candle closes above the high of the first `minutes` of the session, on
-    volume, above VWAP; the breakout candle is the trigger. None before the range or when the break is stale."""
-    n = minutes // 5
-    if len(bars5) < n + 1 or bars5[0]["start"] != "09:30":
-        return None
-    rng, last, prev = bars5[:n], bars5[-1], bars5[-2]
-    hi, lo = max(b["h"] for b in rng), min(b["l"] for b in rng)
-    if not (last["c"] > hi and prev["c"] <= hi):  # the first close above the range: not a chase
-        return None
-    if last["v"] < CANDLE_RELVOL * mean_volume(bars5[:-1]) or last.get("vwap") and last["c"] < last["vwap"]:
-        return None
-    return _ticket(f"orb{minutes}", last["h"], None if minutes == 5 else last["l"],  # ORB 5: the 10% ATR stop (Z&A)
-                   f"פריצת טווח הפתיחה של {minutes} דקות", 3.0)
-
-
-def vwap_pullback(bars5):
-    """Price above VWAP pulls back to it and prints a hammer or a bullish engulfing candle at VWAP."""
-    if len(bars5) < 4:
-        return None
-    last, prev = bars5[-1], bars5[-2]
-    vw = last.get("vwap")
-    if not vw or last["c"] < vw or last["l"] > vw * (1 + VWAP_NEAR):
-        return None
-    if not (all(b["c"] > b.get("vwap", b["c"]) for b in bars5[-4:-1]) or prev["c"] > prev.get("vwap", 0)):
-        return None
-    if is_hammer(last):
-        return _ticket("vwap_hammer", last["h"], last["l"], "פטיש על VWAP", 2.5)
-    if is_bull_engulfing(prev, last):
-        return _ticket("vwap_engulf", last["h"], min(prev["l"], last["l"]), "בליעה שורית על VWAP", 2.5)
-    return None
-
-
-def bull_flag(bars5, atr):
-    """An impulse of >= IMPULSE_ATR x ATR over 1-3 candles, then 2-4 smaller candles that keep more than half of it
-    on falling volume; the last pullback candle is the trigger (buy above its high, stop under the flag's low)."""
-    if len(bars5) < 4 or not atr:
-        return None
-    for k in range(2, FLAG_MAX_BARS + 1):  # k pullback candles
-        if len(bars5) < k + 2:
-            break
-        flag, before = bars5[-k:], bars5[:-k]
-        for m in (1, 2, 3):  # m impulse candles
-            if len(before) < m:
-                break
-            imp = before[-m:]
-            rise = max(b["h"] for b in imp) - imp[0]["o"]
-            if rise < IMPULSE_ATR * atr or not all(is_bull(b) for b in imp):
-                continue
-            top, flag_low = max(b["h"] for b in imp), min(b["l"] for b in flag)
-            if flag_low < top - FLAG_PULLBACK * rise:
-                continue
-            if max(body(b) for b in flag) > 0.5 * rise or mean_volume(flag) >= mean_volume(imp):
-                continue
-            if bars5[-1]["h"] >= top:  # already broke out: the trigger would be a chase
-                continue
-            return _ticket("flag", top, flag_low, "דגל שורי אחרי דחיפה", 2.0)
-    return None
-
-
-def red_to_green(bars5, prev_close):
-    """Opened below the previous close and the last candle is the first close back above it, on volume."""
-    if len(bars5) < 3 or bars5[0]["o"] >= prev_close:
-        return None
-    last, prev = bars5[-1], bars5[-2]
-    if not (last["c"] > prev_close >= prev["c"]) or last["v"] < CANDLE_RELVOL * mean_volume(bars5[:-1]):
-        return None
-    return _ticket("red_to_green", max(last["h"], prev_close + TICK), min(b["l"] for b in bars5[-3:]),
-                   "מאדום לירוק: חזרה מעל הסגירה הקודמת", 2.0)
-
-
-def with_vwap(bars1, bars5):
-    """Each completed 5-minute candle gets the session VWAP at its close."""
-    for b in bars5:
-        b["vwap"] = ticket.vwap(bars1, "09:30", b["end"])
-    return bars5
-
-
-def candles(bars1, now_hhmm):
-    """Completed regular-session 5-minute candles by `now_hhmm` (a candle whose end is at or before now)."""
-    bars5 = ticket.to5([b for b in bars1 if "09:30" <= b[0] < "16:00"])
-    return with_vwap(bars1, [b for b in bars5 if b["end"] <= now_hhmm])
-
-
-def setups(bars5, atr, prev_close):
-    """Every setup present on the last completed candle -> [ticket dict] by score, best first."""
-    found = [orb(bars5, 5), orb(bars5, 15), vwap_pullback(bars5), bull_flag(bars5, atr), red_to_green(bars5, prev_close)]
-    return sorted((f for f in found if f), key=lambda f: -f["score"])
-
-
-# ---------- the bracket ----------
-def bracket(symbol, s, atr, risk, max_position_value=None, adv=None):
-    """Entry, stop, target and size for setup `s` -> ticket dict, or {"ok": False, "reason"}."""
-    entry = levels.px(s["trigger_high"] + TICK)
-    r_raw = entry - s["stop_ref"] + TICK if s["stop_ref"] is not None else STOP_ATR_FLOOR * atr
-    floor = max(STOP_ATR_FLOOR * atr, STOP_MIN_PCT * entry) if atr else STOP_MIN_PCT * entry
-    R = min(max(r_raw, floor), max(STOP_ATR_CAP * atr, floor)) if atr else max(r_raw, floor)
-    if R <= 0:
-        return {"ok": False, "symbol": symbol, "reason": "stop not below entry"}
-    shares = int(risk / R + levels.EPS)
-    if max_position_value:
-        shares = min(shares, int(max_position_value / entry + levels.EPS))
-    if adv:
-        shares = min(shares, int(MAX_ADV_SHARE * INTRADAY_ADV * adv + levels.EPS))
-    if shares < levels.MIN_SHARES:
-        return {"ok": False, "symbol": symbol, "reason": "shares below 2"}
-    return {"ok": True, "symbol": symbol, "setup": s["setup"], "note": s["note"], "score": s["score"],
-            "entry_stop": entry, "limit": levels.px(entry + LIMIT_ATR * atr) if atr else levels.px(entry * 1.002),
-            "stop_loss": levels.px(entry - R), "target": levels.px(entry + TARGET_R * R), "R": levels.px(R, ref=entry),
-            "r_floored": r_raw < floor, "shares": shares, "risk": round(shares * R, 2),
-            "time_exit": TIME_EXIT, "atr": atr}
-
-
-def sizing():
-    """Risk per trade: E x p (as /ticket) -> (risk, max position value, E) or the fixed default without E."""
-    s = list_tickets.load_sizing()
-    if not s:
-        return 100.0, None, None
-    p, _ = levels.p_used(s["p_raw"])
-    return s["E"] * p, levels.POSITION_CAP * s["E"], s["E"]
+    return {"day": day, "watch": [], "sent": {}, "journal": [], "stats": None, "cards": {}}
 
 
 # ---------- stage 1: stocks in play ----------
@@ -251,7 +99,8 @@ def universe():
 
 
 def daily_stats(symbols, prev_day, start):
-    """{symbol: {"close", "atr", "adv", "advd"}} for symbols with the liquidity and range the screen asks for."""
+    """{symbol: {"close", "high", "low", "atr", "adv", "advd"}} for symbols with the liquidity and range the screen
+    asks for (high, low and close: the previous session's, levels of slide c4-levels)."""
     out = {}
     for sym, rows in alpaca.daily(symbols, start, prev_day).items():
         if len(rows) < 16:
@@ -262,15 +111,23 @@ def daily_stats(symbols, prev_day, start):
         close, atr = rows[-1][4], ticket.atr14(rows, "9999")  # every row is before "9999"
         if (PRICE[0] <= close <= PRICE[1] and adv >= ADV_SHARES and advd >= ADV_DOLLARS and atr
                 and atr / close >= ATR_PCT and atr >= ATR_ABS):
-            out[sym] = {"close": close, "atr": atr, "adv": adv, "advd": advd}
+            out[sym] = {"close": close, "high": rows[-1][2], "low": rows[-1][3], "atr": atr, "adv": adv, "advd": advd}
     return out
 
 
-def in_play(stats, day):
-    """Gap and pre-market volume from the live feeds -> [{symbol, gap, pre_vol, pre_rel, open}] sorted by pre_rel."""
+def sip_end(now_hhmm):
+    """The latest New York minute the free plan serves SIP data up to at `now_hhmm`."""
+    return ticket.hhmm(ticket.mins(now_hhmm) - SIP_DELAY - 1)
+
+
+def in_play(stats, day, now_hhmm=None):
+    """Gap and pre-market volume -> [{symbol, gap, pre_vol, pre_rel, open}] sorted by pre_rel. Before PRE_REFRESH_UNTIL
+    (a pre-market build): the SIP pre-market bars up to 15 minutes ago, the gap from their last price. Otherwise: the
+    pre-market to 09:20 and the gap from the IEX open print."""
     syms = sorted(stats)
-    pre = alpaca.volume_since(syms, day, "04:00", "09:20")  # SIP 15-minute bars: older than 15 minutes by 09:36
-    opens = alpaca.live_bars(syms, day, "09:30", "09:30", "5Min")  # IEX: the open print's price, live
+    early = now_hhmm is not None and now_hhmm < PRE_REFRESH_UNTIL
+    pre = alpaca.volume_since(syms, day, "04:00", sip_end(now_hhmm) if early else "09:20")
+    opens = {} if early else alpaca.live_bars(syms, day, "09:30", "09:30", "5Min")  # IEX: the open print, live
     rows = []
     for s in syms:
         o = opens.get(s)
@@ -297,19 +154,27 @@ def open_relvol(symbols, day, sessions_before):
     return out
 
 
-def watchlist(day, cal):
-    """Stage 1 -> [{symbol, gap, pre_rel, open, atr, prev_close, adv}] (the top WATCH)."""
+def stage1_stats(day, cal):
     before = [d for d in sorted(cal) if d < day]
-    prev_day, start = before[-1], before[-max(ADV_SESSIONS, 30) - 1]
-    stats = daily_stats(universe(), prev_day, start)
-    rows = in_play(stats, day)[:WATCH * 3]
+    return daily_stats(universe(), before[-1], before[-max(ADV_SESSIONS, 30) - 1]), before
+
+
+def watchlist(day, cal, now_hhmm=None, stats=None):
+    """Stage 1 -> ([{symbol, gap, pre_rel, open, atr, prev_close, prev_high, prev_low, adv}] (the top WATCH), the
+    sessions before `day`)."""
+    if stats is None:
+        stats, before = stage1_stats(day, cal)
+    else:
+        before = [d for d in sorted(cal) if d < day]
+    rows = in_play(stats, day, now_hhmm)[:WATCH]
     for r in rows:
-        r.update(atr=stats[r["symbol"]]["atr"], prev_close=stats[r["symbol"]]["close"], adv=stats[r["symbol"]]["adv"])
-    return rows[:WATCH], before
+        st = stats[r["symbol"]]
+        r.update(atr=st["atr"], prev_close=st["close"], prev_high=st["high"], prev_low=st["low"], adv=st["adv"])
+    return rows, before
 
 
 def rerank(watch, day, before):
-    """From 09:50: re-rank the watchlist by the opening 5-minute bar's relative volume (stocks in play, Z&A 2024)."""
+    """From 09:55: re-rank the watchlist by the opening 5-minute bar's relative volume (stocks in play, Z&A 2024)."""
     rel = open_relvol([w["symbol"] for w in watch], day, before[-RELVOL_SESSIONS:])
     for w in watch:
         w["open_relvol"] = rel.get(w["symbol"])
@@ -318,42 +183,90 @@ def rerank(watch, day, before):
 
 
 # ---------- stage 2: the scan ----------
-def scan(watch, day, now_hhmm, risk, max_pos):
-    """One pass over the watchlist -> [tickets] by score, best first."""
+def time_exit(day, cal):
+    """5 minutes before the session's close (15:55; 12:55 on a 13:00 early close)."""
+    close = (cal or {}).get(day, (None, "16:00"))[1]
+    return ticket.hhmm(ticket.mins(close) - 5) if close else TIME_EXIT
+
+
+def context(watch, day, before):
+    """The per-symbol inputs the rules read besides today's candles: yesterday's 5-minute candles (SIP, complete) and
+    the daily bars for the Wyckoff tag -> {symbol: {"yday", "daily"}}."""
     syms = [w["symbol"] for w in watch]
-    bars = alpaca.live_bars(syms, day, "09:30", now_hhmm)
+    if not syms or not before:
+        return {}
+    yday = alpaca.minute_bars(syms, before[-1])
+    span = deck.WY_RANGE_N + deck.WY_DECLINE_N
+    daily = alpaca.daily(syms, before[-span - 1] if len(before) > span else before[0], before[-1])
+    return {s: {"yday": deck.candles(yday.get(s, []), "16:00", start=deck.OPEN), "daily": daily.get(s, [])}
+            for s in syms}
+
+
+def spread_of(symbol, day, now_hhmm, live=True):
+    """The full spread of the latest IEX quote (live, or as of `now_hhmm` for a replay); None when unusable."""
+    q = alpaca.iex_quote(symbol, None if live else alpaca.utc(day, now_hhmm))
+    if not q:
+        return None
+    bid, ask = q
+    return max(round(ask - bid, 4), TICK) if bid > 0 and ask > 0 and ask >= bid else None
+
+
+def scan(watch, day, now_hhmm, cal=None, extra=None, bars=None, live=True, blocked=None):
+    """One pass over the watchlist -> [tickets], best first. `extra`: context(); `bars`: today's 1-minute IEX bars
+    (fetched when None); `blocked`: a list that collects (symbol, setup, failed item, detail)."""
+    syms = [w["symbol"] for w in watch]
+    bars = bars if bars is not None else alpaca.live_bars(syms, day, "04:00", now_hhmm)
+    extra = extra if extra is not None else context(watch, day, [d for d in sorted(cal or {}) if d < day])
+    te = time_exit(day, cal)
     out = []
     for w in watch:
-        b5 = candles(bars.get(w["symbol"], []), now_hhmm)
-        if not b5:
+        sym = w["symbol"]
+        cs = deck.candles(bars.get(sym, []), now_hhmm)
+        if not cs:
             continue
-        if now_hhmm >= LATE_FROM and not (b5[-1]["c"] > b5[0]["o"] and b5[-1]["c"] > (b5[-1].get("vwap") or 0)):
-            continue  # the afternoon: only a day that trended up and still holds above VWAP
-        for s in setups(b5, w["atr"], w["prev_close"]):
-            t = bracket(w["symbol"], s, w["atr"], risk, max_pos, w.get("adv"))
-            if t["ok"]:
-                t.update(gap=w["gap"], pre_rel=w["pre_rel"], open_relvol=w.get("open_relvol"), at=now_hhmm,
-                         last=b5[-1]["c"], vwap=b5[-1].get("vwap"))
-                rv = w.get("open_relvol") or w["pre_rel"] * 10  # relative volume is the measured edge; the gap is not
-                t["score"] += min(rv, STRONG_RELVOL) / STRONG_RELVOL
-                out.append(t)
-                break  # one ticket per symbol per scan: its best setup
+        x = extra.get(sym, {})
+        ctx = {"atr": w["atr"], "time_exit": te, "yday": x.get("yday", []), "daily": x.get("daily", []),
+               "prev": {"h": w.get("prev_high"), "l": w.get("prev_low"), "c": w["prev_close"]}
+               if w.get("prev_high") else None, "spread": None}
+        res = deck.evaluate(sym, cs, ctx, now_hhmm)
+        if any(b[1] == "cost" and b[2] == "אין ציטוט" for b in res["blocked"]):  # a quote only for a near-ticket
+            ctx["spread"] = spread_of(sym, day, now_hhmm, live)
+            res = deck.evaluate(sym, cs, ctx, now_hhmm)
+        if blocked is not None:
+            blocked += [(sym, *b) for b in res["blocked"]] + ([(sym, "*", "filter", res["filter"])] if res["filter"] else [])
+        got = sorted(res["tickets"], key=lambda t: PREFER.index(t["setup"]))
+        if got:
+            t = got[0]
+            rv = w.get("open_relvol") or w["pre_rel"] * 10  # relative volume is the measured edge; the gap is not
+            t.update(ok=True, gap=w["gap"], pre_rel=w["pre_rel"], open_relvol=w.get("open_relvol"),
+                     score=round(min(rv, STRONG_RELVOL) / STRONG_RELVOL, 3))
+            out.append(t)
     return sorted(out, key=lambda t: -t["score"])
 
 
 # ---------- messages ----------
-# The ticket's label by setup: what the engine measured (T2: VWAP and flag setups; ZBA and T2: ORB 5), or untested.
+# The ticket's label by setup: what the engine measured (T2: the VWAP pullback and the bull flag), or untested.
 UNTESTED = "מחוץ למסלול שנבדק"
 LABELS = {"vwap_hammer": "נבדק: תוחלת שלילית (T2)", "vwap_engulf": "נבדק: תוחלת שלילית (T2)",
-          "flag": "נבדק: תוחלת שלילית (T2)", "orb5": "נבדק: תוחלת שלילית (ZBA, T2)"}
+          "flag": "נבדק: תוחלת שלילית (T2)"}
 
 
 def label(setup):
     return f"תווית: {LABELS.get(setup, UNTESTED)} · כרטיס למחקר בלבד"
 
 
-SETUP_NAMES = {"orb5": "פריצת טווח פתיחה 5 דק׳", "orb15": "פריצת טווח פתיחה 15 דק׳", "vwap_hammer": "פטיש על VWAP",
-               "vwap_engulf": "בליעה שורית על VWAP", "flag": "דגל שורי", "red_to_green": "מאדום לירוק"}
+SETUP_NAMES = {"hammer": "Hammer על תמיכה", "engulf": "Engulfing שורי על תמיכה", "inside": "Inside bar",
+               "nr7": "NR7", "breakout": "פריצה מעל רמה", "retest": "Retest של רמה שנפרצה",
+               "vwap_hammer": "VWAP pullback עם Hammer", "vwap_engulf": "VWAP pullback עם Engulfing",
+               "flag": "Bull flag",
+               # the v1 names, for a journal written before the change
+               "orb5": "פריצת טווח פתיחה 5 דק׳", "orb15": "פריצת טווח פתיחה 15 דק׳", "red_to_green": "מאדום לירוק"}
+LEVEL_NAMES = {"vwap": "VWAP", "yday_high": "שיא אתמול", "yday_low": "שפל אתמול", "yday_close": "סגירת אתמול",
+               "pre_high": "שיא לפני הפתיחה", "pre_low": "שפל לפני הפתיחה", "round": "מספר עגול",
+               "touches": "נגיעות חוזרות", "previous_low": "שפל קודם"}
+CHECK_NAMES = {"context": "הקשר", "level": "רמה", "shape": "צורה", "levels": "טריגר וסטופ", "size": "כמות",
+               "cost": "עלות", "time": "זמן", "rule": "כלל קבוע"}
+WYCKOFF_NAMES = {"accumulation": "צבירה", "spring": "Spring"}
 
 
 def _pct(x):
@@ -365,31 +278,59 @@ def il_time(day, hhmm):
     return f"{t:%H:%M}"
 
 
+def _ny_il(day, hhmm):
+    return f"{code(hhmm)} ניו־יורק ({code(il_time(day, hhmm))} ישראל)"
+
+
+def setup_line(setup):
+    ch = deck.CHAPTER.get(setup)
+    return SETUP_NAMES.get(setup, setup) + (f" (פרק {ch} במצגת)" if ch else "")
+
+
 def ticket_text(t, day, E=None):
+    """One ticket's card (`E` is accepted for the older callers and not used: size is fixed at $25 of risk)."""
     P = t["entry_stop"]
     rel = f" · נפח פתיחה יחסי {code(format(t['open_relvol'], '.1f'))}" if t.get("open_relvol") else ""
-    gap = ("פער " + ("מעלה " if t["gap"] >= 0 else "מטה ") + _pct(t["gap"]))
+    gap = "פער " + ("מעלה " if t.get("gap", 0) >= 0 else "מטה ") + _pct(t.get("gap", 0))
+    lv = t.get("level")
+    why = f"למה: {SETUP_NAMES.get(t['setup'], t['setup'])}" + (
+        f" על {LEVEL_NAMES.get(lv[1], lv[1])} {code(price(lv[0]))}" if lv else "") + f" · {gap}"
+    stop_note = (", הורחב למינימום: 10% מה־ATR או 0.3% מהמחיר" if t.get("r_floored") and not t.get("r_capped")
+                 else ", קוצר למקסימום: ATR אחד" if t.get("r_capped") else "")
     lines = [
-        f"🎫 כרטיס ל-{code(t['symbol'])} · {SETUP_NAMES[t['setup']]} · נר {code(t['at'])} ניו־יורק ({code(il_time(day, t['at']))} ישראל)",
-        f"למה: {t['note']} · {gap} · נפח לפני פתיחה {_pct(t['pre_rel'])} מיום ממוצע{rel}",
+        f"🎫 כרטיס ל-{code(t['symbol'])} · {setup_line(t['setup'])} · נר {_ny_il(day, t['at'])}",
+        why + f" · נפח לפני פתיחה {_pct(t.get('pre_rel', 0))} מיום ממוצע{rel}",
         f"מחיר אחרון {code(price(t['last']))}" + (f" · VWAP {code(price(t['vwap']))}" if t.get("vwap") else ""),
-        f"כניסה: קניית פריצה — סטופ {code(price(P))} · לימיט {code(price(t['limit']))} (תקף להיום בלבד)",
-        f"סטופ לוס: {code(price(t['stop_loss']))} (סיכון {code(price(t['R']))} למניה"
-        + (", הורחב למינימום: 10% מה־ATR או 0.3% מהמחיר" if t["r_floored"] else "") + ")",
-        f"יעד: {code(price(t['target']))} (פי {code(format(TARGET_R, 'g'))} מהסיכון) · אחרי רווח של יחידת סיכון אחת: "
-        "סטופ לנקודת הכניסה או ל־VWAP, הגבוה מביניהם",
-        f"יציאה בזמן: {code(t['time_exit'])} ניו־יורק ({code(il_time(day, t['time_exit']))} ישראל) אם לא נסגר קודם",
-        f"כמות: {code(t['shares'])} מניות · סיכון {code(price(t['risk']))}"
-        + (f" ({code(format(t['risk'] / E * 100, '.2f') + '%')} מההון)" if E else " (סיכון קבוע: לא נקבע הון, /equity)"),
-        "ב־IBKR: פקודת bracket אחת — BUY STP LMT (סטופ ולימיט שלמעלה), ילדים: SELL STP סטופ לוס ו־SELL LMT יעד, "
-        "OCA, תוקף DAY · סטופ מתחת לנר ההדק ולא מתחת ליעד",
-        label(t["setup"]),
+        f"כניסה: קניית פריצה — טריגר {code(price(P))} · לימיט {code(price(t['limit']))}",
+        f"סטופ לוס: {code(price(t['stop_loss']))} (סיכון {code(price(t['R']))} למניה{stop_note})",
+        f"יעד: {code(price(t['target']))} (פי {code(format(deck.TARGET_R, 'g'))} מהסיכון)",
+        f"כמות: {code(t['shares'])} מניות · סיכון {code(price(t['risk']))} (אחוז אחד מחשבון של {code(price(deck.CASH))})"
+        f" · שווי עד {code(price(t['shares'] * t['limit']))}",
     ]
+    if t.get("cost_r") is not None:
+        lines.append(f"עלות משוערת: {code(format(t['cost_r'], '.2f'))} מיחידת הסיכון (עמלות IBKR Pro Tiered, עמלות "
+                     f"צד ג׳ ומרווח מלא; התקרה {code(format(deck.COST_MAX_R, 'g'))})")
+    if t.get("checks"):
+        lines.append("רשימת הבדיקה: " + " · ".join(f"✓ {CHECK_NAMES[k]}" for k in deck.CHECKS))
+    if t.get("wyckoff"):
+        lines.append("הקשר וייקוף (לא טריגר): " + ", ".join(WYCKOFF_NAMES.get(w, w) for w in t["wyckoff"]))
+    valid = _ny_il(day, t.get("valid_until", deck.LAST))
+    lines.append((f"תוקף: הנר הבא בלבד — עד {valid}; אם הטריגר לא הופעל עד אז, מבטלים" if t["setup"] in deck.NEXT_CANDLE
+                  else f"תוקף: עד סוף החלון, {valid}, ואז ביטול")
+                 + f" · יציאה בזמן: {_ny_il(day, t['time_exit'])} אם לא נסגר קודם")
+    lines.append("ב־IBKR: פקודת bracket אחת — BUY STP LMT (טריגר ולימיט שלמעלה), ילדים: SELL STP סטופ לוס ו־SELL LMT "
+                 "יעד, OCA, תוקף DAY")
+    if t.get("premarket"):
+        lines += [f"לפני {code(deck.OPEN)}: סמנו Fill outside RTH בכל אחת משלוש הפקודות, והסטופ לוס חייב להיות SELL "
+                  f"STP LMT — סטופ {code(price(t['stop_loss']))} · לימיט {code(price(t['stop_limit']))} (סטופ רגיל "
+                  "לא פועל לפני הפתיחה). אחרי הפתיחה אפשר להחליף אותו ל־SELL STP רגיל.",
+                  "⚠️ לפני הפתיחה ההגנה לא מובטחת: אם המחיר יקפוץ מתחת ללימיט של הסטופ, הוא לא יתמלא."]
+    lines.append(label(t["setup"]))
     return "\n".join(lines)
 
 
-def list_text(tickets, day, now_hhmm, E):
-    head = f"🕯️ סורק נרות יומי · יום {common.weekday(day)} {code(il_date(day))} · סריקה ב־{code(il_time(day, now_hhmm))} ישראל"
+def list_text(tickets, day, now_hhmm, E=None):
+    head = f"🕯️ סורק התבניות מהמצגת · יום {common.weekday(day)} {code(il_date(day))} · סריקה ב־{code(il_time(day, now_hhmm))} ישראל"
     if not tickets:
         return head + "\nאין תבנית חדשה בנר הזה."
     return head + "\n\n" + "\n\n".join(ticket_text(t, day, E) for t in tickets)
@@ -404,14 +345,31 @@ def watch_text(watch, day):
     return "\n".join(lines)
 
 
+def exit_text(state, day, te):
+    lines = [f"⏰ יציאה בזמן: {_ny_il(day, te)} — לסגור כל פוזיציה פתוחה מכרטיסי היום ולבטל פקודות שלא מולאו:"]
+    for t in state["journal"]:
+        lines.append(f"מניה {code(t['symbol'])} · {SETUP_NAMES.get(t['setup'], t['setup'])} · טריגר "
+                     f"{code(price(t['entry_stop']))} · {code(t['shares'])} מניות")
+    return "\n".join(lines)
+
+
+def sent_tickets(state):
+    """Today's journal with each ticket's card fields (cost, checklist, Wyckoff, pre-market note) put back."""
+    cards = state.get("cards") or {}
+    return [{**t, **cards.get(f"{t['symbol']}:{t['setup']}", {})} for t in state["journal"]]
+
+
 # ---------- the journal and its outcomes ----------
 def outcome(t, bars1):
     """Paper outcome of ticket `t` from the session's SIP 1-minute bars after its candle: filled at the stop-limit
     (first minute whose high >= entry stop, fill = max(entry, open) if open <= limit), then target / stop / time
-    exit by minute highs and lows (both touched in one minute = stop: conservative)."""
+    exit by minute highs and lows (both touched in one minute = stop: conservative). An order not triggered before its
+    validity end ("valid_until", when the ticket has one) was cancelled."""
     after = [b for b in bars1 if b[0] >= t["at"] and b[0] < "16:00"]
     fill = None
     for m, o, h, l, c, v, vw in after:
+        if fill is None and t.get("valid_until") and m >= t["valid_until"]:
+            return {"result": "not filled (cancelled at its validity end)", "r": 0.0}
         if fill is None:
             if h >= t["entry_stop"]:
                 f = max(t["entry_stop"], o)
@@ -437,8 +395,9 @@ def followup(state):
     todo = [j for j in state["journal"] if not j.get("outcome")]
     if todo:
         bars = alpaca.minute_bars(sorted({j["symbol"] for j in todo}), day)
+        cards = state.get("cards") or {}
         for j in todo:
-            j["outcome"] = outcome(j, bars.get(j["symbol"], []))
+            j["outcome"] = outcome({**j, **cards.get(f"{j['symbol']}:{j['setup']}", {})}, bars.get(j["symbol"], []))
     return stats_text(state)
 
 
@@ -457,7 +416,7 @@ def stats_text(state):
         o = j["outcome"]
         word = {"stop": "סטופ", "target": "יעד", "time": "יציאה בזמן"}.get(o["result"], "לא מולא")
         r = f" · {code(format(abs(o['r']), '.2f'))} יחידות " + ("רווח" if o["r"] >= 0 else "הפסד") if o.get("fill") else ""
-        lines.append(f"מניה {code(j['symbol'])} · {SETUP_NAMES[j['setup']]} · {word}{r}")
+        lines.append(f"מניה {code(j['symbol'])} · {SETUP_NAMES.get(j['setup'], j['setup'])} · {word}{r}")
     return "\n".join(lines)
 
 
@@ -484,42 +443,69 @@ def send(text, dry, signal=False, symbols=()):
         common.send(text, signal=signal, source=SOURCE, buttons=chart_buttons(symbols))
 
 
-def run_scan(state, day, before, now_hhmm, dry):
-    risk, max_pos, E = sizing()
-    if now_hhmm >= "09:55" and state["watch"] and not state["watch"][0].get("open_relvol"):
+def record(state, t, now_hhmm):
+    """Mark ticket `t` sent and journal it: the journal keeps its schema, the card's extra fields go to "cards"."""
+    key = f"{t['symbol']}:{t['setup']}"
+    state["sent"][key] = now_hhmm
+    state["journal"].append({k: t.get(k) for k in JOURNAL_KEYS})
+    state.setdefault("cards", {})[key] = {k: v for k, v in t.items() if k not in JOURNAL_KEYS}
+
+
+def run_scan(state, day, before, now_hhmm, dry, cal=None, run=None):
+    """One scan: refresh the pre-market watchlist, re-rank it at 09:55, send new tickets. `run` caches the stage-1
+    stats and the per-symbol context for the length of a run."""
+    run = run if run is not None else {}
+    if now_hhmm <= PRE_REFRESH_UNTIL and "stats" in run:  # the 09:35 build takes the gap from the open print
+        state["watch"], _ = watchlist(day, cal, now_hhmm, run["stats"])
+        run.pop("extra", None)
+    if now_hhmm >= RERANK_AT and state["watch"] and not state["watch"][0].get("open_relvol"):
         state["watch"] = rerank(state["watch"], day, before)
         send(watch_text(state["watch"], day), dry, symbols=[w["symbol"] for w in state["watch"]])
-    tickets = [t for t in scan(state["watch"], day, now_hhmm, risk, max_pos)
+        run.pop("extra", None)
+    have = {s for s in run.get("extra", {})}
+    if {w["symbol"] for w in state["watch"]} - have:
+        run["extra"] = {**run.get("extra", {}), **context([w for w in state["watch"] if w["symbol"] not in have], day, before)}
+    tickets = [t for t in scan(state["watch"], day, now_hhmm, cal, run.get("extra", {}))
                if f"{t['symbol']}:{t['setup']}" not in state["sent"]][:MAX_TICKETS]
     for t in tickets:
-        state["sent"][f"{t['symbol']}:{t['setup']}"] = now_hhmm
-        state["journal"].append(t)
+        record(state, t, now_hhmm)
     if tickets:
-        send(list_text(tickets, day, now_hhmm, E), dry, signal=True, symbols=[t["symbol"] for t in tickets])
+        send(list_text(tickets, day, now_hhmm), dry, signal=True, symbols=[t["symbol"] for t in tickets])
     return tickets
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["morning", "power", "once", "followup", "watch"], default="once")
+    ap.add_argument("--mode", choices=["morning", "once", "followup", "watch", "exit"], default="once")
     ap.add_argument("--symbol")
     ap.add_argument("--dry", action="store_true")
     a = ap.parse_args(argv)
     now = _now()
     day = now.date().isoformat()
-    cal = alpaca.calendar((now.date() - dt.timedelta(days=60)).isoformat(), day)
+    cal = alpaca.calendar((now.date() - dt.timedelta(days=150)).isoformat(), day)
     if day not in cal:
-        send("היום אין מסחר בניו־יורק, הסורק היומי לא רץ.", a.dry)
+        if a.mode != "exit":
+            send("היום אין מסחר בניו־יורק, הסורק היומי לא רץ.", a.dry)
         return 0
     state = load(None)
     if not state or state.get("day") != day:
         state = fresh_state(day)
     before = [d for d in sorted(cal) if d < day]
+    hhmm = now.strftime("%H:%M")
 
     if a.mode == "followup":
         send(followup(state), a.dry)
         if not a.dry:
             save(state)
+        return 0
+
+    if a.mode == "exit":  # dispatched twice (before an early close and a full one); only the matching one sends
+        te = time_exit(day, cal)
+        if abs(ticket.mins(hhmm) - ticket.mins(te)) > 10:
+            return 0
+        _sleep_until(dt.datetime.fromisoformat(f"{day}T{te}").replace(tzinfo=NY))
+        if state["journal"]:
+            send(exit_text(state, day, te), a.dry, signal=True, symbols=[t["symbol"] for t in state["journal"]])
         return 0
 
     if a.symbol:
@@ -528,22 +514,26 @@ def main(argv=None):
         if sym not in stats:
             send(f"{code(sym)} מחוץ ליקום הסורק (מחיר 5–500$, נפח ממוצע מעל מיליון ו־20M$, ATR מעל 2%).", a.dry)
             return 0
-        rows = [r for r in in_play(stats, day) if r["symbol"] == sym] or [{"symbol": sym, "gap": 0.0, "pre_rel": 0.0}]
-        rows[0].update(atr=stats[sym]["atr"], prev_close=stats[sym]["close"])
-        risk, max_pos, E = sizing()
-        got = scan(rows, day, now.strftime("%H:%M"), risk, max_pos)
-        send(list_text(got, day, now.strftime("%H:%M"), E), a.dry, signal=bool(got), symbols=[t["symbol"] for t in got])
+        rows = [r for r in in_play(stats, day, hhmm) if r["symbol"] == sym] or [{"symbol": sym, "gap": 0.0, "pre_rel": 0.0}]
+        st = stats[sym]
+        rows[0].update(atr=st["atr"], prev_close=st["close"], prev_high=st["high"], prev_low=st["low"], adv=st["adv"])
+        got = scan(rows, day, hhmm, cal)
+        send(list_text(got, day, hhmm), a.dry, signal=bool(got), symbols=[t["symbol"] for t in got])
         return 0
 
+    run = {}
     if not state["watch"]:
-        state["watch"], before = watchlist(day, cal)
+        run["stats"], before = stage1_stats(day, cal)
+        state["watch"], _ = watchlist(day, cal, hhmm, run["stats"])
         send(watch_text(state["watch"], day), a.dry, symbols=[w["symbol"] for w in state["watch"]])
         if not a.dry:
             save(state)
+    elif hhmm <= PRE_REFRESH_UNTIL and a.mode == "morning":
+        run["stats"], _ = stage1_stats(day, cal)
     if a.mode == "watch":
         return 0
     if a.mode == "once":
-        run_scan(state, day, before, now.strftime("%H:%M"), a.dry)
+        run_scan(state, day, before, hhmm, a.dry, cal, run)
         if not a.dry:
             save(state)
         return 0
@@ -553,7 +543,7 @@ def main(argv=None):
     while t.strftime("%H:%M") <= end:
         _sleep_until(t + dt.timedelta(seconds=25))  # the candle's last minute bar is in
         try:
-            run_scan(state, day, before, t.strftime("%H:%M"), a.dry)
+            run_scan(state, day, before, t.strftime("%H:%M"), a.dry, cal, run)
             if not a.dry:
                 save(state)
         except Exception as e:  # one failed scan must not end the window

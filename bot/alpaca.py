@@ -158,6 +158,19 @@ def quote_at(symbol, at):
     return q[0], q[1]
 
 
+def iex_quote(symbol, at=None):
+    """The IEX feed's quote (no lag on the free plan): the latest one, or for a replay the last one of New York day
+    `at[:10]` up to UTC ISO `at` -> (bid, ask), or None without one. Never cached."""
+    if at is None:
+        q = ((_get(f"{DATA}/quotes/latest", {"symbols": symbol, "feed": "iex"}).get("quotes") or {}).get(symbol))
+    else:
+        day = _ny(at).date().isoformat()
+        got = _get(f"{DATA}/{symbol}/quotes", {"start": utc(day, "04:00"), "end": at, "feed": "iex", "sort": "desc",
+                                              "limit": 1}).get("quotes") or []
+        q = got[0] if got else None
+    return (q.get("bp") or 0, q.get("ap") or 0) if q else None
+
+
 def calendar(start, end):
     """Trading sessions over [start, end] -> {date: (open "HH:MM", close "HH:MM")} New York (early closes included)."""
     path = CACHE / "calendar" / f"{start}_{end}.json.gz"

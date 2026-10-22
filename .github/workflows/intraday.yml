@@ -1,15 +1,16 @@
 name: Intraday screener
 
 on:
-  # No GitHub schedule (it starts late): the listener's clock (bot/clock.py) dispatches mode=morning at 09:37,
-  # mode=power at 14:57 and mode=followup at 16:20 New York on weekdays; /intraday now, /intraday stats and
-  # /intraday TICKER dispatch once, followup and symbol.
+  # No GitHub schedule (it starts late): the listener's clock (bot/clock.py) dispatches mode=morning at 07:57 (the
+  # 08:00-11:30 window), mode=exit at 12:50 and 15:50 (the time-exit reminder; only the run matching today's close
+  # sends) and mode=followup at 16:20 New York on weekdays; /intraday now, /intraday stats and /intraday TICKER
+  # dispatch once, followup and symbol.
   workflow_dispatch:
     inputs:
       mode:
-        description: "morning / power = loop over the window; once = one scan now; followup = today's outcomes; symbol = one ticker"
+        description: "morning = loop over the 08:00-11:30 window; once = one scan now; exit = the time-exit reminder; followup = today's outcomes; symbol = one ticker"
         type: choice
-        options: [morning, power, once, followup, symbol]
+        options: [morning, once, exit, followup, symbol]
         default: once
       symbol:
         description: "the ticker for mode=symbol"
@@ -26,7 +27,7 @@ concurrency:
 jobs:
   intraday:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 245  # the 07:57-11:30 loop plus stage 1 and set-up (GitHub's cap: 360)
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,7 +36,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Scan
-        timeout-minutes: 140
+        timeout-minutes: 235
         run: |
           if [ "$MODE" = symbol ]; then python -m bot.intraday --symbol "$SYMBOL"; else python -m bot.intraday --mode "$MODE"; fi
         env:
@@ -47,7 +48,7 @@ jobs:
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
           TICKET_RISK_PCT: ${{ vars.TICKET_RISK_PCT }}
       - name: Commit the state (the window runs and the follow-up only)
-        if: always() && contains('morning power followup', inputs.mode)
+        if: always() && contains('morning followup', inputs.mode)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
