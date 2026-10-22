@@ -143,6 +143,7 @@ def notes_lines(res):
 
 
 FLOAT_METHOD = {"insiders+5pct": "בניכוי בעלי עניין ומחזיקי 5% ומעלה", "insiders": "בניכוי בעלי עניין בלבד",
+                "issuer_public_float": "לפי דיווח החברה על מניות שאינן בידי בעלי שליטה",
                 "outstanding_proxy": "כל המניות (אין נתוני אחזקות)"}
 
 

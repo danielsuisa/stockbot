@@ -161,6 +161,29 @@ class Float(unittest.TestCase):
                       "(<code>1</code>).", text)
         msgrules.check(self, text)
 
+    def test_issuer_public_float_only_without_any_holdings(self):
+        from bot.screener.stores import publicfloat as PF
+        # 2025-06-30: $40M non-affiliate value at a raw $2.00 close = 20M shares of 30M; a 1:4 reverse split since
+        # (split-adjusted close $8.00): 10M affiliates then = 2.5M now; 60M today - 2.5M = 57.5M
+        rec = {"end": "2025-06-30", "val": 40e6, "raw": 2.0, "split": 8.0, "so_then": 30e6}
+        self.assertEqual(PF.carried(rec, 60e6), 57.5e6)
+        self.assertIsNone(PF.carried({}, 60e6))
+        b = {"B": series([10.0] * 300)}
+        e = env(b, uni("B", cik0=101), fund=shares(101, 60e6), public_float={"101": rec})
+        c = evaluate.run(parser.parse("sh_price_o1"), e).rows[0]["ctx"]
+        self.assertEqual((c.get("float"), c.get("float_method")), (57.5e6, "issuer_public_float"))
+        own = {"issuers": {"101": {"7": {"role": "o", "h": [["2026-09-01", 5e6]]}}}}
+        e = env(b, uni("B", cik0=101), fund=shares(101, 60e6), own=own, public_float={"101": rec})
+        c = evaluate.run(parser.parse("sh_price_o1"), e).rows[0]["ctx"]  # Form 3/4/5 data wins
+        self.assertEqual((c.get("float"), c.get("float_method")), (55e6, "insiders"))
+
+    def test_nearest_cover_share_count(self):
+        from bot.screener.stores import publicfloat as PF
+        fund = {"shares": {"101": [["2025-05-20", "2025-05-08", 30e6], ["2025-08-20", "2025-08-01", 31e6],
+                                   ["2026-03-01", "2026-02-20", 40e6]]}}
+        self.assertEqual(PF.nearest_shares(fund, 101, "2025-06-30"), (31e6, "2025-08-01"))
+        self.assertEqual(PF.nearest_shares(fund, 101, "2023-06-30"), (None, None))  # nothing within 200 days
+
     def test_point_in_time(self):
         hold = {"quarters": ["q"] * HOLD.QUARTERS, "pending_issuers": [],
                 "issuers": {"101": {"950": holder(10e6, filed="2026-10-25")}}}

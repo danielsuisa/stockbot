@@ -13,6 +13,7 @@ from bot.screener.stores import bars as BARS
 from bot.screener.stores import fundamentals as FUND
 from bot.screener.stores import holders as HOLD
 from bot.screener.stores import ownership as OWN
+from bot.screener.stores import publicfloat as PF
 from bot.screener.stores import shortint as SI
 
 AVG_N = 63
@@ -277,8 +278,9 @@ def _float(c):
     13G, qualified institutions under Rule 13d-1(b) kept, a holder that also files Forms 3/4/5 counted once at the
     larger amount), as of
     the evaluated day. float_method: "insiders+5pct" (13D/13G coverage complete for the issuer), "insiders" (Forms
-    3/4/5, plus any 13D/13G holders read so far), "outstanding_proxy" (no holdings data). Never <= 0: the next
-    method is used and float_flag says why. Rule 144 restricted shares are not subtracted (no free source)."""
+    3/4/5, plus any 13D/13G holders read so far), "issuer_public_float" (no holdings data: the 10-K cover's
+    non-affiliate count carried forward, D-053), "outstanding_proxy" (none of these). Never <= 0: the next method is
+    used and float_flag says why. Rule 144 restricted shares are not subtracted (no free source)."""
     n = c.get("shares_outstanding")
     if not n:
         return None
@@ -298,6 +300,11 @@ def _float(c):
             c._c["float_method"] = method
             return n - sub
         c._c["float_flag"] = "holdings >= shares outstanding"
+    if not k and not m:  # no holdings at all: the issuer's own non-affiliate count, carried forward (D-053)
+        v = PF.carried((c.env.public_float or {}).get(str(c.cik)), n)
+        if v and v > 0:
+            c._c["float_method"] = "issuer_public_float"
+            return v
     c._c["float_method"] = "outstanding_proxy"
     return float(n)
 

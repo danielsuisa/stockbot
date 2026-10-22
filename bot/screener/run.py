@@ -24,6 +24,7 @@ from bot.screener.stores import bars as BARS
 from bot.screener.stores import fundamentals as FUND
 from bot.screener.stores import holders as HOLD
 from bot.screener.stores import ownership as OWN
+from bot.screener.stores import publicfloat as PF
 from bot.screener.stores import reference as REF
 from bot.screener.stores import shortint as SI
 
@@ -135,6 +136,8 @@ def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS
         env.own = st["data"] if st else {}
         st = stores.load("holders")
         env.holders = st["data"] if st else {}
+        st = stores.load("publicfloat")
+        env.public_float = st["data"] if st else {}
     if "shortint" in need and done:
         data, meta = SI.update(done, ck["day"])
         env.short = data
@@ -354,6 +357,11 @@ def _refresh(full, now, late, step):
     FUND.update(today, force=full)
     step("fundamentals")
     ciks = sorted({u["cik"] for u in uni.values() if u.get("cik")})
+    if not late():
+        try:
+            step("publicfloat", PF.update(uni, (stores.load("fundamentals") or {}).get("data") or {}, ck["day"])[1])
+        except Exception:
+            common.trace()
     if not late():  # the ownership stores first: cheap (bulk ZIPs), and the float depends on them
         step("ownership", OWN.update({str(c) for c in ciks}, done, ck["day"], per_run=OWNERSHIP_FILINGS,
                                      late=late)[2])
