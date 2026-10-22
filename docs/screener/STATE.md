@@ -15,7 +15,7 @@
 | F2 | PASS: 7 sessions, mean Jaccard 0.664, mean recall 0.915 |
 | F3 | Screen 6: 15 → 69; screen 7: 0 → 6 (finviz side PENDING_MANUAL) |
 | F4 | Maintenance 39810920705 green (SEC 1000, watchdog at 23 min, cache saved); RTH slot 39815969748 green (Alpaca 51, SEC 0, stage 2 = all 2,980 survivors, not truncated); maintenance 39816377737 (14.9 min, SEC 1233, every step) and 39818693372 on the final code (16.0 min, SEC 1593) green |
-| F5 | 1034 → 1065 tests, all green (`PYTHONUTF8=1`, `tzdata`) |
+| F5 | 1034 → 1067 tests, all green (`PYTHONUTF8=1`, `tzdata`) |
 | Guard | `python -m bot.screener.guard` clean before every commit (now against the merge base, D-056) |
 
 ### Commits
@@ -34,7 +34,10 @@
 | 9e8cbcb | fix(screener): scale holdings and share counts by the splits since they were filed |
 | 780eeb0 | docs(screener): F1-F5 evidence, state and final report; D-053..D-057 |
 | b2b23b2 | style(screener): wrap long lines |
-| (this commit) | docs(screener): F4 maintenance runs |
+| babcc8e | docs(screener): F4 maintenance runs |
+| 45a3d71 | Merge origin/main; guard: both the merge base and origin/main |
+| 954b43a | fix(screener): a refresh that runs out of time keeps its stores |
+| (this commit) | docs(screener): D-058 and its refresh run |
 
 ### Open items
 
