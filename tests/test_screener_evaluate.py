@@ -152,6 +152,22 @@ class Live(unittest.TestCase):
         self.assertAlmostEqual(c.get("change_open"), 0.02)
         self.assertEqual(r.stage2, 1)
 
+    def test_relative_volume_without_any_profile_uses_the_static_curve(self):
+        b = {"A": series([10.0] * 300, vols=[1e6] * 300)}
+        today = {"A": {"o": 10.0, "h": 10.5, "l": 9.9, "c": 10.2, "last": 10.2, "v": 500e3, "n": 10, "pre": None,
+                       "post": None, "at": "10:10"}}
+        now = dt.datetime(2026, 10, 21, 10, 30, tzinfo=NY)
+        e = env(b, uni("A"), session="RTH", now=now, profile={}, fetch_today=lambda syms: today)
+        c = evaluate.run(parser.parse("sh_relvol_o1.5"), e).rows[0]["ctx"]
+        # expected at 10:30 = 1M x (0.0739 + (0.1886 - 0.0739) x 30/60) = 131,250; 500K / 131,250 = 3.8095
+        self.assertAlmostEqual(c.get("rel_volume"), 500e3 / 131_250)
+        self.assertEqual(c.get("rel_volume_basis"), "static")
+        from bot.screener import format as fmt
+        self.assertIn("≈", fmt.cell(c, "rel_volume"))
+        pre = dt.datetime(2026, 10, 21, 8, 30, tzinfo=NY)  # before the open the static curve is not used
+        e = env(b, uni("A"), session="PRE", now=pre, profile={}, fetch_today=lambda syms: today)
+        self.assertIsNone(evaluate.run(parser.parse("sh_price_o5"), e).rows[0]["ctx"].get("rel_volume"))
+
     def test_premarket_price_and_gap(self):
         b = {"A": series([10.0] * 300)}
         now = dt.datetime(2026, 10, 21, 8, 0, tzinfo=NY)
@@ -173,16 +189,52 @@ class Live(unittest.TestCase):
             fetched.extend(syms)
             return {s: {"o": 10.0, "h": 10.0, "l": 10.0, "c": 10.0, "last": 10.0, "v": 1.0, "n": 1, "pre": None,
                         "post": None, "at": "10:40"} for s in syms}
-        old = evaluate.STAGE2_MAX
-        evaluate.STAGE2_MAX = 10
-        try:
-            r = evaluate.run(parser.parse("sh_price_o5"), env(b, uni(*b), session="RTH", now=now, fetch_today=fetch))
-        finally:
-            evaluate.STAGE2_MAX = old
-        self.assertEqual(len(fetched), 10)
-        self.assertEqual(r.truncated, 20)
-        self.assertEqual(fetched[0], "S029")  # no sort: the most liquid first (avg volume, daily data)
+        bars = evaluate.bars_so_far(BARS.end_time(now))  # 10:44 -> 14 bars since 04:00
+        budget = evaluate.stage2_calls(10, bars)  # 1 request + ceil(140 / PAGE_POINTS) pages = 2 calls
+        self.assertEqual(budget, 2)
+        self.assertEqual(evaluate.stage2_fit(30, bars, budget), 30)  # 30 x 14 = 420 points: still 2 calls
+        r = evaluate.run(parser.parse("sh_price_o5"), env(b, uni(*b), session="RTH", now=now, fetch_today=fetch,
+                                                          budget_left=lambda: 1))
+        self.assertEqual(len(fetched), 0)  # one call cannot hold a request and its pages
+        self.assertEqual(r.truncated, 30)
+        fetched.clear()
+        many = {f"S{i:04}": series([10.0] * 300, vols=[1e6 + i] * 300) for i in range(1000)}
+        fit = evaluate.stage2_fit(1000, bars, 10)  # 1 request + ceil(k x 14 / 580) pages <= 10 -> k = 372
+        self.assertEqual(fit, 372)
+        r = evaluate.run(parser.parse("sh_price_o5"), env(many, uni(*many), session="RTH", now=now, fetch_today=fetch,
+                                                          budget_left=lambda: 10))
+        self.assertEqual(len(fetched), 372)
+        self.assertEqual(r.truncated, 1000 - 372)
+        self.assertEqual(fetched[0], "S0999")  # no sort: the most liquid first (avg volume, daily data)
         self.assertTrue(any(n.startswith("truncated") for n in r.notes))
+
+    def test_stage2_fetches_every_survivor_when_the_budget_allows(self):
+        b = {f"S{i:03}": series([10.0] * 300, vols=[1e6 + i] * 300) for i in range(30)}
+        now = dt.datetime(2026, 10, 21, 11, 0, tzinfo=NY)
+        fetched = []
+
+        def fetch(syms):
+            fetched.extend(syms)
+            return {}
+        r = evaluate.run(parser.parse("sh_price_o5"), env(b, uni(*b), session="RTH", now=now, fetch_today=fetch,
+                                                          budget_left=lambda: 140))
+        self.assertEqual((len(fetched), r.truncated), (30, 0))
+
+    def test_planner_estimate_follows_the_paging_rule(self):
+        self.assertEqual(evaluate.bars_so_far("04:00"), 0)
+        self.assertEqual(evaluate.bars_so_far("04:01"), 1)
+        self.assertEqual(evaluate.bars_so_far("10:44"), 14)
+        self.assertEqual(evaluate.bars_so_far("20:00"), 32)
+        self.assertEqual(evaluate.stage2_calls(0, 14), 0)
+        # 695 symbols (the 2026-10-22 stage 1 of unusual_volume_liquid) at 15:14: 1 request + ceil(15985 / 580)
+        self.assertEqual(evaluate.stage2_calls(695, 23), 1 + 28)
+        # 10,000 symbols at 10:44: 13 requests + ceil(140,000 / 580) = 13 + 242
+        self.assertEqual(evaluate.stage2_calls(10_000, 14), 13 + 242)
+        self.assertEqual(evaluate.stage2_fit(10_000, 14, None), 10_000)
+        for budget in (5, 40, 139):
+            k = evaluate.stage2_fit(10_000, 14, budget)
+            self.assertLessEqual(evaluate.stage2_calls(k, 14), budget)
+            self.assertGreater(evaluate.stage2_calls(k + 1, 14), budget)
 
 
 class Windows(unittest.TestCase):

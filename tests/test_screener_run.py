@@ -79,6 +79,31 @@ def _result():
     return q, evaluate.run(q, e), e
 
 
+class PartialSlot(unittest.TestCase):
+    """A slot run whose daily bars stopped at the budget does not claim its preset's first list of the day."""
+    setUp = Presets.setUp
+
+    def run_slot(self, slot, partial, now):
+        b = {"A": series([10.0] * 300, vols=[1e6] * 300)}
+        e = env(b, uni("A"), session="RTH", now=now, partial=partial)
+        e.notes = ["stale: bars (catching up)"] if partial else []
+        ck = {"session": "RTH", "day": now.date().isoformat()}
+        sent = []
+        with mock.patch.object(run, "clock_now", return_value=(now, ck, DAYS, DAYS, None)),                 mock.patch.object(run, "build_env", return_value=e),                 mock.patch.object(run, "send", side_effect=lambda text, dry: sent.append(text)):
+            run.slot_mode(slot)
+        return sent
+
+    def test_partial_run_defers_the_first_list(self):
+        now = dt.datetime(2026, 10, 21, 10, 30, tzinfo=NY)
+        self.assertEqual(self.run_slot("reg1", True, now), [])
+        st = presets.load_state()
+        self.assertNotIn("unusual_volume_liquid", st.get("presets", {}))  # not recorded: still due
+        self.assertIn("reg1", st["slots"]["2026-10-21"])
+        sent = self.run_slot("reg2", False, now + dt.timedelta(hours=1))
+        self.assertEqual(len(sent), 1)  # the next slot sends the first list in full
+        self.assertEqual(presets.load_state()["presets"]["unusual_volume_liquid"]["day"], "2026-10-21")
+
+
 class Messages(unittest.TestCase):
     def test_screen_text_follows_the_message_rules(self):
         q, res, e = _result()
@@ -216,38 +241,54 @@ class Schedule(unittest.TestCase):
 
 
 class Budget(unittest.TestCase):
-    """A scheduled RTH run over 10,000 symbols: the daily bars catch up one session, then stage 2 (capped) - counted
-    with Alpaca's paging rule (10,000 points per page across symbols)."""
+    """A scheduled RTH run over 10,000 symbols: the daily bars catch up one session, then stage 2 sized by the run's
+    budget (D-040) - counted with Alpaca's paging (daily: 10,000 points a page; intraday: evaluate.PAGE_POINTS a page,
+    OBSERVED 2026-10-22)."""
 
     def fake_get_bars(self, symbols, start, end, timeframe):
-        per = {"1Day": 1, "30Min": 26, "1Hour": 16}[timeframe]
-        pages = max(1, math.ceil(len(symbols) * per / 10000))
-        stores.count("alpaca", pages)
+        per = {"1Day": 1, "30Min": 14, "1Hour": 16}[timeframe]
+        page = 10_000 if timeframe == "1Day" else evaluate.PAGE_POINTS
+        stores.count("alpaca", max(1, math.ceil(len(symbols) * per / page)))
         if timeframe == "1Day":
             return {s: [{"t": "2026-10-20T04:00:00Z", "o": 10, "h": 10, "l": 10, "c": 10, "v": 1e6, "n": 1}]
                     for s in symbols}
         return {s: [{"t": f"2026-10-21T{8 + k // 2:02}:{'00' if k % 2 == 0 else '30'}:00Z", "o": 10, "h": 10,
                      "l": 10, "c": 10, "v": 1e5, "n": 1} for k in range(per)] for s in symbols}
 
-    def test_scheduled_run_stays_under_budget(self):
+    def scheduled(self, liquid):
+        """10,000 symbols, the first `liquid` with a 1M average volume (the rest 100K) -> (result, stage-2 calls)."""
         syms = [f"S{i:05}" for i in range(10_000)]
         days = DAYS[:-1]  # the store is one session behind
-        b = {s: series([10.0] * 70, days=days) for s in syms}
+        b = {s: series([10.0] * 70, vols=[1e6 if i < liquid else 1e5] * 70, days=days) for i, s in enumerate(syms)}
         stores.COUNTS.update({k: 0 for k in stores.COUNTS})
-        with mock.patch.object(BARS, "_get_bars", side_effect=self.fake_get_bars), \
-                mock.patch.object(BARS, "end_param", side_effect=lambda d, now=None: d):
+        with mock.patch.object(BARS, "_get_bars", side_effect=self.fake_get_bars),                 mock.patch.object(BARS, "end_param", side_effect=lambda d, now=None: d),                 mock.patch.object(run.alpaca, "REQUESTS", [0]):
             stats = BARS.update(b, syms, DAYS, max_calls=run.SLOT_BARS_CALLS)
             self.assertEqual(stats["fetched"], 10_000)
+            daily = stores.COUNTS["alpaca"]
             now = dt.datetime(2026, 10, 21, 11, 0, tzinfo=NY)
-            e = env(b, uni(*syms), session="RTH", now=now,
+            e = env(b, uni(*syms), session="RTH", now=now, budget_left=run.alpaca_left,
                     fetch_today=lambda s: BARS.today(s, "2026-10-21", "10:44"))
             q = parser.parse(presets.query_text(presets.get("unusual_volume_liquid")))
             res = evaluate.run(q, e)
-        self.assertLessEqual(res.stage2, evaluate.STAGE2_MAX)
-        self.assertLess(stores.COUNTS["alpaca"], 150, stores.COUNTS)
+        return res, daily, stores.COUNTS["alpaca"] - daily
+
+    def test_full_universe_run_stays_under_budget(self):
+        res, daily, stage2 = self.scheduled(10_000)
+        self.assertEqual(daily, math.ceil(10_000 / 800))  # 13 daily chunks of <= 800 symbols, 1 page each
+        self.assertLess(daily + stage2, run.RUN_ALPACA_MAX, stores.COUNTS)
+        self.assertLessEqual(stage2, run.RUN_ALPACA_MAX - run.ALPACA_RESERVE - daily)
+        self.assertLessEqual(stage2, evaluate.stage2_calls(res.stage2, 14))  # the estimate bounds the real paging
+        self.assertEqual(res.stage2 + res.truncated, 10_000)
+        self.assertEqual(res.stage2, evaluate.stage2_fit(10_000, 14, run.RUN_ALPACA_MAX - run.ALPACA_RESERVE - daily))
         self.assertLess(stores.COUNTS["sec"], 2000)
-        # 13 daily chunks of <= 800 symbols, 1 page each; stage 2: 800 + 700 symbols x 26 bars -> 3 + 2 pages
-        self.assertEqual(stores.COUNTS["alpaca"], math.ceil(10_000 / 800) + 3 + 2)
+
+    def test_unusual_volume_liquid_is_not_truncated(self):
+        # the 2026-10-22 stage 1 of unusual_volume_liquid had 695 survivors (run 39806269003)
+        res, daily, stage2 = self.scheduled(700)
+        self.assertEqual((res.stage1, res.stage2, res.truncated), (700, 700, 0))
+        self.assertEqual(stage2, math.ceil(700 * 14 / evaluate.PAGE_POINTS))  # 17 pages in one request
+        self.assertEqual(evaluate.stage2_calls(700, 14), 18)  # the planner's bound: + the request itself
+        self.assertLess(daily + stage2, run.RUN_ALPACA_MAX)
 
 
 if __name__ == "__main__":

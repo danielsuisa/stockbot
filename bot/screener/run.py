@@ -28,6 +28,7 @@ from bot.screener.stores import shortint as SI
 
 NY = alpaca.NY
 SLOT_BARS_CALLS = 60  # a scheduled run may spend this much catching up the daily bars (the rest: maintenance)
+RUN_ALPACA_MAX, ALPACA_RESERVE = 150, 10  # a run's Alpaca budget; stage 2 is sized to what is left (D-040)
 NEWS_PAGES = 40
 CHANGED = [False]  # a store changed this run (the workflow saves the cache then)
 
@@ -84,6 +85,11 @@ def news(since_utc, until_utc):
     return out, pages
 
 
+def alpaca_left():
+    """Alpaca calls this run may still spend (stage-2 planner, D-040)."""
+    return RUN_ALPACA_MAX - ALPACA_RESERVE - max(stores.COUNTS["alpaca"], alpaca.REQUESTS[0])
+
+
 def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS):
     """Load (and cheaply refresh) what `queries` need -> Env."""
     now, ck, cal_all, done, cal_meta = clock_now(now)
@@ -92,7 +98,7 @@ def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS
     if uni_meta and uni_meta.get("as_of", "")[:10] == dt.datetime.now(dt.timezone.utc).date().isoformat():
         CHANGED[0] = True
     bars, bmeta = BARS.load()
-    notes = []
+    notes, partial = [], False
     if update_bars and done:
         checked = dict((bmeta or {}).get("checked") or {})
         stats = BARS.update(bars, sorted(uni), done, max_calls=max_bar_calls, checked=checked)
@@ -101,10 +107,11 @@ def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS
             CHANGED[0] = True
         if stats.get("budget_stop"):
             notes.append("stale: bars (catching up)")
+            partial = True
         common.log("screener_bars", **stats)
     as_of = {"bars": done[-1] if done else None}
     env = evaluate.Env(now=now, session=ck["session"], day=ck["day"], sessions_done=done, universe=uni, bars=bars,
-                       calendar=cal_all)
+                       calendar=cal_all, partial=partial, budget_left=alpaca_left)
     if "long" in need:
         st = stores.load("long")
         env.long = st["data"] if st else {}
@@ -220,7 +227,8 @@ def delete_mode(name, dry=False):
 
 def slot_mode(slot, dry=False, now=None):
     """A scheduled slot: run every preset due in the current session; alert only on new or changed results (the
-    first list of a day in full)."""
+    first list of a day in full - never from a run whose daily bars stopped at the budget: that preset's first list
+    waits for the next slot)."""
     state = presets.load_state()
     now0, ck, _, done, _ = clock_now(now)
     session = {"PRE": "pre", "RTH": "rth", "POST": "post"}.get(ck["session"])
@@ -245,6 +253,9 @@ def slot_mode(slot, dry=False, now=None):
         rec = state.setdefault("presets", {}).get(p["name"]) or {}
         h = fmt.result_hash(res, q.sort[0] if q.sort else (signals.RULES.get(q.signal["code"], (None,))[0] if q.signal else None))
         first_today = rec.get("day") != ck["day"]
+        if first_today and env.partial:  # the daily bars stopped at the budget: the next slot sends the first list
+            log("slot", res, preset=p["name"], sent=False, deferred="bars catching up")
+            continue
         text = ""
         if first_today:
             text = fmt.screen_text(p.get("title") or p["name"], q, res, env.now, p.get("max_results") or 15)

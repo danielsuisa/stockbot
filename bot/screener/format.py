@@ -96,7 +96,7 @@ def cell(ctx, metric):
         return f"{LABELS.get(metric, (metric,))[0]} חסר"
     label, fmt = LABELS.get(metric, (metric, lambda v: code(v)))
     approx = "≈" if mv.approx or (metric in ("float", "short_float", "volume_pct_float")
-                                   and ctx.get("float_method") == "outstanding_proxy") else ""
+                                   and ctx.get("float_method") == "outstanding_proxy")         or (metric == "rel_volume" and ctx.get("rel_volume_basis") == "static") else ""
     return f"{label} {approx}{fmt(mv.value)}"
 
 

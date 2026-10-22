@@ -287,6 +287,16 @@ def update_profile(prof, symbols, sessions_done, max_calls=None):
     return added
 
 
+# The fallback time-of-day shape (DECISION, "≈"): the median cumulative share of the whole day's volume at each MARKS
+# entry over 4800 symbol-days (800 random stocks with a 63-session average volume >= 200k and a price >= $1, the 6
+# sessions 2026-10-14..21; Alpaca SIP 1Hour bars, OBSERVED 2026-10-22). Used only when neither the symbol's own
+# profile nor the market-wide median over the profile store exists (a fresh cache), and only from the open: the
+# median pre-market share is ~0, so a pre-market ratio against it would be meaningless.
+FALLBACK_CURVE = [0.0, 0.0, 0.0, 0.0, 0.0002, 0.0005, 0.0739, 0.1886, 0.2884, 0.3809, 0.4679, 0.5691, 0.8502, 1.0, 1.0,
+                  1.0, 1.0]
+FALLBACK_FROM = "09:30"
+
+
 def profile_mean(prof, symbol):
     """Mean cumulative volume at each MARKS entry over the stored sessions -> list or None (< 20 sessions)."""
     days = (prof.get("days") or {}).get(symbol) or {}
