@@ -1,5 +1,5 @@
 """Pre-commit guard (G4): the FROZEN paths in docs/screener/STATE.md must not appear in the branch's diff against
-origin/main. Exact paths or fnmatch globs, one per "- `path`" line between the FROZEN-BEGIN / FROZEN-END markers.
+its merge base with origin/main. Exact paths or fnmatch globs, one per "- `path`" line between the FROZEN-BEGIN / FROZEN-END markers.
 
     python -m bot.screener.guard            # exit 1 and list the offending paths
 """
@@ -29,9 +29,13 @@ def main():
     pats = frozen()
     if not pats:
         sys.exit("guard: no FROZEN list found in docs/screener/STATE.md")
-    out = subprocess.run(["git", "diff", "--name-only", "origin/main"], cwd=common.ROOT, capture_output=True,
+    # against the merge base: main keeps moving (the squeeze commits its list hourly), and its own new commits are
+    # not this branch's changes
+    base = subprocess.run(["git", "merge-base", "origin/main", "HEAD"], cwd=common.ROOT, capture_output=True,
+                          text=True, check=True).stdout.strip()
+    out = subprocess.run(["git", "diff", "--name-only", base], cwd=common.ROOT, capture_output=True,
                          text=True, check=True).stdout.split()
-    staged = subprocess.run(["git", "diff", "--name-only", "--cached", "origin/main"], cwd=common.ROOT,
+    staged = subprocess.run(["git", "diff", "--name-only", "--cached", base], cwd=common.ROOT,
                             capture_output=True, text=True, check=True).stdout.split()
     bad = offending(sorted(set(out) | set(staged)), pats)
     if bad:

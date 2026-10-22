@@ -198,14 +198,18 @@ def update(bars, symbols, sessions_done, max_calls=None, checked=None):
 
 
 # ---------- long store (monthly bars, anchors) ----------
-def update_long(long, symbols, sessions_all, today):
+def update_long(long, symbols, sessions_all, today, stop=None):
     """Refresh the long store (mutated dict): monthly bars when the month changed (or for symbols missing them),
-    the anchor-window closes when an anchor left its fetched window -> stats."""
+    the anchor-window closes when an anchor left its fetched window -> stats. stop() -> True ends it between
+    requests (the rest follows on the next run: each symbol's month marker says what is done)."""
     stats = {"monthly": 0, "anchors": 0}
     month = today[:7]
     need = [s for s in symbols if (long.get("m", {}).get(s) or {}).get("month") != month]
     end = (dt.date.fromisoformat(today).replace(day=1) - dt.timedelta(1)).isoformat()  # completed months only
     for i in range(0, len(need), CHUNK):
+        if stop and stop():
+            stats["stopped"] = True
+            return stats
         part = need[i:i + CHUNK]
         got = _get_bars(part, HISTORY_START, end, "1Month")
         for s in part:
@@ -218,6 +222,9 @@ def update_long(long, symbols, sessions_all, today):
     for key, n in ANCHORS.items():
         if len(done) <= n:
             continue
+        if stop and stop():
+            stats["stopped"] = True
+            return stats
         anchor = done[-1 - n]
         win = long.setdefault("a", {}).get(key) or {}
         if win.get("from", "~") <= anchor <= win.get("to", ""):

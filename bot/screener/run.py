@@ -282,6 +282,7 @@ def slot_mode(slot, dry=False, now=None):
 
 REFRESH_MINUTES = 20  # the step allows 25: later stores wait for the next night
 REFRESH_HARD_MINUTES = 23  # the watchdog (refresh_mode)
+LONG_MINUTES = 6  # the long store's share of a run (an empty cache needs ~14 minutes: it resumes the next night)
 PROFILE_CALLS, OWNERSHIP_FILINGS, REFERENCE_PER_RUN, HOLDER_FILINGS = 500, 800, 500, 300  # SEC < 2000 a run
 SEC_RUN_MAX = 2000  # the 13D/13G filings take what is left below it (index files counted in the 60 kept back)
 
@@ -341,6 +342,7 @@ def refresh_mode(full=False, now=None):
 
 
 def _refresh(full, now, late, step):
+    import time
     now, ck, cal_all, done, _ = clock_now(now)
     today = dt.date.fromisoformat(ck["day"])
     uni, _ = REF.universe(refresh=True)
@@ -365,10 +367,18 @@ def _refresh(full, now, late, step):
     if not late():  # the ownership stores first: cheap (bulk ZIPs), and the float depends on them
         step("ownership", OWN.update({str(c) for c in ciks}, done, ck["day"], per_run=OWNERSHIP_FILINGS,
                                      late=late)[2])
+    if not late():  # before the long store: it can take a whole run on an empty cache
+        sec_left = SEC_RUN_MAX - 60 - REFERENCE_PER_RUN - stores.COUNTS["sec"]  # the reference reads come after
+        step("holders", HOLD.update({str(c) for c in ciks}, done, ck["day"], priority=small_caps(uni, bars, ck["day"]),
+                                    per_run=max(0, min(HOLDER_FILINGS, sec_left)), late=late)[2])
     if not late():
         long = (stores.load("long") or {}).get("data") or {}
-        stats_long = BARS.update_long(long, syms + ["SPY"], cal_all, ck["day"])
-        stores.save("long", long, "alpaca-sip-1Month+anchors", rows=len(long.get("m", {})))
+        t_long = time.monotonic()
+        try:  # bounded and saved even when stopped: monthly bars resume from each symbol's month marker
+            stats_long = BARS.update_long(long, syms + ["SPY"], cal_all, ck["day"],
+                                          stop=lambda: late() or (time.monotonic() - t_long) / 60 > LONG_MINUTES)
+        finally:
+            stores.save("long", long, "alpaca-sip-1Month+anchors", rows=len(long.get("m", {})))
         step("long", stats_long)
     if not late():
         eight = set()
@@ -385,10 +395,6 @@ def _refresh(full, now, late, step):
         stats_prof = BARS.update_profile(prof, stocks, done, max_calls=PROFILE_CALLS)
         stores.save("profile", prof, "alpaca-sip-1Hour", rows=len(prof.get("days", {})))
         step("profile", stats_prof)
-    if not late():
-        step("holders", HOLD.update({str(c) for c in ciks}, done, ck["day"], priority=small_caps(uni, bars, ck["day"]),
-                                    per_run=max(0, min(HOLDER_FILINGS, SEC_RUN_MAX - 60 - stores.COUNTS["sec"])),
-                                    late=late)[2])
 
 
 def verify_mode(now=None):

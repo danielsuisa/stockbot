@@ -355,35 +355,52 @@ def update(issuers, sessions_done, today, per_run=PER_RUN, bulk=True, late=None,
     return store, meta, stats
 
 
-def holdings(store, cik, day=None, roles="do"):
-    """Σ latest holdings (as of `day`, ISO; None = latest) of the issuer's owners whose role includes one of
-    `roles` -> (shares, owners counted) or (None, 0) without data."""
-    iss = (store or {}).get("issuers", {}).get(str(cik))
-    if not iss:
-        return None, 0
-    total, n = 0.0, 0
-    for rec in iss.values():
-        if not set(rec["role"]) & set(roles):
+def groups(store, cik, day=None, roles="do"):
+    """The issuer's owners as groups -> [(CIKs, role, latest [period, shares] as of `day`)]. Owner keys that share a
+    CIK are one group: the same holder files jointly on some forms and alone on others (ZYME's EcoR1: two CIKs
+    jointly and each alone, OBSERVED), and each filing reports the group's whole holding - so the group counts
+    once, at its most recent filing (ties: the larger)."""
+    iss = (store or {}).get("issuers", {}).get(str(cik)) or {}
+    parent = {}
+
+    def find(x):
+        while parent.setdefault(x, x) != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    for key in iss:
+        ciks = key.split("+")
+        for c in ciks[1:]:
+            parent[find(c)] = find(ciks[0])
+    comp = {}
+    for key, rec in iss.items():
+        comp.setdefault(find(key.split("+")[0]), []).append((key, rec))
+    out = []
+    for members in comp.values():
+        role = "".join(sorted({r for _, rec in members for r in rec["role"]}))
+        if not set(role) & set(roles):
             continue
-        h = [x for x in rec["h"] if day is None or x[0] <= day]
-        if h:
-            total += h[-1][1]
-            n += 1
-    return (total, n) if n else (None, 0)
+        latest = None
+        for _, rec in members:
+            h = [x for x in rec["h"] if day is None or x[0] <= day]
+            if h and (latest is None or (h[-1][0], h[-1][1]) > (latest[0], latest[1])):
+                latest = h[-1]
+        if latest:
+            out.append(({c for key, _ in members for c in key.split("+")}, role, latest))
+    return out
+
+
+def holdings(store, cik, day=None, roles="do"):
+    """Σ latest holdings (as of `day`, ISO; None = latest) of the issuer's owner groups whose role includes one of
+    `roles` -> (shares, groups counted) or (None, 0) without data."""
+    g = groups(store, cik, day, roles)
+    return (sum(x[2][1] for x in g), len(g)) if g else (None, 0)
 
 
 def owner_holdings(store, cik, day=None, roles="dot"):
-    """{owner CIK: latest holding (as of `day`) of the owner key it belongs to} for the issuer's owners with one of
-    `roles` (a joint filing's members share the group's holding)."""
-    out = {}
-    for key, rec in ((store or {}).get("issuers", {}).get(str(cik)) or {}).items():
-        if not set(rec["role"]) & set(roles):
-            continue
-        h = [x for x in rec["h"] if day is None or x[0] <= day]
-        if h:
-            for c in key.split("+"):
-                out[c] = max(out.get(c, 0.0), h[-1][1])
-    return out
+    """{owner CIK: latest holding (as of `day`) of the group it belongs to} for the issuer's owner groups with one
+    of `roles`."""
+    return {c: latest[1] for ciks, _, latest in groups(store, cik, day, roles) for c in ciks}
 
 
 def trades(store, kind, since):

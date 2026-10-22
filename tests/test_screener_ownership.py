@@ -95,6 +95,17 @@ class Store(unittest.TestCase):
         self.assertEqual(OWN.holdings(s, "100", None, "t"), (8e6, 1))
         self.assertEqual(list(s["issuers"]["100"]), ["21+22+23"])
 
+    def test_a_holder_filing_jointly_and_alone_counts_once(self):
+        s = {}  # ZYME's EcoR1 (OBSERVED): two CIKs file jointly on some forms and each alone on others
+        OWN.apply(s, doc("2025-01-16", {"common|I|see note": 15.7e6}, owners=(("1587114", "dt"),)), "2025-01-21")
+        OWN.apply(s, doc("2025-02-17", {"common|I|see note": 15.7e6}, owners=(("1454385", "dt"),)), "2025-02-18")
+        OWN.apply(s, doc("2025-06-26", {"common|I|see note": 23.0e6},
+                         owners=(("1454385", "dt"), ("1587114", "dt"))), "2025-06-27")
+        OWN.apply(s, doc("2026-01-10", {"common|D|": 1e6}, owners=(("7", "o"),)), "2026-01-12")
+        self.assertEqual(OWN.holdings(s, "100", None, "dot"), (24.0e6, 2))
+        self.assertEqual(OWN.holdings(s, "100", "2025-03-01", "dot"), (15.7e6, 1))  # the latest group filing then
+        self.assertEqual(OWN.owner_holdings(s, "100")["1587114"], 23.0e6)
+
     def test_daily_index_skips_filings_the_bulk_quarters_read(self):
         z = quarter([sub("0000001-26-000001", "30-SEP-2026", "28-SEP-2026")],
                     [{"ACCESSION_NUMBER": "0000001-26-000001", "RPTOWNERCIK": "7", "RPTOWNER_RELATIONSHIP": "Officer"}],

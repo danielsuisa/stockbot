@@ -282,6 +282,20 @@ class Budget(unittest.TestCase):
         self.assertEqual(res.stage2, evaluate.stage2_fit(10_000, 14, run.RUN_ALPACA_MAX - run.ALPACA_RESERVE - daily))
         self.assertLess(stores.COUNTS["sec"], 2000)
 
+    def test_long_store_stops_and_resumes(self):
+        calls = []
+
+        def fake(symbols, start, end, timeframe):
+            calls.append(len(symbols))
+            return {}
+        long, syms, n = {}, [f"S{i:04}" for i in range(2000)], [0]
+        with mock.patch.object(BARS, "_get_bars", side_effect=fake):
+            stats = BARS.update_long(long, syms, DAYS, DAYS[-1], stop=lambda: len(calls) >= 1)
+            self.assertTrue(stats["stopped"])
+            self.assertEqual(len(long["m"]), 800)  # one chunk done
+            BARS.update_long(long, syms, DAYS, DAYS[-1])
+        self.assertEqual(calls[1:3], [800, 400])  # the rest only
+
     def test_unusual_volume_liquid_is_not_truncated(self):
         # the 2026-10-22 stage 1 of unusual_volume_liquid had 695 survivors (run 39806269003)
         res, daily, stage2 = self.scheduled(700)
