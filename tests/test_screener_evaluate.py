@@ -102,12 +102,19 @@ class Closed(unittest.TestCase):
         self.assertEqual([x["t"] for x in r.rows], ["A"])
         self.assertEqual([c for c, _ in r.ignored], ["an_recom_buy", "zz_x"])
 
-    def test_etfs_are_left_out_unless_asked(self):
+    def test_etfs_are_left_out_unless_asked(self):  # D-036, confirmed in parity
         b = {"A": series([10.0] * 300), "E": series([10.0] * 300)}
         u = {**uni("A"), "E": {"exch": "arca", "etf": True, "cik": None}}
         self.assertEqual([x["t"] for x in evaluate.run(parser.parse("sh_price_o5"), env(b, u)).rows], ["A"])
-        r = evaluate.run(parser.parse("ind_exchangetradedfund"), env(b, u))
-        self.assertEqual([x["t"] for x in r.rows], ["E"])
+        self.assertEqual([x["t"] for x in evaluate.run(parser.parse("ind_exchangetradedfund"), env(b, u)).rows], ["E"])
+        self.assertEqual([x["t"] for x in evaluate.run(parser.parse("ind_stocksonly"), env(b, u)).rows], ["A"])
+
+    def test_average_volume_leaves_out_the_measured_session(self):  # D-043
+        vols = [1e6] * 299 + [4e6]
+        b = {"A": series([10.0] * 300, vols=vols)}
+        c = evaluate.run(parser.parse("sh_price_o5"), env(b, uni("A"))).rows[0]["ctx"]  # CLOSED on 2026-10-20
+        self.assertEqual(c.get("avg_volume"), 1e6)
+        self.assertEqual(c.get("rel_volume"), 4.0)
 
 
 class Signals(unittest.TestCase):

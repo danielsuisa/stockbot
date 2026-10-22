@@ -147,10 +147,18 @@ def _trades(c):
     return c.B.n[-1] if c.B is not None and len(c.B) else None
 
 
+def _measured_last(c):
+    """Is the last completed bar the session being measured (CLOSED on the evening of a session)?"""
+    return c.env.session == "CLOSED" and c.B is not None and len(c.B) and c.B.last_date() == c.env.day
+
+
 def _avg_volume(c):
-    if c.B is None or len(c.B) < AVG_N:
+    """Mean volume of the AVG_N sessions before the measured one (calibrated in parity, D-043: finviz's 3-month
+    average excludes the session it is compared with)."""
+    if c.B is None:
         return None
-    return sum(c.B.v[-AVG_N:]) / AVG_N
+    v = c.B.v[:-1] if _measured_last(c) else c.B.v
+    return sum(v[-AVG_N:]) / AVG_N if len(v) >= AVG_N else None
 
 
 def _rel_volume(c):
@@ -161,10 +169,8 @@ def _rel_volume(c):
         exp = BARS.expected_volume(BARS.profile_mean(c.env.profile, c.sym) or c.env.generic_profile(c),
                                    c.env.now.strftime("%H:%M"))
         return v / exp if exp else None
-    if c.B is None or len(c.B) < AVG_N + 1:
-        return None
-    base = sum(c.B.v[-AVG_N - 1:-1]) / AVG_N
-    return c.B.v[-1] / base if base else None
+    base = _avg_volume(c)
+    return c.B.v[-1] / base if base and c.B is not None and len(c.B) else None
 
 
 # ---------- technical on S ----------
@@ -392,9 +398,11 @@ METRICS = {
        for n in (20, 50, 200)},
     **{f"cross_sma{a}_sma{b}": (_s(lambda s, c, a=a, b=b: T.sma_cross(s["c"], a, b)), BARS_SRC, X, "INFERRED")
        for a, b in ((20, 50), (20, 200), (50, 20), (50, 200), (200, 20), (200, 50))},
-    **{f"from_high_{w}": (_s(lambda s, c, n=n: T.from_high(s["c"][-1], s["h"], n)), BARS_SRC, X, "OBSERVED")
+    # distance from the high/low of the n sessions before the measured bar (calibrated in parity, D-044: finviz shows
+    # a positive distance for a stock above its prior 52-week high)
+    **{f"from_high_{w}": (_s(lambda s, c, n=n: T.from_high(s["c"][-1], s["h"][:-1], n)), BARS_SRC, X, "OBSERVED")
        for w, n in (("20d", 20), ("50d", 50), ("52w", 252))},
-    **{f"from_low_{w}": (_s(lambda s, c, n=n: T.from_low(s["c"][-1], s["l"], n)), BARS_SRC, X, "OBSERVED")
+    **{f"from_low_{w}": (_s(lambda s, c, n=n: T.from_low(s["c"][-1], s["l"][:-1], n)), BARS_SRC, X, "OBSERVED")
        for w, n in (("20d", 20), ("50d", 50), ("52w", 252))},
     **{f"new_high_{w}": (_s(lambda s, c, n=n: T.new_high(s["h"], n)), BARS_SRC, X, "INFERRED")
        for w, n in (("20d", 20), ("50d", 50), ("52w", 252))},

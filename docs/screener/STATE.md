@@ -3,18 +3,29 @@
 | | |
 |---|---|
 | Branch | `feature/screener-engine` (from `origin/main` `4b5f46d`) |
-| Phase | B — filter catalog |
+| Phase | G — parity (F implementation done) |
 | Gate A | PASSED (audit committed; FROZEN list verified with `git ls-files`: 38 exact paths + 3 globs) |
 | Gate B | PASSED (catalog parses; `tests/test_screener_catalog.py` checks 700+ prompt codes and 35 signals) |
+| Gate C | PASSED (`tests/test_screener_spec.py`: every catalog metric has one metric-spec row with an evidence tag) |
+| Gate D | PASSED (data-sources.md: 137 rows — 60 EXACT, 61 APPROX, 16 UNAVAILABLE_FREE) |
+| Gate E | PASSED (architecture.md; parser suite: 53 code strings) |
+| Gate F | PASSED (1032 tests, all green: 904 baseline + 128 screener; no coverage tooling in the repo, none added) |
 | Baseline | 904 tests, all passing (`PYTHONUTF8=1`, `tzdata` installed locally) |
-| Next action | Phase C: metric spec |
+| Next action | Phase G parity run (signal screens) + manual checklist, then H verification |
 
 ## Commits
 
 | Phase | SHA | Subject |
 |---|---|---|
 | A | c5bfb2d | docs(screener): repo audit |
-| B | (this commit) | feat(screener): filter catalog |
+| B | a5af3bc | feat(screener): filter catalog |
+| C | 6bd16a8 | docs(screener): metric spec |
+| D | 14905e3 | docs(screener): data sources and caching design |
+| E | 812d874 | feat(screener): architecture and parser |
+| F | 03c3230 | feat(screener): stores, metrics and two-stage evaluation |
+| F/H | dd16610 | feat(screener): /screen, /screens, presets, schedule and workflow |
+| F | 2e8eabd | fix(screener): ask a symbol without new trades once per session; bounded refresh |
+| H | 2161cc5 | ci(screener): temporary push trigger on the feature branch (removed before the PR) |
 
 ## Cache locations
 

@@ -241,12 +241,12 @@ def order(rows, metric, desc):
 
 def base_universe(query, env):
     """The symbols a screen starts from: the query's tickers, else the universe without ETFs unless the query asks
-    for ETFs (D-036), only symbols that have daily bars."""
+    for them (D-036, confirmed in parity: finviz's stock lists show only stocks and shell companies), only symbols
+    that have daily bars."""
     if query.tickers:
         return [t for t in query.tickers if t in env.universe or t in env.bars]
-    wants_etf = any(p.metric == "is_etf" for p in query.filters for p in (p, *p.alts))
-    return sorted(s for s, u in env.universe.items()
-                  if s in env.bars and (wants_etf or not u.get("etf")))
+    wants_etf = any(a.metric == "is_etf" and a.pred == ("is", True) for p in query.filters for a in (p, *p.alts))
+    return sorted(s for s, u in env.universe.items() if s in env.bars and (wants_etf or not u.get("etf")))
 
 
 def run(query, env, max_rows=MAX_ROWS):
