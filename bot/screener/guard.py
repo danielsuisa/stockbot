@@ -1,6 +1,6 @@
-"""Pre-commit guard (G4): the FROZEN paths in docs/screener/STATE.md must not appear in the branch's diff against
-its merge base with origin/main. Exact paths or fnmatch globs, one per "- `path`" line between the FROZEN-BEGIN /
-FROZEN-END markers.
+"""Pre-commit guard (G4): the FROZEN paths in docs/screener/STATE.md must not appear among the branch's own changes
+(paths that differ both from the merge base with origin/main and from origin/main's tip). Exact paths or fnmatch
+globs, one per "- `path`" line between the FROZEN-BEGIN / FROZEN-END markers.
 
     python -m bot.screener.guard            # exit 1 and list the offending paths
 """
@@ -30,19 +30,24 @@ def main():
     pats = frozen()
     if not pats:
         sys.exit("guard: no FROZEN list found in docs/screener/STATE.md")
-    # against the merge base: main keeps moving (the squeeze commits its list hourly), and its own new commits are
-    # not this branch's changes
+    # a path is this branch's change when it differs from the merge base with origin/main AND from origin/main's tip:
+    # main keeps moving (the squeeze commits its list hourly), and its own commits - also when merged into the
+    # branch - are not this branch's changes
     base = subprocess.run(["git", "merge-base", "origin/main", "HEAD"], cwd=common.ROOT, capture_output=True,
                           text=True, check=True).stdout.strip()
-    out = subprocess.run(["git", "diff", "--name-only", base], cwd=common.ROOT, capture_output=True,
-                         text=True, check=True).stdout.split()
-    staged = subprocess.run(["git", "diff", "--name-only", "--cached", base], cwd=common.ROOT,
-                            capture_output=True, text=True, check=True).stdout.split()
-    bad = offending(sorted(set(out) | set(staged)), pats)
+
+    def changed(ref):
+        out = set()
+        for extra in ([], ["--cached"]):
+            out |= set(subprocess.run(["git", "diff", "--name-only", *extra, ref], cwd=common.ROOT,
+                                      capture_output=True, text=True, check=True).stdout.split())
+        return out
+    paths = changed(base) & changed("origin/main")
+    bad = offending(sorted(paths), pats)
     if bad:
         print("guard: FROZEN paths changed:\n" + "\n".join(f"  {p}" for p in bad))
         return 1
-    print(f"guard: ok ({len(pats)} frozen patterns, {len(set(out) | set(staged))} changed paths)")
+    print(f"guard: ok ({len(pats)} frozen patterns, {len(paths)} changed paths)")
     return 0
 
 
