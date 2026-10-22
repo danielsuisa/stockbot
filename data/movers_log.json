@@ -220,6 +220,17 @@
    "gain": 0.1293,
    "vol_ratio": 0.4213,
    "si_pct": 0.3904
+  },
+  {
+   "date": "2026-10-22",
+   "session": "pre",
+   "t": "PFSA",
+   "manual": false,
+   "price": 1.575,
+   "ref": 0.849,
+   "gain": 0.8551,
+   "vol_ratio": 0.5257,
+   "si_pct": 0.2653
   }
  ]
 }

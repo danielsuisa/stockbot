@@ -755,7 +755,16 @@
     "pc_oi": 0.1321,
     "iv30": 113.587
    },
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-08",
+    "end": "2026-10-21",
+    "hit": false,
+    "crash": false,
+    "maxup": 0.0147,
+    "dd": -0.2059,
+    "r10": -0.1176
+   }
   },
   {
    "date": "2026-10-09",
