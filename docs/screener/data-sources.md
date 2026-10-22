@@ -12,6 +12,8 @@ All sources are free, need no paid key, and are used within their published limi
 | SIP-H | same | `timeframe=1Hour`, 63 sessions (cumulative volume at each hour mark) | nightly increment, ≤ 500 calls a night | same | Time-of-day volume profile. |
 | SIP-M | same | `timeframe=1Month` since 2016-01 | monthly | same | OBSERVED: history starts 2016-01. |
 | AST | Alpaca trading API, read-only reference | `GET /v2/assets?status=active&asset_class=us_equity` | daily | 1 call | Fields: `shortable`, `easy_to_borrow`, `attributes` (contains `has_options`). No order endpoint is ever called (G5). |
+| CA | Alpaca market data, corporate actions (read-only) | `GET /v1/corporate-actions?types=forward_split,reverse_split`, 1,000 a page, 3 years | nightly | ≈ 3 calls | Split ex-dates and rates: holdings and share counts are scaled to the evaluated day (D-057). |
+| SEC-PF | SEC XBRL frames, dei:EntityPublicFloat | `data.sec.gov/api/xbrl/frames/dei/EntityPublicFloat/USD/CY{year}Q2I.json` (this year and last) + raw and split-adjusted Alpaca closes on each fact's date | nightly (closes only for new facts; split closes monthly) | 2 SEC + ≈ 80 Alpaca on first build | Issuer-reported float fallback (D-053). |
 | CAL | Alpaca trading API, read-only reference | `GET /v2/calendar` | daily | 1 call | Sessions and early closes (D-005). |
 | NEWS | Alpaca news (Benzinga) | `GET /v1beta1/news`, 50 items per page | on demand | same pacer | Only when a screen uses `news_date` / `n_majornews`. |
 | NT | Nasdaq Trader symbol directory | `nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt`, `otherlisted.txt` | daily (files carry "File Creation Time") | 2 calls | Pipe-delimited reference files published for download; test issues dropped. This is not nasdaq.com (G3). |
