@@ -82,6 +82,19 @@ class Discover(unittest.TestCase):
         self.assertEqual(st["pending"], {})
 
 
+class Passive(unittest.TestCase):
+    def test_a_known_institution_is_not_fetched_again(self):
+        from unittest import mock
+        st = {"filers": {"900": [3, 0], "901": [3, 1]}, "quarters": HOLD._quarters("2026-10-22", HOLD.QUARTERS), "days": [],
+              "issuers": {}, "pending": {"101|900": ["edgar/data/101/a-1.txt", "2026-09-10", "SCHEDULE 13G/A"],
+                                         "101|901": ["edgar/data/101/a-2.txt", "2026-09-10", "SCHEDULE 13G/A"]}}
+        with mock.patch.object(HOLD.stores, "load", return_value={"data": st, "meta": {}}),                 mock.patch.object(HOLD.stores, "save", return_value={}),                 mock.patch.object(HOLD.common, "fetch", return_value=g13(filer="901").encode()) as f:
+            store, _, stats = HOLD.update({"101"}, [], "2026-10-22")
+        self.assertEqual([c.args[0] for c in f.call_args_list], ["https://www.sec.gov/Archives/edgar/data/101/a-2.txt"])
+        self.assertEqual((stats["passive_skipped"], stats["parsed"], store["pending"]), (1, 1, {}))
+        self.assertTrue(HOLD.covered(store, "101"))
+
+
 def holder(shares, pct=12.0, ciks=("900",), filed="2026-09-10", passive=False):
     return {"ciks": list(ciks), "shares": shares, "pct": pct, "event": filed, "filed": filed, "acc": "a",
             "form": "SCHEDULE 13G", "passive": passive}

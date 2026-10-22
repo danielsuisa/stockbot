@@ -10,10 +10,11 @@ Discovery: EDGAR's quarterly full index (edgar/full-index/YYYY/QTRn/form.idx, ea
 daily form index for the current quarter. A filing is listed once per party (the subject company and each filer, each
 under its own edgar/data/<cik>/ path - OBSERVED), so the lines are grouped by accession; the pair is (issuer in the universe, the other CIKs). Only the latest filing per
 (issuer, filer) is fetched (one request each), newest first, priority issuers first, at most PER_RUN a run - the
-backlog continues on the next nights and coverage is recorded per issuer.
+backlog continues on the next nights and coverage is recorded per issuer. A filer seen PASSIVE_AFTER times as a
+qualified institution only (Rule 13d-1(b): funds, advisers, banks - kept in the float) is not fetched again.
 
 Store: {"v": 1, "quarters": [...], "days": [...], "pending": {"issuer|filer": [path, filed, form]},
-"pending_issuers": [...], "issuers": {issuer CIK: {filer key: {"ciks": [CIKs of the filer and reporting persons], "shares": the group's
+"pending_issuers": [...], "filers": {filer CIK: [passive filings, other filings]}, "issuers": {issuer CIK: {filer key: {"ciks": [CIKs of the filer and reporting persons], "shares": the group's
 aggregate amount (the largest reporting person's: members of a group report the same shares, or parts of the
 largest), "pct": class percent, "event", "filed", "acc", "form", "passive": a 13G under Rule 13d-1(b) only,
 "types": reporting person types (IA, BD, IN, CO...)}}}}."""
@@ -30,6 +31,7 @@ QUARTERS_PER_RUN = 2  # full-index files read a run (~25-50 MB each)
 BACK_DAYS = 70  # daily indexes of the current quarter
 FORMS = ("SCHEDULE 13D", "SCHEDULE 13D/A", "SCHEDULE 13G", "SCHEDULE 13G/A")
 MIN_PCT = 5.0
+PASSIVE_AFTER = 3  # a filer seen this many times as a Rule 13d-1(b) institution only is not fetched again (≈)
 _XML = re.compile(r"<edgarSubmission[\s>].*?</edgarSubmission>", re.S)
 _NS = re.compile(r"\{[^}]*\}")
 
@@ -150,6 +152,13 @@ def discover(store, lines, issuers):
     return n
 
 
+def passive_filer(store, filer):
+    """A filer seen PASSIVE_AFTER times, always as a qualified institution (Rule 13d-1(b)): its other filings are
+    not fetched (the float keeps such holders anyway)."""
+    p, a = (store.get("filers") or {}).get(filer, (0, 0))
+    return p >= PASSIVE_AFTER and a == 0
+
+
 def acc_of(path):
     return path.rsplit("/", 1)[-1].removesuffix(".txt")
 
@@ -163,6 +172,8 @@ def apply(store, key, doc, path, filed):
     cur = rec.get(filer)
     if cur and (cur["filed"], cur["acc"]) > (filed, acc_of(path)):
         return
+    seen = store.setdefault("filers", {}).setdefault(filer, [0, 0])  # [passive filings, other filings]
+    seen[0 if doc.get("passive") else 1] += 1
     rec[filer] = {"ciks": sorted(set(doc["ciks"]) | {filer}), "shares": doc["shares"], "pct": doc["pct"],
                   "event": doc["event"], "filed": filed, "acc": acc_of(path), "form": doc["form"],
                   "passive": doc.get("passive", False), "types": doc.get("types", [])}
@@ -210,9 +221,20 @@ def update(issuers, sessions_done, today, priority=(), per_run=PER_RUN, late=Non
     prio = set(priority)
     todo = sorted(store["pending"].items(), key=lambda kv: (kv[1][1], kv[0]), reverse=True)  # newest first
     todo.sort(key=lambda kv: kv[0].split("|")[0] not in prio)  # stable: priority issuers first
-    for key, (path, filed, form) in todo[:per_run]:
+    keep = []
+    for kv in todo:
+        if passive_filer(store, kv[0].split("|")[1]):
+            del store["pending"][kv[0]]
+            stats["passive_skipped"] = stats.get("passive_skipped", 0) + 1
+        else:
+            keep.append(kv)
+    for key, (path, filed, form) in keep[:per_run]:
         if late and late():
             break
+        if passive_filer(store, key.split("|")[1]):  # learnt during this run
+            stats["passive_skipped"] = stats.get("passive_skipped", 0) + 1
+            del store["pending"][key]
+            continue
         try:
             body = common.fetch("https://www.sec.gov/Archives/" + path)
             stores.count("sec")
