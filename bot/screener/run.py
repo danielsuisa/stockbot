@@ -51,6 +51,8 @@ def sources(queries):
                 ms.add("insider_own")
         ms |= set(fmt.extra_metrics(q))
     out = {registry.METRICS[m][1] for m in ms if m in registry.METRICS}
+    if "news_date" in ms:  # a window predicate (evaluate.news_window), not a registry metric
+        out.add("news")
     if out & {"ownership", "shortint"}:
         out |= {"fundamentals"}  # float needs shares outstanding
     if "reference" in out or any(m in ms for m in ("earnings_date",)):

@@ -7,7 +7,7 @@ codes, thresholds, metric definitions and screen semantics, on free data (`data-
 text ─▶ parser ─▶ Query{filters:[Predicate], signal, sort, view, ignored}
                      │
 stores (cached) ─▶ evaluate ── stage 1: static + daily filters on the stores (no network)
-                     │        stage 2: today's 5-minute SIP bars for the survivors (≤ 1500) → intraday metrics
+                     │        stage 2: today's 30-minute SIP bars for the survivors (≤ 1500, D-040) → intraday metrics
                      ▼
                signals / sort ─▶ Result{rows, ignored, counts, as_of, truncated} ─▶ format (Hebrew, ≈ marks) ─▶ Telegram
 ```
@@ -24,7 +24,7 @@ stores (cached) ─▶ evaluate ── stage 1: static + daily filters on the st
 | `stores/shortint.py` | Newest usable FINRA short-interest report (reuses `bot/shorts`). |
 | `stores/fundamentals.py` | SEC XBRL frames → per-CIK quarterly/annual facts with tag fallbacks; TTM with Q4 = FY − 9M. |
 | `stores/ownership.py` | Form 3/4/5 holdings per issuer and reporting owner (EDGAR daily index; own small XML reader, D-012). |
-| `metrics/` | Pure calculators. `technical.py` (SMA, RSI, ATR, volatility, high/low, performance, crosses, beta, candlesticks, SSR), `fundamental.py` (TTM, ratios, growth), `volume.py` (average and relative volume). `metrics/__init__.py` holds the registry: metric id → calculator + source + approx flag + evidence. `value(ctx, metric)` returns a `MetricValue(value, as_of, source, approx, evidence)`. |
+| `metrics/` | Pure calculators. `technical.py` (SMA, RSI, ATR, volatility, high/low, performance, crosses, beta, candlesticks, SSR), `fundamental.py` (TTM, ratios, growth), `volume.py` (average and relative volume). `metrics/registry.py` holds the registry: metric id → calculator + source + approx flag + evidence. `value(ctx, metric)` returns a `MetricValue(value, as_of, source, approx, evidence)`. |
 | `sic.py` | Static SIC → finviz-style sector/industry crosswalk. `geo.py`: SEC country/state codes → finviz geo slugs. |
 | `evaluate.py` | Builds one lazy per-symbol `Ctx` over the stores and runs the two stages. Stage 2 is capped at 1500 symbols; beyond that it ranks by the sort key on daily data and reports the truncation. |
 | `signals.py` | The `s=` signals: candidate rule, ranking and cap (Top 200 / Top 100 / Top 40 / all). |
@@ -43,9 +43,9 @@ the Alpaca calendar (weekday fallback, D-005).
 
 | session | daily history ends at | today | price | change | gap / change from open |
 |---|---|---|---|---|---|
-| PRE | previous session | 5-min bars 04:00 → now − 16 min | last pre-market trade ("pre-market") | vs previous close | gap = pre-market price vs previous close ("pre-market"); change from open `None` |
-| RTH | previous session | 5-min bars | last RTH bar close | vs previous close | as defined |
-| POST | previous session | 5-min bars (RTH OHLC + whole-day volume) | RTH close (as finviz); `ah_close` = last POST trade | vs previous close | as defined |
+| PRE | previous session | 30-min bars 04:00 → now − 16 min | last pre-market trade ("pre-market") | vs previous close | gap = pre-market price vs previous close ("pre-market"); change from open `None` |
+| RTH | previous session | 30-min bars | last RTH bar close | vs previous close | as defined |
+| POST | previous session | 30-min bars (RTH OHLC + whole-day volume) | RTH close (as finviz); `ah_close` = last POST trade | vs previous close | as defined |
 | CLOSED | the last session (its completed daily bar) | none | last close | last close vs the close before | from the last bar |
 
 Every message states "as of HH:MM New York (≈ 15-min delayed)" and the Israel time.
@@ -59,7 +59,7 @@ Every message states "as of HH:MM New York (≈ 15-min delayed)" and the Israel 
      a strict screen. So stage 1 applies only the static/daily ones.
    - When the stage-1 survivors exceed 1500, they are ranked by the sort key (or the signal's ranking) on daily data,
      and the cut is reported as "truncated".
-2. **Stage 2** fetches today's 5-minute bars for the survivors (one request per ≤ 800 symbols, paged), appends
+2. **Stage 2** fetches today's 30-minute bars for the survivors (one request per ≤ 800 symbols, paged), appends
    today's partial bar to their daily series, and evaluates every predicate.
 3. In CLOSED, there is no stage 2: everything comes from completed daily bars.
 

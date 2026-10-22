@@ -8,8 +8,8 @@ All sources are free, need no paid key, and are used within their published limi
 | code | source | endpoint | cadence | rate limit (engine) | terms / note |
 |---|---|---|---|---|---|
 | SIP-D | Alpaca market data, free plan, consolidated tape | `GET /v2/stocks/bars?timeframe=1Day&feed=sip&adjustment=split`, ≤ 800 symbols per request, `limit` 10000 points across symbols, paged | daily | 190/min shared pacer (`bot/alpaca._get`), under the plan's 200/min; run budget < 150 calls | SIP only when the query's end is ≥ 15 min old (free plan). OHLC regular-session, volume all day (OBSERVED). Keys from the existing `ALPACA_KEY_ID` / `ALPACA_SECRET_KEY` secrets. |
-| SIP-5 | same | `timeframe=5Min`, 04:00 → now − 16 min, stage-2 survivors only (≤ 1500) | each run | same | Never IEX for volume (IEX is a small slice of the tape). |
-| SIP-30 | same | `timeframe=30Min`, 63 sessions | nightly increment | same | Time-of-day volume profile. |
+| SIP-T | same | `timeframe=30Min`, 04:00 → now − 16 min, stage-2 survivors only (≤ 1500, D-040) | each run | same | Never IEX for volume (IEX is a small slice of the tape). |
+| SIP-H | same | `timeframe=1Hour`, 63 sessions (cumulative volume at each hour mark) | nightly increment, ≤ 500 calls a night | same | Time-of-day volume profile. |
 | SIP-M | same | `timeframe=1Month` since 2016-01 | monthly | same | OBSERVED: history starts 2016-01. |
 | AST | Alpaca trading API, read-only reference | `GET /v2/assets?status=active&asset_class=us_equity` | daily | 1 call | Fields: `shortable`, `easy_to_borrow`, `attributes` (contains `has_options`). No order endpoint is ever called (G5). |
 | CAL | Alpaca trading API, read-only reference | `GET /v2/calendar` | daily | 1 call | Sessions and early closes (D-005). |
@@ -31,15 +31,15 @@ Availability: **EXACT** = the definition is reproduced on full-market data. **AP
 
 | metric | source | availability | cadence | rate / budget | ToS | computation |
 |---|---|---|---|---|---|---|
-| `price` | SIP-D, SIP-5 | EXACT | each run | SIP-5 calls | Alpaca free plan | last RTH (or PRE/POST) bar close |
-| `change` | SIP-D, SIP-5 | EXACT | each run | | | price / prev close − 1 |
-| `change_open` | SIP-5 | EXACT | each run | | | price / RTH open − 1 |
-| `gap` | SIP-D, SIP-5 | EXACT | each run | | | open / prev close − 1 |
-| `volume` | SIP-D, SIP-5 | EXACT | each run | | | Σ volume 04:00 → now |
+| `price` | SIP-D, SIP-T | EXACT | each run | SIP-T calls | Alpaca free plan | last RTH (or PRE/POST) bar close |
+| `change` | SIP-D, SIP-T | EXACT | each run | | | price / prev close − 1 |
+| `change_open` | SIP-T | EXACT | each run | | | price / RTH open − 1 |
+| `gap` | SIP-D, SIP-T | EXACT | each run | | | open / prev close − 1 |
+| `volume` | SIP-D, SIP-T | EXACT | each run | | | Σ volume 04:00 → now |
 | `avg_volume` | SIP-D | EXACT | daily | | | mean 63 sessions |
-| `rel_volume` | SIP-30, SIP-5 | EXACT | each run | | | cumulative-volume profile |
+| `rel_volume` | SIP-H, SIP-T | EXACT | each run | | | cumulative-volume profile |
 | `volume_pct_float` | derived | APPROX | each run | | | volume / float |
-| `trades` | SIP-D, SIP-5 | APPROX | each run | | | Σ bar `n` |
+| `trades` | SIP-D, SIP-T | APPROX | each run | | | Σ bar `n` |
 | `perf` | SIP-D | EXACT | daily | | | family |
 | `perf_w` | SIP-D | EXACT | daily | | | 5 sessions |
 | `perf_m` | SIP-D | EXACT | daily | | | 21 sessions |
@@ -97,11 +97,11 @@ Availability: **EXACT** = the definition is reproduced on full-market data. **AP
 | `new_high_all` | SIP-M, SIP-D | APPROX | daily | | | since 2016-01 |
 | `new_low_all` | SIP-M, SIP-D | APPROX | daily | | | since 2016-01 |
 | `beta` | SIP-M | APPROX | monthly | ~13 calls a month | | 60-month OLS vs SPY |
-| `candlestick` | SIP-D, SIP-5 | APPROX | each run | | | textbook rules |
+| `candlestick` | SIP-D, SIP-T | APPROX | each run | | | textbook rules |
 | `pattern` | none | UNAVAILABLE_FREE | — | — | proprietary | — |
-| `ssr` | SIP-D, SIP-5 | APPROX | each run | | | low ≤ 0.9 × prev close |
-| `ah_close` | SIP-5 | APPROX | each run | | | last POST bar close |
-| `ah_change` | SIP-5 | APPROX | each run | | | ah_close / close − 1 |
+| `ssr` | SIP-D, SIP-T | APPROX | each run | | | low ≤ 0.9 × prev close |
+| `ah_close` | SIP-T | APPROX | each run | | | last POST bar close |
+| `ah_change` | SIP-T | APPROX | each run | | | ah_close / close − 1 |
 | `exchange` | NT | EXACT | daily | 2 calls | reference file | exchange code map |
 | `is_etf` | NT | EXACT | daily | | | ETF = Y |
 | `is_shell` | SEC-S | APPROX | 30 days | | public domain | SIC 6770 |
@@ -180,8 +180,8 @@ older than its max age: bars 1 session, short interest 20 sessions, fundamentals
 | `universe` | Nasdaq Trader ∪, minus test issues; ETF flag; exchange; OCC optionable; Alpaca shortable / has_options; SEC CIK; warrants, units, rights, preferreds and notes dropped by name and suffix rules | daily (first run of the day) | 2 NT + 1 OCC + 1 AST + 1 SEC-T |
 | `bars` | per symbol, the last 320 sessions of split-adjusted daily OHLCV + trade count. Backfilled once; afterwards each daily run appends the newest sessions. A full refetch when an overlap bar moved more than 0.5% (split adjustment) | daily | backfill ≈ 13 chunks × 26 pages ≈ 340 calls once; daily ≈ 13 calls |
 | `long` | per symbol, monthly closes/highs/lows since 2016-01 (beta, all-time high/low) and the 3Y/5Y/10Y anchor closes | monthly / anchor windows monthly | ≈ 150 + 3 × 26 calls a month |
-| `profile` | per symbol, the mean cumulative fraction of the day's volume at each 30-minute mark (04:00–20:00), over 63 sessions | nightly increment | ≈ 20 calls a night |
-| `intraday` | today's 5-minute bars for stage-2 survivors (never cached across runs) | each run | ≤ 1500 symbols ≈ 2–4 chunks × pages |
+| `profile` | per symbol, the cumulative volume at each hour mark (04:00–20:00) for each of the last 63 sessions (mean taken at use) | nightly increment | ≈ 20 calls a night once built; the first backfill is bounded at 500 calls a night |
+| `intraday` | today's 30-minute bars for stage-2 survivors (never cached across runs) | each run | ≤ 1500 symbols ≈ 5 calls |
 | `shortint` | the newest usable FINRA report and the previous 5 | on publication days | 2–3 FINRA pages |
 | `fundamentals` | per CIK: quarterly and annual facts for about 30 concepts (with fallbacks), from frames | weekly full (≈ 300 frame calls); daily for the latest quarter only | ≤ 2000 SEC calls a run |
 | `reference` | per CIK: SIC, country, state, 8-K Item 2.02 times | rolling (400 CIKs a run) + every CIK in today's 8-K index | ≤ 600 SEC calls a run |

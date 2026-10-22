@@ -204,6 +204,25 @@ class Predicates(unittest.TestCase):
             self.assertTrue(p.reason, code)
 
 
+class Implemented(unittest.TestCase):
+    def test_every_available_option_has_a_calculator(self):
+        from bot.screener import parser, run
+        from bot.screener.metrics.registry import METRICS
+        fns = {"earnings_window", "ipo_window", "news_window", "not_in"}
+        for f in catalog.load()["filters"]:
+            for name in f["options"]:
+                p = catalog.resolve(f"{f['prefix']}_{name}")
+                if not p.available:
+                    continue
+                for a in (p, *p.alts):
+                    if a.pred[0] == "fn":
+                        self.assertIn(a.pred[1], fns, a.code)
+                    else:
+                        for m in a.metrics():
+                            self.assertIn(m, METRICS, a.code)
+        self.assertIn("news", run.sources([parser.parse("news_date_today")]))
+
+
 class NoFinviz(unittest.TestCase):
     """G1: the engine and the workflows never reference finviz's domain (docs only)."""
 

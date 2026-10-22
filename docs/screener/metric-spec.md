@@ -16,7 +16,7 @@ Every metric the catalog (`bot/screener/catalog.yaml`) can reference has exactly
 - **Bars.** Alpaca SIP, `adjustment=split` (DECISION D-030: performance and technicals are split-adjusted, not
   dividend-adjusted).
   - A daily bar has regular-session open/high/low/close and whole-day (04:00–20:00) volume, both OBSERVED (D-006).
-  - "Today in progress" is built from 5-minute SIP bars up to now − 16 min: price = last RTH bar close; open = first RTH
+  - "Today in progress" is built from 30-minute SIP bars up to now − 16 min (D-040): price = last RTH bar close; open = first RTH
     bar open; high/low = RTH bars; volume = all bars since 04:00.
   - In PRE, the price is the last pre-market trade, labelled "pre-market".
 - **"Price"** is today's price in PRE/RTH/POST when stage 2 ran for the stock, else the last session close.
@@ -36,8 +36,8 @@ Every metric the catalog (`bot/screener/catalog.yaml`) can reference has exactly
 | `change` | price / previous RTH close − 1 | 1 session | Alpaca SIP | ≥ 15 min | | OBSERVED |
 | `change_open` | price / today's RTH open − 1 (`None` before the open) | today | Alpaca SIP | ≥ 15 min | | OBSERVED |
 | `gap` | today's RTH open / previous RTH close − 1. In PRE: pre-market price / previous close, labelled "pre-market" | today | Alpaca SIP | ≥ 15 min | | OBSERVED |
-| `volume` | Shares traded 04:00–20:00 today (so far), or in the last session | today | Alpaca SIP | ≥ 15 min | | OBSERVED (finviz help); whole-day basis INFERRED |
-| `avg_volume` | Mean daily volume of the last 63 completed sessions | 63 sessions | Alpaca SIP daily | 1 session | | OBSERVED "3-month"; 63 INFERRED (forum report of a finviz reply) |
+| `volume` | Shares traded 04:00–20:00 today (so far), or in the last session | today | Alpaca SIP | ≥ 15 min | | OBSERVED (finviz help); whole-day basis OBSERVED in parity (median deviation 0.0) |
+| `avg_volume` | Mean daily volume of the 63 sessions before the measured one (calibrated, D-043: parity medians 0.8–3.1%) | 63 sessions | Alpaca SIP daily | 1 session | | OBSERVED "3-month"; 63 INFERRED; exclusion OBSERVED in parity |
 | `rel_volume` | In session: volume so far / mean of the same cumulative time-of-day volume over the last 63 sessions (30-minute profile, 04:00 start). After 20:00: full-day volume / `avg_volume` | 63 sessions | Alpaca SIP 30-min + daily | ≥ 15 min | | OBSERVED "intraday adjusted"; profile method INFERRED |
 | `volume_pct_float` | volume / float | today | derived | ≥ 15 min | ≈ | INFERRED |
 | `trades` | SIP trade count of the session (bar `n`) | today | Alpaca SIP | ≥ 15 min | ≈ | ASSUMED (finviz Elite definition unknown) |
@@ -81,12 +81,12 @@ Every metric the catalog (`bot/screener/catalog.yaml`) can reference has exactly
 | `hl50d` | Family, 50 sessions | — | — | — | | OBSERVED |
 | `hl52w` | Family, 252 sessions | — | — | — | | OBSERVED |
 | `hlall` | Family, all history available (since 2016-01) | — | — | — | ≈ | OBSERVED |
-| `from_high_20d` | price / max(high over the last 20 sessions incl. today) − 1 (≤ 0) | 20 | Alpaca SIP daily | 1 session | | OBSERVED "percentual distance from the record high" |
-| `from_low_20d` | price / min(low over the last 20 sessions incl. today) − 1 (≥ 0) | 20 | Alpaca SIP daily | 1 session | | OBSERVED |
+| `from_high_20d` | price / max(high of the 20 sessions before the measured bar) − 1 (calibrated, D-044) | 20 | Alpaca SIP daily | 1 session | | OBSERVED "percentual distance from the record high" |
+| `from_low_20d` | price / min(low of the 20 sessions before the measured bar) − 1 (D-044) | 20 | Alpaca SIP daily | 1 session | | OBSERVED |
 | `from_high_50d` | as above, 50 | 50 | Alpaca SIP daily | 1 session | | OBSERVED |
 | `from_low_50d` | as above, 50 | 50 | Alpaca SIP daily | 1 session | | OBSERVED |
-| `from_high_52w` | as above, 252 | 252 | Alpaca SIP daily | 1 session | | OBSERVED |
-| `from_low_52w` | as above, 252 | 252 | Alpaca SIP daily | 1 session | | OBSERVED |
+| `from_high_52w` | as above, 252 (parity: median deviation 0.0 after D-044) | 252 | Alpaca SIP daily | 1 session | | OBSERVED |
+| `from_low_52w` | as above, 252 (parity: median deviation 0.0) | 252 | Alpaca SIP daily | 1 session | | OBSERVED |
 | `from_high_all` | as above, all bars since 2016-01 (monthly highs before the daily window) | all | Alpaca SIP monthly + daily | 1 session | ≈ | OBSERVED; history limit DECISION |
 | `from_low_all` | as above, lows | all | Alpaca SIP monthly + daily | 1 session | ≈ | OBSERVED; history limit DECISION |
 | `new_high_20d` | today's high ≥ max(high of the previous 19 sessions) | 20 | Alpaca SIP daily | 1 session | | INFERRED |
