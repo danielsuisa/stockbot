@@ -1,0 +1,17 @@
+{
+ "v": 1,
+ "presets": {
+  "unusual_volume_liquid": {
+   "hash": "da39a3ee5e6b4b0d",
+   "tickers": [],
+   "day": "2026-10-22",
+   "at": "2026-10-22T15:35:37Z",
+   "total": 0
+  }
+ },
+ "slots": {
+  "2026-10-22": [
+   "reg2"
+  ]
+ }
+}
