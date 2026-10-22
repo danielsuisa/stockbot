@@ -206,9 +206,9 @@ def update_long(long, symbols, sessions_all, today):
         got = _get_bars(part, HISTORY_START, end, "1Month")
         for s in part:
             items = got.get(s) or []
-            long.setdefault("m", {})[s] = {"month": month, "t": [b["t"][:7] for b in items],
-                                           "h": [b["h"] for b in items], "l": [b["l"] for b in items],
-                                           "c": [b["c"] for b in items]}
+            mi = array.array("i", (int(b["t"][:4]) * 12 + int(b["t"][5:7]) - 1 for b in items))
+            long.setdefault("m", {})[s] = {"month": month, "t": _b64(mi),
+                                           **{k: _b64(array.array("d", (b[k] for b in items))) for k in ("h", "l", "c")}}
         stats["monthly"] += len(part)
     done = [d for d in sessions_all if d <= today]
     for key, n in ANCHORS.items():
@@ -229,6 +229,15 @@ def update_long(long, symbols, sessions_all, today):
         long.setdefault("a", {})[key] = {"from": anchor, "to": to, "closes": closes}
         stats["anchors"] += 1
     return stats
+
+
+def monthly(long, symbol):
+    """One symbol's monthly bars from the long store -> {"t": ["YYYY-MM", ...], "h", "l", "c": arrays} or None."""
+    m = ((long or {}).get("m") or {}).get(symbol)
+    if not m or not m.get("t"):
+        return None
+    t = _arr("i", m["t"])
+    return {"t": [f"{x // 12}-{x % 12 + 1:02}" for x in t], **{k: _arr("d", m[k]) for k in ("h", "l", "c")}}
 
 
 # ---------- profile store (time-of-day volume) ----------
@@ -294,8 +303,11 @@ def expected_volume(mean, hhmm):
 
 
 # ---------- today (stage 2) ----------
-def today(symbols, day, end_hhmm, open_hhmm="09:30", close_hhmm="16:00"):
-    """Live 5-minute SIP bars of New York `day` from 04:00 to end_hhmm (>= 16 minutes ago) for `symbols` ->
+TODAY_TF = "30Min"  # stage 2 (D-040): open, high, low, last and volume so far at a 30-minute grain
+
+
+def today(symbols, day, end_hhmm, open_hhmm="09:30", close_hhmm="16:00", timeframe=TODAY_TF):
+    """Live SIP bars (30-minute) of New York `day` from 04:00 to end_hhmm (>= 16 minutes ago) for `symbols` ->
     {symbol: {"o", "h", "l", "c" (regular session; None before the open), "last" (last trade of any session),
     "v" (volume since 04:00), "n", "pre" (last pre-market price), "post" (last after-hours price), "at"}}."""
     out = {}
@@ -303,7 +315,7 @@ def today(symbols, day, end_hhmm, open_hhmm="09:30", close_hhmm="16:00"):
         return out
     for i in range(0, len(symbols), CHUNK):
         part = symbols[i:i + CHUNK]
-        got = _get_bars(part, alpaca.utc(day, "04:00"), alpaca.utc(day, end_hhmm), "5Min")
+        got = _get_bars(part, alpaca.utc(day, "04:00"), alpaca.utc(day, end_hhmm), timeframe)
         for s in part:
             items = got.get(s) or []
             if not items:

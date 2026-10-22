@@ -198,8 +198,11 @@ def _anchor_perf(key):
     return g
 
 
-def _monthly(c):
-    return ((c.env.long or {}).get("m") or {}).get(c.sym)
+def _monthly(c, sym=None):
+    key = f"_m:{sym or c.sym}"
+    if key not in c._c:
+        c._c[key] = BARS.monthly(c.env.long, sym or c.sym)
+    return c._c[key]
 
 
 def _all_high(c):
@@ -217,7 +220,7 @@ def _all_low(c):
 
 
 def _beta(c):
-    m, spy = _monthly(c), ((c.env.long or {}).get("m") or {}).get("SPY")
+    m, spy = _monthly(c), _monthly(c, "SPY")
     if not m or not spy:
         return None
     sp = dict(zip(spy["t"], spy["c"]))
