@@ -2,16 +2,33 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "da39a3ee5e6b4b0d",
-   "tickers": [],
+   "hash": "99315a1df17373e0",
+   "tickers": [
+    "AVTX",
+    "QGEN",
+    "BHVN",
+    "XLAB",
+    "SAIQ",
+    "BKYI",
+    "ATOM",
+    "RLMD",
+    "TTMI",
+    "HXL",
+    "ENGS",
+    "RCUS",
+    "AHT",
+    "FPS",
+    "MLTX"
+   ],
    "day": "2026-10-22",
-   "at": "2026-10-22T15:35:37Z",
-   "total": 0
+   "at": "2026-10-22T16:41:07Z",
+   "total": 200
   }
  },
  "slots": {
   "2026-10-22": [
-   "reg2"
+   "reg2",
+   "f4-rth"
   ]
  }
 }
