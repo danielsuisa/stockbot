@@ -18,7 +18,7 @@ import sys
 
 from bot import alpaca, common
 from bot.common import code
-from bot.screener import evaluate, format as fmt, parser, presets, signals, stores
+from bot.screener import evaluate, format as fmt, parser, presets, schedule, signals, stores
 from bot.screener.metrics import registry
 from bot.screener.stores import bars as BARS
 from bot.screener.stores import fundamentals as FUND
@@ -247,7 +247,9 @@ def slot_mode(slot, dry=False, now=None):
     if not dry and not presets.claim(state, slot or session, ck["day"]):
         print(f"screener slot {slot}: already served today")
         return 0
-    due = [p for p in presets.all_presets() if presets.due(p, session, now0, state)]
+    t = schedule.SLOTS.get(slot or "")
+    slot_start = dt.datetime.combine(dt.date.fromisoformat(ck["day"]), t, NY) if t else None
+    due = [p for p in presets.all_presets() if presets.due(p, session, now0, state, slot_start)]
     if not due:
         print(f"screener slot {slot}: no preset due")
         if not dry:

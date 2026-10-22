@@ -152,13 +152,19 @@ def claim(state, slot, day):
     return True
 
 
-def due(preset, session, now, state):
-    """Is a scheduled preset due in `session` ("pre"|"rth"|"post") at `now` (aware)? Its last run must be at least
-    `every` minutes ago (5 minutes of slack: slots are hourly)."""
+def due(preset, session, now, state, slot_start=None):
+    """Is a scheduled preset due in `session` ("pre"|"rth"|"post") at `now` (aware)?
+    With `slot_start` (the current slot's scheduled time, aware): due when the last run is older than
+    slot_start - (every - 60) minutes, i.e. an hourly preset runs once per slot however late the previous slot
+    started or finished (slots start up to 60 minutes late and a run stamps `at` after building its stores).
+    Without it (manual runs): the last run must be at least `every` minutes ago, 5 minutes of slack."""
     if not preset.get("enabled") or session not in (preset.get("sessions") or []):
         return False
     last = ((state.get("presets") or {}).get(preset["name"]) or {}).get("at")
     if not last:
         return True
-    age = (now - dt.datetime.fromisoformat(last.replace("Z", "+00:00"))).total_seconds() / 60
-    return age >= (preset.get("every") or 60) - 5
+    last = dt.datetime.fromisoformat(last.replace("Z", "+00:00"))
+    every = preset.get("every") or 60
+    if slot_start is not None:
+        return last < slot_start - dt.timedelta(minutes=max(every - 60, 0))
+    return (now - last).total_seconds() / 60 >= every - 5
