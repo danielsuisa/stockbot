@@ -3,15 +3,18 @@
 | | |
 |---|---|
 | Branch | `feature/screener-engine` (from `origin/main` `4b5f46d`) |
-| Phase | G — parity (F implementation done) |
+| Phase | I — DONE (PR opened, not merged) |
 | Gate A | PASSED (audit committed; FROZEN list verified with `git ls-files`: 38 exact paths + 3 globs) |
 | Gate B | PASSED (catalog parses; `tests/test_screener_catalog.py` checks 700+ prompt codes and 35 signals) |
 | Gate C | PASSED (`tests/test_screener_spec.py`: every catalog metric has one metric-spec row with an evidence tag) |
 | Gate D | PASSED (data-sources.md: 137 rows — 60 EXACT, 61 APPROX, 16 UNAVAILABLE_FREE) |
 | Gate E | PASSED (architecture.md; parser suite: 53 code strings) |
-| Gate F | PASSED (1032 tests, all green: 904 baseline + 128 screener; no coverage tooling in the repo, none added) |
+| Gate F | PASSED (1034 tests, all green: 904 baseline + 130 screener; no coverage tooling in the repo, none added) |
+| Gate G | PASSED (parity-report.md: screens 1–5 PASS/FAIL with causes, 6–12 PENDING_MANUAL; 53/60 finviz loads) |
+| Gate H | PASSED (D5: runs 39707815644 refresh, 39710097398 verify, 39710188677 preset — all green; D6: Telegram messages 492–497 at 2026-10-22 02:10–02:11 UTC + the Actions preset message) |
+| Gate I | PASSED (sweep clean; FINAL_REPORT.md status PARTIALLY COMPLETE) |
 | Baseline | 904 tests, all passing (`PYTHONUTF8=1`, `tzdata` installed locally) |
-| Next action | Phase G parity run (signal screens) + manual checklist, then H verification |
+| Next action | DONE. Owner: fill in parity-manual-checklist.md, review the PR, merge (the listener then serves /screen and starts the schedule) |
 
 ## Commits
 
@@ -26,6 +29,11 @@
 | F/H | dd16610 | feat(screener): /screen, /screens, presets, schedule and workflow |
 | F | 2e8eabd | fix(screener): ask a symbol without new trades once per session; bounded refresh |
 | H | 2161cc5 | ci(screener): temporary push trigger on the feature branch (removed before the PR) |
+| G | 0c9519f | fix(screener): parity calibration (average volume, 52-week distances, ETFs) |
+| G | 20338b7 | docs(screener): parity report and manual checklist |
+| H | fab63c3 | fix(screener): keep a maintenance run under 2000 SEC calls; drop the temporary push trigger |
+| I | 540d8e9 | docs(screener): spec, architecture and sources match the calibrated engine; news for news_date |
+| I | (this commit) | docs(screener): final report |
 
 ## Cache locations
 
@@ -47,7 +55,9 @@ embedded filter definitions). Paced ≥ 20.5 s apart, unauthenticated. Only code
 
 ## Open items
 
-- (none yet)
+- Parity screens 6–12: PENDING_MANUAL (owner, in a browser, outside market hours).
+- Actions cache `screener-stores-39707815644` holds the first full store build; the nightly maintenance run keeps it
+  current after the merge.
 
 ## FROZEN paths (G4)
 
