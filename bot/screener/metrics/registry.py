@@ -15,6 +15,7 @@ from bot.screener.stores import holders as HOLD
 from bot.screener.stores import ownership as OWN
 from bot.screener.stores import publicfloat as PF
 from bot.screener.stores import shortint as SI
+from bot.screener.stores import splits as SPLITS
 
 AVG_N = 63
 INSIDER_TRANS_DAYS = 182
@@ -260,8 +261,15 @@ def _ah_change(c):
 
 
 # ---------- descriptive / ownership ----------
+def _split(c, since):
+    """Shares on `since` x this = shares on the evaluated day (splits in between, D-057)."""
+    return SPLITS.factor(c.env.splits, c.sym, since, c.env.day)
+
+
 def _shares(c):
-    return FUND.shares_at(c.env.fund, c.cik, c.env.day)[0] if c.cik else None
+    """The newest share count usable on the day, scaled by any split since its date (D-057)."""
+    n, d = FUND.shares_at(c.env.fund, c.cik, c.env.day) if c.cik else (None, None)
+    return n * _split(c, d) if n else n
 
 
 def _mcap(c):
@@ -270,7 +278,8 @@ def _mcap(c):
 
 
 def _insiders(c, roles, day=None):
-    return OWN.holdings(c.env.own, c.cik, day, roles)[0] if c.cik else None
+    """Officers' and directors' holdings as of `day`, in today's shares (splits since each filing, D-057)."""
+    return OWN.holdings(c.env.own, c.cik, day, roles, lambda since: _split(c, since))[0] if c.cik else None
 
 
 def _float(c):
@@ -288,8 +297,9 @@ def _float(c):
         c._c["float_method"] = "outstanding_proxy"
         return float(n)
     day = c.env.day
-    held, k = OWN.holdings(c.env.own, c.cik, day, "dot")
-    big, m = HOLD.holders(c.env.holders, c.cik, OWN.owner_holdings(c.env.own, c.cik, day), day)
+    adj = lambda since: _split(c, since)  # noqa: E731  filings before a split report pre-split shares (D-057)
+    held, k = OWN.holdings(c.env.own, c.cik, day, "dot", adj)
+    big, m = HOLD.holders(c.env.holders, c.cik, OWN.owner_holdings(c.env.own, c.cik, day, adjust=adj), day, adjust=adj)
     tries = []
     if k or m:
         tries.append(("insiders+5pct" if HOLD.covered(c.env.holders, c.cik) else "insiders", (held or 0) + big))

@@ -184,6 +184,24 @@ class Float(unittest.TestCase):
         self.assertEqual(PF.nearest_shares(fund, 101, "2025-06-30"), (31e6, "2025-08-01"))
         self.assertEqual(PF.nearest_shares(fund, 101, "2023-06-30"), (None, None))  # nothing within 200 days
 
+    def test_holdings_and_shares_from_before_a_split_are_scaled(self):
+        # BKYI (OBSERVED): a 1:10 reverse split on 2026-04-30; a 10% owner's 595,000 shares reported in 2024-11 and
+        # a director's 10,778 after the split; 1.09M shares outstanding after it
+        own = {"issuers": {"101": {"9": {"role": "t", "h": [["2024-11-27", 595_000.0]]},
+                                   "7": {"role": "do", "h": [["2026-06-30", 10_778.0]]}}}}
+        hold = {"quarters": ["q"] * HOLD.QUARTERS, "pending_issuers": [],
+                "issuers": {"101": {"950": {**holder(1_000_000.0, pct=8.0, ciks=("950",), filed="2025-02-10"),
+                                            "event": "2025-02-01"}}}}
+        b = {"B": series([10.0] * 300)}
+        splits = {"B": [["2026-04-30", 0.1]]}
+        e = env(b, uni("B", cik0=101), fund=shares(101, 1_085_360), own=own, holders=hold, splits=splits)
+        c = evaluate.run(parser.parse("sh_price_o1"), e).rows[0]["ctx"]
+        # 1,085,360 - 59,500 - 10,778 - 100,000 = 915,082 (unscaled: 1,085,360 - 605,778 - 1,000,000 < 0)
+        self.assertEqual((round(c.get("float")), c.get("float_method")), (915_082, "insiders+5pct"))
+        old = env(b, uni("B", cik0=101), fund={"facts": {}, "shares": {"101": [["2026-03-01", "2026-02-20", 10e6]]}},
+                  splits=splits)
+        self.assertEqual(evaluate.run(parser.parse("sh_price_o1"), old).rows[0]["ctx"].get("shares_outstanding"), 1e6)
+
     def test_point_in_time(self):
         hold = {"quarters": ["q"] * HOLD.QUARTERS, "pending_issuers": [],
                 "issuers": {"101": {"950": holder(10e6, filed="2026-10-25")}}}

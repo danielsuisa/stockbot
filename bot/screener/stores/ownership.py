@@ -355,11 +355,12 @@ def update(issuers, sessions_done, today, per_run=PER_RUN, bulk=True, late=None,
     return store, meta, stats
 
 
-def groups(store, cik, day=None, roles="do"):
+def groups(store, cik, day=None, roles="do", adjust=None):
     """The issuer's owners as groups -> [(CIKs, role, latest [period, shares] as of `day`)]. Owner keys that share a
     CIK are one group: the same holder files jointly on some forms and alone on others (ZYME's EcoR1: two CIKs
     jointly and each alone, OBSERVED), and each filing reports the group's whole holding - so the group counts
-    once, at its most recent filing (ties: the larger)."""
+    once, at its most recent filing (ties: the larger). adjust(period) -> the split factor from that period to
+    `day` (shares filed before a split are pre-split shares)."""
     iss = (store or {}).get("issuers", {}).get(str(cik)) or {}
     parent = {}
 
@@ -386,21 +387,23 @@ def groups(store, cik, day=None, roles="do"):
             if h and (latest is None or (h[-1][0], h[-1][1]) > (latest[0], latest[1])):
                 latest = h[-1]
         if latest:
+            if adjust:
+                latest = [latest[0], latest[1] * adjust(latest[0])]
             out.append(({c for key, _ in members for c in key.split("+")}, role, latest))
     return out
 
 
-def holdings(store, cik, day=None, roles="do"):
+def holdings(store, cik, day=None, roles="do", adjust=None):
     """Σ latest holdings (as of `day`, ISO; None = latest) of the issuer's owner groups whose role includes one of
     `roles` -> (shares, groups counted) or (None, 0) without data."""
-    g = groups(store, cik, day, roles)
+    g = groups(store, cik, day, roles, adjust)
     return (sum(x[2][1] for x in g), len(g)) if g else (None, 0)
 
 
-def owner_holdings(store, cik, day=None, roles="dot"):
+def owner_holdings(store, cik, day=None, roles="dot", adjust=None):
     """{owner CIK: latest holding (as of `day`) of the group it belongs to} for the issuer's owner groups with one
     of `roles`."""
-    return {c: latest[1] for ciks, _, latest in groups(store, cik, day, roles) for c in ciks}
+    return {c: latest[1] for ciks, _, latest in groups(store, cik, day, roles, adjust) for c in ciks}
 
 
 def trades(store, kind, since):

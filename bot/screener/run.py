@@ -27,6 +27,7 @@ from bot.screener.stores import ownership as OWN
 from bot.screener.stores import publicfloat as PF
 from bot.screener.stores import reference as REF
 from bot.screener.stores import shortint as SI
+from bot.screener.stores import splits as SPLITS
 
 NY = alpaca.NY
 SLOT_BARS_CALLS = 60  # a scheduled run may spend this much catching up the daily bars (the rest: maintenance)
@@ -122,6 +123,8 @@ def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS
         st = stores.load("profile")
         env.profile = st["data"] if st else {}
     if need & {"fundamentals", "ownership", "shortint"}:
+        st = stores.load("splits")
+        env.splits = st["data"] if st else {}
         st = stores.load("fundamentals")
         env.fund = st["data"] if st else {}
         as_of["fundamentals"] = st and st["meta"]["as_of"][:10]
@@ -358,6 +361,10 @@ def _refresh(full, now, late, step):
     step("shortint")
     FUND.update(today, force=full)
     step("fundamentals")
+    try:
+        step("splits", {"calls": SPLITS.update(ck["day"])[1]})
+    except Exception:
+        common.trace()
     ciks = sorted({u["cik"] for u in uni.values() if u.get("cik")})
     if not late():
         try:

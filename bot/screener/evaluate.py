@@ -42,6 +42,7 @@ class Env:
     own: dict = dataclasses.field(default_factory=dict)
     holders: dict = dataclasses.field(default_factory=dict)  # Schedules 13D/13G (stores/holders.py)
     public_float: dict = dataclasses.field(default_factory=dict)  # dei:EntityPublicFloat (stores/publicfloat.py)
+    splits: dict = dataclasses.field(default_factory=dict)  # {symbol: [[ex date, factor]]} (stores/splits.py)
     today: dict = dataclasses.field(default_factory=dict)
     news: dict = dataclasses.field(default_factory=dict)  # {symbol: [ISO times]}
     news_count: dict = dataclasses.field(default_factory=dict)
