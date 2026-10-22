@@ -71,6 +71,22 @@ class Presets(unittest.TestCase):
         self.assertTrue(presets.claim(st, "reg1", "2026-10-21"))
         self.assertFalse(presets.claim(st, "reg1", "2026-10-21"))
 
+    def test_due_anchored_to_slot_time(self):
+        # 2026-10-22: reg4 (13:30 NY) stamped its run at 13:38 after building stores; reg5 (14:30 NY) started on
+        # time and was skipped as "52 minutes ago". Anchored to the slot's scheduled time it must run.
+        from zoneinfo import ZoneInfo
+        ny = ZoneInfo("America/New_York")
+        p = presets.get("unusual_volume_liquid")
+        state = {"presets": {"unusual_volume_liquid": {"at": "2026-10-22T17:38:14Z"}}}
+        reg5 = dt.datetime(2026, 10, 22, 14, 30, tzinfo=ny)
+        self.assertTrue(presets.due(p, "rth", reg5, state, reg5))
+        late_reg4 = dt.datetime(2026, 10, 22, 13, 30, tzinfo=ny)
+        self.assertFalse(presets.due(p, "rth", reg5, state, late_reg4))  # already ran in that slot
+        daily = {**p, "every": 1440}
+        self.assertFalse(presets.due(daily, "rth", reg5, state, reg5))  # ran today
+        nxt = dt.datetime(2026, 10, 23, 14, 30, tzinfo=ny)
+        self.assertTrue(presets.due(daily, "rth", nxt, state, nxt))  # next day's slot
+
 
 def _result():
     b = {"AAPL": series([100.0] * 299 + [102.0]), "MSFT": series([50.0] * 299 + [49.0])}
