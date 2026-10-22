@@ -4875,6 +4875,171 @@
     "0001940272-26-000027"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-22-GF",
+   "date": "2026-10-22",
+   "ticker": "GF",
+   "cik": 858706,
+   "company": "NEW GERMANY FUND INC",
+   "sic": null,
+   "kind": "big",
+   "quality": 13,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 13,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 10.26,
+    "asof": "2026-10-22 18:55",
+    "source": "live"
+   },
+   "total": 2106930.54,
+   "insiders": 1,
+   "liquidity": 259263.81954713303,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000311",
+    "0001510281-26-000312",
+    "0001510281-26-000315",
+    "0001510281-26-000319",
+    "0001510281-26-000326",
+    "0001510281-26-000332",
+    "0001510281-26-000333",
+    "0001510281-26-000344",
+    "0001510281-26-000350",
+    "0001510281-26-000358",
+    "0001510281-26-000361",
+    "0001510281-26-000367",
+    "0001510281-26-000371"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-22-LEO",
+   "date": "2026-10-22",
+   "ticker": "LEO",
+   "cik": 818972,
+   "company": "BNY MELLON STRATEGIC MUNICIPALS, INC.",
+   "sic": null,
+   "kind": "big",
+   "quality": 13,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 13,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 5.7,
+    "asof": "2026-10-22 20:00",
+    "source": "live"
+   },
+   "total": 1956858.57,
+   "insiders": 2,
+   "liquidity": 1734187.2228188948,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0000070858-26-000496",
+    "0001510281-26-000365",
+    "0001510281-26-000369"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-22-ECF",
+   "date": "2026-10-22",
+   "ticker": "ECF",
+   "cik": 793040,
+   "company": "ELLSWORTH GROWTH & INCOME FUND LTD",
+   "sic": null,
+   "kind": "big",
+   "quality": 13,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 13,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 11.44,
+    "asof": "2026-10-22 20:00",
+    "source": "live"
+   },
+   "total": 1931079.29,
+   "insiders": 1,
+   "liquidity": 645577.8212764047,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001510281-26-000334",
+    "0001510281-26-000341",
+    "0001510281-26-000345",
+    "0001510281-26-000349",
+    "0001510281-26-000357",
+    "0001510281-26-000360",
+    "0001510281-26-000366",
+    "0001510281-26-000370"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-22-DSM",
+   "date": "2026-10-22",
+   "ticker": "DSM",
+   "cik": 855887,
+   "company": "BNY MELLON STRATEGIC MUNICIPAL BOND FUND, INC.",
+   "sic": null,
+   "kind": "big",
+   "quality": 11,
+   "parts": {
+    "breadth": 0,
+    "seniority": 0,
+    "size": 11,
+    "conviction": 0,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 5.33,
+    "asof": "2026-10-22 20:00",
+    "source": "live"
+   },
+   "total": 1356659.41,
+   "insiders": 2,
+   "liquidity": 1432038.095851378,
+   "scores": {
+    "piotroski": null,
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0000070858-26-000495",
+    "0001510281-26-000359",
+    "0001510281-26-000362",
+    "0001510281-26-000368",
+    "0001510281-26-000372"
+   ],
+   "returns": {}
   }
  ]
 }
