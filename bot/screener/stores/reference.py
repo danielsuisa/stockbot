@@ -20,6 +20,7 @@ PLAIN = re.compile(r"^[A-Z]{1,5}(\.[A-Z])?$")  # common symbols; class shares as
 NOT_COMMON = re.compile(r"(?i)\b(warrants?|units?|rights?|preferred|preference|notes? due|debentures?|subordinated|"
                         r"depositary shares?,? each representing|perpetual|cumulative|% )")
 ADS = re.compile(r"(?i)american depositary|depositary (shares|receipts?)$|\bADS\b|\bADR\b")
+OCC_TIMEOUT = 30  # seconds, one try
 REF_PER_RUN = 400  # submissions refreshed per run (rolling, oldest first), plus every company filing an 8-K
 REF_MAX_DAYS = 30
 EARNINGS_KEEP = 12  # Item 2.02 8-Ks kept per company
@@ -98,7 +99,9 @@ def build_universe():
                 listed[s] = {"name": a.get("name") or "", "exch": ALPACA_EXCH[a["exchange"]],
                              "etf": bool(re.search(r"(?i)\bETF\b|\bfund\b", a.get("name") or ""))}
     try:
-        occ = parse_occ((common.fetch(OCC, tries=3, timeout=90) or b"").decode("latin-1"))
+        # one short try: Alpaca's has_options (merged below) covers a failure; OCC's HTTP 522 retries cost a
+        # refresh minutes (main's run 39806511832)
+        occ = parse_occ((common.fetch(OCC, tries=1, timeout=OCC_TIMEOUT) or b"").decode("latin-1"))
         stores.count("occ")
     except Exception as e:
         common.trace()

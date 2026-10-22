@@ -206,6 +206,50 @@ class Listener(unittest.TestCase):
         self.assertGreaterEqual(t.call_count, 1)  # a schedule failure never stops the replies
 
 
+class RefreshDeadline(unittest.TestCase):
+    """A maintenance run that runs out of time keeps what it saved: the workflow is told at the first save
+    (GITHUB_OUTPUT changed=true - a step killed by its timeout never reaches the final output), and a refresh past
+    its deadline stops between steps with the stores written so far on disk (main's run 39806511832 lost them all)."""
+
+    def setUp(self):
+        self.d = tempfile.TemporaryDirectory()
+        self.out = Path(self.d.name) / "github_output"
+        self.out.write_text("", encoding="utf-8")
+        p = mock.patch.dict(os.environ, {"SCREENER_CACHE": str(Path(self.d.name) / "cache"),
+                                         "GITHUB_OUTPUT": str(self.out), "SCREENER_MODE": "refresh"})
+        p.start()
+        self.addCleanup(p.stop)
+        self.addCleanup(self.d.cleanup)
+        saved = mock.patch.object(stores, "SAVED", [False])
+        saved.start()
+        self.addCleanup(saved.stop)
+
+    def test_the_output_line_is_written_at_the_first_save(self):
+        self.assertEqual(self.out.read_text(encoding="utf-8"), "")
+        stores.save("x", {"a": 1}, "test")
+        self.assertEqual(self.out.read_text(encoding="utf-8"), "changed=true\n")  # before the run ends
+        stores.save("y", {"b": 2}, "test")
+        self.assertEqual(self.out.read_text(encoding="utf-8"), "changed=true\n")  # once
+
+    def test_a_refresh_past_its_deadline_stops_with_the_stores_saved(self):
+        now = dt.datetime(2026, 10, 22, 21, 0, tzinfo=NY)
+        ck = {"session": "CLOSED", "day": "2026-10-22"}
+        uni = {"AAA": {"cik": 1, "etf": False}, "BBB": {"cik": 2, "etf": False}}
+        called = []
+        with mock.patch.object(run, "REFRESH_MINUTES", -1), \
+                mock.patch.object(run, "clock_now", return_value=(now, ck, DAYS, DAYS, None)), \
+                mock.patch.object(run.REF, "universe", return_value=(uni, {})), \
+                mock.patch.object(run.SPLITS, "update", return_value=({}, 0)), \
+                mock.patch.object(BARS, "_get_bars", side_effect=lambda *a: called.append(a) or {}), \
+                mock.patch.object(run.SI, "update", side_effect=lambda *a: called.append("shortint")), \
+                mock.patch.object(run.FUND, "update", side_effect=lambda *a, **k: called.append("fundamentals")), \
+                mock.patch.object(run.OWN, "update", side_effect=lambda *a, **k: called.append("ownership")):
+            self.assertEqual(run.refresh_mode(), 0)
+        self.assertEqual(called, [])  # the deadline stopped the bars loop before a request, and every later step
+        self.assertTrue(stores.path("bars").exists())  # what it had is on disk ...
+        self.assertIn("changed=true", self.out.read_text(encoding="utf-8"))  # ... and the cache-save step runs
+
+
 class Schedule(unittest.TestCase):
     def test_a_weekday(self):
         done, got, t = set(), [], dt.datetime(2026, 10, 21, 8, 0, tzinfo=UTC)  # 04:00 New York

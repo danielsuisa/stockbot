@@ -283,7 +283,7 @@ def slot_mode(slot, dry=False, now=None):
     return 0
 
 
-REFRESH_MINUTES = 20  # the step allows 25: later stores wait for the next night
+REFRESH_MINUTES = 18  # the deadline every step and loop checks (the step allows 25): the rest waits a night
 REFRESH_HARD_MINUTES = 23  # the watchdog (refresh_mode)
 LONG_MINUTES = 6  # the long store's share of a run (an empty cache needs ~14 minutes: it resumes the next night)
 PROFILE_CALLS, OWNERSHIP_FILINGS, REFERENCE_PER_RUN, HOLDER_FILINGS = 500, 800, 500, 300  # SEC < 2000 a run
@@ -345,6 +345,9 @@ def refresh_mode(full=False, now=None):
 
 
 def _refresh(full, now, late, step):
+    """The stores in the order the slot runs need them (universe and bars, profile, fundamentals, long, reference,
+    then the ownership stores), each saved as soon as it is done; every step and loop checks the deadline (`late`),
+    so a refresh that stops early keeps what it has (the workflow's cache-save step runs: stores.mark_saved)."""
     import time
     now, ck, cal_all, done, _ = clock_now(now)
     today = dt.date.fromisoformat(ck["day"])
@@ -353,31 +356,36 @@ def _refresh(full, now, late, step):
     step("universe")
     bars, bmeta = BARS.load()
     checked = dict((bmeta or {}).get("checked") or {})
-    stats_bars = BARS.update(bars, syms, done, checked=checked)
-    BARS.save(bars, {"last_session": done[-1] if done else None, "checked": checked})
-    CHANGED[0] = True
+    try:
+        stats_bars = BARS.update(bars, syms, done, checked=checked, stop=late)
+    finally:
+        BARS.save(bars, {"last_session": done[-1] if done else None, "checked": checked})
+        CHANGED[0] = True
     step("bars", stats_bars)
-    SI.update(done, ck["day"])
-    step("shortint")
-    FUND.update(today, force=full)
-    step("fundamentals")
     try:
         step("splits", {"calls": SPLITS.update(ck["day"])[1]})
     except Exception:
         common.trace()
+    if not late():
+        prof = (stores.load("profile") or {}).get("data") or {}
+        stocks = [s for s in syms if not uni[s].get("etf")]
+        try:
+            stats_prof = BARS.update_profile(prof, stocks, done, max_calls=PROFILE_CALLS, stop=late)
+        finally:
+            stores.save("profile", prof, "alpaca-sip-1Hour", rows=len(prof.get("days", {})))
+        step("profile", stats_prof)
+    if not late():
+        SI.update(done, ck["day"])
+        step("shortint")
+    if not late():
+        FUND.update(today, force=full)
+        step("fundamentals")
     ciks = sorted({u["cik"] for u in uni.values() if u.get("cik")})
     if not late():
         try:
             step("publicfloat", PF.update(uni, (stores.load("fundamentals") or {}).get("data") or {}, ck["day"])[1])
         except Exception:
             common.trace()
-    if not late():  # the ownership stores first: cheap (bulk ZIPs), and the float depends on them
-        step("ownership", OWN.update({str(c) for c in ciks}, done, ck["day"], per_run=OWNERSHIP_FILINGS,
-                                     late=late)[2])
-    if not late():  # before the long store: it can take a whole run on an empty cache
-        sec_left = SEC_RUN_MAX - 60 - REFERENCE_PER_RUN - stores.COUNTS["sec"]  # the reference reads come after
-        step("holders", HOLD.update({str(c) for c in ciks}, done, ck["day"], priority=small_caps(uni, bars, ck["day"]),
-                                    per_run=max(0, min(HOLDER_FILINGS, sec_left)), late=late)[2])
     if not late():
         long = (stores.load("long") or {}).get("data") or {}
         t_long = time.monotonic()
@@ -397,11 +405,12 @@ def _refresh(full, now, late, step):
         prio = [c for c in ciks if c in eight][:REFERENCE_PER_RUN]
         step("reference", REF.reference(ciks, ck["day"], per_run=REFERENCE_PER_RUN - len(prio), priority=prio)[2])
     if not late():
-        prof = (stores.load("profile") or {}).get("data") or {}
-        stocks = [s for s in syms if not uni[s].get("etf")]
-        stats_prof = BARS.update_profile(prof, stocks, done, max_calls=PROFILE_CALLS)
-        stores.save("profile", prof, "alpaca-sip-1Hour", rows=len(prof.get("days", {})))
-        step("profile", stats_prof)
+        step("ownership", OWN.update({str(c) for c in ciks}, done, ck["day"], per_run=OWNERSHIP_FILINGS,
+                                     late=late)[2])
+    if not late():
+        sec_left = SEC_RUN_MAX - 60 - stores.COUNTS["sec"]
+        step("holders", HOLD.update({str(c) for c in ciks}, done, ck["day"], priority=small_caps(uni, bars, ck["day"]),
+                                    per_run=max(0, min(HOLDER_FILINGS, sec_left)), late=late)[2])
 
 
 def verify_mode(now=None):
@@ -460,7 +469,7 @@ def main(argv=None):
         else:
             rc = verify_mode()
     finally:
-        output(changed="true" if CHANGED[0] else "false")
+        output(changed="true" if CHANGED[0] or stores.SAVED[0] else "false")
         common.log("screener_budget", mode=mode, counts=dict(stores.COUNTS), alpaca_total=alpaca.REQUESTS[0])
         common.summary(f"Screener `{mode}`: requests {json.dumps(stores.COUNTS)}")
     return rc

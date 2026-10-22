@@ -316,42 +316,55 @@ def update(issuers, sessions_done, today, per_run=PER_RUN, bulk=True, late=None,
     (the universe)."""
     store, st = load_store()
     stats = {"days": 0, "filings": 0, "parsed": 0}
-    if bulk:
-        try:
-            stats["bulk"] = bulk_update(store, issuers, today, links=links, late=late)
-        except Exception:
-            common.trace()
-    q_end = _quarter_end(max(store.get("quarters") or ["0000q1"]))
-    todo = [d for d in sessions_done[-BACK_DAYS:] if d not in store.get("days", []) and d > q_end]
-    budget = per_run
-    acc = store.setdefault("acc", {})
-    for day in sorted(todo, reverse=True):
-        rows = index_rows(day, issuers)
-        if rows is None:
-            continue
-        rows = [r for r in rows if acc_of(r[2]) not in acc]  # read already (bulk or an earlier index day)
-        if len(rows) > budget:  # not enough budget left for the whole day: read it next run
-            break
-        for form, cik, path in rows:
-            budget -= 1
+    meta = None
+    try:  # saved even when stopped (the deadline, or the refresh watchdog's exception)
+        if bulk:
             try:
-                body = common.fetch("https://www.sec.gov/Archives/" + path)
-                stores.count("sec")
+                stats["bulk"] = bulk_update(store, issuers, today, links=links, late=late)
             except Exception:
                 common.trace()
+        q_end = _quarter_end(max(store.get("quarters") or ["0000q1"]))
+        todo = [d for d in sessions_done[-BACK_DAYS:] if d not in store.get("days", []) and d > q_end]
+        budget = per_run
+        acc = store.setdefault("acc", {})
+        for day in sorted(todo, reverse=True):
+            if late and late():
+                break
+            rows = index_rows(day, issuers)
+            if rows is None:
                 continue
-            stats["filings"] += 1
-            doc = parse((body or b"").decode("utf-8", "replace"))
-            if doc:
-                stats["parsed"] += 1
-                apply(store, {**doc, "acc": acc_of(path)}, day)
-        store.setdefault("days", []).append(day)
-        stats["days"] += 1
-    prune(store, today)
-    changed = stats["days"] or (stats.get("bulk") or {}).get("quarters") or st is None or st["data"].get("v") != 2
-    meta = stores.save("ownership", store, "sec-form345", rows=len(store.get("issuers", {})),
-                       days=len(store.get("days", [])), quarters=len(store.get("quarters", []))) \
-        if changed else st["meta"]
+            rows = [r for r in rows if acc_of(r[2]) not in acc]  # read already (bulk or an earlier index day)
+            if len(rows) > budget:  # not enough budget left for the whole day: read it next run
+                break
+            stopped = False
+            for form, cik, path in rows:
+                if late and late():  # the day is not marked read: its filings come again (accessions
+                    stopped = True  # already applied are skipped)
+                    break
+                budget -= 1
+                try:
+                    body = common.fetch("https://www.sec.gov/Archives/" + path)
+                    stores.count("sec")
+                except Exception:
+                    common.trace()
+                    continue
+                stats["filings"] += 1
+                doc = parse((body or b"").decode("utf-8", "replace"))
+                if doc:
+                    stats["parsed"] += 1
+                    apply(store, {**doc, "acc": acc_of(path)}, day)
+            if stopped:
+                stats["stopped"] = True
+                break
+            store.setdefault("days", []).append(day)
+            stats["days"] += 1
+    finally:
+        prune(store, today)
+        changed = stats["days"] or stats["filings"] or (stats.get("bulk") or {}).get("quarters") or st is None \
+            or st["data"].get("v") != 2
+        meta = stores.save("ownership", store, "sec-form345", rows=len(store.get("issuers", {})),
+                           days=len(store.get("days", [])), quarters=len(store.get("quarters", []))) \
+            if changed else st["meta"]
     return store, meta, stats
 
 

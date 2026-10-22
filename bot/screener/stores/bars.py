@@ -156,10 +156,11 @@ def merge(old, rows, keep=KEEP):
     return new.tail(keep), False
 
 
-def update(bars, symbols, sessions_done, max_calls=None, checked=None):
+def update(bars, symbols, sessions_done, max_calls=None, checked=None, stop=None):
     """Bring `bars` (mutated) up to the last completed session for `symbols` -> stats dict. A split re-adjustment
     refetches that symbol's whole window in a second pass. Symbols without any bar are left out of the store.
-    checked (mutated): {symbol: last session asked} so a symbol without new trades is asked once per session."""
+    checked (mutated): {symbol: last session asked} so a symbol without new trades is asked once per session.
+    stop() -> True ends it between requests like the call budget (budget_stop; the rest follows next run)."""
     stats = {"fetched": 0, "split_refetch": 0, "empty": 0, "calls": 0}
     checked = {} if checked is None else checked
     if not sessions_done:
@@ -170,7 +171,7 @@ def update(bars, symbols, sessions_done, max_calls=None, checked=None):
         redo = []
         for start, syms in sorted(groups.items()):
             for i in range(0, len(syms), CHUNK):
-                if max_calls is not None and stores.COUNTS["alpaca"] - before >= max_calls:
+                if (max_calls is not None and stores.COUNTS["alpaca"] - before >= max_calls) or (stop and stop()):
                     stats["calls"] = stores.COUNTS["alpaca"] - before
                     stats["budget_stop"] = True
                     return stats
@@ -265,7 +266,7 @@ def cumulative(items):
     return out
 
 
-def update_profile(prof, symbols, sessions_done, max_calls=None):
+def update_profile(prof, symbols, sessions_done, max_calls=None, stop=None):
     """Add the missing completed sessions (up to PROFILE_DAYS back, newest first) to the profile store (mutated:
     {"days": {symbol: {date: [cumulative at MARKS]}}}) -> number of symbol-days added. max_calls bounds a first
     backfill; the rest follows on the next runs."""
@@ -281,7 +282,7 @@ def update_profile(prof, symbols, sessions_done, max_calls=None):
     before = stores.COUNTS["alpaca"]
     for d, syms in sorted(missing.items(), reverse=True):
         for i in range(0, len(syms), CHUNK):
-            if max_calls is not None and stores.COUNTS["alpaca"] - before >= max_calls:
+            if (max_calls is not None and stores.COUNTS["alpaca"] - before >= max_calls) or (stop and stop()):
                 return added
             part = syms[i:i + CHUNK]
             got = _get_bars(part, alpaca.utc(d, "04:00"), alpaca.utc(d, "20:00"), "1Hour")
