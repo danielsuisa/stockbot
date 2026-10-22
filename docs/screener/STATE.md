@@ -14,7 +14,7 @@
 | F1 | PASS on (a): median 6.4%, P90 17.5% (n = 22; MMYT has no share count); (b) and (c) in parity-report.md |
 | F2 | PASS: 7 sessions, mean Jaccard 0.664, mean recall 0.915 |
 | F3 | Screen 6: 15 → 69; screen 7: 0 → 6 (finviz side PENDING_MANUAL) |
-| F4 | Maintenance 39810920705 green (SEC 1000, watchdog at 23 min, cache saved); RTH slot 39815969748 green (Alpaca 51, SEC 0, stage 2 = all 2,980 survivors, not truncated); maintenance on the final code: see FINAL_REPORT.md |
+| F4 | Maintenance 39810920705 green (SEC 1000, watchdog at 23 min, cache saved); RTH slot 39815969748 green (Alpaca 51, SEC 0, stage 2 = all 2,980 survivors, not truncated); maintenance 39816377737 (14.9 min, SEC 1233, every step) and 39818693372 on the final code (16.0 min, SEC 1593) green |
 | F5 | 1034 → 1065 tests, all green (`PYTHONUTF8=1`, `tzdata`) |
 | Guard | `python -m bot.screener.guard` clean before every commit (now against the merge base, D-056) |
 
@@ -32,7 +32,9 @@
 | 9a80d98 | feat(screener): shares outstanding from us-gaap frames when the dei cover count is missing |
 | 8b45824 | fix(screener): owner groups, a bounded long store, 13D/13G before it; guard diffs the merge base |
 | 9e8cbcb | fix(screener): scale holdings and share counts by the splits since they were filed |
-| (this commit) | docs(screener): F1-F5 evidence, state and final report |
+| 780eeb0 | docs(screener): F1-F5 evidence, state and final report; D-053..D-057 |
+| b2b23b2 | style(screener): wrap long lines |
+| (this commit) | docs(screener): F4 maintenance runs |
 
 ### Open items
 
