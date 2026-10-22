@@ -2,9 +2,10 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "a25560ee47ec2353",
+   "hash": "c492d4f1536b074e",
    "tickers": [
     "AVTX",
+    "POM",
     "QGEN",
     "XLAB",
     "BHVN",
@@ -13,15 +14,14 @@
     "ATOM",
     "TTMI",
     "HXL",
-    "RLMD",
-    "ENGS",
+    "POR",
     "RCUS",
     "FPS",
-    "AHT",
-    "AVEX"
+    "RLMD",
+    "ENGS"
    ],
    "day": "2026-10-22",
-   "at": "2026-10-22T19:30:55Z",
+   "at": "2026-10-22T20:30:31Z",
    "total": 200
   }
  },
@@ -31,7 +31,8 @@
    "reg3",
    "reg4",
    "reg5",
-   "reg6"
+   "reg6",
+   "post1"
   ]
  }
 }
