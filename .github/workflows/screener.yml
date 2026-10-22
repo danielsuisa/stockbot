@@ -4,9 +4,6 @@ on:
   # No GitHub schedule: it starts this repo's runs 3.5-5.5 hours late. The Telegram listener dispatches mode=slot at
   # 07:30 / 09:15 / hourly 10:30-15:30 / 16:30 / 19:30 New York and mode=refresh at 20:30 (bot/screener/schedule.py);
   # /screen and /screens dispatch query / preset / save / delete (bot/screener/commands.py).
-  push:  # TEMPORARY (verification before merge: GitHub dispatches only workflows on the default branch); removed before the PR
-    branches: [feature/screener-engine]
-    paths: [".github/workflows/screener.yml"]
   workflow_dispatch:
     inputs:
       mode:
@@ -56,7 +53,7 @@ jobs:
         timeout-minutes: 25  # a step timeout fails the step, so the alarm below runs
         run: python -m bot.screener.run
         env:
-          SCREENER_MODE: ${{ inputs.mode || (github.event_name == 'push' && 'refresh') || 'verify' }}
+          SCREENER_MODE: ${{ inputs.mode || 'verify' }}
           SCREENER_QUERY: ${{ inputs.query }}
           SCREENER_NAME: ${{ inputs.name }}
           SCREENER_SLOT: ${{ inputs.slot }}

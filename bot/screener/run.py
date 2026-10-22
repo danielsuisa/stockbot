@@ -262,7 +262,7 @@ def slot_mode(slot, dry=False, now=None):
 
 
 REFRESH_MINUTES = 20  # the step allows 25: later stores wait for the next night
-PROFILE_CALLS, OWNERSHIP_FILINGS = 500, 1000
+PROFILE_CALLS, OWNERSHIP_FILINGS, REFERENCE_PER_RUN = 500, 800, 500  # SEC < 2000 a run
 
 
 def refresh_mode(full=False, now=None):
@@ -294,7 +294,8 @@ def refresh_mode(full=False, now=None):
                 eight |= REF.eightk_ciks(d)
             except Exception:
                 common.trace()
-        _, _, stats["reference"] = REF.reference(ciks, ck["day"], priority=[c for c in ciks if c in eight])
+        prio = [c for c in ciks if c in eight][:REFERENCE_PER_RUN]
+        _, _, stats["reference"] = REF.reference(ciks, ck["day"], per_run=REFERENCE_PER_RUN - len(prio), priority=prio)
     if not late():
         prof = (stores.load("profile") or {}).get("data") or {}
         stocks = [s for s in syms if not uni[s].get("etf")]
