@@ -106,7 +106,8 @@ def _day_rows(items):
 
 # ---------- daily store ----------
 def load():
-    """The bars store -> ({symbol: Series}, meta) ({} and None when it was never built)."""
+    """The bars store -> ({symbol: Series}, meta) ({} and None when it was never built). meta["checked"]: the
+    last session each symbol was asked for (update's `checked`)."""
     st = stores.load("bars")
     if not st:
         return {}, None
@@ -117,10 +118,10 @@ def save(bars, meta_extra=None):
     return stores.save("bars", {s: b.pack() for s, b in bars.items()}, "alpaca-sip-1Day-split", **(meta_extra or {}))
 
 
-def plan(bars, symbols, sessions_done):
+def plan(bars, symbols, sessions_done, checked=None):
     """Which fetches bring every symbol up to the last completed session -> {start date ISO: [symbols]}.
-    New symbols (or < 20 bars) start KEEP sessions back; others 3 sessions before their last bar (the overlap
-    that detects a split re-adjustment)."""
+    New symbols start KEEP sessions back; others 3 sessions before their last bar (the overlap that detects a split
+    re-adjustment)."""
     if not sessions_done:
         return {}
     end, groups = sessions_done[-1], {}
@@ -129,9 +130,9 @@ def plan(bars, symbols, sessions_done):
     for s in symbols:
         b = bars.get(s)
         last = b.last_date() if b is not None else None
-        if last is not None and last >= end:
-            continue
-        if b is None or len(b) < 20 or last not in pos:
+        if (last is not None and last >= end) or (checked or {}).get(s, "") >= end:
+            continue  # up to date, or already asked through `end` (no trade since: halted, illiquid)
+        if b is None or not len(b) or last not in pos:
             start = full
         else:
             start = sessions_done[max(0, pos[last] - 3)]
@@ -155,15 +156,17 @@ def merge(old, rows, keep=KEEP):
     return new.tail(keep), False
 
 
-def update(bars, symbols, sessions_done, max_calls=None):
+def update(bars, symbols, sessions_done, max_calls=None, checked=None):
     """Bring `bars` (mutated) up to the last completed session for `symbols` -> stats dict. A split re-adjustment
-    refetches that symbol's whole window in a second pass. Symbols without any bar are left out of the store."""
+    refetches that symbol's whole window in a second pass. Symbols without any bar are left out of the store.
+    checked (mutated): {symbol: last session asked} so a symbol without new trades is asked once per session."""
     stats = {"fetched": 0, "split_refetch": 0, "empty": 0, "calls": 0}
+    checked = {} if checked is None else checked
     if not sessions_done:
         return stats
     end, before = end_param(sessions_done[-1]), stores.COUNTS["alpaca"]
     for pass_ in range(2):
-        groups = plan(bars, symbols, sessions_done)
+        groups = plan(bars, symbols, sessions_done, checked)
         redo = []
         for start, syms in sorted(groups.items()):
             for i in range(0, len(syms), CHUNK):
@@ -174,6 +177,7 @@ def update(bars, symbols, sessions_done, max_calls=None):
                 part = syms[i:i + CHUNK]
                 got = _get_bars(part, start, end, "1Day")
                 for s in part:
+                    checked[s] = sessions_done[-1]
                     rows = _day_rows(got.get(s) or [])
                     if not rows:
                         stats["empty"] += 1
@@ -254,9 +258,10 @@ def cumulative(items):
     return out
 
 
-def update_profile(prof, symbols, sessions_done):
-    """Add the missing completed sessions (up to PROFILE_DAYS back) to the profile store (mutated:
-    {"days": {symbol: {date: [cumulative at MARKS]}}}) -> number of symbol-days added."""
+def update_profile(prof, symbols, sessions_done, max_calls=None):
+    """Add the missing completed sessions (up to PROFILE_DAYS back, newest first) to the profile store (mutated:
+    {"days": {symbol: {date: [cumulative at MARKS]}}}) -> number of symbol-days added. max_calls bounds a first
+    backfill; the rest follows on the next runs."""
     days = sessions_done[-PROFILE_DAYS:]
     added = 0
     by = prof.setdefault("days", {})
@@ -266,8 +271,11 @@ def update_profile(prof, symbols, sessions_done):
         for d in days:
             if d not in have:
                 missing.setdefault(d, []).append(s)
-    for d, syms in sorted(missing.items()):
+    before = stores.COUNTS["alpaca"]
+    for d, syms in sorted(missing.items(), reverse=True):
         for i in range(0, len(syms), CHUNK):
+            if max_calls is not None and stores.COUNTS["alpaca"] - before >= max_calls:
+                return added
             part = syms[i:i + CHUNK]
             got = _get_bars(part, alpaca.utc(d, "04:00"), alpaca.utc(d, "20:00"), "1Hour")
             for s in part:

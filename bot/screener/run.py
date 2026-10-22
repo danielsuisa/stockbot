@@ -92,9 +92,10 @@ def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS
     bars, bmeta = BARS.load()
     notes = []
     if update_bars and done:
-        stats = BARS.update(bars, sorted(uni), done, max_calls=max_bar_calls)
-        if stats["fetched"]:
-            BARS.save(bars, {"last_session": done[-1]})
+        checked = dict((bmeta or {}).get("checked") or {})
+        stats = BARS.update(bars, sorted(uni), done, max_calls=max_bar_calls, checked=checked)
+        if stats["fetched"] or stats["empty"]:
+            bmeta = BARS.save(bars, {"last_session": done[-1], "checked": checked})
             CHANGED[0] = True
         if stats.get("budget_stop"):
             notes.append("stale: bars (catching up)")
@@ -260,36 +261,48 @@ def slot_mode(slot, dry=False, now=None):
     return 0
 
 
+REFRESH_MINUTES = 20  # the step allows 25: later stores wait for the next night
+PROFILE_CALLS, OWNERSHIP_FILINGS = 500, 1000
+
+
 def refresh_mode(full=False, now=None):
-    """Maintenance: every store, within the run budget (backfills continue on the next run)."""
+    """Maintenance: every store, within the run's time and request budget (backfills continue on the next run)."""
+    import time
+    t0 = time.monotonic()
+    late = lambda: (time.monotonic() - t0) / 60 > REFRESH_MINUTES  # noqa: E731
     now, ck, cal_all, done, _ = clock_now(now)
     today = dt.date.fromisoformat(ck["day"])
     uni, _ = REF.universe(refresh=True)
     syms = sorted(uni)
     stats = {}
-    bars, _ = BARS.load()
-    stats["bars"] = BARS.update(bars, syms, done)
-    BARS.save(bars, {"last_session": done[-1] if done else None})
-    long = (stores.load("long") or {}).get("data") or {}
-    stats["long"] = BARS.update_long(long, syms + ["SPY"], cal_all, ck["day"])
-    stores.save("long", long, "alpaca-sip-1Month+anchors", rows=len(long.get("m", {})))
-    prof = (stores.load("profile") or {}).get("data") or {}
-    stocks = [s for s in syms if not uni[s].get("etf")]
-    stats["profile"] = BARS.update_profile(prof, stocks, done)
-    stores.save("profile", prof, "alpaca-sip-1Hour", rows=len(prof.get("days", {})))
+    bars, bmeta = BARS.load()
+    checked = dict((bmeta or {}).get("checked") or {})
+    stats["bars"] = BARS.update(bars, syms, done, checked=checked)
+    BARS.save(bars, {"last_session": done[-1] if done else None, "checked": checked})
+    CHANGED[0] = True
+    SI.update(done, ck["day"])
     FUND.update(today, force=full)
     ciks = sorted({u["cik"] for u in uni.values() if u.get("cik")})
-    eight = set()
-    for d in done[-2:]:
-        try:
-            eight |= REF.eightk_ciks(d)
-        except Exception:
-            common.trace()
-    _, _, n_ref = REF.reference(ciks, ck["day"], priority=[c for c in ciks if c in eight])
-    stats["reference"] = n_ref
-    _, _, stats["ownership"] = OWN.update({str(c) for c in ciks}, done, ck["day"])
-    SI.update(done, ck["day"])
-    CHANGED[0] = True
+    if not late():
+        long = (stores.load("long") or {}).get("data") or {}
+        stats["long"] = BARS.update_long(long, syms + ["SPY"], cal_all, ck["day"])
+        stores.save("long", long, "alpaca-sip-1Month+anchors", rows=len(long.get("m", {})))
+    if not late():
+        eight = set()
+        for d in done[-2:]:
+            try:
+                eight |= REF.eightk_ciks(d)
+            except Exception:
+                common.trace()
+        _, _, stats["reference"] = REF.reference(ciks, ck["day"], priority=[c for c in ciks if c in eight])
+    if not late():
+        prof = (stores.load("profile") or {}).get("data") or {}
+        stocks = [s for s in syms if not uni[s].get("etf")]
+        stats["profile"] = BARS.update_profile(prof, stocks, done, max_calls=PROFILE_CALLS)
+        stores.save("profile", prof, "alpaca-sip-1Hour", rows=len(prof.get("days", {})))
+    if not late():
+        _, _, stats["ownership"] = OWN.update({str(c) for c in ciks}, done, ck["day"], per_run=OWNERSHIP_FILINGS)
+    stats["minutes"] = round((time.monotonic() - t0) / 60, 1)
     common.log("screener_refresh", **{k: v for k, v in stats.items()}, counts=dict(stores.COUNTS))
     return 0
 
