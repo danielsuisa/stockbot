@@ -22,6 +22,7 @@ from bot.screener import evaluate, format as fmt, parser, presets, signals, stor
 from bot.screener.metrics import registry
 from bot.screener.stores import bars as BARS
 from bot.screener.stores import fundamentals as FUND
+from bot.screener.stores import holders as HOLD
 from bot.screener.stores import ownership as OWN
 from bot.screener.stores import reference as REF
 from bot.screener.stores import shortint as SI
@@ -132,6 +133,8 @@ def build_env(queries, now=None, update_bars=True, max_bar_calls=SLOT_BARS_CALLS
     if "ownership" in need:
         st = stores.load("ownership")
         env.own = st["data"] if st else {}
+        st = stores.load("holders")
+        env.holders = st["data"] if st else {}
     if "shortint" in need and done:
         data, meta = SI.update(done, ck["day"])
         env.short = data
@@ -275,7 +278,23 @@ def slot_mode(slot, dry=False, now=None):
 
 
 REFRESH_MINUTES = 20  # the step allows 25: later stores wait for the next night
-PROFILE_CALLS, OWNERSHIP_FILINGS, REFERENCE_PER_RUN = 500, 800, 500  # SEC < 2000 a run
+PROFILE_CALLS, OWNERSHIP_FILINGS, REFERENCE_PER_RUN, HOLDER_FILINGS = 500, 800, 500, 300  # SEC < 2000 a run
+SEC_RUN_MAX = 2000  # the 13D/13G filings take what is left below it (index files counted in the 60 kept back)
+
+
+def small_caps(uni, bars, day, cap=2e9):
+    """Issuer CIKs whose market cap (last close x shares outstanding) is under `cap` - where the float matters most
+    (the 13D/13G backlog reads them first)."""
+    st = stores.load("fundamentals")
+    fund = st["data"] if st else {}
+    out = set()
+    for s, u in uni.items():
+        b = bars.get(s)
+        if u.get("cik") and b is not None and len(b):
+            n = FUND.shares_at(fund, u["cik"], day)[0]
+            if n and n * b.c[-1] < cap:
+                out.add(str(u["cik"]))
+    return out
 
 
 def refresh_mode(full=False, now=None):
@@ -317,6 +336,10 @@ def refresh_mode(full=False, now=None):
     if not late():
         _, _, stats["ownership"] = OWN.update({str(c) for c in ciks}, done, ck["day"], per_run=OWNERSHIP_FILINGS,
                                               late=late)
+    if not late():
+        _, _, stats["holders"] = HOLD.update({str(c) for c in ciks}, done, ck["day"], priority=small_caps(uni, bars, ck["day"]),
+                                             per_run=max(0, min(HOLDER_FILINGS, SEC_RUN_MAX - 60 - stores.COUNTS["sec"])),
+                                             late=late)
     stats["minutes"] = round((time.monotonic() - t0) / 60, 1)
     common.log("screener_refresh", **{k: v for k, v in stats.items()}, counts=dict(stores.COUNTS))
     return 0

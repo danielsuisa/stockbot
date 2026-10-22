@@ -11,6 +11,7 @@ from bot.screener.metrics import fundamental as F
 from bot.screener.metrics import technical as T
 from bot.screener.stores import bars as BARS
 from bot.screener.stores import fundamentals as FUND
+from bot.screener.stores import holders as HOLD
 from bot.screener.stores import ownership as OWN
 from bot.screener.stores import shortint as SI
 
@@ -272,13 +273,31 @@ def _insiders(c, roles, day=None):
 
 
 def _float(c):
+    """Shares outstanding - officers and directors - 10% owners (Forms 3/4/5) - other >= 5% holders (Schedules 13D and
+    13G, qualified institutions under Rule 13d-1(b) kept, a holder that also files Forms 3/4/5 counted once), as of
+    the evaluated day. float_method: "insiders+5pct" (13D/13G coverage complete for the issuer), "insiders" (Forms
+    3/4/5, plus any 13D/13G holders read so far), "outstanding_proxy" (no holdings data). Never <= 0: the next
+    method is used and float_flag says why. Rule 144 restricted shares are not subtracted (no free source)."""
     n = c.get("shares_outstanding")
     if not n:
         return None
-    held = _insiders(c, "dot")
-    if held and 0 < held < n:
-        c._c["float_method"] = "insiders"
-        return n - held
+    if not c.cik:
+        c._c["float_method"] = "outstanding_proxy"
+        return float(n)
+    day = c.env.day
+    held, k = OWN.holdings(c.env.own, c.cik, day, "dot")
+    owners = {x for key in ((c.env.own or {}).get("issuers") or {}).get(str(c.cik), {}) for x in key.split("+")}
+    big, m = HOLD.holders(c.env.holders, c.cik, owners, day)
+    tries = []
+    if k or m:
+        tries.append(("insiders+5pct" if HOLD.covered(c.env.holders, c.cik) else "insiders", (held or 0) + big))
+    if k and m:
+        tries.append(("insiders", held))
+    for method, sub in tries:
+        if n - sub > 0:
+            c._c["float_method"] = method
+            return n - sub
+        c._c["float_flag"] = "holdings >= shares outstanding"
     c._c["float_method"] = "outstanding_proxy"
     return float(n)
 

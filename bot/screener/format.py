@@ -96,7 +96,8 @@ def cell(ctx, metric):
         return f"{LABELS.get(metric, (metric,))[0]} חסר"
     label, fmt = LABELS.get(metric, (metric, lambda v: code(v)))
     approx = "≈" if mv.approx or (metric in ("float", "short_float", "volume_pct_float")
-                                   and ctx.get("float_method") == "outstanding_proxy")         or (metric == "rel_volume" and ctx.get("rel_volume_basis") == "static") else ""
+                                   and ctx.get("float_method") == "outstanding_proxy") \
+        or (metric == "rel_volume" and ctx.get("rel_volume_basis") == "static") else ""
     return f"{label} {approx}{fmt(mv.value)}"
 
 
@@ -141,6 +142,25 @@ def notes_lines(res):
     return out
 
 
+FLOAT_METHOD = {"insiders+5pct": "בניכוי בעלי עניין ומחזיקי 5% ומעלה", "insiders": "בניכוי בעלי עניין בלבד",
+                "outstanding_proxy": "כל המניות (אין נתוני אחזקות)"}
+
+
+def float_lines(rows, extras):
+    """The float footnote when a shown metric uses it: how many rows each float method covers (SEC Forms 3/4/5 and
+    Schedules 13D/13G; Rule 144 restricted shares are not subtracted)."""
+    if not set(extras) & {"float", "float_pct", "short_float", "volume_pct_float"}:
+        return []
+    n = {}
+    for r in rows:
+        if r["ctx"].get("float") is not None:
+            m = r["ctx"].get("float_method")
+            n[m] = n.get(m, 0) + 1
+    if not n:
+        return []
+    return ["מניות צפות: " + ", ".join(f"{FLOAT_METHOD.get(m, m)} ({code(k)})" for m, k in n.items()) + "."]
+
+
 def screen_text(title, query, res, now, max_rows=15):
     """The full result message."""
     extras = extra_metrics(query)
@@ -152,6 +172,7 @@ def screen_text(title, query, res, now, max_rows=15):
     else:
         lines.append("🤷 אף מניה לא עומדת כרגע בכל התנאים.")
     tail = ignored_lines(res.ignored) + notes_lines(res)
+    tail += float_lines(res.rows[:max_rows], extras)
     if any(c.value(m).approx for r in res.rows[:max_rows] for c in [r["ctx"]] for m in extras):
         tail.append("≈ ערך מקורב: ראו את ההגדרות במסמך המדדים.")
     return "\n".join(lines + ([""] + tail if tail else []))

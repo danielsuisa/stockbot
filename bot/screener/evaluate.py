@@ -40,6 +40,7 @@ class Env:
     reference: dict = dataclasses.field(default_factory=dict)
     short: dict = dataclasses.field(default_factory=dict)
     own: dict = dataclasses.field(default_factory=dict)
+    holders: dict = dataclasses.field(default_factory=dict)  # Schedules 13D/13G (stores/holders.py)
     today: dict = dataclasses.field(default_factory=dict)
     news: dict = dataclasses.field(default_factory=dict)  # {symbol: [ISO times]}
     news_count: dict = dataclasses.field(default_factory=dict)
