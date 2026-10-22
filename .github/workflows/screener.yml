@@ -1,0 +1,97 @@
+name: Screener
+
+on:
+  # No GitHub schedule: it starts this repo's runs 3.5-5.5 hours late. The Telegram listener dispatches mode=slot at
+  # 07:30 / 09:15 / hourly 10:30-15:30 / 16:30 / 19:30 New York and mode=refresh at 20:30 (bot/screener/schedule.py);
+  # /screen and /screens dispatch query / preset / save / delete (bot/screener/commands.py).
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "verify = dry run of the default presets (counts only); slot = a scheduled run; refresh = stores"
+        type: choice
+        options: [verify, slot, query, preset, save, delete, refresh]
+        default: verify
+      query:
+        description: "query / save: the /screen text"
+        required: false
+        default: ""
+      name:
+        description: "preset / delete: the preset name"
+        required: false
+        default: ""
+      slot:
+        description: "slot: the schedule slot (pre1, reg1, post2, ...)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write  # commit data/screener_presets.json and data/screener_state.json
+
+concurrency:
+  group: screener
+  cancel-in-progress: false
+
+jobs:
+  screener:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}  # branch tip: the presets and state committed by the last run
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Restore the screener stores
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/screener
+          key: screener-stores-${{ github.run_id }}
+          restore-keys: screener-stores-
+      - name: Screener
+        id: run
+        timeout-minutes: 25  # a step timeout fails the step, so the alarm below runs
+        run: python -m bot.screener.run
+        env:
+          SCREENER_MODE: ${{ inputs.mode || 'verify' }}
+          SCREENER_QUERY: ${{ inputs.query }}
+          SCREENER_NAME: ${{ inputs.name }}
+          SCREENER_SLOT: ${{ inputs.slot }}
+          SEC_UA: ${{ secrets.SEC_UA }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      - name: Save the screener stores
+        if: always() && steps.run.outputs.changed == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/screener
+          key: screener-stores-${{ github.run_id }}
+      - name: Commit the presets and state
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for f in data/screener_presets.json data/screener_state.json; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
+          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          git commit -m "Update screener state"
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            sleep $((i * 5))
+            git pull --rebase || git rebase --abort || true
+          done
+          exit 1
+      - name: Report a failure the run could not report itself
+        if: failure() || cancelled()
+        run: |
+          text="$(printf '❌ הסורק נכשל ב־GitHub Actions: %s\n\n%s' "$RUN_URL" "$DISCLAIMER")"
+          curl -fsS --retry 3 -o /dev/null "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" --data-urlencode "text=${text}"
+        env:
+          DISCLAIMER: "⚠️ מידע לצורכי מחקר בלבד ואינו ייעוץ השקעות."
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

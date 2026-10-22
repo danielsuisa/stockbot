@@ -14,6 +14,7 @@ from pathlib import Path
 from bot import (check, clock, common, equity, fundamentals, health, intraday, journal, market, scan, shadow, squeeze_live,
                  ticket_command)
 from bot.common import code
+from bot.screener import commands as screener, schedule as screener_clock
 
 MAX = 3  # reports per message
 # "$xyz" or a 1-5 letter Latin word, optional class suffix (BRK.B / BRK-B); Hebrew prefixes ("ו-MSFT") are fine
@@ -30,6 +31,10 @@ COMMANDS = (("check", "דוח על מניה, למשל /check AAPL"), ("scan", "�
             ("ticket", "כרטיס מסחר למניה: כניסה, סטופ, יעד וגודל, למשל /ticket AAPL"),
             ("intraday", "סורק נרות יומי: /intraday, /intraday now, /intraday AAPL, /intraday stats"),
             ("equity", "ההון לחישוב גודל הכרטיסים, למשל /equity 25000"), ("help", "רשימת הפקודות"))
+# The screener's menu entries, shown before /help in Telegram's "/" menu (COMMANDS itself stays as tests pin it)
+SCREENER_COMMANDS = (("screen", "סורק בסגנון finviz, למשל /screen cap_small,sh_float_u50"),
+                     ("screens", "הסריקות השמורות של הסורק"))
+MENU = COMMANDS[:-1] + SCREENER_COMMANDS + COMMANDS[-1:]
 # A persistent reply keyboard: each button sends its own text, so handle() treats it as the typed command
 KEYBOARD = {"keyboard": [[{"text": "/intraday now"}, {"text": "/intraday"}],
                          [{"text": "/intraday stats"}, {"text": "/help"}]],
@@ -65,6 +70,11 @@ HELP = "\n".join((
     f"• תוצאות היום: {code('/intraday stats')}",
     "",
     f"💼 ההון לחישוב גודל הכרטיסים (נשמר רק בטלגרם, בהודעה נעוצה): {code('/equity 25000')}; בלי סכום: ההגדרה הנוכחית",
+    "",
+    "🔎 סורק בסגנון finviz על נתונים חינמיים (באיחור של כ־15 דקות; ≈ = ערך מקורב):",
+    f"• סריקה: {code('/screen cap_small,sh_float_u50 o=-change')}",
+    f"• סריקה שמורה: {code('/screen unusual_volume_liquid')} · כל הסריקות השמורות: {code('/screens')}",
+    f"• שמירה ומחיקה: {code('/screen save NAME CODES sessions=rth every=60m')}, {code('/screen del NAME')}",
     "",
     f"🩺 בדיקה שהכול עובד: {code('/health')}"))
 
@@ -167,8 +177,12 @@ def handle(text):
         return equity_cmd(rest)
     if cmd == "intraday":
         return intraday_cmd(rest)
+    if cmd == "screen":
+        return screener.screen(rest)
+    if cmd == "screens":
+        return screener.screens(rest)
     common.send(HELP, buttons=KEYBOARD)  # /help, /start and any unknown command
-    common.tg("setMyCommands", commands=[{"command": c, "description": d} for c, d in COMMANDS])  # Telegram's "/" menu
+    common.tg("setMyCommands", commands=[{"command": c, "description": d} for c, d in MENU])  # Telegram's "/" menu
     return 0
 
 
@@ -452,6 +466,10 @@ def serve(seconds=None, stop_file=None, offset=None):
             break
         try:  # the timed runs (bot/clock.py); a clock problem must never stop the replies
             clock.tick(done)
+        except Exception:
+            common.trace()
+        try:  # the screener's timed runs (bot/screener/schedule.py), guarded the same way
+            screener_clock.tick(done)
         except Exception:
             common.trace()
         try:
