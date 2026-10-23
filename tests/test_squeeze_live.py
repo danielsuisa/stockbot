@@ -457,54 +457,18 @@ class Sessions(unittest.TestCase):
 
 
 class Command(unittest.TestCase):
-    def test_squeeze_last_list_stats_and_ticker(self):
+    def test_squeeze_command_removed(self):
+        """/squeeze was removed from the bot on 2026-10-23 at the owner's request; the scheduled lists still run."""
         from bot import listen
-        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"SQUEEZE_DIR": d}), \
-                mock.patch.object(listen.common, "send") as send, \
-                mock.patch.object(listen.common, "tickers", return_value={"GME": (1, "GameStop")}), \
-                mock.patch.object(listen.squeeze_live, "ticker_report", return_value="REPORT") as rep:
-            listen.handle("/squeeze")
-            empty = send.call_args[0][0]
-            self.assertIn("עוד אין רשימת סקוויז", empty)
-            self.assertIn("<code>/squeeze now</code>", empty)  # the way to get one right away, at any hour
-            self.assertNotIn("לפני הפתיחה", empty)  # the list is built after the close since the extended-hours runs
-            msgrules.check(self, empty)
-            self.assertEqual(send.call_args.kwargs["source"], squeeze_live.SOURCE)
-            squeeze_live.save(squeeze_live.LAST, {"date": TODAY, "text": "LIST", "rows": []})
-            listen.handle("/squeeze")
-            self.assertEqual(send.call_args[0][0], "LIST")
-            listen.handle("/squeeze stats")
-            self.assertIn("תוצאות רשימת הסקוויז", send.call_args[0][0])
-            msgrules.check(self, send.call_args[0][0])
-            self.assertEqual(send.call_args.kwargs["source"], squeeze_live.SOURCE)
-            listen.handle("/squeeze gme")
-            rep.assert_called_once_with("GME")
-            self.assertEqual(send.call_args, mock.call("REPORT", signal=True, source=squeeze_live.SOURCE))
-            listen.handle("/squeeze zzzz")
-            self.assertIn("לא מצאתי", send.call_args[0][0])
-        self.assertIn("/squeeze", listen.HELP)
-        self.assertIn("squeeze", [c for c, _ in listen.COMMANDS])
+        with mock.patch.object(listen.common, "send") as send, mock.patch.object(listen.common, "tg"), \
+                mock.patch.object(listen.common, "dispatch") as disp:
+            for cmd in ("/squeeze", "/squeeze now", "/squeeze stats", "/squeeze gme"):
+                self.assertEqual(listen.handle(cmd), 0)
+                self.assertEqual(send.call_args[0][0], listen.HELP)
+        disp.assert_not_called()
+        self.assertNotIn("/squeeze", listen.HELP)
+        self.assertNotIn("squeeze", [c for c, _ in listen.MENU])
 
-
-    def test_squeeze_now_starts_the_workflow(self):
-        from bot import listen
-        env = {"GITHUB_REPOSITORY": "o/r", "GITHUB_TOKEN": "t"}
-        with mock.patch.dict(os.environ, env), mock.patch.object(listen.common, "send") as send, \
-                mock.patch.object(listen.common, "dispatch", return_value="") as disp:
-            listen.handle("/squeeze now")
-        disp.assert_called_once_with("squeeze.yml", {"mode": "manual"})
-        self.assertIn("מתעדכנת", send.call_args[0][0])
-        self.assertEqual(send.call_args.kwargs["source"], squeeze_live.SOURCE)
-        with mock.patch.dict(os.environ, env), mock.patch.object(listen.common, "send") as send, \
-                mock.patch.object(listen.common, "dispatch", return_value="HTTP 403"), mock.patch("builtins.print"):
-            self.assertEqual(listen.handle("/squeeze now"), 1)
-        self.assertIn("HTTP 403", send.call_args[0][0])
-        with mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "", "GITHUB_TOKEN": ""}), \
-                mock.patch.object(listen.common, "send"), \
-                mock.patch.object(listen.squeeze_live, "main", return_value=0) as run:
-            listen.handle("/squeeze now")
-        run.assert_called_once_with(["--manual"])
-        self.assertIn("/squeeze now", listen.HELP)
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,4 @@
-"""Telegram listener: /help /check /scan /status /stats /journal /verify /health /ticket /equity and free-text tickers -> Hebrew
+"""Telegram listener: /help /journal /health /ticket /intraday /equity /screen and free-text tickers -> Hebrew
 replies. `--serve` (Actions): one long-poll consumer for ~5h20m, then the workflow starts the next one; without it,
 one pass over the waiting messages."""
 import datetime as dt
@@ -11,7 +11,7 @@ import time
 import urllib.error
 from pathlib import Path
 
-from bot import (check, clock, common, equity, fundamentals, health, intraday, journal, market, scan, shadow, squeeze_live,
+from bot import (check, clock, common, equity, fundamentals, health, intraday, journal, market, scan,
                  ticket_command)
 from bot.common import code
 from bot.screener import commands as screener, schedule as screener_clock
@@ -22,12 +22,7 @@ TOKEN = re.compile(r"(?<![A-Za-z0-9$])(\$?)([A-Za-z]{1,5}(?:[.\-][A-Za-z])?)(?![
 # Everyday words that are also tickers: skipped in running text; "$IT" or a message of just "IT" still works
 STOP = set("A AI AM AN AND ARE AT BE BUY BY CAN CEO DO FOR GO HAS HI I IF IN IPO IS IT ME MY NEW NO NOW OF OK ON OR "
            "OUT SEC SO THE TO UP US VS WE YES YOU".split())
-COMMANDS = (("check", "דוח על מניה, למשל /check AAPL"), ("scan", "סריקת רכישות בעלי עניין עכשיו"),
-            ("status", "מצב הסריקה היומית"), ("stats", "איך ההתראות הצליחו מול SPY"),
-            ("journal", "ההתראות האחרונות, למשל /journal 5"), ("verify", "בדיקה מחדש מול SEC, למשל /verify AAPL"),
-            ("health", "בדיקה שהכול עובד"),
-            ("squeeze", "סקוויז: /squeeze, /squeeze now, /squeeze GME, /squeeze stats"),
-            ("shadow", "מעקב הצל: מה השיטה עושה היום, מה־pre market"),
+COMMANDS = (("journal", "ההתראות האחרונות, למשל /journal 5"), ("health", "בדיקה שהכול עובד"),
             ("ticket", "כרטיס מסחר למניה: כניסה, סטופ, יעד וגודל, למשל /ticket AAPL"),
             ("intraday", "סורק נרות יומי: /intraday, /intraday now, /intraday AAPL, /intraday stats"),
             ("equity", "ההון לחישוב גודל הכרטיסים, למשל /equity 25000"), ("help", "רשימת הפקודות"))
@@ -44,22 +39,9 @@ HINT = (f"שלחו טיקר באותיות גדולות, למשל {code('AAPL')}
 HELP = "\n".join((
     "👋 <b>מה אפשר לבקש ממני</b>",
     "",
-    f"📊 דוח על מניה: {code('/check AAPL')}, או פשוט {code('AAPL')} או {code('$aapl')} (עד {code(MAX)} בהודעה).",
+    f"📊 דוח על מניה: שלחו {code('AAPL')} או {code('$aapl')} (עד {code(MAX)} בהודעה).",
     "",
-    "🔔 התראות על רכישות של בעלי עניין (נשלחות לבד כל בוקר אחרי יום מסחר):",
-    f"• לסרוק עכשיו: {code('/scan')}",
-    f"• מצב הסריקה: {code('/status')}",
-    f"• איך ההתראות הצליחו מול {code('SPY')}: {code('/stats')}",
-    f"• ההתראות האחרונות: {code('/journal 5')}",
-    f"• בדיקה מחדש מול SEC: {code('/verify AAPL')}",
-    "",
-    "🚀 רשימת סקוויז (נשלחת לבד בימי מסחר):",
-    f"• הרשימה האחרונה: {code('/squeeze')}",
-    f"• להריץ עכשיו: {code('/squeeze now')}",
-    f"• לבדוק מניה: {code('/squeeze GME')}",
-    f"• התוצאות עד היום: {code('/squeeze stats')}",
-    "",
-    f"👻 מעקב הצל של שיטת הכניסה (נשלח לבד כל בוקר אחרי יום מסחר). מה היא עושה היום, מה־pre market: {code('/shadow')}",
+    f"🔔 התראות על רכישות של בעלי עניין (נשלחות לבד כל בוקר אחרי יום מסחר). ההתראות האחרונות: {code('/journal 5')}",
     "",
     f"🎫 כרטיס מסחר למניה (כניסה, סטופ לוס, יעד, טריילינג, גודל ועלות; ללא יתרון מוכח): {code('/ticket AAPL')}",
     "",
@@ -115,62 +97,20 @@ def reports(text, loose=False):
     return failed
 
 
-def run_scan():
-    """/scan. On Actions the daily-scan workflow is dispatched: it is the only writer of data/state.json, so an
-    alert still goes out once. Locally the scan runs in this process. Either way the owner hears back."""
-    if common.env("GITHUB_REPOSITORY") and common.env("GITHUB_TOKEN"):
-        err = common.dispatch("daily-scan.yml", {"notify": "true"})
-        if err:  # a GitHub permission problem must not be reported as "SEC is down"
-            print(f"workflow dispatch failed: {err}")
-            common.send(f"⚠️ לא הצלחתי להפעיל את הסריקה ב־GitHub ({code(err)}). בדקו שבקובץ"
-                        f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.")
-            return 1
-        common.send("⏳ הסריקה התחילה. התוצאה תגיע בעוד כמה דקות.")
-    else:
-        common.send("⏳ הסריקה התחילה. זה עשוי לקחת כמה דקות.")
-        scan.main(["--notify"])
-    return 0
-
-
 def handle(text):
     """One message from the owner's chat -> Hebrew replies; returns how many reports failed."""
     word, rest = (text.split(maxsplit=1) + ["", ""])[:2]  # any whitespace: "/check\nAAPL" works too
     if not word.startswith("/"):
         return reports(text)  # plain text: $XYZ / ALL-CAPS tickers only
     cmd = word[1:].split("@")[0].lower()  # "/check@MyBot" in groups
-    if cmd == "check":
-        if rest:
-            return reports(rest, loose=True)
-        common.send(f"כתבו טיקר אחרי הפקודה, למשל {code('/check AAPL')} או {code('/check msft tsla')}.")
-        return 0
-    if cmd == "scan":
-        return run_scan()
-    if cmd == "status":
-        common.send(scan.status())
-        return 0
-    if cmd == "stats":
-        common.send(journal.stats_text(journal.load()))
-        return 0
     if cmd == "journal":
         arg = rest.split()[0] if rest.split() else ""
         n = int(arg) if re.fullmatch(r"[0-9]{1,3}", arg) else 5  # ASCII only: "²".isdigit() is True, int() fails
         common.send(journal.journal_text(journal.load(), n))
         return 0
-    if cmd == "verify":
-        known, unknown = extract(rest, loose=True)
-        if not known:
-            common.send(f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}." if unknown else
-                        f"כתבו טיקר אחרי הפקודה, למשל {code('/verify AAPL')}.")
-            return 0
-        common.send(scan.verify(known[0]), signal=True)
-        return 0
     if cmd == "health":
         common.send(health.report())
         return 0
-    if cmd == "squeeze":
-        return squeeze_cmd(rest)
-    if cmd == "shadow":
-        return shadow_now()
     if cmd == "ticket":
         return ticket_cmd(rest)
     if cmd == "equity":
@@ -252,34 +192,6 @@ def equity_cmd(rest):
     return 0
 
 
-def squeeze_cmd(rest):
-    """/squeeze: the last daily list; /squeeze stats: the journal; /squeeze TICKER: one stock against the gates."""
-    arg = rest.split()[0].lower() if rest.split() else ""
-    if not arg:
-        last = squeeze_live.load(squeeze_live.LAST, None)
-        common.send(last["text"] if last else "עוד אין רשימת סקוויז. היא תישלח בריצה האוטומטית הבאה, או עכשיו עם"
-                    f" {code('/squeeze now')}.", source=squeeze_live.SOURCE)
-        return 0
-    if arg == "now":
-        return squeeze_now()
-    if arg == "stats":
-        common.send(squeeze_live.stats_text(squeeze_live.load(squeeze_live.JOURNAL, {"entries": []})),
-                    source=squeeze_live.SOURCE)
-        return 0
-    known, unknown = extract(rest, loose=True)
-    if not known:
-        common.send(f"לא מצאתי ברשימת החברות של SEC: {', '.join(map(code, unknown))}." if unknown else
-                    f"כתבו טיקר אחרי הפקודה, למשל {code('/squeeze GME')}.", source=squeeze_live.SOURCE)
-        return 0
-    try:
-        common.send(squeeze_live.ticker_report(known[0]), signal=True, source=squeeze_live.SOURCE)
-    except Exception as e:  # a failed lookup must be answered, not swallowed
-        common.trace()
-        common.send(f"⚠️ בדיקת הסקוויז של {code(known[0])} נכשלה. נסו שוב מאוחר יותר.", source=squeeze_live.SOURCE)
-        return 1
-    return 0
-
-
 def intraday_cmd(rest):
     """/intraday: today's watchlist and sent tickets; now: one scan (dispatched on Actions); TICKER: one symbol
     against the setups now; stats: today's paper outcomes."""
@@ -319,38 +231,6 @@ def intraday_cmd(rest):
         common.send(f"⏳ בודק את {code(sym)} מול תבניות הסורק. התשובה תגיע בעוד כ־2–3 דקות.", source=intraday.SOURCE, buttons=KEYBOARD)
         return 0
     return intraday.main(["--symbol", sym])
-
-
-def squeeze_now():
-    """/squeeze now: on Actions the squeeze workflow is dispatched (the only writer of data/squeeze_*.json); locally
-    the run happens in this process. Either way the owner hears back."""
-    if common.env("GITHUB_REPOSITORY") and common.env("GITHUB_TOKEN"):
-        err = common.dispatch("squeeze.yml", {"mode": "manual"})
-        if err:  # a GitHub permission problem must not look like a data problem
-            print(f"workflow dispatch failed: {err}")
-            common.send(f"⚠️ לא הצלחתי להפעיל את רשימת הסקוויז ב־GitHub ({code(err)}). בדקו שבקובץ"
-                        f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.", source=squeeze_live.SOURCE)
-            return 1
-        common.send("⏳ רשימת הסקוויז מתעדכנת. היא תגיע בעוד כ־2–3 דקות.", source=squeeze_live.SOURCE)
-        return 0
-    common.send("⏳ רשימת הסקוויז מתעדכנת.", source=squeeze_live.SOURCE)
-    return squeeze_live.main(["--manual"])
-
-
-def shadow_now():
-    """/shadow: on Actions the shadow workflow is dispatched (the only writer of data/shadow_journal.json); locally the
-    tracker runs in this process. Either way the owner hears back (a day already sent is never sent twice)."""
-    if common.env("GITHUB_REPOSITORY") and common.env("GITHUB_TOKEN"):
-        err = common.dispatch("shadow.yml", {"mode": "manual"})
-        if err:  # a GitHub permission problem must not look like a data problem
-            print(f"workflow dispatch failed: {err}")
-            common.send(f"⚠️ לא הצלחתי להפעיל את מעקב הצל ב־GitHub ({code(err)}). בדקו שבקובץ"
-                        f" {code('telegram-listen.yml')} מופיעה ההרשאה {code('actions: write')}.", source=shadow.SOURCE)
-            return 1
-        common.send("⏳ מעקב הצל רץ. מצב היום (לפני הפתיחה: המניות הפעילות; אחרי: העסקאות עד עכשיו) יגיע בעוד כמה דקות.", source=shadow.SOURCE)
-        return 0
-    common.send("⏳ מעקב הצל רץ.", source=shadow.SOURCE)
-    return shadow.main(["--manual"])
 
 
 class Conflict(Exception):

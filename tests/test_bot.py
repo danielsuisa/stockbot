@@ -272,36 +272,15 @@ class Listen(unittest.TestCase):
         for cmd in ("/help", "/start", "/HELP@Danielsuibot", "/foo", "/scanner"):  # unknown commands get help too
             res, sent, calls = self.run_handle(cmd)
             self.assertEqual((res, sent, calls), (0, [listen.HELP], ["setMyCommands"]), cmd)
-        self.assertEqual(self.run_handle("/check aapl msft")[1], ["דוח AAPL", "דוח MSFT"])
-        self.assertEqual(self.run_handle("/check@Danielsuibot\ntsla")[1], ["דוח TSLA"])
-        res, sent, _ = self.run_handle("/check")
-        self.assertTrue(res == 0 and "/check AAPL" in sent[0])  # usage
+        for cmd in ("/check aapl", "/scan", "/status", "/stats", "/verify AAPL", "/squeeze", "/squeeze now", "/shadow"):  # removed 2026-10-23 at the owner's request: help
+            res, sent, calls = self.run_handle(cmd)
+            self.assertEqual((res, sent, calls), (0, [listen.HELP], ["setMyCommands"]), cmd)
         self.assertEqual(self.run_handle("MSFT")[1], ["דוח MSFT"])  # plain text: ALL-CAPS ticker
         for text in ("all good", "ok thanks", "hi", "msft"):  # lowercase words are never tickers (4.7)
             res, sent, _ = self.run_handle(text)
             self.assertTrue(res == 0 and len(sent) == 1 and "לא זיהיתי טיקר" in sent[0], text)
         res, sent, _ = self.run_handle("$zzzzq")
         self.assertIn("<code>ZZZZQ</code>", sent[0])  # not a listed ticker -> says so
-        with mock.patch.object(scan, "status", return_value="📋 מצב"):
-            self.assertEqual(self.run_handle("/status")[1], ["📋 מצב"])
-
-    def test_scan_local_runs_in_process(self):
-        with mock.patch.object(scan, "main") as m:
-            res, sent, _ = self.run_handle("/scan", {"GITHUB_REPOSITORY": "", "GITHUB_TOKEN": ""})
-        m.assert_called_once_with(["--notify"])
-        self.assertEqual((res, len(sent)), (0, 1))
-
-    def test_scan_on_actions_dispatches_workflow(self):
-        env = {"GITHUB_REPOSITORY": "o/r", "GITHUB_TOKEN": "t", "GITHUB_REF_NAME": "main"}
-        with mock.patch.object(common, "fetch", return_value=b"") as f, mock.patch.object(scan, "main") as m:
-            res, sent, _ = self.run_handle("/scan", env)
-        url, data, headers = f.call_args.args[:3]
-        self.assertEqual(url, "https://api.github.com/repos/o/r/actions/workflows/daily-scan.yml/dispatches")
-        self.assertEqual(json.loads(data), {"ref": "main", "inputs": {"notify": "true"}})
-        self.assertEqual((headers["Authorization"], res, len(sent), m.called), ("Bearer t", 0, 1, False))
-        with mock.patch.object(common, "fetch", side_effect=http_error(403)):
-            res, sent, _ = self.run_handle("/scan", env)
-        self.assertTrue(res == 1 and "HTTP 403" in sent[0] and "actions: write" in sent[0])  # not "SEC is down"
 
     def test_main_acks_first_and_filters_chat(self):
         ups = [{"update_id": 5, "message": {"chat": {"id": 42}, "text": "AAPL"}},

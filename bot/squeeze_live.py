@@ -404,7 +404,7 @@ def main(argv=None):
         added = record(j, scr, sessions.next_open(now, st), res)
     rows = scr["rows"] if scr else ()
     with_movers = manual or session != "regular"  # the hourly runs are the screen's; movers stay pre/post-market
-    note = (f"📒 התעדכנו התוצאות של {code(filled)} מניות מהרשימה. לכל התוצאות: {code('/squeeze stats')}"
+    note = (f"📒 התעדכנו התוצאות של {code(filled)} מניות מהרשימה."
             if filled else "")
     if a.dry:
         movers_text = run_movers(res, session, today, state, manual, rows)[0] if with_movers else ""
