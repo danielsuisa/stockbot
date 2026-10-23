@@ -139,7 +139,7 @@ def closure(entry):
 class Inventory(unittest.TestCase):
     def test_no_raw_traceback_in_the_listener_closure(self):
         mods = closure("listen")
-        self.assertTrue({"listen", "check", "scan", "shadow", "squeeze_live", "ticket_command"} <= mods)
+        self.assertTrue({"listen", "check", "scan", "ticket_command"} <= mods)
         root = pathlib.Path(__file__).resolve().parent.parent / "bot"
         for m in sorted(mods):
             src = (root / f"{m}.py").read_text("utf-8")

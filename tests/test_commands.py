@@ -189,22 +189,15 @@ class Commands(unittest.TestCase):
             p = os.path.join(tmp, "journal.json")
             journal.save(j, journal.Path(p))
             with mock.patch.dict(os.environ, {"JOURNAL_FILE": p}):
-                self.assertIn("ביומן: <code>7</code> התראות", self.run_handle("/stats")[0][0])
                 self.assertEqual(self.run_handle("/journal 3")[0][0].count("• התראה על <code>ACME</code>"), 3)
                 self.assertEqual(self.run_handle("/journal")[0][0].count("• התראה על <code>ACME</code>"), 5)  # default
                 self.assertEqual(self.run_handle("/journal lots")[0][0].count("• התראה על <code>ACME</code>"), 5)
-        with mock.patch.object(scan, "verify", return_value="🔎 אימות") as v:
-            self.assertEqual(self.run_handle("/verify $acme"), [("🔎 אימות", {"signal": True})])
-        v.assert_called_once_with("ACME")
-        self.assertIn("/verify AAPL", self.run_handle("/verify")[0][0])
-        self.assertIn("<code>ZZZZ</code>", self.run_handle("/verify zzzz")[0][0])
         with mock.patch.object(health, "report", return_value="🩺 בריאות"):
             self.assertEqual(self.run_handle("/health@Danielsuibot"), [("🩺 בריאות", {})])
 
     def test_help_and_menu(self):
         names = [c for c, _ in listen.COMMANDS]
-        self.assertEqual(names, ["check", "scan", "status", "stats", "journal", "verify", "health", "squeeze", "shadow",
-                                 "ticket", "intraday", "equity", "help"])
+        self.assertEqual(names, ["journal", "health", "ticket", "intraday", "equity", "help"])
         self.assertTrue(all(1 <= len(d) <= 256 for _, d in listen.COMMANDS))
         for c in names:  # /help itself is the menu entry and the HELP text's own title, so it is not listed inside
             if c != "help":
@@ -364,9 +357,9 @@ class Commands(unittest.TestCase):
         self.assertIn("לא מצאתי ברשימת החברות של SEC", sent[1])
         self.assertIn(code("ZZZZZ"), sent[1])
 
-    def test_check_reply_has_prompt(self):
+    def test_ticker_reply_has_prompt(self):
         with mock.patch.object(check, "report", return_value="📊 דוח"):
-            self.assertEqual(self.run_handle("/check acme"), [("📊 דוח", {"signal": True})])
+            self.assertEqual(self.run_handle("$acme"), [("📊 דוח", {"signal": True})])
 
 
 class Legacy(unittest.TestCase):

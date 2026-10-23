@@ -242,29 +242,17 @@ class Main(unittest.TestCase):
 
 
 class Command(unittest.TestCase):
-    """/shadow in Telegram: like /squeeze now, the workflow is started on Actions (the only writer of the journal)."""
+    """/shadow was removed from the bot on 2026-10-23 at the owner's request; the morning journal still runs."""
 
-    def test_shadow_starts_the_workflow(self):
+    def test_shadow_command_removed(self):
         from bot import listen
-        env = {"GITHUB_REPOSITORY": "o/r", "GITHUB_TOKEN": "t"}
-        with mock.patch.dict(os.environ, env), mock.patch.object(listen.common, "send") as send, \
-                mock.patch.object(listen.common, "dispatch", return_value="") as disp:
+        with mock.patch.object(listen.common, "send") as send, mock.patch.object(listen.common, "tg"), \
+                mock.patch.object(listen.common, "dispatch") as disp:
             self.assertEqual(listen.handle("/shadow"), 0)
-        disp.assert_called_once_with("shadow.yml", {"mode": "manual"})
-        self.assertIn("מעקב הצל", send.call_args[0][0])
-        self.assertEqual(send.call_args.kwargs["source"], shadow.SOURCE)
-        clean(self, send.call_args[0][0])
-        with mock.patch.dict(os.environ, env), mock.patch.object(listen.common, "send") as send, \
-                mock.patch.object(listen.common, "dispatch", return_value="HTTP 403"), mock.patch("builtins.print"):
-            self.assertEqual(listen.handle("/shadow"), 1)
-        self.assertIn("HTTP 403", send.call_args[0][0])
-        clean(self, send.call_args[0][0])
-        with mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "", "GITHUB_TOKEN": ""}), \
-                mock.patch.object(listen.common, "send"), mock.patch.object(listen.shadow, "main", return_value=0) as run:
-            listen.handle("/shadow")
-        run.assert_called_once_with(["--manual"])
-        self.assertIn("/shadow", listen.HELP)
-        self.assertIn("shadow", [c for c, _ in listen.COMMANDS])
+        disp.assert_not_called()
+        self.assertEqual(send.call_args[0][0], listen.HELP)
+        self.assertNotIn("/shadow", listen.HELP)
+        self.assertNotIn("shadow", [c for c, _ in listen.MENU])
 
 
 LIVE_DAY = "2026-10-09"  # a Friday, summer time in both cities (+7 h)
