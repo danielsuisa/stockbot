@@ -1,18 +1,29 @@
 {
  "date": "2026-10-23",
  "kind": "day",
- "at": "14:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>23.10.2026</code> · מצב ב־<code>21:30</code>\n\nמקום <code>1</code>: <code>AVTX</code> · <code>6.72$</code> <code>9.8%▼</code>\nשורט <code>28.4%</code> מהמניות הצפות · <code>8.3</code> ימים לכיסוי · מחזור פי <code>2.2</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
+ "at": "15:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>23.10.2026</code> · מצב ב־<code>22:30</code>\n\nמקום <code>1</code>: <code>AVTX</code> · <code>6.78$</code> <code>9.1%▼</code>\nשורט <code>28.4%</code> מהמניות הצפות · <code>8.3</code> ימים לכיסוי · מחזור פי <code>2.5</code> מהרגיל\n\nמקום <code>2</code>: <code>WGS</code> · <code>59.65$</code> <code>11.2%▼</code>\nשורט <code>27.5%</code> מהמניות הצפות · <code>7.7</code> ימים לכיסוי · מחזור פי <code>2.0</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
  "rows": [
   {
    "t": "AVTX",
-   "price": 6.72,
-   "chg": -0.098,
+   "price": 6.775,
+   "chg": -0.0906,
    "avg_vol": 1372903,
-   "rel_vol": 2.1831,
+   "rel_vol": 2.4945,
    "short_ratio": 8.3074,
    "float": 40110405,
    "short_float": 0.2843,
+   "options": true
+  },
+  {
+   "t": "WGS",
+   "price": 59.65,
+   "chg": -0.1116,
+   "avg_vol": 727587,
+   "rel_vol": 2.0091,
+   "short_ratio": 7.7328,
+   "float": 20443352,
+   "short_float": 0.2752,
    "options": true
   }
  ]

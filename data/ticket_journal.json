@@ -429,6 +429,31 @@
    "rank": 1,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-10-22",
+   "signal": "squeeze-list",
+   "symbol": "WGS",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 68.86,
+   "limit": 70.09,
+   "planned_entry": 68.86,
+   "stop_loss": 61.97,
+   "target": 79.19,
+   "trail": 6.89,
+   "shares": 14,
+   "legs": [
+    7,
+    7
+   ],
+   "R": 6.886,
+   "guard_spread": 0.3100000000000023,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 2,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }
