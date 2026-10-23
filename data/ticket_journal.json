@@ -267,7 +267,23 @@
    ],
    "R": 0.8630000000000001,
    "guard_spread": 0.01,
-   "outcome": null,
+   "outcome": {
+    "filled": true,
+    "fill": 8.63,
+    "entry_day": "2026-10-16",
+    "exits": [
+     "target",
+     "trail"
+    ],
+    "exit_days": [
+     "2026-10-22",
+     "2026-10-22"
+    ],
+    "gross_r": 1.1441382437402379,
+    "cost_r": 0.025693989621643404,
+    "net_r": 1.1184442541185944,
+    "closed": "2026-10-22"
+   },
    "source": "squeeze",
    "rank": 1,
    "stop_capped": true,
