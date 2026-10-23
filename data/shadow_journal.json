@@ -1116,6 +1116,102 @@
     }
    ],
    "gaps": 0
+  },
+  "2026-10-22": {
+   "top": [
+    "BHVN",
+    "HXL",
+    "AVTX",
+    "QGEN",
+    "GGG",
+    "ATI",
+    "RCUS",
+    "FR",
+    "COCO",
+    "ROL",
+    "IBM",
+    "PG",
+    "TTMI",
+    "SPOT",
+    "ALLE",
+    "IR",
+    "MDLN",
+    "FPS",
+    "AMX",
+    "SON"
+   ],
+   "reasons": {
+    "spread": 13,
+    "trigger": 4
+   },
+   "dropped": {
+    "Rule 201": 2
+   },
+   "trades": [
+    {
+     "t": "QGEN",
+     "rank": 4,
+     "side": -1,
+     "at": "09:35",
+     "level": 50.33,
+     "R": 0.1682,
+     "shares": 594,
+     "spread": 0.01,
+     "fill": 50.33,
+     "kinds": "eod",
+     "gross_r": 0.5945,
+     "cost_r": 0.1011,
+     "net_r": 0.4935
+    }
+   ],
+   "optimistic": [
+    {
+     "t": "QGEN",
+     "rank": 4,
+     "side": -1,
+     "at": "09:35",
+     "level": 50.33,
+     "R": 0.1682,
+     "shares": 594,
+     "spread": 0.01,
+     "fill": 50.33,
+     "kinds": "eod",
+     "gross_r": 0.5945,
+     "cost_r": 0.1011,
+     "net_r": 0.4935
+    },
+    {
+     "t": "TTMI",
+     "rank": 13,
+     "side": -1,
+     "at": "10:07",
+     "level": 77.6,
+     "R": 0.9124,
+     "shares": 109,
+     "spread": 0.06,
+     "fill": 77.6,
+     "kinds": "eod",
+     "gross_r": 3.9676,
+     "cost_r": 0.0734,
+     "net_r": 3.8941
+    },
+    {
+     "t": "FPS",
+     "rank": 18,
+     "side": -1,
+     "at": "09:40",
+     "level": 25.8,
+     "R": 0.2539,
+     "shares": 393,
+     "spread": 0.05,
+     "fill": 25.8,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2245,
+     "net_r": -1.2245
+    }
+   ],
+   "gaps": 0
   }
  }
 }
