@@ -5229,6 +5229,83 @@
     "0001493152-26-048144"
    ],
    "returns": {}
+  },
+  {
+   "id": "2026-10-23-RENT",
+   "date": "2026-10-23",
+   "ticker": "RENT",
+   "cik": 1468327,
+   "company": "Rent the Runway, Inc.",
+   "sic": 5990,
+   "kind": "big",
+   "quality": 28,
+   "parts": {
+    "breadth": 0,
+    "seniority": 4,
+    "size": 16,
+    "conviction": 8,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 2.3,
+    "asof": "2026-10-23 20:00",
+    "source": "live"
+   },
+   "total": 3873642.85,
+   "insiders": 2,
+   "liquidity": 258090.17921577801,
+   "scores": {
+    "piotroski": "6/9",
+    "altman": "Z -7.06",
+    "beneish": null
+   },
+   "accs": [
+    "0001012975-26-000980",
+    "0001012975-26-000981",
+    "0001012975-26-000982"
+   ],
+   "returns": {}
+  },
+  {
+   "id": "2026-10-23-RAPP",
+   "date": "2026-10-23",
+   "ticker": "RAPP",
+   "cik": 2012593,
+   "company": "Rapport Therapeutics, Inc.",
+   "sic": 2834,
+   "kind": "cluster+big",
+   "quality": 82,
+   "parts": {
+    "breadth": 30,
+    "seniority": 25,
+    "size": 12,
+    "conviction": 15,
+    "market": 0
+   },
+   "regime": "normal",
+   "price": {
+    "price": 25.93,
+    "asof": "2026-10-23 20:00",
+    "source": "live"
+   },
+   "total": 1664824.34,
+   "insiders": 6,
+   "liquidity": 26342352.421465788,
+   "scores": {
+    "piotroski": "2/7",
+    "altman": null,
+    "beneish": null
+   },
+   "accs": [
+    "0001193125-26-428018",
+    "0001193125-26-429071",
+    "0001193125-26-429073",
+    "0001193125-26-429074",
+    "0001193125-26-429075",
+    "0001193125-26-430397"
+   ],
+   "returns": {}
   }
  ]
 }
