@@ -404,6 +404,31 @@
    "rank": 1,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-10-22",
+   "signal": "squeeze-list",
+   "symbol": "AVTX",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 9.36,
+   "limit": 9.66,
+   "planned_entry": 9.36,
+   "stop_loss": 8.42,
+   "target": 10.76,
+   "trail": 0.94,
+   "shares": 106,
+   "legs": [
+    53,
+    53
+   ],
+   "R": 0.9359999999999999,
+   "guard_spread": 0.020000000000000462,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }
