@@ -288,7 +288,7 @@ def slot_mode(slot, dry=False, now=None):
 REFRESH_MINUTES = 18  # the deadline every step and loop checks (the step allows 25): the rest waits a night
 REFRESH_HARD_MINUTES = 23  # the watchdog (refresh_mode)
 LONG_MINUTES = 6  # the long store's share of a run (an empty cache needs ~14 minutes: it resumes the next night)
-PROFILE_CALLS, OWNERSHIP_FILINGS, REFERENCE_PER_RUN, HOLDER_FILINGS = 500, 800, 500, 300  # SEC < 2000 a run
+PROFILE_CALLS, OWNERSHIP_FILINGS, REFERENCE_PER_RUN, HOLDER_FILINGS = 500, 800, 500, 900  # SEC < 2000 a run (holders capped by sec_left)
 SEC_RUN_MAX = 2000  # the 13D/13G filings take what is left below it (index files counted in the 60 kept back)
 
 
