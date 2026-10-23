@@ -2,26 +2,26 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "4994a62651f3ccdf",
+   "hash": "41f0f51d8935af6a",
    "tickers": [
     "CLRO",
     "YMAT",
     "BKYI",
     "MGNX",
-    "TNGX",
     "LKQ",
+    "TNGX",
     "SLM",
-    "RY",
     "FLG",
     "CCI",
-    "AIXI",
+    "RY",
     "GMAB",
-    "NAUT",
     "ZLAB",
-    "SAIQ"
+    "AIXI",
+    "NAUT",
+    "PHAT"
    ],
    "day": "2026-10-23",
-   "at": "2026-10-23T18:30:36Z",
+   "at": "2026-10-23T19:30:15Z",
    "total": 200
   }
  },
@@ -42,7 +42,8 @@
    "reg2",
    "reg3",
    "reg4",
-   "reg5"
+   "reg5",
+   "reg6"
   ]
  }
 }
