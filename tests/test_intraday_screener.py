@@ -137,6 +137,59 @@ class Outcomes(unittest.TestCase):
         self.assertAlmostEqual(o["r"], round((21.1 - 20.91) / 0.37, 2))
 
 
+class Followup(unittest.TestCase):
+    NY = intraday.NY
+
+    def _state(self):
+        return {"day": "2026-10-22", "watch": [], "sent": {}, "stats": None, "journal": [_t()]}
+
+    def test_at_1620_the_request_ends_16_minutes_ago_and_is_not_cached(self):
+        # 2026-10-19..22: the 16:20 followup asked for bars to 20:00 and the free plan answered HTTP 403
+        seen = {}
+
+        def bars(syms, day):
+            seen["cut"] = intraday.alpaca.CUTOFF.get(day)
+            return {"ACME": minutes("09:45", [(20.6, 20.7, 20.5, 20.65, 1), (20.65, 20.95, 20.6, 20.9, 1),
+                                              (20.9, 21.7, 20.8, 21.6, 1)])}
+        st = self._state()
+        now = dt.datetime(2026, 10, 22, 16, 20, tzinfo=self.NY)
+        with mock.patch.object(intraday.alpaca, "minute_bars", side_effect=bars):
+            text = intraday.followup(st, now)
+        self.assertEqual(seen["cut"], "16:04")
+        self.assertNotIn("2026-10-22", intraday.alpaca.CUTOFF)  # removed after the request
+        self.assertEqual(st["journal"][0]["outcome"]["result"], "target")
+        self.assertEqual(msgrules.problems(text), [], text)
+
+    def test_before_1616_nothing_is_filled(self):
+        st = self._state()
+        with mock.patch.object(intraday.alpaca, "minute_bars", side_effect=AssertionError("no request")):
+            intraday.followup(st, dt.datetime(2026, 10, 22, 15, 0, tzinfo=self.NY))
+        self.assertNotIn("outcome", st["journal"][0])
+
+    def test_after_2016_the_whole_day_is_read(self):
+        seen = {}
+        st = self._state()
+        with mock.patch.object(intraday.alpaca, "minute_bars",
+                               side_effect=lambda s, d: seen.update(cut=intraday.alpaca.CUTOFF.get(d)) or {}):
+            intraday.followup(st, dt.datetime(2026, 10, 22, 21, 0, tzinfo=self.NY))
+        self.assertIsNone(seen["cut"])
+        self.assertEqual(st["journal"][0]["outcome"]["result"], "not filled")
+
+    def test_a_scan_before_0936_answers_instead_of_failing(self):
+        # 2026-10-23 04:21 New York: /intraday now read the 04:00-09:20 pre-market bars before they existed -> 403
+        sent = []
+        now = dt.datetime(2026, 10, 23, 4, 21, tzinfo=self.NY)
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"INTRADAY_DIR": d, "TG_TOKEN": ""}), \
+                mock.patch.object(intraday, "_now", return_value=now), \
+                mock.patch.object(intraday.alpaca, "calendar", return_value={"2026-10-22": 1, "2026-10-23": 1}), \
+                mock.patch.object(intraday, "watchlist", side_effect=AssertionError("no scan")), \
+                mock.patch.object(intraday, "send", side_effect=lambda text, *a, **k: sent.append(text)):
+            self.assertEqual(intraday.main(["--mode", "once"]), 0)
+        self.assertEqual(len(sent), 1)
+        self.assertIn("09:36", sent[0])
+        self.assertEqual(msgrules.problems(sent[0]), [], sent[0])
+
+
 class Messages(unittest.TestCase):
     def test_ticket_and_list_follow_the_rules(self):
         for text in (intraday.ticket_text(_t(), "2026-10-19", 10_000.0), intraday.ticket_text(_t(gap=-0.04, r_floored=True), "2026-10-19"),

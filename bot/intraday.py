@@ -431,12 +431,23 @@ def outcome(t, bars1):
     return {"result": "time", "fill": fill, "r": round((after[-1][4] - fill) / t["R"], 2)}
 
 
-def followup(state):
-    """Fill in today's outcomes (SIP bars: complete after 16:15) and return the stats text."""
+def followup(state, now=None):
+    """Fill in today's outcomes (SIP bars: complete after 16:15) and return the stats text. Outcomes read only bars
+    before 16:00, so they are filled once the free plan serves them (16:16 New York); the request ends 16 minutes ago
+    (alpaca.CUTOFF: never cached as a whole day) until 20:16, when the day is final. Before 16:16: nothing is filled."""
     day = state["day"]
     todo = [j for j in state["journal"] if not j.get("outcome")]
-    if todo:
-        bars = alpaca.minute_bars(sorted({j["symbol"] for j in todo}), day)
+    now = (now or _now()).astimezone(NY)
+    cut = (now - SIP_DELAY).strftime("%H:%M") if now.date().isoformat() == day else "23:59"
+    if todo and cut >= "16:00":
+        live = cut < "20:00"
+        if live:
+            alpaca.CUTOFF[day] = cut
+        try:
+            bars = alpaca.minute_bars(sorted({j["symbol"] for j in todo}), day)
+        finally:
+            if live:
+                alpaca.CUTOFF.pop(day, None)
         for j in todo:
             j["outcome"] = outcome(j, bars.get(j["symbol"], []))
     return stats_text(state)
@@ -464,6 +475,10 @@ def stats_text(state):
 # ---------- the run ----------
 def _now():
     return dt.datetime.now(NY)
+
+
+SIP_DELAY = dt.timedelta(minutes=16)  # the free plan refuses SIP data newer than 15 minutes
+READY = "09:36"  # the 04:00-09:20 pre-market SIP bars the watchlist reads are served from here
 
 
 def _sleep_until(t_ny):
@@ -517,9 +532,13 @@ def main(argv=None):
     before = [d for d in sorted(cal) if d < day]
 
     if a.mode == "followup":
-        send(followup(state), a.dry)
+        send(followup(state, now), a.dry)
         if not a.dry:
             save(state)
+        return 0
+    if now.strftime("%H:%M") < READY:  # the free plan would refuse the pre-market bars (HTTP 403)
+        send(f"הסורק היומי זמין מ־{code(READY)} ניו־יורק ({code(il_time(day, READY))} ישראל): "
+             f"נתוני הטרום־מסחר נפתחים 15 דקות אחרי 09:20.", a.dry)
         return 0
 
     if a.symbol:
