@@ -150,15 +150,12 @@ class Health(unittest.TestCase):
             with mock.patch.object(market, "chart", return_value=None):
                 bare = health.report(TODAY)
         for want in ("✅ האינדקס היומי של SEC: תקין · האחרון מ־<code>23.9</code>", "✅ הנתונים של SEC: תקין",
-                     "❌ החיפוש של SEC (גיבוי לאינדקס): נכשל · <code>OSError</code>", "✅ המחירים מ־Yahoo: תקין",
-                     "✅ הבוט בטלגרם: תקין",
-                     "• סריקת בעלי העניין: ריצה אחרונה <code>24.9 08:41</code> ✅ הצליחה",
-                     "• בדיקת ימים חסרים: אין מידע", "• הבוט בטלגרם: ריצה אחרונה <code>24.9 20:10</code> ⏳ רצה עכשיו",
-                     "💓 עוד אין נתונים", "🐕 ימים חסרים: אין, יום המסחר הקודם (<code>23.9</code>) נסרק",
-                     "ממתינים לסריקה: <code>"):
+                     "✅ המחירים מ־Yahoo: תקין", "✅ הבוט בטלגרם: תקין",
+                     "• הבוט בטלגרם: ריצה אחרונה <code>24.9 20:10</code> ⏳ רצה עכשיו"):
             self.assertIn(want, text)
+        for gone in ("בעלי העניין", "ימים חסרים", "הסריקה היומית", "גיבוי לאינדקס"):  # removed 2026-10-24
+            self.assertNotIn(gone, text)
         self.assertIn("❌ המחירים מ־Yahoo: נכשל", bare)
-        self.assertIn("הסריקה היומית</b>: עוד לא רצה", bare)
         for t in (text, bare):
             msgrules.check(self, t)
 
@@ -188,16 +185,14 @@ class Commands(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             p = os.path.join(tmp, "journal.json")
             journal.save(j, journal.Path(p))
-            with mock.patch.dict(os.environ, {"JOURNAL_FILE": p}):
-                self.assertEqual(self.run_handle("/journal 3")[0][0].count("• התראה על <code>ACME</code>"), 3)
-                self.assertEqual(self.run_handle("/journal")[0][0].count("• התראה על <code>ACME</code>"), 5)  # default
-                self.assertEqual(self.run_handle("/journal lots")[0][0].count("• התראה על <code>ACME</code>"), 5)
+            with mock.patch.dict(os.environ, {"JOURNAL_FILE": p}), mock.patch.object(common, "tg"):
+                self.assertEqual(self.run_handle("/journal 3"), [(listen.HELP, {"buttons": listen.KEYBOARD})])  # removed
         with mock.patch.object(health, "report", return_value="🩺 בריאות"):
             self.assertEqual(self.run_handle("/health@Danielsuibot"), [("🩺 בריאות", {})])
 
     def test_help_and_menu(self):
         names = [c for c, _ in listen.COMMANDS]
-        self.assertEqual(names, ["journal", "health", "ticket", "intraday", "equity", "help"])
+        self.assertEqual(names, ["health", "ticket", "intraday", "equity", "help"])
         self.assertTrue(all(1 <= len(d) <= 256 for _, d in listen.COMMANDS))
         for c in names:  # /help itself is the menu entry and the HELP text's own title, so it is not listed inside
             if c != "help":

@@ -1,4 +1,4 @@
-"""/health: live checks of every data source, the scheduled jobs' last runs and the scan's own state -> Hebrew."""
+"""/health: live checks of every data source and the scheduled jobs' last runs -> Hebrew."""
 import datetime as dt
 import json
 from pathlib import Path
@@ -6,8 +6,7 @@ from pathlib import Path
 from bot import common, market, scan
 from bot.common import code
 
-WORKFLOWS = (("daily-scan.yml", "סריקת בעלי העניין"), ("watchdog.yml", "בדיקת ימים חסרים"),
-             ("squeeze.yml", "רשימת הסקוויז"), ("shadow.yml", "מעקב הצל"), ("telegram-listen.yml", "הבוט בטלגרם"))
+WORKFLOWS = (("squeeze.yml", "רשימת הסקוויז"), ("shadow.yml", "מעקב הצל"), ("telegram-listen.yml", "הבוט בטלגרם"))
 
 
 def probe(name, fn):
@@ -49,13 +48,6 @@ def _data():
     return ""
 
 
-def _efts():
-    d = scan.previous_trading_day(dt.datetime.now(dt.timezone.utc).date(), quick=True) or ""
-    day = scan._iso(d) if d else dt.date.today().isoformat()
-    _json(f"https://efts.sec.gov/LATEST/search-index?forms=4&dateRange=custom&startdt={day}&enddt={day}")["hits"]["total"]
-    return ""
-
-
 def _yahoo():
     r = market.chart("SPY", range="5d", interval="1d")
     if not r or not r["meta"]["regularMarketPrice"]:
@@ -82,17 +74,7 @@ def report(today=None):
     lines = ["🩺 <b>בדיקה שהכול עובד</b>", "", "<b>מקורות הנתונים, עכשיו</b>",
              probe("האינדקס היומי של SEC", _index),
              probe("הנתונים של SEC", _data),
-             probe("החיפוש של SEC (גיבוי לאינדקס)", _efts),
              probe("המחירים מ־Yahoo", _yahoo),
              probe("הבוט בטלגרם", _telegram),
              "", "<b>הריצות האוטומטיות</b>"] + [_run_line(wf, label) for wf, label in WORKFLOWS]
-    path = Path(common.env("STATE_FILE", str(common.DATA / "state.json")))
-    if path.exists():
-        st = scan.prune(scan.load(path), today)
-        wait = [d for d in scan.weekdays(today) if d not in st["days"]]
-        lines += ["", "<b>הסריקה היומית</b>", scan.heartbeat_line(st.get("heartbeat")), scan.watchdog_line(st, today)]
-        if wait:
-            lines.append(f"ממתינים לסריקה: {code(len(wait))} ימים.")
-    else:
-        lines += ["", "<b>הסריקה היומית</b>: עוד לא רצה."]
     return "\n".join(lines)

@@ -1,8 +1,7 @@
 name: Missed-day watchdog
 
 on:
-  schedule:
-    - cron: "0 14 * * 2-6"  # Tue-Sat 14:00 UTC, hours after the 05:30 scan: was the previous trading day scanned?
+  # No schedule: it guarded the insider-buying scan, removed at the owner's request on 2026-10-24.
   workflow_dispatch:
 
 permissions:
