@@ -1212,6 +1212,87 @@
     }
    ],
    "gaps": 0
+  },
+  "2026-10-23": {
+   "top": [
+    "TNGX",
+    "SLM",
+    "LKQ",
+    "DECK",
+    "KLAR",
+    "RNG",
+    "MTG",
+    "RHI",
+    "KNTK",
+    "BAH",
+    "SBAC",
+    "AMT",
+    "OMC",
+    "CCI",
+    "ZYME",
+    "RDN",
+    "HRMY",
+    "GGG",
+    "FIVN",
+    "VRSN"
+   ],
+   "reasons": {
+    "spread": 12,
+    "trigger": 6
+   },
+   "dropped": {
+    "Rule 201": 1
+   },
+   "trades": [
+    {
+     "t": "KLAR",
+     "rank": 5,
+     "side": -1,
+     "at": "09:36",
+     "level": 12.88,
+     "R": 0.0506,
+     "shares": 1976,
+     "spread": 0.01,
+     "fill": 12.875,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.336,
+     "net_r": -1.336
+    }
+   ],
+   "optimistic": [
+    {
+     "t": "SLM",
+     "rank": 2,
+     "side": -1,
+     "at": "10:38",
+     "level": 19.52,
+     "R": 0.0692,
+     "shares": 1445,
+     "spread": 0.01,
+     "fill": 19.52,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.2457,
+     "net_r": -1.2457
+    },
+    {
+     "t": "KLAR",
+     "rank": 5,
+     "side": -1,
+     "at": "09:36",
+     "level": 12.88,
+     "R": 0.0506,
+     "shares": 1976,
+     "spread": 0.01,
+     "fill": 12.88,
+     "kinds": "stop",
+     "gross_r": -1.0,
+     "cost_r": 0.336,
+     "net_r": -1.336
+    }
+   ],
+   "gaps": 0
   }
  }
 }
