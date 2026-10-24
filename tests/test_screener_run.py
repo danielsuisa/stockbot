@@ -266,6 +266,31 @@ class RefreshDeadline(unittest.TestCase):
         self.assertIn("changed=true", self.out.read_text(encoding="utf-8"))  # ... and the cache-save step runs
 
 
+    def test_a_source_down_ends_its_step_not_the_refresh(self):
+        # 2026-10-24: SEC answered 503 through every retry inside holders; the run exited 1 and long never ran
+        import urllib.error
+        now = dt.datetime(2026, 10, 23, 20, 40, tzinfo=NY)
+        ck = {"session": "CLOSED", "day": "2026-10-23"}
+        uni = {"AAA": {"cik": 1, "etf": False}}
+        down = urllib.error.HTTPError("https://www.sec.gov/x", 503, "Service Unavailable", {}, None)
+        called = []
+        with mock.patch.object(run, "clock_now", return_value=(now, ck, DAYS, DAYS, None)), \
+                mock.patch.object(run.REF, "universe", return_value=(uni, {})), \
+                mock.patch.object(run.SPLITS, "update", return_value=({}, 0)), \
+                mock.patch.object(BARS, "update", return_value={}), \
+                mock.patch.object(BARS, "update_profile", return_value={}), \
+                mock.patch.object(run.SI, "update"), mock.patch.object(run.FUND, "update"), \
+                mock.patch.object(run.PF, "update", return_value=({}, {})), \
+                mock.patch.object(run.REF, "eightk_ciks", return_value=set()), \
+                mock.patch.object(run.REF, "reference", return_value=(None, None, 0)), \
+                mock.patch.object(run.OWN, "update", return_value=(None, None, {})), \
+                mock.patch.object(run.HOLD, "update", side_effect=down), \
+                mock.patch.object(BARS, "update_long", side_effect=lambda *a, **k: called.append("long") or {}), \
+                mock.patch.object(run.common, "trace"):
+            self.assertEqual(run.refresh_mode(), 0)
+        self.assertEqual(called, ["long"])  # the store after the failed one still ran
+
+
 class Schedule(unittest.TestCase):
     def test_a_weekday(self):
         done, got, t = set(), [], dt.datetime(2026, 10, 21, 8, 0, tzinfo=UTC)  # 04:00 New York

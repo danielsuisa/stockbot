@@ -356,6 +356,18 @@ def _refresh(full, now, late, step):
     uni, _ = REF.universe(refresh=True)
     syms = sorted(uni)
     step("universe")
+
+    def attempt(name, fn):
+        """One store's step: a source that stays down (SEC 503 through every retry, 2026-10-24) is logged and the
+        refresh goes on to the next store instead of ending the run (each store saves itself; the rest still run)."""
+        try:
+            return fn()
+        except RefreshTimeout:
+            raise
+        except Exception as e:
+            common.trace()
+            step(name, {"error": f"{type(e).__name__}: {str(e)[:120]}"})
+            return None
     bars, bmeta = BARS.load()
     checked = dict((bmeta or {}).get("checked") or {})
     try:
@@ -376,11 +388,9 @@ def _refresh(full, now, late, step):
         finally:
             stores.save("profile", prof, "alpaca-sip-1Hour", rows=len(prof.get("days", {})))
         step("profile", stats_prof)
-    if not late():
-        SI.update(done, ck["day"])
+    if not late() and attempt("shortint", lambda: SI.update(done, ck["day"]) or True):
         step("shortint")
-    if not late():
-        FUND.update(today, force=full)
+    if not late() and attempt("fundamentals", lambda: FUND.update(today, force=full) or True):
         step("fundamentals")
     ciks = sorted({u["cik"] for u in uni.values() if u.get("cik")})
     if not late():
@@ -396,23 +406,33 @@ def _refresh(full, now, late, step):
             except Exception:
                 common.trace()
         prio = [c for c in ciks if c in eight][:REFERENCE_PER_RUN]
-        step("reference", REF.reference(ciks, ck["day"], per_run=REFERENCE_PER_RUN - len(prio), priority=prio)[2])
+        got = attempt("reference", lambda: REF.reference(ciks, ck["day"], per_run=REFERENCE_PER_RUN - len(prio),
+                                                         priority=prio))
+        if got is not None:
+            step("reference", got[2])
     if not late():
-        step("ownership", OWN.update({str(c) for c in ciks}, done, ck["day"], per_run=OWNERSHIP_FILINGS,
-                                     late=late)[2])
+        got = attempt("ownership", lambda: OWN.update({str(c) for c in ciks}, done, ck["day"],
+                                                      per_run=OWNERSHIP_FILINGS, late=late))
+        if got is not None:
+            step("ownership", got[2])
     if not late():
         sec_left = SEC_RUN_MAX - 60 - stores.COUNTS["sec"]
-        step("holders", HOLD.update({str(c) for c in ciks}, done, ck["day"], priority=small_caps(uni, bars, ck["day"]),
-                                    per_run=max(0, min(HOLDER_FILINGS, sec_left)), late=late)[2])
+        got = attempt("holders", lambda: HOLD.update({str(c) for c in ciks}, done, ck["day"],
+                                                     priority=small_caps(uni, bars, ck["day"]),
+                                                     per_run=max(0, min(HOLDER_FILINGS, sec_left)), late=late))
+        if got is not None:
+            step("holders", got[2])
     if not late():  # last: monthly bars feed only 3Y/5Y performance and beta; ownership feeds float
         long = (stores.load("long") or {}).get("data") or {}
         t_long = time.monotonic()
         try:  # bounded and saved even when stopped: monthly bars resume from each symbol's month marker
-            stats_long = BARS.update_long(long, syms + ["SPY"], cal_all, ck["day"],
-                                          stop=lambda: late() or (time.monotonic() - t_long) / 60 > LONG_MINUTES)
+            stats_long = attempt("long", lambda: BARS.update_long(
+                long, syms + ["SPY"], cal_all, ck["day"],
+                stop=lambda: late() or (time.monotonic() - t_long) / 60 > LONG_MINUTES))
         finally:
             stores.save("long", long, "alpaca-sip-1Month+anchors", rows=len(long.get("m", {})))
-        step("long", stats_long)
+        if stats_long is not None:
+            step("long", stats_long)
 
 
 def verify_mode(now=None):
