@@ -1,4 +1,4 @@
-"""Telegram listener: /help /journal /health /ticket /intraday /equity /screen and free-text tickers -> Hebrew
+"""Telegram listener: /help /health /ticket /intraday /equity /screen and free-text tickers -> Hebrew
 replies. `--serve` (Actions): one long-poll consumer for ~5h20m, then the workflow starts the next one; without it,
 one pass over the waiting messages."""
 import datetime as dt
@@ -22,7 +22,7 @@ TOKEN = re.compile(r"(?<![A-Za-z0-9$])(\$?)([A-Za-z]{1,5}(?:[.\-][A-Za-z])?)(?![
 # Everyday words that are also tickers: skipped in running text; "$IT" or a message of just "IT" still works
 STOP = set("A AI AM AN AND ARE AT BE BUY BY CAN CEO DO FOR GO HAS HI I IF IN IPO IS IT ME MY NEW NO NOW OF OK ON OR "
            "OUT SEC SO THE TO UP US VS WE YES YOU".split())
-COMMANDS = (("journal", "ההתראות האחרונות, למשל /journal 5"), ("health", "בדיקה שהכול עובד"),
+COMMANDS = (("health", "בדיקה שהכול עובד"),
             ("ticket", "כרטיס מסחר למניה: כניסה, סטופ, יעד וגודל, למשל /ticket AAPL"),
             ("intraday", "סורק נרות יומי: /intraday, /intraday now, /intraday AAPL, /intraday stats"),
             ("equity", "ההון לחישוב גודל הכרטיסים, למשל /equity 25000"), ("help", "רשימת הפקודות"))
@@ -40,8 +40,6 @@ HELP = "\n".join((
     "👋 <b>מה אפשר לבקש ממני</b>",
     "",
     f"📊 דוח על מניה: שלחו {code('AAPL')} או {code('$aapl')} (עד {code(MAX)} בהודעה).",
-    "",
-    f"🔔 התראות על רכישות של בעלי עניין (נשלחות לבד כל בוקר אחרי יום מסחר). ההתראות האחרונות: {code('/journal 5')}",
     "",
     f"🎫 כרטיס מסחר למניה (כניסה, סטופ לוס, יעד, טריילינג, גודל ועלות; ללא יתרון מוכח): {code('/ticket AAPL')}",
     "",
@@ -103,11 +101,6 @@ def handle(text):
     if not word.startswith("/"):
         return reports(text)  # plain text: $XYZ / ALL-CAPS tickers only
     cmd = word[1:].split("@")[0].lower()  # "/check@MyBot" in groups
-    if cmd == "journal":
-        arg = rest.split()[0] if rest.split() else ""
-        n = int(arg) if re.fullmatch(r"[0-9]{1,3}", arg) else 5  # ASCII only: "²".isdigit() is True, int() fails
-        common.send(journal.journal_text(journal.load(), n))
-        return 0
     if cmd == "health":
         common.send(health.report())
         return 0

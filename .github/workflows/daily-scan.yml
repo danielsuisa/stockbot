@@ -1,8 +1,8 @@
 name: Daily insider scan
 
 on:
-  schedule:
-    - cron: "0 7 * * 0"     # Sunday 07:00 UTC: weekly journal follow-up (returns vs SPY + summary)
+  # No schedule: the insider-buying alerts were removed from the bot at the owner's request on 2026-10-24
+  # (the weekly Sunday follow-up included). Manual dispatch only.
     # The morning scan (05:30 UTC) and the same-day runs (07:30 / 09:15 / 16:30 / 19:30 New York) are started by the
     # Telegram listener's clock (bot/clock.py): GitHub starts this repo's schedules 3.5-5.5 hours late
   workflow_dispatch:

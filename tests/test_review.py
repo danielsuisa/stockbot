@@ -244,12 +244,12 @@ class Listener(unittest.TestCase):
             self.assertIsNone(common.runs("x.yml", completed=True))
         self.assertTrue(f.call_args.args[0].endswith("runs?per_page=1&status=completed"))
 
-    def test_journal_argument_is_ascii_digits(self):  # C6
+    def test_journal_command_removed(self):  # C6's /journal was removed with the insider alerts (2026-10-24)
         sent = []
         with mock.patch.object(common, "send", side_effect=lambda t, **k: sent.append(t)), \
-                mock.patch.object(journal, "load", return_value={"alerts": []}):
+                mock.patch.object(common, "tg"):
             self.assertEqual(listen.handle("/journal ²"), 0)
-        self.assertIn("היומן ריק", sent[0])
+        self.assertEqual(sent, [listen.HELP])
 
     def test_health_index_falls_back_to_last_quarter(self):  # C7
         def fetch(url, *a, **k):
