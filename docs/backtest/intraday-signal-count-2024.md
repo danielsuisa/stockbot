@@ -1,6 +1,6 @@
-# Intraday screener — H1 signal count on 2024, cache only (power gate check 1) — 2026-10-17
+# Intraday screener — H1 signal count on 2024, cache only (power gate check 1) — 2026-10-25
 
-Run 39035364798 · 0s · Alpaca requests attempted and blocked: 1 ({'v2/calendar': 1}) · nothing downloaded
+Run 40228865622 · 0s · Alpaca requests attempted and blocked: 1 ({'v2/calendar': 1}) · nothing downloaded
 
 ## Coverage
 
