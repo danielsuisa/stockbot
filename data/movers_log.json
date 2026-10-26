@@ -253,6 +253,17 @@
    "gain": 0.1243,
    "vol_ratio": 0.2405,
    "si_pct": 0.917
+  },
+  {
+   "date": "2026-10-26",
+   "session": "pre",
+   "t": "XNCR",
+   "manual": false,
+   "price": 33.2,
+   "ref": 25.18,
+   "gain": 0.3185,
+   "vol_ratio": 0.2345,
+   "si_pct": 0.2201
   }
  ]
 }
