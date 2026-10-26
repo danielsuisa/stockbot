@@ -2,26 +2,26 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "246c2fc2db54c516",
+   "hash": "08c6540bddac5ad9",
    "tickers": [
     "XTND",
     "CLRO",
     "SGRY",
     "XP",
     "ELPC",
-    "INTR",
     "RRC",
+    "INTR",
     "XNCR",
     "BBD",
     "PAGS",
     "LTM",
     "SBS",
-    "STNE",
-    "CLM",
-    "ITUB"
+    "PICS",
+    "ITUB",
+    "STNE"
    ],
    "day": "2026-10-26",
-   "at": "2026-10-26T16:30:41Z",
+   "at": "2026-10-26T17:30:59Z",
    "total": 200
   }
  },
@@ -52,7 +52,8 @@
    "pre2",
    "reg1",
    "reg2",
-   "reg3"
+   "reg3",
+   "reg4"
   ]
  }
 }
