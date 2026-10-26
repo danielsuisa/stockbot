@@ -2,7 +2,7 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "c25189980f75365a",
+   "hash": "f14019c179173b2c",
    "tickers": [
     "XTND",
     "CLRO",
@@ -21,7 +21,7 @@
     "LTM"
    ],
    "day": "2026-10-26",
-   "at": "2026-10-26T20:30:19Z",
+   "at": "2026-10-26T23:30:50Z",
    "total": 200
   }
  },
@@ -56,7 +56,8 @@
    "reg4",
    "reg5",
    "reg6",
-   "post1"
+   "post1",
+   "post2"
   ]
  }
 }
