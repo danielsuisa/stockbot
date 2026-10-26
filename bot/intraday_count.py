@@ -3,8 +3,9 @@
 fetched: every Alpaca request is blocked and counted as a cache miss, so the count is also a coverage report.
 
 The day list is the ZBA development run's (bot/zba_v2.py, same cache keys: the asset list, daily bars over the same
-range, the opening 5-minute bars, the minute bars of each day's top 20 by opening relative volume). The detectors are
-the screener's own (bot/intraday.py), replayed as its 5-minute scan loop would see them on SIP minute bars. No fill is
+range, the opening 5-minute bars, the minute bars of each day's top 20 by opening relative volume). The detectors are the frozen pre-deck setups (bot/intraday_v1.py), replayed as the 5-minute scan loop saw them
+on SIP minute bars. Live alerts have since moved to the study deck; this count stays the count that was published.
+No fill is
 simulated: "entry touched" only says a later minute's high reached the buy-stop level.
 
     python -m bot.intraday_count                 # writes docs/backtest/intraday-signal-count-2024.md and .csv
@@ -17,7 +18,7 @@ import json
 import os
 import time
 
-from bot import alpaca, intraday, ticket, ticket_backtest as tb, zba_v2
+from bot import alpaca, intraday, intraday_v1, ticket, ticket_backtest as tb, zba_v2
 
 YEAR = "2024"
 SCANS = [ticket.hhmm(m) for a, b in (("09:40", "11:30"), ("15:00", "15:45"))
@@ -47,12 +48,12 @@ def signals_of(bars1, atr, prev_close):
             continue
         if now >= intraday.LATE_FROM and not (b5[-1]["c"] > b5[0]["o"] and b5[-1]["c"] > (b5[-1].get("vwap") or 0)):
             continue
-        for s in intraday.setups(b5, atr, prev_close):
+        for s in intraday_v1.setups(b5, atr, prev_close):
             key = s["setup"]
             if key in seen:
                 continue
             seen.add(key)
-            entry = s["trigger_high"] + intraday.TICK
+            entry = s["trigger_high"] + intraday_v1.TICK
             touched = any(b[2] >= entry for b in bars1 if now < b[0] < "16:00")
             out.append((now, key, round(entry, 2), s["stop_ref"], touched))
             break  # the screener issues one ticket per symbol per scan: its best setup
