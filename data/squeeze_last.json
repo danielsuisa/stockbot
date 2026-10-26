@@ -1,15 +1,15 @@
 {
  "date": "2026-10-26",
  "kind": "day",
- "at": "16:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ב׳ <code>26.10.2026</code> · מצב ב־<code>22:30</code>\n\nמקום <code>1</code>: <code>AVBP</code> · <code>15.36$</code> <code>26.9%▼</code>\nשורט <code>28.5%</code> מהמניות הצפות · <code>7.9</code> ימים לכיסוי · מחזור פי <code>5.4</code> מהרגיל\n\nמקום <code>2</code>: <code>STOK</code> · <code>25.46$</code> <code>1.7%▲</code>\nשורט <code>25.2%</code> מהמניות הצפות · <code>11.8</code> ימים לכיסוי · מחזור פי <code>2.1</code> מהרגיל\n\nמקום <code>3</code>: <code>CLYM</code> · <code>8.81$</code> <code>13.5%▼</code>\nשורט <code>25.1%</code> מהמניות הצפות · <code>7.2</code> ימים לכיסוי · מחזור פי <code>2.5</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
+ "at": "19:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ג׳ <code>27.10.2026</code> · מצב ב־<code>01:30</code>\n\nמקום <code>1</code>: <code>AVBP</code> · <code>15.36$</code> <code>26.9%▼</code>\nשורט <code>28.5%</code> מהמניות הצפות · <code>7.9</code> ימים לכיסוי · מחזור פי <code>5.5</code> מהרגיל\n\nמקום <code>2</code>: <code>STOK</code> · <code>25.46$</code> <code>1.7%▲</code>\nשורט <code>25.2%</code> מהמניות הצפות · <code>11.8</code> ימים לכיסוי · מחזור פי <code>2.1</code> מהרגיל\n\nמקום <code>3</code>: <code>CLYM</code> · <code>8.81$</code> <code>13.5%▼</code>\nשורט <code>25.1%</code> מהמניות הצפות · <code>7.2</code> ימים לכיסוי · מחזור פי <code>2.5</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
  "rows": [
   {
    "t": "AVBP",
    "price": 15.36,
    "chg": -0.2686,
    "avg_vol": 1072962,
-   "rel_vol": 5.4228,
+   "rel_vol": 5.5423,
    "short_ratio": 7.8768,
    "float": 29631973,
    "short_float": 0.2852,
@@ -20,7 +20,7 @@
    "price": 25.46,
    "chg": 0.0168,
    "avg_vol": 974382,
-   "rel_vol": 2.1319,
+   "rel_vol": 2.1382,
    "short_ratio": 11.8079,
    "float": 45614246,
    "short_float": 0.2522,
