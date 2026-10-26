@@ -1,52 +1,7 @@
 {
- "date": "2026-10-23",
- "kind": "day",
- "at": "19:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ש׳ <code>24.10.2026</code> · מצב ב־<code>02:30</code>\n\nמקום <code>1</code>: <code>AVBP</code> · <code>21.00$</code> <code>9.4%▲</code>\nשורט <code>28.5%</code> מהמניות הצפות · <code>8.2</code> ימים לכיסוי · מחזור פי <code>3.2</code> מהרגיל\n\nמקום <code>2</code>: <code>AVTX</code> · <code>6.93$</code> <code>7.0%▼</code>\nשורט <code>28.4%</code> מהמניות הצפות · <code>8.3</code> ימים לכיסוי · מחזור פי <code>3.3</code> מהרגיל\n\nמקום <code>3</code>: <code>WGS</code> · <code>56.15$</code> <code>16.4%▼</code>\nשורט <code>27.5%</code> מהמניות הצפות · <code>7.7</code> ימים לכיסוי · מחזור פי <code>3.5</code> מהרגיל\n\nמקום <code>4</code>: <code>IRON</code> · <code>74.51$</code> <code>0.7%▼</code>\nשורט <code>22.1%</code> מהמניות הצפות · <code>9.8</code> ימים לכיסוי · מחזור פי <code>2.7</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
- "rows": [
-  {
-   "t": "AVBP",
-   "price": 21.0,
-   "chg": 0.0937,
-   "avg_vol": 1029167,
-   "rel_vol": 3.1849,
-   "short_ratio": 8.212,
-   "float": 29631973,
-   "short_float": 0.2852,
-   "options": true
-  },
-  {
-   "t": "AVTX",
-   "price": 6.93,
-   "chg": -0.0698,
-   "avg_vol": 1372903,
-   "rel_vol": 3.3135,
-   "short_ratio": 8.3074,
-   "float": 40110405,
-   "short_float": 0.2843,
-   "options": true
-  },
-  {
-   "t": "WGS",
-   "price": 56.15,
-   "chg": -0.1637,
-   "avg_vol": 727587,
-   "rel_vol": 3.5,
-   "short_ratio": 7.7328,
-   "float": 20443352,
-   "short_float": 0.2752,
-   "options": true
-  },
-  {
-   "t": "IRON",
-   "price": 74.51,
-   "chg": -0.0069,
-   "avg_vol": 738753,
-   "rel_vol": 2.6572,
-   "short_ratio": 9.8415,
-   "float": 32910730,
-   "short_float": 0.2209,
-   "options": true
-  }
- ]
+ "date": "2026-10-26",
+ "kind": "pre",
+ "at": "04:15",
+ "text": "🌅 <b>רשימת סקוויז לפני הפתיחה</b>\nיום ב׳ <code>26.10.2026</code> · מצב ב־<code>10:15</code>\n\n🤷 אף מניה לא עומדת כרגע בכל התנאים.\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.9</code>.",
+ "rows": []
 }
