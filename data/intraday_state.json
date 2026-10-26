@@ -204,7 +204,9 @@
   "NU:engulf": "10:10",
   "AMKR:inside": "10:15",
   "XNCR:inside": "11:15",
-  "CRCL:breakout": "11:25"
+  "CRCL:breakout": "11:25",
+  "CRWV:engulf": "15:35",
+  "RRC:shooting_star": "15:45"
  },
  "journal": [
   {
@@ -416,6 +418,36 @@
    "at": "11:25",
    "last": 80.635,
    "vwap": 80.21882763091152
+  },
+  {
+   "ok": true,
+   "setup": "engulf",
+   "note": "בליעה שורית אחרי ירידה על רמה · ספרינג: השפל חדר מתחת לרמה ונסגר מעליה",
+   "score": 2.421030672291739,
+   "entry_stop": 56.29,
+   "limit": 56.34,
+   "stop_loss": 55.74,
+   "target": 57.39,
+   "R": 0.55,
+   "r_floored": false,
+   "shares": 8,
+   "risk": 4.4,
+   "commission": 2.0,
+   "cost_r": 0.45454545454545453,
+   "time_exit": "15:55",
+   "valid_until": "15:40",
+   "valid_mode": "next",
+   "atr": 6.44607142857143,
+   "spring": true,
+   "warn": false,
+   "level": 55.955,
+   "symbol": "CRWV",
+   "gap": -0.0444,
+   "pre_rel": 0.1161,
+   "open_relvol": 1.1051533614586957,
+   "at": "15:35",
+   "last": 56.22,
+   "vwap": 55.262679602891794
   }
  ],
  "stats": null
