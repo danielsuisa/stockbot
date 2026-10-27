@@ -2,7 +2,7 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "b44ccc1bed446656",
+   "hash": "5e5085d0f8d6a441",
    "tickers": [
     "MFIC",
     "IPST",
@@ -12,16 +12,16 @@
     "CCXI",
     "RENT",
     "NAUT",
-    "XP",
-    "WHR",
-    "SOFI",
     "PICS",
+    "WHR",
+    "XP",
     "XYL",
+    "SOFI",
     "KNSA",
     "EEFT"
    ],
    "day": "2026-10-27",
-   "at": "2026-10-27T17:30:35Z",
+   "at": "2026-10-27T18:30:24Z",
    "total": 200
   }
  },
@@ -65,7 +65,8 @@
    "reg1",
    "reg2",
    "reg3",
-   "reg4"
+   "reg4",
+   "reg5"
   ]
  }
 }
