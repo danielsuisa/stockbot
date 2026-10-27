@@ -264,6 +264,17 @@
    "gain": 0.3185,
    "vol_ratio": 0.2345,
    "si_pct": 0.2201
+  },
+  {
+   "date": "2026-10-27",
+   "session": "pre",
+   "t": "NEXR",
+   "manual": false,
+   "price": 0.5662,
+   "ref": 0.448,
+   "gain": 0.2638,
+   "vol_ratio": 451.3791,
+   "si_pct": 0.2012
   }
  ]
 }
