@@ -10,13 +10,14 @@ from bot.common import code
 
 UTC = dt.timezone.utc
 WINDOW = dt.timedelta(minutes=60)  # a job is started up to this long after its time (a listener hand-over or restart)
-WEEKDAYS, TUE_SAT = range(0, 5), range(1, 6)
+WEEKDAYS = range(0, 5)
 # (name, time zone, time, weekdays in that zone, workflow, dispatch inputs)
+# The K10s shadow digest (shadow.yml, 07:00 UTC Tue–Sat) was removed from the clock on 2026-10-27. The workflow
+# stays dispatchable by hand and only writes the journal; it does not post to Telegram.
 JOBS = ([(f"squeeze:{s}", sessions.NY, t, WEEKDAYS, "squeeze.yml", {"mode": "slot"})
          for s, (t, _) in sessions.SLOTS.items() if s in sessions.SQUEEZE]
         # the insider-buying scan (daily-scan.yml: morning + session slots) was removed at the owner's request
         # on 2026-10-24; the workflow stays dispatchable by hand
-        + [("shadow:morning", UTC, dt.time(7, 0), TUE_SAT, "shadow.yml", {"mode": "slot"})]  # the session before
         + [(f"intraday:{m}", sessions.NY, t, WEEKDAYS, "intraday.yml", {"mode": m})  # the candlestick screener
            for m, t in (("morning", dt.time(9, 37)), ("power", dt.time(14, 57)), ("followup", dt.time(16, 20)))])
 

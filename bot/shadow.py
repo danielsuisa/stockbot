@@ -1,9 +1,10 @@
-"""Forward shadow tracker of ZBA K10s (docs/superpowers/specs/2026-10-09-shadow-tracker-design.md): every trading day,
-the trades K10s would have made, computed with the backtest's own code on SIP data, posted to Telegram with a running
-tally. No order is sent and no money is used; the method has not passed a pre-registered test.
+"""Forward journal of ZBA K10s (docs/superpowers/specs/2026-10-09-shadow-tracker-design.md): every trading day,
+the trades K10s would have made, computed with the backtest's own code on SIP data, recorded in
+data/shadow_journal.json. Nothing is posted to Telegram. The owner removed the "מעקב צל" digest on 2026-10-27.
+No order is sent and no money is used; the method has not passed a pre-registered test.
 
-    python -m bot.shadow           # process the completed sessions not yet in data/shadow_journal.json
-    python -m bot.shadow --dry     # print the messages, write nothing"""
+    python -m bot.shadow           # record the completed sessions not yet in data/shadow_journal.json
+    python -m bot.shadow --dry     # print what the digest used to say, write nothing"""
 import argparse
 import collections
 import datetime as dt
@@ -206,7 +207,7 @@ def tally_block(j):
 
 
 def message(day, res, j):
-    """The Hebrew shadow message for one session (the journal already holds it); common.send adds SOURCE."""
+    """The Hebrew text of one session. Kept for the journal and for --dry. Nothing calls this to send."""
     blocks = [f"{TITLE}\nיום {weekday(day)} {code(il_date(day))} · מעקב בלבד, לא נשלחה פקודה"]
     blocks += [trade_block(day, x) for x in res["trades"]] or ["אף עסקה לא נפתחה היום."]
     blocks += [skips_line(res), tally_block(j)]
@@ -321,10 +322,11 @@ def today_ny():
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="ZBA K10s forward shadow tracker -> Telegram and data/shadow_journal.json")
+    ap = argparse.ArgumentParser(description="ZBA K10s forward journal -> data/shadow_journal.json. "
+                                 "Does not post to Telegram.")
     ap.add_argument("--dry", action="store_true", help="print the messages, write nothing")
-    ap.add_argument("--manual", action="store_true", help="/shadow: also today's live view, or say there is no new "
-                    "session (also SHADOW_MODE)")
+    ap.add_argument("--manual", action="store_true", help="accepted so an old dispatch still exits quietly "
+                    "(also SHADOW_MODE). The live view is printed only with --dry.")
     a = ap.parse_args(argv)
     manual = a.manual or common.env("SHADOW_MODE") == "manual"
     today = today_ny()
@@ -340,23 +342,17 @@ def main(argv=None):
         res = run_day(day, hours, sessions)
         j["since"] = j.get("since") or day
         j["days"][day] = res
-        text = message(day, res, j)
         if a.dry:
-            print(text, end="\n\n")
+            print(message(day, res, j), end="\n\n")
             continue
-        common.send(text, source=SOURCE)
-        save(j)  # right after it went out: a later failure in this run never resends the day
+        save(j)
         common.log("shadow", day=day, top=len(res["top"]), trades=len(res["trades"]), dropped=res["dropped"])
-    if manual:  # /shadow: today as it unfolds (never journaled)
+    if manual and a.dry:  # a local look at today; never posted
         try:
-            text = live(now_ny(), hours, sessions)
-        except Exception as e:  # the journal part above is done; the live part just says it is unavailable
+            print(live(now_ny(), hours, sessions))
+        except Exception as e:
             common.trace()
-            text = f"⚠️ התצוגה החיה של היום לא זמינה כרגע: {code(str(e)[:120])}"
-        if a.dry:
-            print(text)
-        else:
-            common.send(text, source=SOURCE)
+            print(f"⚠️ התצוגה החיה של היום לא זמינה כרגע: {code(str(e)[:120])}")
     return 0
 
 
