@@ -8,6 +8,7 @@ from unittest import mock
 
 from bot import check, common, journal, market, scan
 import msgrules
+from test_commands import frozen_dt
 from test_reliability import row
 
 TODAY = dt.date(2026, 9, 24)
@@ -189,8 +190,11 @@ class Enrich(unittest.TestCase):
                 mock.patch.dict(os.environ, {"STATE_FILE": os.path.join(tmp, "s.json"), "JOURNAL_FILE": ""}), \
                 mock.patch.object(scan, "scan_day", return_value="ok"), mock.patch.object(common, "send"), \
                 mock.patch.object(market, "regime", return_value={"tag": "normal"}), \
+                mock.patch.object(scan, "dt", frozen_dt(TODAY)), \
                 mock.patch.object(scan, "alerts", return_value=[["🔔", {"7": ["a"]}, {"7": {"id": entry_["id"],
                                                                  "date": TODAY.isoformat()}}, {"7": entry_}]]):
+            # prune drops sent rows older than WINDOW_DAYS from the scan's clock. Freeze that clock on the
+            # fixture date, or a later real today deletes the snapshot before the assertion.
             scan._reported[0] = False
             scan.main(["--days", "20260923"])
             j = journal.load(journal.Path(tmp) / "journal.json")

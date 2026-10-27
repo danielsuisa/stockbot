@@ -44,7 +44,7 @@ class Due(unittest.TestCase):
 
     def test_a_winter_tuesday_and_the_after_midnight_1930_run(self):
         got = {(t, k) for t, k, _, _ in ticks("2026-12-01T00:00", "2026-12-02T01:00")}
-        want = {("12-01 00:30", "squeeze:post2:2026-11-30"), ("12-01 07:00", "shadow:morning:2026-12-01")}
+        want = {("12-01 00:30", "squeeze:post2:2026-11-30")}
         want |= {(f"12-01 {9 + h:02}:15", f"squeeze:pm{h + 1}:2026-12-01") for h in range(6)}  # 04:15-09:15 EST
         for utc_t, slot in (("12-01 21:30", "post1"), ("12-02 00:30", "post2")):
             want.add((utc_t, f"squeeze:{slot}:2026-12-01"))
@@ -61,9 +61,7 @@ class Due(unittest.TestCase):
                 if key.startswith("scan:"):
                     self.assertEqual((wf, mode), ("daily-scan.yml", "morning"))
                     continue
-                if key.startswith("shadow:"):  # 07:00 UTC Tuesday-Saturday: the session before
-                    self.assertEqual((wf, mode), ("shadow.yml", "slot"))
-                    continue
+                self.assertFalse(key.startswith("shadow:"), key)  # the shadow digest is not scheduled
                 if key.startswith("intraday:"):  # the candlestick screener: its mode is its slot
                     self.assertEqual((wf, mode), ("intraday.yml", key.split(":")[1]))
                     continue
@@ -74,10 +72,10 @@ class Due(unittest.TestCase):
                 self.assertEqual((wf, mode), {"squeeze": ("squeeze.yml", "slot"),
                                               "insider": ("daily-scan.yml", "intraday")}[name])
 
-    def test_weekends_only_the_saturday_morning_runs(self):
-        # from Saturday 01:00 UTC: Friday's 19:30 New York run (23:30 UTC) is over an hour old by then
-        self.assertEqual([k for _, k, _, _ in ticks("2026-10-03T01:00", "2026-10-05T00:00")],
-                         ["shadow:morning:2026-10-03"])
+    def test_weekends_start_nothing(self):
+        # from Saturday 01:00 UTC: Friday's 19:30 New York run (23:30 UTC) is over an hour old by then.
+        # The Saturday shadow digest used to be the only weekend job.
+        self.assertEqual([k for _, k, _, _ in ticks("2026-10-03T01:00", "2026-10-05T00:00")], [])
 
     def test_a_late_listener_catches_up_within_the_hour_and_never_twice(self):
         self.assertEqual([k for k, _, _ in clock.due(utc("2026-09-28T09:14"), set())], ["squeeze:pm1:2026-09-28"])
@@ -131,6 +129,11 @@ class Workflows(unittest.TestCase):
         for _, _, _, _, wf, inputs in clock.JOBS:
             options = re.search(r"mode:.*?options: \[([^\]]*)\]", self.text(wf), re.S).group(1)
             self.assertIn(inputs["mode"], [o.strip() for o in options.split(",")], wf)
+        self.assertFalse(any(wf == "shadow.yml" for *_, wf, _ in clock.JOBS))
+        shadow = self.text("shadow.yml")
+        self.assertIsNone(re.search(r"^\s+schedule:", shadow, re.M))
+        self.assertNotIn("TG_TOKEN", shadow)
+        self.assertNotIn("sendMessage", shadow)
 
 
 if __name__ == "__main__":

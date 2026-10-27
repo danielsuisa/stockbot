@@ -215,19 +215,19 @@ class Main(unittest.TestCase):
                 mock.patch.object(shadow.common, "send") as send, mock.patch.object(shadow, "today_ny", return_value=today), \
                 mock.patch.object(shadow, "live", return_value="👻 היום") as self.live:
             self.assertEqual(shadow.main(list(argv)), 0)
-        self.assertTrue(all(c.kwargs.get("source") == shadow.SOURCE for c in send.call_args_list))  # Alpaca footer
+        send.assert_not_called()
         return [c.args[0] for c in rd.call_args_list], [c.args[0] for c in send.call_args_list]
 
-    def test_a_day_is_sent_once_and_recorded(self):
+    def test_a_day_is_journaled_and_never_sent(self):
         days, sent = self.main()
-        self.assertEqual((days, len(sent)), ([DAY], 1))
+        self.assertEqual((days, sent), ([DAY], []))
         j = shadow.load()
         self.assertEqual((j["since"], list(j["days"])), (DAY, [DAY]))
-        self.assertEqual(self.main(), ([], []))  # the next scheduled run: silence
-        days, sent = self.main("--manual")  # /shadow: nothing new to journal, today's live view
-        self.assertEqual((days, sent), ([], ["👻 היום"]))
-        self.assertEqual(list(shadow.load()["days"]), [DAY])  # the live view never touches the journal
-        self.live.assert_called_once()
+        self.assertEqual(self.main(), ([], []))  # the next run: nothing new, still no message
+        days, sent = self.main("--manual")  # an old manual dispatch journals nothing new and posts nothing
+        self.assertEqual((days, sent), ([], []))
+        self.assertEqual(list(shadow.load()["days"]), [DAY])
+        self.live.assert_not_called()
 
     def test_the_calendar_reaches_back_before_the_last_processed_session(self):
         shadow.save({"v": 1, "since": "2023-11-01", "days": {"2023-11-01": dict(self.RES)}})
@@ -242,7 +242,7 @@ class Main(unittest.TestCase):
 
 
 class Command(unittest.TestCase):
-    """/shadow was removed from the bot on 2026-10-23 at the owner's request; the morning journal still runs."""
+    """/shadow was removed on 2026-10-23. The morning digest was removed on 2026-10-27: nothing is dispatched or sent."""
 
     def test_shadow_command_removed(self):
         from bot import listen
