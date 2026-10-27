@@ -2,26 +2,26 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "2cb27746d826e634",
+   "hash": "7121b287793d95a7",
    "tickers": [
+    "IPST",
     "CLRO",
     "MFIC",
-    "IPST",
     "INOD",
+    "BA",
     "RENT",
-    "WHR",
     "XP",
-    "SOFI",
-    "KNSA",
-    "CLS",
     "NAUT",
-    "ACRS",
-    "ELPC",
-    "SAIQ",
-    "CCXI"
+    "WHR",
+    "SOFI",
+    "CLS",
+    "HSBC",
+    "MGNX",
+    "KNSA",
+    "CTAS"
    ],
    "day": "2026-10-27",
-   "at": "2026-10-27T14:30:40Z",
+   "at": "2026-10-27T15:30:37Z",
    "total": 200
   }
  },
@@ -62,7 +62,8 @@
   "2026-10-27": [
    "pre1",
    "pre2",
-   "reg1"
+   "reg1",
+   "reg2"
   ]
  }
 }
