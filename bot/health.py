@@ -6,7 +6,7 @@ from pathlib import Path
 from bot import common, market, scan
 from bot.common import code
 
-WORKFLOWS = (("squeeze.yml", "רשימת הסקוויז"), ("shadow.yml", "מעקב הצל"), ("telegram-listen.yml", "הבוט בטלגרם"))
+WORKFLOWS = (("squeeze.yml", "רשימת הסקוויז"), ("telegram-listen.yml", "הבוט בטלגרם"))
 
 
 def probe(name, fn):

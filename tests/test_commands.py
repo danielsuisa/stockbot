@@ -153,8 +153,9 @@ class Health(unittest.TestCase):
                      "✅ המחירים מ־Yahoo: תקין", "✅ הבוט בטלגרם: תקין",
                      "• הבוט בטלגרם: ריצה אחרונה <code>24.9 20:10</code> ⏳ רצה עכשיו"):
             self.assertIn(want, text)
-        for gone in ("בעלי העניין", "ימים חסרים", "הסריקה היומית", "גיבוי לאינדקס"):  # removed 2026-10-24
+        for gone in ("בעלי העניין", "ימים חסרים", "הסריקה היומית", "גיבוי לאינדקס", "מעקב"):  # shadow digest too
             self.assertNotIn(gone, text)
+            self.assertNotIn(gone, bare)
         self.assertIn("❌ המחירים מ־Yahoo: נכשל", bare)
         for t in (text, bare):
             msgrules.check(self, t)

@@ -1,8 +1,8 @@
-name: K10s shadow tracker
+name: K10s shadow journal
 
 on:
-  # No GitHub schedule: it starts this repo's runs hours late. The Telegram listener's clock (bot/clock.py) dispatches
-  # mode=slot at 07:00 UTC Tuesday-Saturday, for the session before (docs/superpowers/specs/2026-10-09-shadow-tracker-design.md).
+  # No schedule and no Telegram. The listener used to dispatch this at 07:00 UTC Tuesday-Saturday and the run posted
+  # the "מעקב צל" digest. That post was removed on 2026-10-27. A manual run still writes data/shadow_journal.json.
   workflow_dispatch:
     inputs:
       mode:
@@ -29,15 +29,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Shadow trades of the completed sessions (no orders)
-        timeout-minutes: 20  # a step timeout fails the step, so the alarm below runs
+      - name: Journal the completed sessions (no orders, no Telegram)
+        timeout-minutes: 20
         run: python -m bot.shadow
         env:
           SHADOW_MODE: ${{ inputs.mode || 'slot' }}
           ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
-          TG_TOKEN: ${{ secrets.TG_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
       - name: Commit the journal
         if: always()
         run: |
@@ -52,14 +50,3 @@ jobs:
             git pull --rebase || git rebase --abort || true
           done
           exit 1
-      - name: Report a failure the run could not report itself
-        if: failure() || cancelled()
-        run: |
-          text="$(printf '❌ מעקב הצל של K10s נכשל ב־GitHub Actions: %s\n\n%s' "$RUN_URL" "$DISCLAIMER")"
-          curl -fsS --retry 3 -o /dev/null "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TG_CHAT_ID}" --data-urlencode "text=${text}"
-        env:
-          DISCLAIMER: "⚠️ מידע לצורכי מחקר בלבד ואינו ייעוץ השקעות."
-          TG_TOKEN: ${{ secrets.TG_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
