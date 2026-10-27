@@ -1,15 +1,26 @@
 {
  "date": "2026-10-27",
  "kind": "day",
- "at": "15:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ג׳ <code>27.10.2026</code> · מצב ב־<code>21:30</code>\n\nמקום <code>1</code>: <code>CLYM</code> · <code>9.62$</code> <code>9.2%▲</code>\nשורט <code>25.3%</code> מהמניות הצפות · <code>7.1</code> ימים לכיסוי · מחזור פי <code>2.1</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "at": "16:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ג׳ <code>27.10.2026</code> · מצב ב־<code>22:30</code>\n\nמקום <code>1</code>: <code>ALMU</code> · <code>7.75$</code> <code>17.2%▲</code>\nשורט <code>26.9%</code> מהמניות הצפות · <code>6.6</code> ימים לכיסוי · מחזור פי <code>2.4</code> מהרגיל\n\nמקום <code>2</code>: <code>CLYM</code> · <code>9.57$</code> <code>8.6%▲</code>\nשורט <code>25.3%</code> מהמניות הצפות · <code>7.1</code> ימים לכיסוי · מחזור פי <code>2.8</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
  "rows": [
   {
+   "t": "ALMU",
+   "price": 7.75,
+   "chg": 0.1725,
+   "avg_vol": 599167,
+   "rel_vol": 2.4497,
+   "short_ratio": 6.6309,
+   "float": 14787173,
+   "short_float": 0.2687,
+   "options": true
+  },
+  {
    "t": "CLYM",
-   "price": 9.62,
-   "chg": 0.0919,
+   "price": 9.57,
+   "chg": 0.0863,
    "avg_vol": 1379310,
-   "rel_vol": 2.1461,
+   "rel_vol": 2.8305,
    "short_ratio": 7.0959,
    "float": 38740754,
    "short_float": 0.2526,
