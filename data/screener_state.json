@@ -2,7 +2,7 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "0f29ff05a6144c4e",
+   "hash": "f858d9def69e6400",
    "tickers": [
     "MFIC",
     "HHH",
@@ -21,7 +21,7 @@
     "XP"
    ],
    "day": "2026-10-27",
-   "at": "2026-10-27T20:30:43Z",
+   "at": "2026-10-27T23:30:59Z",
    "total": 200
   }
  },
@@ -68,7 +68,8 @@
    "reg4",
    "reg5",
    "reg6",
-   "post1"
+   "post1",
+   "post2"
   ]
  }
 }
