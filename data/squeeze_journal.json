@@ -1305,6 +1305,23 @@
    "price": 8.81,
    "chg": -0.1354,
    "outcome": null
+  },
+  {
+   "date": "2026-10-29",
+   "seen": "2026-10-28",
+   "t": "BCAX",
+   "rank": 1,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-10-15",
+   "float": 36900013,
+   "short_float": 0.2791,
+   "short_ratio": 14.6464,
+   "avg_vol": 703121,
+   "rel_vol": 5.813,
+   "pre_vol": null,
+   "price": 10.275,
+   "chg": -0.4122,
+   "outcome": null
   }
  ]
 }
