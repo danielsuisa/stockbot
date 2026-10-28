@@ -275,6 +275,28 @@
    "gain": 0.2638,
    "vol_ratio": 451.3791,
    "si_pct": 0.2012
+  },
+  {
+   "date": "2026-10-28",
+   "session": "pre",
+   "t": "BKYI",
+   "manual": false,
+   "price": 3.19,
+   "ref": 2.74,
+   "gain": 0.1642,
+   "vol_ratio": 0.6555,
+   "si_pct": 0.3561
+  },
+  {
+   "date": "2026-10-28",
+   "session": "pre",
+   "t": "WEN",
+   "manual": false,
+   "price": 7.1374,
+   "ref": 6.14,
+   "gain": 0.1624,
+   "vol_ratio": 0.4471,
+   "si_pct": 0.274
   }
  ]
 }
