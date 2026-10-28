@@ -2,26 +2,26 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "3a942fc3c7727f62",
+   "hash": "b1c684a12a38f0aa",
    "tickers": [
     "ELPW",
     "LUNG",
+    "FTFT",
     "BRAI",
     "BCAX",
-    "FTFT",
     "AXGN",
     "WEN",
     "MGN",
     "FFIV",
     "EPRT",
-    "ENPH",
     "LPLA",
-    "EDU",
-    "LII",
-    "GMAB"
+    "EVMN",
+    "DSY",
+    "ENPH",
+    "EDU"
    ],
    "day": "2026-10-28",
-   "at": "2026-10-28T15:30:49Z",
+   "at": "2026-10-28T16:30:14Z",
    "total": 200
   }
  },
@@ -75,7 +75,8 @@
    "pre1",
    "pre2",
    "reg1",
-   "reg2"
+   "reg2",
+   "reg3"
   ]
  }
 }
