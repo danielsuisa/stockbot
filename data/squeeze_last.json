@@ -1,18 +1,40 @@
 {
  "date": "2026-10-28",
  "kind": "day",
- "at": "15:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ד׳ <code>28.10.2026</code> · מצב ב־<code>21:30</code>\n\nמקום <code>1</code>: <code>BCAX</code> · <code>9.70$</code> <code>44.5%▼</code>\nשורט <code>27.9%</code> מהמניות הצפות · <code>14.6</code> ימים לכיסוי · מחזור פי <code>18.3</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "at": "16:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ד׳ <code>28.10.2026</code> · מצב ב־<code>22:30</code>\n\nמקום <code>1</code>: <code>IMRX</code> · <code>3.99$</code> <code>4.2%▲</code>\nשורט <code>33.2%</code> מהמניות הצפות · <code>23.7</code> ימים לכיסוי · מחזור פי <code>2.1</code> מהרגיל\n\nמקום <code>2</code>: <code>BCAX</code> · <code>9.76$</code> <code>44.2%▼</code>\nשורט <code>27.9%</code> מהמניות הצפות · <code>14.6</code> ימים לכיסוי · מחזור פי <code>21.8</code> מהרגיל\n\nמקום <code>3</code>: <code>CAKE</code> · <code>105.73$</code> <code>2.5%▼</code>\nשורט <code>22.7%</code> מהמניות הצפות · <code>6.5</code> ימים לכיסוי · מחזור פי <code>2.4</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
  "rows": [
   {
+   "t": "IMRX",
+   "price": 3.99,
+   "chg": 0.0418,
+   "avg_vol": 688568,
+   "rel_vol": 2.0929,
+   "short_ratio": 23.708,
+   "float": 49210138,
+   "short_float": 0.3317,
+   "options": true
+  },
+  {
    "t": "BCAX",
-   "price": 9.7,
-   "chg": -0.4451,
+   "price": 9.76,
+   "chg": -0.4416,
    "avg_vol": 703121,
-   "rel_vol": 18.2538,
+   "rel_vol": 21.8232,
    "short_ratio": 14.6464,
    "float": 36900013,
    "short_float": 0.2791,
+   "options": true
+  },
+  {
+   "t": "CAKE",
+   "price": 105.73,
+   "chg": -0.0253,
+   "avg_vol": 1592870,
+   "rel_vol": 2.4375,
+   "short_ratio": 6.55,
+   "float": 45863879,
+   "short_float": 0.2275,
    "options": true
   }
  ]

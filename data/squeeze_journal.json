@@ -1322,6 +1322,40 @@
    "price": 10.275,
    "chg": -0.4122,
    "outcome": null
+  },
+  {
+   "date": "2026-10-29",
+   "seen": "2026-10-28",
+   "t": "IMRX",
+   "rank": 1,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-10-15",
+   "float": 49210138,
+   "short_float": 0.3317,
+   "short_ratio": 23.708,
+   "avg_vol": 688568,
+   "rel_vol": 2.0929,
+   "pre_vol": null,
+   "price": 3.99,
+   "chg": 0.0418,
+   "outcome": null
+  },
+  {
+   "date": "2026-10-29",
+   "seen": "2026-10-28",
+   "t": "CAKE",
+   "rank": 3,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-10-15",
+   "float": 45863879,
+   "short_float": 0.2275,
+   "short_ratio": 6.55,
+   "avg_vol": 1592870,
+   "rel_vol": 2.4375,
+   "pre_vol": null,
+   "price": 105.73,
+   "chg": -0.0253,
+   "outcome": null
   }
  ]
 }
