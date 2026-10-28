@@ -2,7 +2,7 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "534c560ebd0951e1",
+   "hash": "259fa6f37f8f0bde",
    "tickers": [
     "FTFT",
     "ELPW",
@@ -11,17 +11,17 @@
     "BCAX",
     "GCTK",
     "EVMN",
-    "FFIV",
     "LPLA",
+    "FFIV",
     "AXGN",
     "WEN",
+    "RAPP",
     "MGN",
     "DSY",
-    "RAPP",
     "EDU"
    ],
    "day": "2026-10-28",
-   "at": "2026-10-28T19:30:55Z",
+   "at": "2026-10-28T20:30:35Z",
    "total": 200
   }
  },
@@ -79,7 +79,8 @@
    "reg3",
    "reg4",
    "reg5",
-   "reg6"
+   "reg6",
+   "post1"
   ]
  }
 }
