@@ -2,27 +2,27 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "a56931fed034d1ed",
+   "hash": "815d91daaf118983",
    "tickers": [
     "ELPW",
-    "WEN",
-    "BRAI",
-    "NUWE",
-    "LII",
-    "ENPH",
-    "EAT",
-    "VRRM",
-    "BSX",
-    "IPST",
-    "FFIV",
-    "AXGN",
-    "EDU",
     "LUNG",
-    "OSS"
+    "BRAI",
+    "WEN",
+    "NUWE",
+    "AXGN",
+    "FFIV",
+    "ENPH",
+    "LII",
+    "MGN",
+    "EDU",
+    "LPLA",
+    "BCAX",
+    "OSS",
+    "GMAB"
    ],
    "day": "2026-10-28",
-   "at": "2026-10-28T13:15:50Z",
-   "total": 76
+   "at": "2026-10-28T14:30:31Z",
+   "total": 200
   }
  },
  "slots": {
@@ -73,7 +73,8 @@
   ],
   "2026-10-28": [
    "pre1",
-   "pre2"
+   "pre2",
+   "reg1"
   ]
  }
 }
