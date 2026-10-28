@@ -229,7 +229,9 @@
   "EAT:inside": "11:10",
   "BSX:engulf": "11:20",
   "UCTT:engulf": "11:30",
-  "EAT:shooting_star": "11:30"
+  "EAT:shooting_star": "11:30",
+  "UCTT:hammer": "15:00",
+  "ETSY:shooting_star": "15:35"
  },
  "journal": [
   {
@@ -741,6 +743,36 @@
    "at": "11:30",
    "last": 54.31,
    "vwap": 55.166724667437414
+  },
+  {
+   "ok": true,
+   "setup": "hammer",
+   "note": "פטיש אחרי ירידה על רמה",
+   "score": 3.0,
+   "entry_stop": 55.93,
+   "limit": 55.98,
+   "stop_loss": 55.39,
+   "target": 57.01,
+   "R": 0.54,
+   "r_floored": false,
+   "shares": 8,
+   "risk": 4.32,
+   "commission": 2.0,
+   "cost_r": 0.4629629629629629,
+   "time_exit": "15:55",
+   "valid_until": "15:05",
+   "valid_mode": "next",
+   "atr": 4.484642857142858,
+   "spring": false,
+   "warn": false,
+   "level": 55.9,
+   "symbol": "UCTT",
+   "gap": 0.0505,
+   "pre_rel": 0.0972,
+   "open_relvol": 9.236181359973212,
+   "at": "15:00",
+   "last": 55.79,
+   "vwap": 55.07611394244976
   }
  ],
  "stats": null
