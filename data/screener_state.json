@@ -2,27 +2,27 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "f1bb7074f3cd5a2d",
+   "hash": "d74699129a86e37b",
    "tickers": [
-    "TRN",
     "NUWE",
-    "INSM",
-    "DHI",
-    "BHC",
+    "CART",
+    "FTFT",
+    "IOVA",
     "SFM",
-    "ASO",
-    "HSY",
-    "DASH",
-    "MAX",
     "CROX",
-    "HXL",
-    "TROW",
-    "FVRR",
-    "LBTYK"
+    "INSM",
+    "FTNT",
+    "BHC",
+    "NCLH",
+    "PURR",
+    "NVCR",
+    "DASH",
+    "CAT",
+    "MAX"
    ],
    "day": "2026-10-29",
-   "at": "2026-10-29T11:30:25Z",
-   "total": 200
+   "at": "2026-10-29T13:15:37Z",
+   "total": 87
   }
  },
  "slots": {
@@ -84,7 +84,8 @@
    "post2"
   ],
   "2026-10-29": [
-   "pre1"
+   "pre1",
+   "pre2"
   ]
  }
 }
