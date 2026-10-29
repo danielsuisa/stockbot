@@ -1409,6 +1409,23 @@
    "price": 17.85,
    "chg": -0.1655,
    "outcome": null
+  },
+  {
+   "date": "2026-10-30",
+   "seen": "2026-10-29",
+   "t": "LENZ",
+   "rank": 1,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-10-15",
+   "float": 18392840,
+   "short_float": 0.4945,
+   "short_ratio": 12.3728,
+   "avg_vol": 735148,
+   "rel_vol": 3.4653,
+   "pre_vol": null,
+   "price": 3.45,
+   "chg": 0.0748,
+   "outcome": null
   }
  ]
 }
