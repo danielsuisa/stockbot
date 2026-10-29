@@ -1,15 +1,15 @@
 {
  "date": "2026-10-29",
  "kind": "day",
- "at": "11:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ה׳ <code>29.10.2026</code> · מצב ב־<code>17:30</code>\n\nמקום <code>1</code>: <code>LENZ</code> · <code>3.36$</code> <code>4.7%▲</code>\nשורט <code>49.5%</code> מהמניות הצפות · <code>12.4</code> ימים לכיסוי · מחזור פי <code>4.9</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "at": "12:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ה׳ <code>29.10.2026</code> · מצב ב־<code>18:30</code>\n\nמקום <code>1</code>: <code>LENZ</code> · <code>3.26$</code> <code>1.6%▲</code>\nשורט <code>49.5%</code> מהמניות הצפות · <code>12.4</code> ימים לכיסוי · מחזור פי <code>5.9</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
  "rows": [
   {
    "t": "LENZ",
-   "price": 3.36,
-   "chg": 0.0467,
+   "price": 3.26,
+   "chg": 0.0156,
    "avg_vol": 735148,
-   "rel_vol": 4.9428,
+   "rel_vol": 5.8956,
    "short_ratio": 12.3728,
    "float": 18392840,
    "short_float": 0.4945,
