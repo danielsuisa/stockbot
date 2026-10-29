@@ -2,26 +2,26 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "2405c1c607e3e8d7",
+   "hash": "3d31504cbee9e58b",
    "tickers": [
     "ADT",
     "NUWE",
-    "SFM",
     "BHC",
+    "SFM",
     "HDSN",
-    "KXIN",
     "LENZ",
     "ALNY",
     "LUNG",
     "CART",
+    "KXIN",
+    "CYH",
     "GKOS",
     "TWI",
-    "CYH",
     "TDOC",
-    "FTNT"
+    "NOW"
    ],
    "day": "2026-10-29",
-   "at": "2026-10-29T17:30:40Z",
+   "at": "2026-10-29T18:30:49Z",
    "total": 200
   }
  },
@@ -89,7 +89,8 @@
    "reg1",
    "reg2",
    "reg3",
-   "reg4"
+   "reg4",
+   "reg5"
   ]
  }
 }
