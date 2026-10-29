@@ -308,6 +308,17 @@
    "gain": 0.1032,
    "vol_ratio": 3.8778,
    "si_pct": 0.3204
+  },
+  {
+   "date": "2026-10-29",
+   "session": "post",
+   "t": "NRXP",
+   "manual": false,
+   "price": 3.22,
+   "ref": 2.66,
+   "gain": 0.2105,
+   "vol_ratio": 0.9141,
+   "si_pct": 0.2298
   }
  ]
 }
