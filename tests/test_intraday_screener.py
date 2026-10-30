@@ -2,6 +2,7 @@
 import datetime as dt
 import json
 import os
+os.environ.setdefault('NEWS_TAG', '0')  # no network in tests
 import tempfile
 import unittest
 from unittest import mock
@@ -180,7 +181,7 @@ class Messages(unittest.TestCase):
 
 
 class Labels(unittest.TestCase):
-    """Each ticket carries its setup's measured status: negative (T2; ZBA and T2 for ORB 5) or untested."""
+    """The setup label still exists, but the outgoing ticket no longer prints it."""
 
     def test_label_by_setup(self):
         for s in ("vwap_hammer", "vwap_engulf", "flag"):
@@ -189,11 +190,12 @@ class Labels(unittest.TestCase):
         for s in ("orb15", "red_to_green", "some_new_setup"):
             self.assertEqual(intraday.label(s), "תווית: מחוץ למסלול שנבדק · כרטיס למחקר בלבד")
 
-    def test_every_ticket_shows_its_setup_label(self):
+    def test_ticket_text_omits_the_label_and_ends_on_the_news_line(self):
         for s in intraday.SETUP_NAMES:
             text = intraday.ticket_text(_t(setup=s), "2026-10-19", 10_000.0)
-            self.assertIn(intraday.label(s), text)
-            self.assertEqual(sum(1 for line in text.splitlines() if line.startswith("תווית:")), 1)
+            self.assertNotIn(intraday.label(s), text)
+            self.assertFalse(any(line.startswith("תווית:") for line in text.splitlines()))
+            self.assertEqual(text.splitlines()[-1], intraday.news.NONE)
             self.assertEqual(msgrules.problems(text), [], text)
 
 

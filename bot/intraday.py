@@ -26,7 +26,7 @@ import sys
 import time
 from pathlib import Path
 
-from bot import alpaca, common, deck, list_tickets, ticket
+from bot import alpaca, common, deck, list_tickets, news, ticket
 from bot.common import code, il_date, price
 
 NY = alpaca.NY
@@ -326,7 +326,7 @@ def ticket_text(t, day, E=None):
          "הכמות לפי סיכון קבוע, כי לא נקבע הון"),
         "ב־IBKR: חשבון מזומן, לונג בלבד, בלי מינוף. פקודת bracket אחת — BUY STP LMT (טריגר ולימיט שלמעלה), "
         "ילדים: SELL STP סטופ לוס ו־SELL LMT יעד, OCA, תוקף DAY. הסטופ לא זז אחורה",
-        label(t["setup"]),
+        t.get("news") or news.NONE,
     ]
     if cost:
         lines.insert(-2, cost)
@@ -459,6 +459,13 @@ def send(text, dry, signal=False, symbols=()):
         common.send(text, signal=signal, source=SOURCE, buttons=chart_buttons(symbols))
 
 
+def _news(symbol, day):
+    try:
+        return news.tag(symbol, dt.date.fromisoformat(day))
+    except Exception:
+        return news.NONE
+
+
 def run_scan(state, day, before, now_hhmm, dry):
     risk, max_pos, E = sizing()
     if now_hhmm >= "09:55" and state["watch"] and not state["watch"][0].get("open_relvol"):
@@ -467,6 +474,8 @@ def run_scan(state, day, before, now_hhmm, dry):
              if not any(k.split(":")[0] == t["symbol"] for k in state["sent"])]  # one message per ticker per day
     buys = [t for t in fresh if not t.get("warn")][:MAX_TICKETS]
     tickets = buys + [t for t in fresh if t.get("warn")]
+    for t in buys:  # an information line only: a lookup that fails or times out never holds a ticket back
+        t["news"] = _news(t["symbol"], day)
     for t in tickets:
         state["sent"][f"{t['symbol']}:{t['setup']}"] = now_hhmm
         if not t.get("warn"):
@@ -514,6 +523,9 @@ def main(argv=None):
                        prev_low=stats[sym]["low"], adv=stats[sym]["adv"])
         risk, max_pos, E = sizing()
         got = scan(rows, day, now.strftime("%H:%M"), risk, max_pos, E)
+        for t in got:
+            if not t.get("warn"):
+                t["news"] = _news(t["symbol"], day)
         send(list_text(got, day, now.strftime("%H:%M"), E), a.dry, signal=bool(got), symbols=[t["symbol"] for t in got])
         return 0
 
