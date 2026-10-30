@@ -669,6 +669,31 @@
    "rank": 1,
    "stop_capped": true,
    "issued_in_first_session": false
+  },
+  {
+   "day": "2026-10-29",
+   "signal": "squeeze-list",
+   "symbol": "GRRR",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 9.91,
+   "limit": 10.14,
+   "planned_entry": 9.91,
+   "stop_loss": 8.92,
+   "target": 11.4,
+   "trail": 0.99,
+   "shares": 100,
+   "legs": [
+    50,
+    50
+   ],
+   "R": 0.9910000000000001,
+   "guard_spread": 0.01,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 2,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }

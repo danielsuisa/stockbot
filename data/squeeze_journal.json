@@ -1495,6 +1495,23 @@
    "price": 3.36,
    "chg": 0.2632,
    "outcome": null
+  },
+  {
+   "date": "2026-11-02",
+   "seen": "2026-10-30",
+   "t": "GRRR",
+   "rank": 2,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-10-15",
+   "float": 24905065,
+   "short_float": 0.2397,
+   "short_ratio": 6.2654,
+   "avg_vol": 952954,
+   "rel_vol": 2.1818,
+   "pre_vol": null,
+   "price": 7.215,
+   "chg": -0.2106,
+   "outcome": null
   }
  ]
 }

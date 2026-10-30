@@ -1,18 +1,29 @@
 {
  "date": "2026-10-30",
  "kind": "day",
- "at": "12:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>30.10.2026</code> · מצב ב־<code>18:30</code>\n\nמקום <code>1</code>: <code>NRXP</code> · <code>2.20$</code> <code>17.3%▼</code>\nשורט <code>26.6%</code> מהמניות הצפות · <code>11.6</code> ימים לכיסוי · מחזור פי <code>15.6</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "at": "13:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>30.10.2026</code> · מצב ב־<code>19:30</code>\n\nמקום <code>1</code>: <code>NRXP</code> · <code>2.20$</code> <code>17.2%▼</code>\nשורט <code>26.6%</code> מהמניות הצפות · <code>11.6</code> ימים לכיסוי · מחזור פי <code>15.9</code> מהרגיל\n\nמקום <code>2</code>: <code>GRRR</code> · <code>7.21$</code> <code>21.1%▼</code>\nשורט <code>24.0%</code> מהמניות הצפות · <code>6.3</code> ימים לכיסוי · מחזור פי <code>2.2</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
  "rows": [
   {
    "t": "NRXP",
-   "price": 2.1998,
-   "chg": -0.1733,
+   "price": 2.2021,
+   "chg": -0.172,
    "avg_vol": 856317,
-   "rel_vol": 15.596,
+   "rel_vol": 15.9028,
    "short_ratio": 11.6195,
    "float": 37388639,
    "short_float": 0.2661,
+   "options": true
+  },
+  {
+   "t": "GRRR",
+   "price": 7.215,
+   "chg": -0.2106,
+   "avg_vol": 952954,
+   "rel_vol": 2.1818,
+   "short_ratio": 6.2654,
+   "float": 24905065,
+   "short_float": 0.2397,
    "options": true
   }
  ]
