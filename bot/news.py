@@ -1,6 +1,7 @@
 """News / catalyst tag for a long ticket: one Hebrew line, information only (never a filter, never blocks a ticket).
 
-Free sources, no keys: Yahoo Finance headline RSS (per symbol), the Nasdaq earnings calendar (one call per date for
+Free sources, no keys: Yahoo Finance headline RSS (per symbol; a tight factual phrase only — commentary, questions
+and listicles are dropped), the Nasdaq earnings calendar (one call per date for
 the next EARNINGS_DAYS days, shared by every symbol) and, only when SEC_UA is set, SEC EDGAR 8-K / 6-K filings.
 Every request has a short timeout and one try; any error -> "אין חדשות משמעותיות". Results are cached per symbol per
 day in the process (a scan loop asks again for free) and the calendar once per day."""
@@ -18,10 +19,39 @@ TIMEOUT = float(common.env("NEWS_TIMEOUT", "3"))  # seconds per request
 BUDGET = float(common.env("NEWS_BUDGET", "6"))  # seconds for one symbol's whole lookup
 NEWS_DAYS, EARNINGS_DAYS = 7, 14
 NONE = "אין חדשות משמעותיות"
-MATERIAL = re.compile(r"\b(FDA|approv|clearance|certif|partner|agreement|deal|acqui|merger|contract|award|"
-                      r"upgrade|downgrade|price target|raises|guidance|beats?|record|launch|8-K|6-K|offering)", re.I)
+# Whole words/phrases only. A stem like "deal" or "merger" is not enough.
+KEEP = (
+    "acquisition", "acquires", "merger agreement", "definitive agreement", "partnership agreement",
+    "collaboration agreement", "fda approval", "fda approves", "fda clears", "granted approval", "eu approval",
+    "ce mark", "ivdr certification", "preliminary results", "results beat", "beats estimates",
+    "raises guidance", "lowers guidance", "guidance", "initiates coverage", "upgrade", "downgrade",
+    "price target raised", "price target cut", "announces earnings date", "to report earnings",
+)
+# Commentary, opinion, listicles, price-prediction pieces. A keep-phrase does not save these.
+DROP = (
+    "could", "why", "how", "what", "should", "might", "undervalued", "overvalued", "opinion",
+    "top stocks", "stocks to watch", "here's why", "here’s why", "price prediction", "price predictions",
+    "price-prediction", "price-predictions",
+)
+
+
+def _alts(phrases):
+    return "|".join(re.escape(p) for p in sorted(set(phrases), key=len, reverse=True))
+
+
+MATERIAL = re.compile(rf"\b(?:{_alts(KEEP)})\b", re.I)
+COMMENTARY = re.compile(
+    rf"(?:\?|^(?:why|how|what|could|should)\b|\b(?:{_alts(DROP)})\b|\bthe\s+1\b.*\bquestion\b)",
+    re.I,
+)
 UA = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 _cache, _cal = {}, {}
+
+
+def factual(title):
+    """True for a clearly material headline. Questions and commentary are out, even with a keep-phrase."""
+    title = (title or "").strip().lstrip("\"'“”‘’")
+    return bool(title) and MATERIAL.search(title) is not None and COMMENTARY.search(title) is None
 
 
 def _get(url, headers=UA):
@@ -30,7 +60,7 @@ def _get(url, headers=UA):
 
 
 def headlines(symbol, today):
-    """Yahoo RSS -> [(date, title, source)] material and within NEWS_DAYS, newest first."""
+    """Yahoo RSS -> [(date, title, source)] factual and within NEWS_DAYS, newest first."""
     root = ET.fromstring(_get(f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US"))
     out = []
     for it in root.iter("item"):
@@ -39,7 +69,7 @@ def headlines(symbol, today):
             d = parsedate_to_datetime(it.findtext("pubDate")).date()
         except (TypeError, ValueError):
             continue
-        if title and (today - d).days <= NEWS_DAYS and MATERIAL.search(title):
+        if factual(title) and (today - d).days <= NEWS_DAYS:
             out.append((d, title, "Yahoo Finance"))
     return sorted(out, reverse=True)
 
