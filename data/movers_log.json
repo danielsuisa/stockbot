@@ -330,6 +330,17 @@
    "gain": 0.1992,
    "vol_ratio": 1.2425,
    "si_pct": 0.2298
+  },
+  {
+   "date": "2026-10-30",
+   "session": "pre",
+   "t": "INO",
+   "manual": false,
+   "price": 0.8701,
+   "ref": 0.77,
+   "gain": 0.13,
+   "vol_ratio": 0.1638,
+   "si_pct": 0.206
   }
  ]
 }
