@@ -2,6 +2,7 @@
 import datetime as dt
 import json
 import os
+os.environ.setdefault('NEWS_TAG', '0')  # no network in tests
 import tempfile
 import unittest
 from unittest import mock
