@@ -2,12 +2,13 @@
 hammer and bullish engulfing after a decline on a level, the regular inside bar, a close-confirmed breakout,
 VWAP pullback (09:40–11:30) and bull flag. Each buy alert carries the deck's bracket: buy stop-limit one tick
 above the trigger, stop one tick under the invalidation, target at twice that risk. A shooting star on resistance
-is a caution only — a cash account does not short. Nothing is sent to a broker.
+is a caution only — a cash account does not short — and it is off unless INTRADAY_SHOW_WARN=1. Nothing is sent to a broker.
 
 Stage 1, 09:38 New York: "stocks in play" (universe: Alpaca assets on NYSE/Nasdaq/Arca, $5-$500, 20-session
-average volume >= 1M shares and $20M, ATR14 >= 2% of the close, gap >= 2% either way or pre-market volume >= 10% of
-the average day); the top WATCH by pre-market relative volume are the watchlist. From 09:55 the watchlist is
-re-ranked by the 09:30-09:35 SIP bar's relative volume (Zarattini & Aziz 2024, the top 20 by this measure).
+average volume >= 1M shares and $20M, ATR14 >= 2% of the close, gap up >= 2% or pre-market volume >= 10% of
+the average day; a gap down is excluded). The list is sent once, when it is built. From 09:55 the watchlist is
+re-ranked by the 09:30-09:35 SIP bar's relative volume (Zarattini & Aziz 2024, the top 20 by this measure)
+and that second copy of the list is not sent.
 
 Stage 2, every 5 minutes 09:40-11:30 and 15:00-15:45: completed 5-minute candles (IEX feed, no lag). Size is 1% of
 pinned equity (slide 51), else the fixed fallback, and never more than the cash. Time exit 15:55 New York.
@@ -38,7 +39,7 @@ SOURCE = ("⚠️ כרטיס מחושב בלבד, לא ייעוץ השקעות: 
 PRICE = (5.0, 500.0)  # liquid names with real spreads; below $5 the costs ate the ZBA edge (docs/backtest)
 ADV_SHARES, ADV_DOLLARS, ADV_SESSIONS = 1_000_000, 20_000_000.0, 20
 ATR_PCT, ATR_ABS = 0.02, 0.50  # ATR14: >= 2% of the close (a 2:1 target fits a session) and >= $0.50 (Z&A 2024)
-GAP_PCT = 0.02  # |open - previous close| / previous close: a catalyst that was priced over night
+GAP_PCT = 0.02  # (open / previous close) - 1: a gap up priced overnight. A gap down is not in play.
 PRE_VOL_SHARE = 0.10  # pre-market volume >= 10% of the average day: in play without a gap
 OPEN_RELVOL, STRONG_RELVOL = 1.0, 5.0  # 09:30-09:35 volume / its mean over RELVOL_SESSIONS: in play (Z&A), strong (Cameron)
 RELVOL_SESSIONS = 14
@@ -461,8 +462,7 @@ def send(text, dry, signal=False, symbols=()):
 def run_scan(state, day, before, now_hhmm, dry):
     risk, max_pos, E = sizing()
     if now_hhmm >= "09:55" and state["watch"] and not state["watch"][0].get("open_relvol"):
-        state["watch"] = rerank(state["watch"], day, before)
-        send(watch_text(state["watch"], day), dry, symbols=[w["symbol"] for w in state["watch"]])
+        state["watch"] = rerank(state["watch"], day, before)  # re-rank only; the 09:38 list was already sent
     fresh = [t for t in scan(state["watch"], day, now_hhmm, risk, max_pos, E)
              if not any(k.split(":")[0] == t["symbol"] for k in state["sent"])]  # one message per ticker per day
     buys = [t for t in fresh if not t.get("warn")][:MAX_TICKETS]

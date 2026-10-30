@@ -241,6 +241,26 @@ class LongOnlyMerge(unittest.TestCase):
                 mock.patch.object(intraday.deck, "shooting_star", return_value={"setup": "shooting_star", "warn": True}):
             self.assertEqual(intraday.setups([{}], 1.0, 20.0), [])
 
+    def test_rerank_does_not_send_the_watchlist_again(self):
+        state = intraday.fresh_state("2026-10-19")
+        state["watch"] = [{"symbol": "ACME", "gap": 0.03, "pre_rel": 0.2, "atr": 1.0, "prev_close": 20.0}]
+        ranked = [{**state["watch"][0], "open_relvol": 2.0}]
+        sent = []
+        with mock.patch.object(intraday, "rerank", return_value=ranked) as rk, \
+                mock.patch.object(intraday, "scan", return_value=[]), \
+                mock.patch.object(intraday, "sizing", return_value=(100.0, None, None)), \
+                mock.patch.object(intraday, "send", side_effect=lambda *a, **k: sent.append(a[0])):
+            self.assertEqual(intraday.run_scan(state, "2026-10-19", ["2026-10-16"], "09:55", dry=True), [])
+        rk.assert_called_once()
+        self.assertEqual(sent, [])
+        self.assertEqual(state["watch"][0]["open_relvol"], 2.0)
+
+    def test_ticket_carries_the_hebrew_long_confirmation(self):
+        text = intraday.ticket_text(_t(candle_relvol=1.7), "2026-10-19", 10_000.0)
+        self.assertIn("אישור לונג: מעל VWAP ומעל פתיחת היום, נר ירוק בנפח פי <code>1.7</code> מהנרות הקודמים", text)
+        self.assertIn("BUY STP LMT", text)
+        self.assertEqual(msgrules.problems(text), [], text)
+
 
 if __name__ == "__main__":
     unittest.main()
