@@ -327,13 +327,12 @@ def ticket_text(t, day, E=None):
         "ב־IBKR: חשבון מזומן, לונג בלבד, בלי מינוף. פקודת bracket אחת — BUY STP LMT (טריגר ולימיט שלמעלה), "
         "ילדים: SELL STP סטופ לוס ו־SELL LMT יעד, OCA, תוקף DAY. הסטופ לא זז אחורה",
         t.get("news") or news.NONE,
-        label(t["setup"]),
     ]
     if cost:
-        lines.insert(-3, cost)
+        lines.insert(-2, cost)
     valid = _validity(t, day)
     if valid:
-        lines.insert(-3, valid)
+        lines.insert(-2, valid)
     return "\n".join(lines)
 
 

@@ -153,8 +153,9 @@ class OnTicket(unittest.TestCase):
             self.assertEqual(intraday._news("TEM", "2026-10-27"), news.NONE)
         from test_intraday_screener import _t
         text = intraday.ticket_text({**_t(), "news": "קטליזטור: דוחות בעוד 6 ימים"}, "2026-10-19")
-        self.assertIn("קטליזטור: דוחות בעוד 6 ימים", text)
-        self.assertIn(news.NONE, intraday.ticket_text(_t(), "2026-10-19"))
+        self.assertEqual(text.splitlines()[-1], "קטליזטור: דוחות בעוד 6 ימים")
+        self.assertNotIn("תווית:", text)
+        self.assertEqual(intraday.ticket_text(_t(), "2026-10-19").splitlines()[-1], news.NONE)
 
 
 if __name__ == "__main__":
