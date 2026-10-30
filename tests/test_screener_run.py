@@ -31,7 +31,7 @@ class Presets(unittest.TestCase):
     def test_defaults(self):
         names = [p["name"] for p in presets.defaults()]
         self.assertEqual(names, ["unusual_volume_liquid", "squeeze_like", "oversold_midcaps"])
-        self.assertEqual([p["enabled"] for p in presets.defaults()], [True, False, False])
+        self.assertEqual([p["enabled"] for p in presets.defaults()], [False, False, False])  # unusual volume merged into the intraday long-only scanner
         for p in presets.defaults():
             q = parser.parse(presets.query_text(p), strict=True)
             self.assertEqual(q.ignored, [], p["name"])
@@ -58,7 +58,7 @@ class Presets(unittest.TestCase):
             presets.delete("squeeze_like")
 
     def test_due_and_claim(self):
-        p = presets.get("unusual_volume_liquid")
+        p = {**presets.get("unusual_volume_liquid"), "enabled": True}  # off by default; the due rule still holds
         now = dt.datetime(2026, 10, 21, 15, 30, tzinfo=UTC)
         state = {"presets": {}}
         self.assertTrue(presets.due(p, "rth", now, state))
@@ -76,7 +76,7 @@ class Presets(unittest.TestCase):
         # time and was skipped as "52 minutes ago". Anchored to the slot's scheduled time it must run.
         from zoneinfo import ZoneInfo
         ny = ZoneInfo("America/New_York")
-        p = presets.get("unusual_volume_liquid")
+        p = {**presets.get("unusual_volume_liquid"), "enabled": True}
         state = {"presets": {"unusual_volume_liquid": {"at": "2026-10-22T17:38:14Z"}}}
         reg5 = dt.datetime(2026, 10, 22, 14, 30, tzinfo=ny)
         self.assertTrue(presets.due(p, "rth", reg5, state, reg5))
@@ -105,7 +105,10 @@ class PartialSlot(unittest.TestCase):
         e.notes = ["stale: bars (catching up)"] if partial else []
         ck = {"session": "RTH", "day": now.date().isoformat()}
         sent = []
-        with mock.patch.object(run, "clock_now", return_value=(now, ck, DAYS, DAYS, None)), \
+        real = presets.defaults
+        on = lambda: [{**q, "enabled": True} if q["name"] == "unusual_volume_liquid" else q for q in real()]
+        with mock.patch.object(presets, "defaults", side_effect=on), \
+                mock.patch.object(run, "clock_now", return_value=(now, ck, DAYS, DAYS, None)), \
                 mock.patch.object(run, "build_env", return_value=e), \
                 mock.patch.object(run, "send", side_effect=lambda text, dry: sent.append(text)):
             run.slot_mode(slot)

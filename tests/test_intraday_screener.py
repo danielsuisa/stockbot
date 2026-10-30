@@ -213,6 +213,55 @@ class State(unittest.TestCase):
             self.assertEqual(intraday.load(None)["sent"], {"ACME:inside": "09:55"})
 
 
+class LongOnlyMerge(unittest.TestCase):
+    def _b(self, o, c, v, vwap=20.0):
+        return {"o": o, "h": max(o, c) + 0.05, "l": min(o, c) - 0.05, "c": c, "v": v, "vwap": vwap}
+
+    def test_volume_confirms_a_green_candle_in_an_uptrend(self):
+        b5 = [self._b(20.0, 20.2, 1000), self._b(20.2, 20.3, 1000), self._b(20.3, 20.6, 3000), self._b(20.6, 20.55, 500)]
+        ok, rv = intraday.long_confirmed(b5, {"open_relvol": 2.0})
+        self.assertTrue(ok)
+        self.assertAlmostEqual(rv, 3.0)
+
+    def test_rejections(self):
+        base = [self._b(20.0, 20.2, 1000), self._b(20.2, 20.3, 1000), self._b(20.3, 20.3, 1000)]
+        self.assertEqual(intraday.long_confirmed(base + [self._b(20.3, 20.4, 1200)], {})[1], "no volume confirmation")
+        self.assertEqual(intraday.long_confirmed(base + [self._b(20.6, 20.4, 5000)], {})[1], "red candle")  # volume on a down candle
+        self.assertEqual(intraday.long_confirmed(base + [self._b(20.3, 20.5, 5000, vwap=21.0)], {})[1], "no uptrend")
+        self.assertEqual(intraday.long_confirmed(base + [self._b(20.3, 20.6, 5000)], {"open_relvol": 1.1})[1], "weak opening volume")
+
+    def test_gap_down_is_not_in_play(self):
+        stats = {"DROP": {"close": 20.0, "atr": 2.0, "adv": 2e6, "advd": 4e7}}
+        with mock.patch.object(intraday.alpaca, "volume_since", return_value={"DROP": (900_000, 19.0)}), \
+                mock.patch.object(intraday.alpaca, "live_bars", return_value={"DROP": [("09:30", 19.0, 19.1, 18.9, 19.0, 5000, 19.0)]}):
+            self.assertEqual(intraday.in_play(stats, "2026-09-29"), [])
+
+    def test_no_shooting_star_caution_by_default(self):
+        with mock.patch.object(intraday.deck, "signals", return_value=[]), \
+                mock.patch.object(intraday.deck, "shooting_star", return_value={"setup": "shooting_star", "warn": True}):
+            self.assertEqual(intraday.setups([{}], 1.0, 20.0), [])
+
+    def test_rerank_does_not_send_the_watchlist_again(self):
+        state = intraday.fresh_state("2026-10-19")
+        state["watch"] = [{"symbol": "ACME", "gap": 0.03, "pre_rel": 0.2, "atr": 1.0, "prev_close": 20.0}]
+        ranked = [{**state["watch"][0], "open_relvol": 2.0}]
+        sent = []
+        with mock.patch.object(intraday, "rerank", return_value=ranked) as rk, \
+                mock.patch.object(intraday, "scan", return_value=[]), \
+                mock.patch.object(intraday, "sizing", return_value=(100.0, None, None)), \
+                mock.patch.object(intraday, "send", side_effect=lambda *a, **k: sent.append(a[0])):
+            self.assertEqual(intraday.run_scan(state, "2026-10-19", ["2026-10-16"], "09:55", dry=True), [])
+        rk.assert_called_once()
+        self.assertEqual(sent, [])
+        self.assertEqual(state["watch"][0]["open_relvol"], 2.0)
+
+    def test_ticket_carries_the_hebrew_long_confirmation(self):
+        text = intraday.ticket_text(_t(candle_relvol=1.7), "2026-10-19", 10_000.0)
+        self.assertIn("אישור לונג: מעל VWAP ומעל פתיחת היום, נר ירוק בנפח פי <code>1.7</code> מהנרות הקודמים", text)
+        self.assertIn("BUY STP LMT", text)
+        self.assertEqual(msgrules.problems(text), [], text)
+
+
 if __name__ == "__main__":
     unittest.main()
 
