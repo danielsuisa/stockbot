@@ -2,27 +2,27 @@
  "v": 1,
  "presets": {
   "unusual_volume_liquid": {
-   "hash": "cb285afb29e4409f",
+   "hash": "eda999b12a62c120",
    "tickers": [
-    "CODI",
-    "NPKI",
     "NRXP",
-    "CDW",
-    "PAR",
-    "ARX",
-    "CSL",
-    "COUR",
+    "TNMG",
     "RDDT",
-    "GD",
-    "SBRA",
+    "NMZ",
     "NWL",
-    "VFF",
-    "BUSE",
-    "NNN"
+    "CPRI",
+    "HTO",
+    "ABR",
+    "EXC",
+    "INTC",
+    "BFAM",
+    "FGI",
+    "VRRM",
+    "AMZN",
+    "RIVN"
    ],
    "day": "2026-10-30",
-   "at": "2026-10-30T11:30:17Z",
-   "total": 200
+   "at": "2026-10-30T13:15:34Z",
+   "total": 70
   }
  },
  "slots": {
@@ -96,7 +96,8 @@
    "post2"
   ],
   "2026-10-30": [
-   "pre1"
+   "pre1",
+   "pre2"
   ]
  }
 }
