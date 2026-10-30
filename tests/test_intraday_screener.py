@@ -213,6 +213,35 @@ class State(unittest.TestCase):
             self.assertEqual(intraday.load(None)["sent"], {"ACME:inside": "09:55"})
 
 
+class LongOnlyMerge(unittest.TestCase):
+    def _b(self, o, c, v, vwap=20.0):
+        return {"o": o, "h": max(o, c) + 0.05, "l": min(o, c) - 0.05, "c": c, "v": v, "vwap": vwap}
+
+    def test_volume_confirms_a_green_candle_in_an_uptrend(self):
+        b5 = [self._b(20.0, 20.2, 1000), self._b(20.2, 20.3, 1000), self._b(20.3, 20.6, 3000), self._b(20.6, 20.55, 500)]
+        ok, rv = intraday.long_confirmed(b5, {"open_relvol": 2.0})
+        self.assertTrue(ok)
+        self.assertAlmostEqual(rv, 3.0)
+
+    def test_rejections(self):
+        base = [self._b(20.0, 20.2, 1000), self._b(20.2, 20.3, 1000), self._b(20.3, 20.3, 1000)]
+        self.assertEqual(intraday.long_confirmed(base + [self._b(20.3, 20.4, 1200)], {})[1], "no volume confirmation")
+        self.assertEqual(intraday.long_confirmed(base + [self._b(20.6, 20.4, 5000)], {})[1], "red candle")  # volume on a down candle
+        self.assertEqual(intraday.long_confirmed(base + [self._b(20.3, 20.5, 5000, vwap=21.0)], {})[1], "no uptrend")
+        self.assertEqual(intraday.long_confirmed(base + [self._b(20.3, 20.6, 5000)], {"open_relvol": 1.1})[1], "weak opening volume")
+
+    def test_gap_down_is_not_in_play(self):
+        stats = {"DROP": {"close": 20.0, "atr": 2.0, "adv": 2e6, "advd": 4e7}}
+        with mock.patch.object(intraday.alpaca, "volume_since", return_value={"DROP": (900_000, 19.0)}), \
+                mock.patch.object(intraday.alpaca, "live_bars", return_value={"DROP": [("09:30", 19.0, 19.1, 18.9, 19.0, 5000, 19.0)]}):
+            self.assertEqual(intraday.in_play(stats, "2026-09-29"), [])
+
+    def test_no_shooting_star_caution_by_default(self):
+        with mock.patch.object(intraday.deck, "signals", return_value=[]), \
+                mock.patch.object(intraday.deck, "shooting_star", return_value={"setup": "shooting_star", "warn": True}):
+            self.assertEqual(intraday.setups([{}], 1.0, 20.0), [])
+
+
 if __name__ == "__main__":
     unittest.main()
 

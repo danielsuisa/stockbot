@@ -53,6 +53,12 @@ EXCHANGES = {"NYSE", "NASDAQ", "ARCA"}
 FUND_WORDS = ("ETF", "ETN", "FUND", "TRUST", "INDEX", "PORTFOLIO", "SHARES")
 WINDOWS = {"morning": ("09:40", "11:30"), "power": ("15:00", "15:45")}
 STEP = 5  # minutes between scans
+# ---------- long-only unified scanner (merged with the "unusual volume" alert) ----------
+# A candle setup is sent only when unusual volume CONFIRMS it, the move is up and the trend is up. Volume alone never
+# alerts (the standalone screener preset unusual_volume_liquid is disabled by default). Tunable without code changes:
+VOL_CONFIRM = float(common.env("INTRADAY_VOL_CONFIRM", "1.5"))  # trigger candle volume / mean of the session's earlier candles
+OPEN_RELVOL_MIN = float(common.env("INTRADAY_OPEN_RELVOL_MIN", "1.5"))  # opening-bar relative volume, once measured
+SHOW_WARN = common.env("INTRADAY_SHOW_WARN", "0") == "1"  # shooting-star cautions (not a long setup): off by default
 
 
 # ---------- files ----------
@@ -86,7 +92,7 @@ def setups(bars5, atr, prev_close, prev_high=None, prev_low=None):
     ctx = _ctx(atr, prev_close, prev_high, prev_low)
     found = deck.signals(bars5, ctx)
     star = deck.shooting_star(bars5, ctx)
-    if star:
+    if star and SHOW_WARN:
         found.append(star)
     return found
 
@@ -166,7 +172,7 @@ def in_play(stats, day):
         gap = open_ / stats[s]["close"] - 1
         pv = (pre.get(s) or (0, 0))[0]
         pre_rel = pv / stats[s]["adv"]
-        if abs(gap) >= GAP_PCT or pre_rel >= PRE_VOL_SHARE:
+        if gap >= 0 and (gap >= GAP_PCT or pre_rel >= PRE_VOL_SHARE):  # long only: a gap down is not in play for a buyer
             rows.append({"symbol": s, "gap": round(gap, 4), "pre_vol": pv, "pre_rel": round(pre_rel, 4), "open": open_})
     return sorted(rows, key=lambda r: (-r["pre_rel"], -abs(r["gap"])))
 
@@ -205,6 +211,28 @@ def rerank(watch, day, before):
 
 
 # ---------- stage 2: the scan ----------
+def long_confirmed(b5, w):
+    """The merge rule -> (ok, reason or candle rel vol): uptrend (close above VWAP and above the day's open), and
+    unusual volume on an UP candle: the heavier of the last two candles (the trigger, or the mother / pole right
+    before a quiet inside or flag candle) must be green and >= VOL_CONFIRM x the mean of the session's earlier
+    candles; the opening bar's relative volume, once measured, >= OPEN_RELVOL_MIN. A spike on a red candle never alerts."""
+    last = b5[-1]
+    if not (last["c"] > (last.get("vwap") or float("inf")) and last["c"] > b5[0]["o"]):
+        return False, "no uptrend"
+    if len(b5) < 3:
+        return False, "no volume confirmation"
+    heavy = max(b5[-2:], key=lambda b: b["v"])
+    prior = [b["v"] for b in b5[:-2]]
+    rv = heavy["v"] / (sum(prior) / len(prior)) if sum(prior) else None
+    if heavy["c"] <= heavy["o"]:
+        return False, "red candle"
+    if rv is None or rv < VOL_CONFIRM:
+        return False, "no volume confirmation"
+    if w.get("open_relvol") is not None and w["open_relvol"] < OPEN_RELVOL_MIN:
+        return False, "weak opening volume"
+    return True, rv
+
+
 def scan(watch, day, now_hhmm, risk, max_pos, equity=None):
     """One pass over the watchlist -> [tickets] by score, best first. One buy per symbol; a shooting-star caution
     can ride along. With pinned equity the size is 1% of cash, not the 20% position cap of the other ticket path."""
@@ -215,8 +243,9 @@ def scan(watch, day, now_hhmm, risk, max_pos, equity=None):
         b5 = candles(bars.get(w["symbol"], []), now_hhmm)
         if not b5:
             continue
-        if now_hhmm >= LATE_FROM and not (b5[-1]["c"] > b5[0]["o"] and b5[-1]["c"] > (b5[-1].get("vwap") or 0)):
-            continue  # the afternoon window still runs; only a day that held up and still holds above VWAP
+        ok, cand_rv = long_confirmed(b5, w)
+        if not ok:
+            continue  # long only, and unusual volume is a confirmation inside the setup, never an alert by itself
         buys = 0
         for s in setups(b5, w["atr"], w.get("prev_close"), w.get("prev_high"), w.get("prev_low")):
             if buys and not s.get("warn"):
@@ -224,7 +253,7 @@ def scan(watch, day, now_hhmm, risk, max_pos, equity=None):
             t = bracket(w["symbol"], s, w["atr"], risk, None if equity else max_pos, w.get("adv"), equity)
             if t["ok"]:
                 t.update(gap=w.get("gap", 0.0), pre_rel=w.get("pre_rel", 0.0), open_relvol=w.get("open_relvol"),
-                         at=now_hhmm, last=b5[-1]["c"], vwap=b5[-1].get("vwap"))
+                         at=now_hhmm, last=b5[-1]["c"], vwap=b5[-1].get("vwap"), candle_relvol=round(cand_rv, 2))
                 rv = w.get("open_relvol") or w.get("pre_rel", 0) * 10
                 t["score"] = t.get("score", 0) + min(rv, STRONG_RELVOL) / STRONG_RELVOL
                 out.append(t)
@@ -279,6 +308,8 @@ def ticket_text(t, day, E=None):
     lines = [
         f"🎫 כרטיס ל-{code(t['symbol'])} · {SETUP_NAMES[t['setup']]} · נר {code(t['at'])} ניו־יורק ({code(il_time(day, t['at']))} ישראל)",
         f"למה: {t['note']} · {gap} · נפח לפני פתיחה {_pct(t['pre_rel'])} מיום ממוצע{rel}",
+        *([f"אישור לונג: מעל VWAP ומעל פתיחת היום, נר ירוק בנפח פי {code(format(t['candle_relvol'], '.1f'))} מהנרות הקודמים"]
+          if t.get("candle_relvol") else []),
         f"מחיר אחרון {code(price(t['last']))}" + (f" · VWAP {code(price(t['vwap']))}" if t.get("vwap") else ""),
         f"כניסה: קניית פריצה — טריגר {code(price(P))} · לימיט {code(price(t['limit']))}",
         f"סטופ לוס: {code(price(t['stop_loss']))} (סיכון {code(price(t['R']))} למניה"
@@ -433,7 +464,7 @@ def run_scan(state, day, before, now_hhmm, dry):
         state["watch"] = rerank(state["watch"], day, before)
         send(watch_text(state["watch"], day), dry, symbols=[w["symbol"] for w in state["watch"]])
     fresh = [t for t in scan(state["watch"], day, now_hhmm, risk, max_pos, E)
-             if f"{t['symbol']}:{t['setup']}" not in state["sent"]]
+             if not any(k.split(":")[0] == t["symbol"] for k in state["sent"])]  # one message per ticker per day
     buys = [t for t in fresh if not t.get("warn")][:MAX_TICKETS]
     tickets = buys + [t for t in fresh if t.get("warn")]
     for t in tickets:

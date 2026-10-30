@@ -1,7 +1,7 @@
 # Default screener presets. JSON syntax = valid YAML 1.2 (DECISION D-001). User presets: data/screener_presets.json.
 {
  "presets": [
-  {"name": "unusual_volume_liquid", "title": "מחזור חריג במניות סחירות", "filters": "s=ta_unusualvolume,sh_avgvol_o500,sh_price_o2", "sessions": ["pre", "rth", "post"], "every": 60, "max_results": 15, "alert": "new_or_changed", "enabled": true},
+  {"name": "unusual_volume_liquid", "title": "מחזור חריג במניות סחירות", "filters": "s=ta_unusualvolume,sh_avgvol_o500,sh_price_o2", "sessions": ["pre", "rth", "post"], "every": 60, "max_results": 15, "alert": "new_or_changed", "enabled": false},
   {"name": "squeeze_like", "title": "דומה לסקוויז (מקורב)", "filters": "sh_float_u50,sh_short_o20,sh_avgvol_o500,sh_price_o2,sh_relvol_o2,sh_opt_option", "sort": "-shortinterestshare", "sessions": ["rth", "post"], "every": 60, "max_results": 15, "alert": "new_or_changed", "enabled": false},
   {"name": "oversold_midcaps", "title": "מכירת יתר במניות בינוניות ומעלה", "filters": "ta_rsi_os30,cap_midover", "sessions": ["post"], "every": 1440, "max_results": 15, "alert": "new_or_changed", "enabled": false}
  ]
