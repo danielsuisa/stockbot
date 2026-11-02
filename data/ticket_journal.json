@@ -791,6 +791,31 @@
    "rank": 1,
    "stop_capped": true,
    "issued_in_first_session": false
+  },
+  {
+   "day": "2026-10-30",
+   "signal": "squeeze-list",
+   "symbol": "LENZ",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 3.44,
+   "limit": 3.5,
+   "planned_entry": 3.44,
+   "stop_loss": 3.1,
+   "target": 3.96,
+   "trail": 0.34,
+   "shares": 290,
+   "legs": [
+    145,
+    145
+   ],
+   "R": 0.34400000000000003,
+   "guard_spread": 0.01,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }
