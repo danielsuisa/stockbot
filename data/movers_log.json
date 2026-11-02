@@ -352,6 +352,17 @@
    "gain": 2.3699,
    "vol_ratio": 19.8544,
    "si_pct": 0.206
+  },
+  {
+   "date": "2026-11-02",
+   "session": "pre",
+   "t": "INO",
+   "manual": false,
+   "price": 2.13,
+   "ref": 0.6,
+   "gain": 2.55,
+   "vol_ratio": 1.6339,
+   "si_pct": 0.206
   }
  ]
 }

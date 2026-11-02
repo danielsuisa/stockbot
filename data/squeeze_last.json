@@ -1,74 +1,7 @@
 {
- "date": "2026-10-30",
- "kind": "day",
- "at": "19:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ש׳ <code>31.10.2026</code> · מצב ב־<code>01:30</code>\n\nמקום <code>1</code>: <code>XPOF</code> · <code>4.46$</code> <code>19.3%▲</code>\nשורט <code>55.6%</code> מהמניות הצפות · <code>13.5</code> ימים לכיסוי · מחזור פי <code>2.1</code> מהרגיל\n\nמקום <code>2</code>: <code>LENZ</code> · <code>3.05$</code> <code>12.6%▼</code>\nשורט <code>49.5%</code> מהמניות הצפות · <code>11.1</code> ימים לכיסוי · מחזור פי <code>2.8</code> מהרגיל\n\nמקום <code>3</code>: <code>BCAX</code> · <code>9.13$</code> <code>6.2%▼</code>\nשורט <code>27.9%</code> מהמניות הצפות · <code>10.6</code> ימים לכיסוי · מחזור פי <code>4.3</code> מהרגיל\n\nמקום <code>4</code>: <code>NRXP</code> · <code>2.27$</code> <code>14.7%▼</code>\nשורט <code>26.6%</code> מהמניות הצפות · <code>11.6</code> ימים לכיסוי · מחזור פי <code>18.0</code> מהרגיל\n\nמקום <code>5</code>: <code>MNRO</code> · <code>11.95$</code> <code>2.8%▼</code>\nשורט <code>24.6%</code> מהמניות הצפות · <code>7.3</code> ימים לכיסוי · מחזור פי <code>2.1</code> מהרגיל\n\nמקום <code>6</code>: <code>GRRR</code> · <code>7.54$</code> <code>17.5%▼</code>\nשורט <code>24.0%</code> מהמניות הצפות · <code>6.3</code> ימים לכיסוי · מחזור פי <code>3.2</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
- "rows": [
-  {
-   "t": "XPOF",
-   "price": 4.46,
-   "chg": 0.1925,
-   "avg_vol": 898498,
-   "rel_vol": 2.0918,
-   "short_ratio": 13.5264,
-   "float": 21866064,
-   "short_float": 0.5558,
-   "options": true
-  },
-  {
-   "t": "LENZ",
-   "price": 3.05,
-   "chg": -0.1261,
-   "avg_vol": 821051,
-   "rel_vol": 2.7576,
-   "short_ratio": 11.0783,
-   "float": 18392840,
-   "short_float": 0.4945,
-   "options": true
-  },
-  {
-   "t": "BCAX",
-   "price": 9.13,
-   "chg": -0.0617,
-   "avg_vol": 973120,
-   "rel_vol": 4.3109,
-   "short_ratio": 10.5827,
-   "float": 36900013,
-   "short_float": 0.2791,
-   "options": true
-  },
-  {
-   "t": "NRXP",
-   "price": 2.27,
-   "chg": -0.1466,
-   "avg_vol": 856317,
-   "rel_vol": 17.974,
-   "short_ratio": 11.6195,
-   "float": 37388639,
-   "short_float": 0.2661,
-   "options": true
-  },
-  {
-   "t": "MNRO",
-   "price": 11.95,
-   "chg": -0.0285,
-   "avg_vol": 989020,
-   "rel_vol": 2.0697,
-   "short_ratio": 7.3267,
-   "float": 29448908,
-   "short_float": 0.2461,
-   "options": true
-  },
-  {
-   "t": "GRRR",
-   "price": 7.54,
-   "chg": -0.1751,
-   "avg_vol": 952954,
-   "rel_vol": 3.1655,
-   "short_ratio": 6.2654,
-   "float": 24905065,
-   "short_float": 0.2397,
-   "options": true
-  }
- ]
+ "date": "2026-11-02",
+ "kind": "pre",
+ "at": "04:15",
+ "text": "🌅 <b>רשימת סקוויז לפני הפתיחה</b>\nיום ב׳ <code>2.11.2026</code> · מצב ב־<code>11:15</code>\n\n🤷 אף מניה לא עומדת כרגע בכל התנאים.\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "rows": []
 }
