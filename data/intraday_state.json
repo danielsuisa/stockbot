@@ -245,7 +245,11 @@
    "last": 46.67,
    "vwap": 46.4986845975451,
    "candle_relvol": 2.24,
-   "news": "אין חדשות משמעותיות"
+   "news": "אין חדשות משמעותיות",
+   "outcome": {
+    "result": "not filled (gapped past limit)",
+    "r": 0.0
+   }
   },
   {
    "ok": true,
@@ -277,7 +281,11 @@
    "last": 35.14,
    "vwap": 34.91050878150856,
    "candle_relvol": 5.96,
-   "news": "אין חדשות משמעותיות"
+   "news": "אין חדשות משמעותיות",
+   "outcome": {
+    "result": "not filled (gapped past limit)",
+    "r": 0.0
+   }
   }
  ],
  "stats": null
