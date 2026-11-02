@@ -766,6 +766,31 @@
    "rank": 2,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-10-30",
+   "signal": "squeeze-list",
+   "symbol": "NRXP",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 2.85,
+   "limit": 2.91,
+   "planned_entry": 2.85,
+   "stop_loss": 2.57,
+   "target": 3.28,
+   "trail": 0.29,
+   "shares": 350,
+   "legs": [
+    175,
+    175
+   ],
+   "R": 0.28500000000000003,
+   "guard_spread": 0.010000000000000231,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": false
   }
  ]
 }
