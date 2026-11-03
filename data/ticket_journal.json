@@ -894,6 +894,56 @@
    "rank": 1,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-11-02",
+   "signal": "squeeze-list",
+   "symbol": "VITL",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 9.21,
+   "limit": 9.36,
+   "planned_entry": 9.21,
+   "stop_loss": 8.29,
+   "target": 10.59,
+   "trail": 0.92,
+   "shares": 108,
+   "legs": [
+    54,
+    54
+   ],
+   "R": 0.9210000000000002,
+   "guard_spread": 0.019999999999999574,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 2,
+   "stop_capped": true,
+   "issued_in_first_session": true
+  },
+  {
+   "day": "2026-11-02",
+   "signal": "squeeze-list",
+   "symbol": "CVI",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 58.7,
+   "limit": 59.54,
+   "planned_entry": 58.7,
+   "stop_loss": 52.83,
+   "target": 67.51,
+   "trail": 5.87,
+   "shares": 17,
+   "legs": [
+    8,
+    9
+   ],
+   "R": 5.870000000000001,
+   "guard_spread": 0.05000000000000426,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 3,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }
