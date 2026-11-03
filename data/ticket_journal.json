@@ -869,6 +869,31 @@
    "rank": 1,
    "stop_capped": true,
    "issued_in_first_session": false
+  },
+  {
+   "day": "2026-11-02",
+   "signal": "squeeze-list",
+   "symbol": "OFRM",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 12.32,
+   "limit": 12.62,
+   "planned_entry": 12.32,
+   "stop_loss": 11.09,
+   "target": 14.17,
+   "trail": 1.23,
+   "shares": 81,
+   "legs": [
+    40,
+    41
+   ],
+   "R": 1.2320000000000002,
+   "guard_spread": 0.040000000000000924,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }

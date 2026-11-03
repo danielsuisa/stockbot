@@ -1582,6 +1582,23 @@
    "price": 15.81,
    "chg": 0.0148,
    "outcome": null
+  },
+  {
+   "date": "2026-11-04",
+   "seen": "2026-11-03",
+   "t": "OFRM",
+   "rank": 1,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-10-15",
+   "float": 15659994,
+   "short_float": 0.3586,
+   "short_ratio": 10.878,
+   "avg_vol": 516300,
+   "rel_vol": 2.357,
+   "pre_vol": null,
+   "price": 9.15,
+   "chg": -0.0307,
+   "outcome": null
   }
  ]
 }
