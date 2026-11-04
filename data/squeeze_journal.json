@@ -1677,6 +1677,23 @@
    "price": 29.11,
    "chg": 0.1994,
    "outcome": null
+  },
+  {
+   "date": "2026-11-04",
+   "seen": "2026-11-04",
+   "t": "CSIQ",
+   "rank": 1,
+   "variant": "screen-pre-2026-10-08",
+   "si_date": "2026-10-15",
+   "float": 43729039,
+   "short_float": 0.4448,
+   "short_ratio": 10.8086,
+   "avg_vol": 1799718,
+   "rel_vol": null,
+   "pre_vol": 0.1833,
+   "price": 11.01,
+   "chg": 0.0901,
+   "outcome": null
   }
  ]
 }

@@ -1004,6 +1004,31 @@
    "rank": 3,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-11-03",
+   "signal": "squeeze-list",
+   "symbol": "CSIQ",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 10.28,
+   "limit": 10.43,
+   "planned_entry": 10.28,
+   "stop_loss": 9.25,
+   "target": 11.82,
+   "trail": 1.03,
+   "shares": 97,
+   "legs": [
+    48,
+    49
+   ],
+   "R": 1.028,
+   "guard_spread": 0.019999999999999574,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": false
   }
  ]
 }
