@@ -1275,7 +1275,16 @@
    "pre_vol": null,
    "price": 79.655,
    "chg": 0.0092,
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-21",
+    "end": "2026-11-03",
+    "hit": false,
+    "crash": false,
+    "maxup": 0.0925,
+    "dd": -0.0488,
+    "r10": 0.0432
+   }
   },
   {
    "date": "2026-10-21",
@@ -1292,7 +1301,16 @@
    "pre_vol": null,
    "price": 45.43,
    "chg": -0.0774,
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-21",
+    "end": "2026-11-03",
+    "hit": false,
+    "crash": false,
+    "maxup": 0.1262,
+    "dd": 0.0,
+    "r10": 0.0495
+   }
   },
   {
    "date": "2026-10-21",
@@ -1309,7 +1327,16 @@
    "pre_vol": null,
    "price": 26.61,
    "chg": 0.0721,
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-21",
+    "end": "2026-11-03",
+    "hit": false,
+    "crash": false,
+    "maxup": 0.0257,
+    "dd": -0.0861,
+    "r10": 0.006
+   }
   },
   {
    "date": "2026-10-22",
