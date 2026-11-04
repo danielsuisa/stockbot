@@ -1,15 +1,26 @@
 {
  "date": "2026-11-04",
  "kind": "day",
- "at": "11:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ד׳ <code>4.11.2026</code> · מצב ב־<code>18:30</code>\n\nמקום <code>1</code>: <code>CVI</code> · <code>42.06$</code> <code>13.5%▼</code>\nשורט <code>20.4%</code> מהמניות הצפות · <code>6.0</code> ימים לכיסוי · מחזור פי <code>8.4</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "at": "12:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ד׳ <code>4.11.2026</code> · מצב ב־<code>19:30</code>\n\nמקום <code>1</code>: <code>CSIQ</code> · <code>11.22$</code> <code>11.1%▲</code>\nשורט <code>44.5%</code> מהמניות הצפות · <code>10.7</code> ימים לכיסוי · מחזור פי <code>2.1</code> מהרגיל\n\nמקום <code>2</code>: <code>CVI</code> · <code>40.74$</code> <code>16.2%▼</code>\nשורט <code>20.4%</code> מהמניות הצפות · <code>6.0</code> ימים לכיסוי · מחזור פי <code>9.9</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
  "rows": [
   {
+   "t": "CSIQ",
+   "price": 11.2224,
+   "chg": 0.1111,
+   "avg_vol": 1810159,
+   "rel_vol": 2.0853,
+   "short_ratio": 10.7462,
+   "float": 43729039,
+   "short_float": 0.4448,
+   "options": true
+  },
+  {
    "t": "CVI",
-   "price": 42.06,
-   "chg": -0.1346,
+   "price": 40.74,
+   "chg": -0.1617,
    "avg_vol": 990167,
-   "rel_vol": 8.4286,
+   "rel_vol": 9.8749,
    "short_ratio": 6.0298,
    "float": 29321760,
    "short_float": 0.2036,
