@@ -1,41 +1,19 @@
 {
  "date": "2026-11-04",
- "kind": "pre",
- "at": "09:15",
- "text": "🌅 <b>רשימת סקוויז לפני הפתיחה</b>\nיום ד׳ <code>4.11.2026</code> · מצב ב־<code>16:15</code>\n\nמקום <code>1</code>: <code>CSIQ</code> · <code>10.93$</code> <code>8.2%▲</code>\nשורט <code>44.5%</code> מהמניות הצפות · <code>10.8</code> ימים לכיסוי · מחזור לפני הפתיחה <code>24%</code> מיום רגיל\n\nמקום <code>2</code>: <code>TOYO</code> · <code>5.09$</code> <code>2.8%▲</code>\nשורט <code>28.2%</code> מהמניות הצפות · <code>6.5</code> ימים לכיסוי · מחזור לפני הפתיחה <code>12%</code> מיום רגיל\n\nמקום <code>3</code>: <code>CVI</code> · <code>47.38$</code> <code>2.5%▼</code>\nשורט <code>20.4%</code> מהמניות הצפות · <code>6.3</code> ימים לכיסוי · מחזור לפני הפתיחה <code>98%</code> מיום רגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "kind": "day",
+ "at": "10:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ד׳ <code>4.11.2026</code> · מצב ב־<code>17:30</code>\n\nמקום <code>1</code>: <code>CVI</code> · <code>45.86$</code> <code>5.6%▼</code>\nשורט <code>20.4%</code> מהמניות הצפות · <code>6.0</code> ימים לכיסוי · מחזור פי <code>5.3</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
  "rows": [
   {
-   "t": "CSIQ",
-   "avg_vol": 1799718,
-   "short_ratio": 10.8086,
-   "float": 43729039,
-   "short_float": 0.4448,
-   "options": true,
-   "price": 10.93,
-   "chg": 0.0822,
-   "pre_vol": 0.2411
-  },
-  {
-   "t": "TOYO",
-   "avg_vol": 629371,
-   "short_ratio": 6.5218,
-   "float": 14569297,
-   "short_float": 0.2817,
-   "options": true,
-   "price": 5.09,
-   "chg": 0.0283,
-   "pre_vol": 0.1193
-  },
-  {
    "t": "CVI",
-   "avg_vol": 954290,
-   "short_ratio": 6.2565,
+   "price": 45.86,
+   "chg": -0.0564,
+   "avg_vol": 990167,
+   "rel_vol": 5.2597,
+   "short_ratio": 6.0298,
    "float": 29321760,
    "short_float": 0.2036,
-   "options": true,
-   "price": 47.38,
-   "chg": -0.0251,
-   "pre_vol": 0.9785
+   "options": true
   }
  ]
 }
