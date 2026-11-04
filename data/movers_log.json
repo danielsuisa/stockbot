@@ -374,6 +374,17 @@
    "gain": 2.7148,
    "vol_ratio": 13.5991,
    "si_pct": 0.206
+  },
+  {
+   "date": "2026-11-03",
+   "session": "post",
+   "t": "CRIS",
+   "manual": false,
+   "price": 1.02,
+   "ref": 0.7139,
+   "gain": 0.4288,
+   "vol_ratio": 82.2903,
+   "si_pct": 0.2102
   }
  ]
 }
