@@ -451,6 +451,17 @@
    "gain": 0.1206,
    "vol_ratio": 0.1859,
    "si_pct": 0.209
+  },
+  {
+   "date": "2026-11-04",
+   "session": "post",
+   "t": "KPTI",
+   "manual": false,
+   "price": 0.0805,
+   "ref": 0.0729,
+   "gain": 0.1043,
+   "vol_ratio": 0.7048,
+   "si_pct": 0.3204
   }
  ]
 }
