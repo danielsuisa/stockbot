@@ -842,7 +842,13 @@
    ],
    "R": 0.28500000000000003,
    "guard_spread": 0.010000000000000231,
-   "outcome": null,
+   "outcome": {
+    "filled": false,
+    "net_r": 0.0,
+    "gross_r": 0.0,
+    "cost_r": 0.0,
+    "closed": "2026-11-04"
+   },
    "source": "squeeze",
    "rank": 1,
    "stop_capped": true,
