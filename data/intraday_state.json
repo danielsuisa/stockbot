@@ -224,7 +224,8 @@
   }
  ],
  "sent": {
-  "WRBY:inside": "10:10"
+  "WRBY:inside": "10:10",
+  "EPAM:engulf": "15:35"
  },
  "journal": [
   {
@@ -257,6 +258,38 @@
    "last": 25.84,
    "vwap": 25.518506333257953,
    "candle_relvol": 2.4,
+   "news": "קטליזטור: דוחות היום"
+  },
+  {
+   "ok": true,
+   "setup": "engulf",
+   "note": "בליעה שורית אחרי ירידה על רמה · ספרינג: השפל חדר מתחת לרמה ונסגר מעליה",
+   "score": 3.2,
+   "entry_stop": 164.5,
+   "limit": 164.55,
+   "stop_loss": 162.61,
+   "target": 168.28,
+   "R": 1.89,
+   "r_floored": false,
+   "shares": 2,
+   "risk": 3.78,
+   "commission": 2.0,
+   "cost_r": 0.5291005291005292,
+   "time_exit": "15:55",
+   "valid_until": "15:40",
+   "valid_mode": "next",
+   "atr": 6.432335714285718,
+   "spring": true,
+   "warn": false,
+   "level": 162.835,
+   "symbol": "EPAM",
+   "gap": 0.1501,
+   "pre_rel": 0.128,
+   "open_relvol": 7.716597497024097,
+   "at": "15:35",
+   "last": 163.94,
+   "vwap": 163.5210845391746,
+   "candle_relvol": 2.71,
    "news": "קטליזטור: דוחות היום"
   }
  ],
