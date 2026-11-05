@@ -1085,6 +1085,31 @@
    "rank": 2,
    "stop_capped": true,
    "issued_in_first_session": false
+  },
+  {
+   "day": "2026-11-04",
+   "signal": "squeeze-list",
+   "symbol": "SEZL",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 139.75,
+   "limit": 142.06,
+   "planned_entry": 139.75,
+   "stop_loss": 125.78,
+   "target": 160.71,
+   "trail": 13.98,
+   "shares": 7,
+   "legs": [
+    3,
+    4
+   ],
+   "R": 13.975000000000001,
+   "guard_spread": 0.7800000000000011,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }
