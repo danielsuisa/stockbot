@@ -1796,6 +1796,23 @@
    "price": 41.99,
    "chg": 0.0906,
    "outcome": null
+  },
+  {
+   "date": "2026-11-05",
+   "seen": "2026-11-04",
+   "t": "TMDX",
+   "rank": 8,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-10-15",
+   "float": 33559299,
+   "short_float": 0.2613,
+   "short_ratio": 10.8258,
+   "avg_vol": 810015,
+   "rel_vol": 3.0504,
+   "pre_vol": null,
+   "price": 72.755,
+   "chg": 0.0804,
+   "outcome": null
   }
  ]
 }
