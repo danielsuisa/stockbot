@@ -484,6 +484,17 @@
    "gain": 0.1135,
    "vol_ratio": 0.1311,
    "si_pct": 0.2404
+  },
+  {
+   "date": "2026-11-05",
+   "session": "post",
+   "t": "TMDX",
+   "manual": false,
+   "price": 81.75,
+   "ref": 68.98,
+   "gain": 0.1851,
+   "vol_ratio": 0.1872,
+   "si_pct": 0.2525
   }
  ]
 }
