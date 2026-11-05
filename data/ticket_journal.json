@@ -1160,6 +1160,31 @@
    "rank": 2,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-11-04",
+   "signal": "squeeze-list",
+   "symbol": "CVI",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 47.31,
+   "limit": 48.38,
+   "planned_entry": 47.31,
+   "stop_loss": 42.58,
+   "target": 54.41,
+   "trail": 4.73,
+   "shares": 21,
+   "legs": [
+    10,
+    11
+   ],
+   "R": 4.731000000000001,
+   "guard_spread": 0.01,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 4,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }

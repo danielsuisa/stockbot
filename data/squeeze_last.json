@@ -1,15 +1,15 @@
 {
  "date": "2026-11-05",
  "kind": "day",
- "at": "14:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ה׳ <code>5.11.2026</code> · מצב ב־<code>21:30</code>\n\nמקום <code>1</code>: <code>FOUR</code> · <code>39.84$</code> <code>11.1%▼</code>\nשורט <code>31.7%</code> מהמניות הצפות · <code>6.7</code> ימים לכיסוי · מחזור פי <code>2.4</code> מהרגיל\n\nמקום <code>2</code>: <code>MMYT</code> · <code>49.95$</code> <code>1.6%▼</code>\nשורט <code>28.3%</code> מהמניות הצפות · <code>9.9</code> ימים לכיסוי · מחזור פי <code>2.4</code> מהרגיל\n\nמקום <code>3</code>: <code>SEZL</code> · <code>156.01$</code> <code>14.1%▲</code>\nשורט <code>23.4%</code> מהמניות הצפות · <code>7.3</code> ימים לכיסוי · מחזור פי <code>2.6</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "at": "15:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ה׳ <code>5.11.2026</code> · מצב ב־<code>22:30</code>\n\nמקום <code>1</code>: <code>FOUR</code> · <code>41.02$</code> <code>8.5%▼</code>\nשורט <code>31.7%</code> מהמניות הצפות · <code>6.7</code> ימים לכיסוי · מחזור פי <code>2.9</code> מהרגיל\n\nמקום <code>2</code>: <code>MMYT</code> · <code>50.75$</code> <code>0.0%</code>\nשורט <code>28.3%</code> מהמניות הצפות · <code>9.9</code> ימים לכיסוי · מחזור פי <code>2.6</code> מהרגיל\n\nמקום <code>3</code>: <code>SEZL</code> · <code>156.38$</code> <code>14.4%▲</code>\nשורט <code>23.4%</code> מהמניות הצפות · <code>7.3</code> ימים לכיסוי · מחזור פי <code>2.7</code> מהרגיל\n\nמקום <code>4</code>: <code>CVI</code> · <code>40.51$</code> <code>5.8%▼</code>\nשורט <code>20.4%</code> מהמניות הצפות · <code>5.0</code> ימים לכיסוי · מחזור פי <code>2.4</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
  "rows": [
   {
    "t": "FOUR",
-   "price": 39.835,
-   "chg": -0.1112,
+   "price": 41.025,
+   "chg": -0.0847,
    "avg_vol": 2089312,
-   "rel_vol": 2.4104,
+   "rel_vol": 2.8525,
    "short_ratio": 6.6955,
    "float": 44070801,
    "short_float": 0.3174,
@@ -17,10 +17,10 @@
   },
   {
    "t": "MMYT",
-   "price": 49.945,
-   "chg": -0.0159,
+   "price": 50.75,
+   "chg": 0.0,
    "avg_vol": 837740,
-   "rel_vol": 2.3813,
+   "rel_vol": 2.5678,
    "short_ratio": 9.8518,
    "float": 29134136,
    "short_float": 0.2833,
@@ -28,13 +28,24 @@
   },
   {
    "t": "SEZL",
-   "price": 156.015,
-   "chg": 0.1414,
+   "price": 156.385,
+   "chg": 0.1441,
    "avg_vol": 605262,
-   "rel_vol": 2.5592,
+   "rel_vol": 2.7424,
    "short_ratio": 7.3193,
    "float": 18938828,
    "short_float": 0.2339,
+   "options": true
+  },
+  {
+   "t": "CVI",
+   "price": 40.51,
+   "chg": -0.0581,
+   "avg_vol": 1183639,
+   "rel_vol": 2.3527,
+   "short_ratio": 5.0442,
+   "float": 29321760,
+   "short_float": 0.2036,
    "options": true
   }
  ]
