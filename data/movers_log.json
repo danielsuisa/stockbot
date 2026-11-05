@@ -462,6 +462,28 @@
    "gain": 0.1043,
    "vol_ratio": 0.7048,
    "si_pct": 0.3204
+  },
+  {
+   "date": "2026-11-05",
+   "session": "pre",
+   "t": "RUN",
+   "manual": false,
+   "price": 10.8006,
+   "ref": 8.79,
+   "gain": 0.2287,
+   "vol_ratio": 0.2949,
+   "si_pct": 0.2962
+  },
+  {
+   "date": "2026-11-05",
+   "session": "pre",
+   "t": "FUN",
+   "manual": false,
+   "price": 8.83,
+   "ref": 7.93,
+   "gain": 0.1135,
+   "vol_ratio": 0.1311,
+   "si_pct": 0.2404
   }
  ]
 }
