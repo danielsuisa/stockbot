@@ -506,6 +506,17 @@
    "gain": 0.1431,
    "vol_ratio": 3.2503,
    "si_pct": 0.3204
+  },
+  {
+   "date": "2026-11-06",
+   "session": "pre",
+   "t": "IREN",
+   "manual": false,
+   "price": 21.41,
+   "ref": 18.03,
+   "gain": 0.1875,
+   "vol_ratio": 0.1181,
+   "si_pct": 0.2648
   }
  ]
 }
