@@ -1967,6 +1967,23 @@
    "price": 12.8,
    "chg": -0.039,
    "outcome": null
+  },
+  {
+   "date": "2026-11-09",
+   "seen": "2026-11-06",
+   "t": "SPRY",
+   "rank": 1,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-10-15",
+   "float": 48556222,
+   "short_float": 0.4082,
+   "short_ratio": 11.7899,
+   "avg_vol": 1681093,
+   "rel_vol": 2.2437,
+   "pre_vol": null,
+   "price": 2.6798,
+   "chg": 0.0113,
+   "outcome": null
   }
  ]
 }

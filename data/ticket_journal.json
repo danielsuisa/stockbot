@@ -1288,6 +1288,31 @@
    "rank": 2,
    "stop_capped": false,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-11-05",
+   "signal": "squeeze-list",
+   "symbol": "SPRY",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 3.11,
+   "limit": 3.19,
+   "planned_entry": 3.11,
+   "stop_loss": 2.8,
+   "target": 3.58,
+   "trail": 0.31,
+   "shares": 321,
+   "legs": [
+    160,
+    161
+   ],
+   "R": 0.311,
+   "guard_spread": 0.01,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }
