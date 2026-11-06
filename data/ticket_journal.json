@@ -1263,6 +1263,31 @@
    "rank": 2,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-11-05",
+   "signal": "squeeze-list",
+   "symbol": "PAR",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 19.39,
+   "limit": 19.6,
+   "planned_entry": 19.39,
+   "stop_loss": 17.69,
+   "target": 21.94,
+   "trail": 1.7,
+   "shares": 58,
+   "legs": [
+    29,
+    29
+   ],
+   "R": 1.6986571428571426,
+   "guard_spread": 0.03999999999999915,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 2,
+   "stop_capped": false,
+   "issued_in_first_session": true
   }
  ]
 }
