@@ -1213,6 +1213,56 @@
    "rank": 4,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-11-05",
+   "signal": "squeeze-list",
+   "symbol": "BOBS",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 19.63,
+   "limit": 19.89,
+   "planned_entry": 19.63,
+   "stop_loss": 17.67,
+   "target": 22.57,
+   "trail": 1.96,
+   "shares": 50,
+   "legs": [
+    25,
+    25
+   ],
+   "R": 1.963,
+   "guard_spread": 0.01,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": true
+  },
+  {
+   "day": "2026-11-05",
+   "signal": "squeeze-list",
+   "symbol": "TMDX",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 73.62,
+   "limit": 74.57,
+   "planned_entry": 73.62,
+   "stop_loss": 66.26,
+   "target": 84.66,
+   "trail": 7.36,
+   "shares": 13,
+   "legs": [
+    6,
+    7
+   ],
+   "R": 7.362000000000001,
+   "guard_spread": 0.20000000000000284,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 2,
+   "stop_capped": true,
+   "issued_in_first_session": true
   }
  ]
 }

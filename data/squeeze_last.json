@@ -1,7 +1,30 @@
 {
  "date": "2026-11-06",
  "kind": "day",
- "at": "12:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>6.11.2026</code> · מצב ב־<code>19:30</code>\n\n🤷 אף מניה לא עומדת כרגע בכל התנאים.\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
- "rows": []
+ "at": "13:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>6.11.2026</code> · מצב ב־<code>20:30</code>\n\nמקום <code>1</code>: <code>BOBS</code> · <code>19.86$</code> <code>2.0%▲</code>\nשורט <code>31.0%</code> מהמניות הצפות · <code>10.4</code> ימים לכיסוי · מחזור פי <code>2.2</code> מהרגיל\n\nמקום <code>2</code>: <code>TMDX</code> · <code>87.40$</code> <code>26.7%▲</code>\nשורט <code>26.1%</code> מהמניות הצפות · <code>10.8</code> ימים לכיסוי · מחזור פי <code>2.0</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "rows": [
+  {
+   "t": "BOBS",
+   "price": 19.86,
+   "chg": 0.02,
+   "avg_vol": 850564,
+   "rel_vol": 2.2481,
+   "short_ratio": 10.369,
+   "float": 28470180,
+   "short_float": 0.3098,
+   "options": true
+  },
+  {
+   "t": "TMDX",
+   "price": 87.4,
+   "chg": 0.267,
+   "avg_vol": 811539,
+   "rel_vol": 2.0384,
+   "short_ratio": 10.8054,
+   "float": 33616147,
+   "short_float": 0.2609,
+   "options": true
+  }
+ ]
 }
