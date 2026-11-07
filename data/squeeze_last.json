@@ -1,8 +1,8 @@
 {
  "date": "2026-11-06",
  "kind": "day",
- "at": "16:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>6.11.2026</code> · מצב ב־<code>23:30</code>\n\nמקום <code>1</code>: <code>XPOF</code> · <code>4.65$</code> <code>5.2%▲</code>\nשורט <code>55.5%</code> מהמניות הצפות · <code>13.2</code> ימים לכיסוי · מחזור פי <code>2.8</code> מהרגיל\n\nמקום <code>2</code>: <code>SPRY</code> · <code>2.79$</code> <code>5.3%▲</code>\nשורט <code>40.8%</code> מהמניות הצפות · <code>11.8</code> ימים לכיסוי · מחזור פי <code>3.4</code> מהרגיל\n\nמקום <code>3</code>: <code>BOBS</code> · <code>19.42$</code> <code>0.3%▼</code>\nשורט <code>31.0%</code> מהמניות הצפות · <code>10.4</code> ימים לכיסוי · מחזור פי <code>3.5</code> מהרגיל\n\nמקום <code>4</code>: <code>PAR</code> · <code>20.55$</code> <code>7.1%▲</code>\nשורט <code>27.2%</code> מהמניות הצפות · <code>9.7</code> ימים לכיסוי · מחזור פי <code>3.1</code> מהרגיל\n\nמקום <code>5</code>: <code>TMDX</code> · <code>88.24$</code> <code>27.9%▲</code>\nשורט <code>26.1%</code> מהמניות הצפות · <code>10.8</code> ימים לכיסוי · מחזור פי <code>4.9</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "at": "19:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ש׳ <code>7.11.2026</code> · מצב ב־<code>02:30</code>\n\nמקום <code>1</code>: <code>XPOF</code> · <code>4.65$</code> <code>5.2%▲</code>\nשורט <code>55.5%</code> מהמניות הצפות · <code>13.2</code> ימים לכיסוי · מחזור פי <code>2.8</code> מהרגיל\n\nמקום <code>2</code>: <code>SPRY</code> · <code>2.79$</code> <code>5.3%▲</code>\nשורט <code>40.8%</code> מהמניות הצפות · <code>11.8</code> ימים לכיסוי · מחזור פי <code>3.4</code> מהרגיל\n\nמקום <code>3</code>: <code>BOBS</code> · <code>19.42$</code> <code>0.3%▼</code>\nשורט <code>31.0%</code> מהמניות הצפות · <code>10.4</code> ימים לכיסוי · מחזור פי <code>3.5</code> מהרגיל\n\nמקום <code>4</code>: <code>PAR</code> · <code>20.55$</code> <code>7.1%▲</code>\nשורט <code>27.2%</code> מהמניות הצפות · <code>9.7</code> ימים לכיסוי · מחזור פי <code>3.1</code> מהרגיל\n\nמקום <code>5</code>: <code>TMDX</code> · <code>88.24$</code> <code>27.9%▲</code>\nשורט <code>26.1%</code> מהמניות הצפות · <code>10.8</code> ימים לכיסוי · מחזור פי <code>4.9</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
  "rows": [
   {
    "t": "XPOF",
@@ -20,7 +20,7 @@
    "price": 2.79,
    "chg": 0.0528,
    "avg_vol": 1681093,
-   "rel_vol": 3.3738,
+   "rel_vol": 3.374,
    "short_ratio": 11.7899,
    "float": 48556222,
    "short_float": 0.4082,
@@ -53,7 +53,7 @@
    "price": 88.24,
    "chg": 0.2792,
    "avg_vol": 811539,
-   "rel_vol": 4.8658,
+   "rel_vol": 4.8667,
    "short_ratio": 10.8054,
    "float": 33616147,
    "short_float": 0.2609,
