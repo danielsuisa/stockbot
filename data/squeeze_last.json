@@ -1,15 +1,15 @@
 {
  "date": "2026-11-09",
  "kind": "day",
- "at": "14:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ב׳ <code>9.11.2026</code> · מצב ב־<code>21:30</code>\n\nמקום <code>1</code>: <code>ABEO</code> · <code>2.64$</code> <code>36.7%▼</code>\nשורט <code>47.6%</code> מהמניות הצפות · <code>12.7</code> ימים לכיסוי · מחזור פי <code>6.9</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "at": "15:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ב׳ <code>9.11.2026</code> · מצב ב־<code>22:30</code>\n\nמקום <code>1</code>: <code>ABEO</code> · <code>2.46$</code> <code>40.9%▼</code>\nשורט <code>47.6%</code> מהמניות הצפות · <code>12.7</code> ימים לכיסוי · מחזור פי <code>8.4</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
  "rows": [
   {
    "t": "ABEO",
-   "price": 2.6401,
-   "chg": -0.3669,
+   "price": 2.465,
+   "chg": -0.4089,
    "avg_vol": 1359481,
-   "rel_vol": 6.9011,
+   "rel_vol": 8.4457,
    "short_ratio": 12.6628,
    "float": 36179184,
    "short_float": 0.4758,
