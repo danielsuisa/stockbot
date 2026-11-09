@@ -1319,6 +1319,31 @@
    "rank": 1,
    "stop_capped": true,
    "issued_in_first_session": true
+  },
+  {
+   "day": "2026-11-06",
+   "signal": "squeeze-list",
+   "symbol": "ABEO",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 4.28,
+   "limit": 4.34,
+   "planned_entry": 4.28,
+   "stop_loss": 3.85,
+   "target": 4.92,
+   "trail": 0.43,
+   "shares": 233,
+   "legs": [
+    116,
+    117
+   ],
+   "R": 0.42800000000000005,
+   "guard_spread": 0.010000000000000675,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": false
   }
  ]
 }
