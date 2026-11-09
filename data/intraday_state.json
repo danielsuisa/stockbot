@@ -260,7 +260,11 @@
    "last": 22.32,
    "vwap": 21.849098057390904,
    "candle_relvol": 2.51,
-   "news": "קטליזטור: דוחות בעוד 1 ימים"
+   "news": "קטליזטור: דוחות בעוד 1 ימים",
+   "outcome": {
+    "result": "not filled (gapped past limit)",
+    "r": 0.0
+   }
   },
   {
    "ok": true,
@@ -292,7 +296,12 @@
    "last": 98.59,
    "vwap": 97.37266366853706,
    "candle_relvol": 1.85,
-   "news": "קטליזטור: דוחות היום"
+   "news": "קטליזטור: דוחות היום",
+   "outcome": {
+    "result": "stop",
+    "fill": 98.6,
+    "r": -1.0
+   }
   },
   {
    "ok": true,
@@ -324,7 +333,11 @@
    "last": 26.33,
    "vwap": 26.122900967899003,
    "candle_relvol": 6.45,
-   "news": "חדשות: Surgery Partners and HealthSpan Partners Announce Amended Merger Agreement, Following Receipt of Unsolicited P (Yahoo Finance, 09/11) · קטליזטור: דוחות היום"
+   "news": "חדשות: Surgery Partners and HealthSpan Partners Announce Amended Merger Agreement, Following Receipt of Unsolicited P (Yahoo Finance, 09/11) · קטליזטור: דוחות היום",
+   "outcome": {
+    "result": "not filled",
+    "r": 0.0
+   }
   },
   {
    "ok": true,
@@ -356,7 +369,12 @@
    "last": 12.03,
    "vwap": 11.606730673622407,
    "candle_relvol": 3.24,
-   "news": "אין חדשות משמעותיות"
+   "news": "אין חדשות משמעותיות",
+   "outcome": {
+    "result": "stop",
+    "fill": 12.08,
+    "r": -1.0
+   }
   }
  ],
  "stats": null
