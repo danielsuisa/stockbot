@@ -1457,7 +1457,16 @@
    "pre_vol": null,
    "price": 8.81,
    "chg": -0.1354,
-   "outcome": null
+   "outcome": {
+    "trade": true,
+    "start": "2026-10-27",
+    "end": "2026-11-09",
+    "hit": false,
+    "crash": false,
+    "maxup": 0.2695,
+    "dd": -0.0666,
+    "r10": 0.2112
+   }
   },
   {
    "date": "2026-10-29",

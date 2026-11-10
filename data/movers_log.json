@@ -539,6 +539,17 @@
    "gain": 0.1957,
    "vol_ratio": 0.2042,
    "si_pct": 0.6859
+  },
+  {
+   "date": "2026-11-10",
+   "session": "pre",
+   "t": "RUBI",
+   "manual": false,
+   "price": 2.17,
+   "ref": 1.84,
+   "gain": 0.1793,
+   "vol_ratio": 0.9245,
+   "si_pct": 0.6859
   }
  ]
 }

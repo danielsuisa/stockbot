@@ -1139,7 +1139,13 @@
    ],
    "R": 13.975000000000001,
    "guard_spread": 0.7800000000000011,
-   "outcome": null,
+   "outcome": {
+    "filled": false,
+    "net_r": 0.0,
+    "gross_r": 0.0,
+    "cost_r": 0.0,
+    "closed": "2026-11-09"
+   },
    "source": "squeeze",
    "rank": 1,
    "stop_capped": true,
@@ -1214,7 +1220,13 @@
    ],
    "R": 4.731000000000001,
    "guard_spread": 0.01,
-   "outcome": null,
+   "outcome": {
+    "filled": false,
+    "net_r": 0.0,
+    "gross_r": 0.0,
+    "cost_r": 0.0,
+    "closed": "2026-11-09"
+   },
    "source": "squeeze",
    "rank": 4,
    "stop_capped": true,
@@ -1289,7 +1301,23 @@
    ],
    "R": 1.6986571428571426,
    "guard_spread": 0.03999999999999915,
-   "outcome": null,
+   "outcome": {
+    "filled": true,
+    "fill": 19.6,
+    "entry_day": "2026-11-06",
+    "exits": [
+     "target",
+     "trail"
+    ],
+    "exit_days": [
+     "2026-11-09",
+     "2026-11-09"
+    ],
+    "gross_r": 1.0861520865221252,
+    "cost_r": 0.037758020389330516,
+    "net_r": 1.0483940661327948,
+    "closed": "2026-11-09"
+   },
    "source": "squeeze",
    "rank": 2,
    "stop_capped": false,
@@ -1314,7 +1342,23 @@
    ],
    "R": 0.311,
    "guard_spread": 0.01,
-   "outcome": null,
+   "outcome": {
+    "filled": true,
+    "fill": 3.11,
+    "entry_day": "2026-11-09",
+    "exits": [
+     "stop",
+     "trail"
+    ],
+    "exit_days": [
+     "2026-11-09",
+     "2026-11-09"
+    ],
+    "gross_r": -0.9000210355500797,
+    "cost_r": 0.05466237942122186,
+    "net_r": -0.9546834149713016,
+    "closed": "2026-11-09"
+   },
    "source": "squeeze",
    "rank": 1,
    "stop_capped": true,
