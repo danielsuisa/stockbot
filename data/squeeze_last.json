@@ -1,7 +1,30 @@
 {
  "date": "2026-11-10",
  "kind": "day",
- "at": "10:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ג׳ <code>10.11.2026</code> · מצב ב־<code>17:30</code>\n\n🤷 אף מניה לא עומדת כרגע בכל התנאים.\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
- "rows": []
+ "at": "11:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ג׳ <code>10.11.2026</code> · מצב ב־<code>18:30</code>\n\nמקום <code>1</code>: <code>WGS</code> · <code>53.76$</code> <code>18.2%▼</code>\nשורט <code>29.3%</code> מהמניות הצפות · <code>8.1</code> ימים לכיסוי · מחזור פי <code>2.5</code> מהרגיל\n\nמקום <code>2</code>: <code>HROW</code> · <code>31.05$</code> <code>13.1%▲</code>\nשורט <code>25.6%</code> מהמניות הצפות · <code>12.3</code> ימים לכיסוי · מחזור פי <code>2.0</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>15.10</code>.",
+ "rows": [
+  {
+   "t": "WGS",
+   "price": 53.755,
+   "chg": -0.1821,
+   "avg_vol": 740034,
+   "rel_vol": 2.4994,
+   "short_ratio": 8.1362,
+   "float": 20546144,
+   "short_float": 0.293,
+   "options": true
+  },
+  {
+   "t": "HROW",
+   "price": 31.055,
+   "chg": 0.1305,
+   "avg_vol": 605478,
+   "rel_vol": 2.0359,
+   "short_ratio": 12.3453,
+   "float": 29255239,
+   "short_float": 0.2555,
+   "options": true
+  }
+ ]
 }
