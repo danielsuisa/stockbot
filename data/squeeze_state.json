@@ -120,7 +120,8 @@
   "2026-11-10": [
    "pm1",
    "pm2",
-   "pm3"
+   "pm3",
+   "pm4"
   ]
  },
  "static": {
@@ -628,5 +629,11 @@
   "failed": 0,
   "no_float": 15,
   "no_options": 8
+ },
+ "warned": {
+  "2026-11-10": [
+   "screen:pre",
+   "nasdaq:pre"
+  ]
  }
 }
