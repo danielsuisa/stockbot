@@ -220,7 +220,12 @@
    "last": 77.355,
    "vwap": 75.32760096101059,
    "candle_relvol": 1.6,
-   "news": "חדשות: AAON Shares Surge 22% Premarket After Q3 Earnings Beat and Higher 2026 Revenue Guidance (Yahoo Finance, 10/11)"
+   "news": "חדשות: AAON Shares Surge 22% Premarket After Q3 Earnings Beat and Higher 2026 Revenue Guidance (Yahoo Finance, 10/11)",
+   "outcome": {
+    "result": "stop",
+    "fill": 78.01,
+    "r": -1.0
+   }
   },
   {
    "ok": true,
@@ -252,7 +257,12 @@
    "last": 18.475,
    "vwap": 18.37564043234989,
    "candle_relvol": 2.53,
-   "news": "חדשות: RIOT Stock Gains After Jefferies Upgrade, JP Morgan Price Target Hike: Analysts See Favorable Economics In Cor (Yahoo Finance, 10/11)"
+   "news": "חדשות: RIOT Stock Gains After Jefferies Upgrade, JP Morgan Price Target Hike: Analysts See Favorable Economics In Cor (Yahoo Finance, 10/11)",
+   "outcome": {
+    "result": "stop",
+    "fill": 18.51,
+    "r": -1.0
+   }
   },
   {
    "ok": true,
@@ -284,7 +294,12 @@
    "last": 224.99,
    "vwap": 222.06084070766627,
    "candle_relvol": 1.69,
-   "news": "אין חדשות משמעותיות"
+   "news": "אין חדשות משמעותיות",
+   "outcome": {
+    "result": "stop",
+    "fill": 225.76,
+    "r": -1.0
+   }
   }
  ],
  "stats": null
