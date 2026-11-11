@@ -1,15 +1,15 @@
 {
  "date": "2026-11-11",
  "kind": "day",
- "at": "12:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ד׳ <code>11.11.2026</code> · מצב ב־<code>19:30</code>\n\nמקום <code>1</code>: <code>TTEC</code> · <code>2.79$</code> <code>16.3%▲</code>\nשורט <code>23.5%</code> מהמניות הצפות · <code>6.3</code> ימים לכיסוי · מחזור פי <code>5.3</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.10</code>.",
+ "at": "13:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ד׳ <code>11.11.2026</code> · מצב ב־<code>20:30</code>\n\nמקום <code>1</code>: <code>TTEC</code> · <code>2.72$</code> <code>13.3%▲</code>\nשורט <code>23.5%</code> מהמניות הצפות · <code>6.3</code> ימים לכיסוי · מחזור פי <code>5.7</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.10</code>.",
  "rows": [
   {
    "t": "TTEC",
-   "price": 2.7901,
-   "chg": 0.1625,
+   "price": 2.7188,
+   "chg": 0.1328,
    "avg_vol": 753051,
-   "rel_vol": 5.3443,
+   "rel_vol": 5.685,
    "short_ratio": 6.3454,
    "float": 20359149,
    "short_float": 0.2347,
