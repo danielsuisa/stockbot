@@ -128,7 +128,8 @@
    "reg2",
    "reg3",
    "reg4",
-   "reg5"
+   "reg5",
+   "post1"
   ]
  },
  "static": {
@@ -659,7 +660,8 @@
   ],
   "2026-11-11": [
    "screen:pre",
-   "nasdaq:pre"
+   "nasdaq:pre",
+   "nasdaq:post"
   ]
  }
 }
