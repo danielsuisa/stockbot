@@ -2113,6 +2113,23 @@
    "price": 6.82,
    "chg": 0.0089,
    "outcome": null
+  },
+  {
+   "date": "2026-11-12",
+   "seen": "2026-11-11",
+   "t": "TTEC",
+   "rank": 1,
+   "variant": "screen-2026-10-08",
+   "si_date": "2026-10-30",
+   "float": 20359149,
+   "short_float": 0.2347,
+   "short_ratio": 6.3454,
+   "avg_vol": 753051,
+   "rel_vol": 2.905,
+   "pre_vol": null,
+   "price": 2.825,
+   "chg": 0.1771,
+   "outcome": null
   }
  ]
 }
