@@ -205,7 +205,12 @@
    "last": 38.055,
    "vwap": 37.26916726176945,
    "candle_relvol": 1.91,
-   "news": "חדשות: MP Materials gains following Freedom Broker upgrade to Buy with $51 price target (Yahoo Finance, 11/11)"
+   "news": "חדשות: MP Materials gains following Freedom Broker upgrade to Buy with $51 price target (Yahoo Finance, 11/11)",
+   "outcome": {
+    "result": "stop",
+    "fill": 38.24,
+    "r": -1.0
+   }
   }
  ],
  "stats": null
