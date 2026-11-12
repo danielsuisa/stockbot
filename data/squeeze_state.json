@@ -37,22 +37,6 @@
   }
  },
  "slots": {
-  "2026-11-04": [
-   "pm1",
-   "pm2",
-   "pm3",
-   "pm4",
-   "pm5",
-   "pm6",
-   "reg1",
-   "reg2",
-   "reg3",
-   "reg4",
-   "reg5",
-   "reg6",
-   "post1",
-   "post2"
-  ],
   "2026-11-05": [
    "pm1",
    "pm2",
@@ -131,518 +115,521 @@
    "reg5",
    "post1",
    "post2"
+  ],
+  "2026-11-12": [
+   "pm1"
   ]
  },
  "static": {
-  "date": "2026-11-11",
+  "date": "2026-11-12",
   "rows": {
    "ABEO": {
-    "avg_vol": 1585143,
-    "short_ratio": 10.648815911245862,
-    "float": 36179184,
-    "short_float": 0.4665637566618418,
+    "avg_vol": 1575682,
+    "short_ratio": 10.712755492542277,
+    "float": 36155663,
+    "short_float": 0.46686727885476753,
     "options": true
    },
    "AEVA": {
-    "avg_vol": 1641048,
-    "short_ratio": 6.298189937162106,
+    "avg_vol": 1648281,
+    "short_ratio": 6.270552169199306,
     "float": 41656781,
     "short_float": 0.24811403454337963,
     "options": true
    },
    "ALMU": {
-    "avg_vol": 627107,
-    "short_ratio": 6.439277507666156,
+    "avg_vol": 627704,
+    "short_ratio": 6.433153205969693,
     "float": 15773768,
     "short_float": 0.2560019901395786,
     "options": true
    },
    "ALOY": {
-    "avg_vol": 2111418,
-    "short_ratio": 5.158590103901738,
+    "avg_vol": 2109425,
+    "short_ratio": 5.163463977150172,
     "float": 23867655,
     "short_float": 0.4563473034950438,
     "options": true
    },
+   "ANRO": {
+    "avg_vol": 581946,
+    "short_ratio": 9.765270317177196,
+    "float": 24091711,
+    "short_float": 0.23588445005006078,
+    "options": true
+   },
    "ARCT": {
-    "avg_vol": 997976,
-    "short_ratio": 5.420445982668922,
+    "avg_vol": 998448,
+    "short_ratio": 5.4178835552777915,
     "float": 26552453,
     "short_float": 0.20372788156333427,
     "options": true
    },
    "AVTX": {
-    "avg_vol": 1612435,
-    "short_ratio": 5.526210358867179,
+    "avg_vol": 1668031,
+    "short_ratio": 5.342020022409655,
     "float": 44303468,
     "short_float": 0.2011277085577138,
     "options": true
    },
    "BCAX": {
-    "avg_vol": 1115051,
-    "short_ratio": 8.844265419249881,
-    "float": 38128180,
-    "short_float": 0.2586487736891716,
+    "avg_vol": 1118718,
+    "short_ratio": 8.815275163177851,
+    "float": 37019493,
+    "short_float": 0.2663949773704356,
     "options": true
    },
    "BKKT": {
-    "avg_vol": 1367510,
-    "short_ratio": 6.038017272268576,
+    "avg_vol": 1364753,
+    "short_ratio": 6.050214947320137,
     "float": 35970051,
     "short_float": 0.22955344155614346,
     "options": true
    },
    "BOBS": {
-    "avg_vol": 898035,
-    "short_ratio": 9.647976971944301,
+    "avg_vol": 891756,
+    "short_ratio": 9.715909957432302,
     "float": 28555467,
     "short_float": 0.3034172405585242,
     "options": true
    },
    "CAKE": {
-    "avg_vol": 1518586,
-    "short_ratio": 6.15690319810666,
+    "avg_vol": 1502793,
+    "short_ratio": 6.221606701654852,
     "float": 45961705,
     "short_float": 0.20342559093488807,
     "options": true
    },
    "CBRL": {
-    "avg_vol": 917456,
-    "short_ratio": 5.556765665056417,
+    "avg_vol": 921189,
+    "short_ratio": 5.534247586543044,
     "float": 20423192,
     "short_float": 0.2496224880028548,
     "options": true
    },
    "CELC": {
-    "avg_vol": 1223706,
-    "short_ratio": 8.41958362547867,
+    "avg_vol": 1226056,
+    "short_ratio": 8.403445682742062,
     "float": 29911539,
     "short_float": 0.34445218616133394,
     "options": true
    },
    "CLYM": {
-    "avg_vol": 1430645,
-    "short_ratio": 7.419452065327177,
-    "float": 36972746,
-    "short_float": 0.2870926059968605,
+    "avg_vol": 1444090,
+    "short_ratio": 7.350374284151265,
+    "float": 36902260,
+    "short_float": 0.28764097375065917,
     "options": true
    },
    "CRSR": {
-    "avg_vol": 1323726,
-    "short_ratio": 8.194318159498264,
+    "avg_vol": 1290245,
+    "short_ratio": 8.4069552681855,
     "float": 48546106,
     "short_float": 0.22343773566514274,
     "options": true
    },
    "CSIQ": {
-    "avg_vol": 1932521,
-    "short_ratio": 10.048961434313004,
+    "avg_vol": 1937887,
+    "short_ratio": 10.021135907305224,
     "float": 43729039,
     "short_float": 0.4440945752318042,
     "options": true
    },
    "DFH": {
-    "avg_vol": 1178218,
-    "short_ratio": 8.403556896940973,
+    "avg_vol": 1187120,
+    "short_ratio": 8.340540130736573,
     "float": 26525884,
     "short_float": 0.37326642912258834,
     "options": true
    },
    "DIN": {
-    "avg_vol": 509273,
-    "short_ratio": 5.819884423482101,
+    "avg_vol": 513181,
+    "short_ratio": 5.775564566887707,
     "float": 11467470,
     "short_float": 0.2584624158598191,
     "options": true
    },
    "DUOT": {
-    "avg_vol": 1005695,
-    "short_ratio": 6.215503706392097,
+    "avg_vol": 1009315,
+    "short_ratio": 6.1932112373243235,
     "float": 25144009,
     "short_float": 0.24860399151145707,
     "options": true
    },
    "EBS": {
-    "avg_vol": 1168550,
-    "short_ratio": 8.626423345171366,
+    "avg_vol": 1159384,
+    "short_ratio": 8.694623179205509,
     "float": 49192504,
     "short_float": 0.2049175419084176,
     "options": true
    },
    "EVER": {
-    "avg_vol": 736651,
-    "short_ratio": 9.303591524344636,
-    "float": 27566102,
-    "short_float": 0.2486205702931811,
+    "avg_vol": 741031,
+    "short_ratio": 9.248600935723337,
+    "float": 27551204,
+    "short_float": 0.24875500903699163,
     "options": true
    },
    "FDMT": {
-    "avg_vol": 1046940,
-    "short_ratio": 10.408884940875312,
+    "avg_vol": 1056656,
+    "short_ratio": 10.3131747702185,
     "float": 42553511,
     "short_float": 0.25608881015716894,
     "options": true
    },
    "FLOC": {
-    "avg_vol": 591110,
-    "short_ratio": 6.452074909915244,
-    "float": 11006723,
-    "short_float": 0.3465051314546573,
+    "avg_vol": 592154,
+    "short_ratio": 6.44069954775278,
+    "float": 10959934,
+    "short_float": 0.34798439479653803,
     "options": true
    },
    "FNKO": {
-    "avg_vol": 1083792,
-    "short_ratio": 7.573811211007278,
+    "avg_vol": 1073473,
+    "short_ratio": 7.646616170131899,
     "float": 37333353,
     "short_float": 0.21986870560487828,
     "options": true
    },
    "FOUR": {
-    "avg_vol": 2135085,
-    "short_ratio": 6.551158384794984,
+    "avg_vol": 2158739,
+    "short_ratio": 6.479375227852927,
     "float": 40054540,
     "short_float": 0.34920585781287217,
     "options": true
    },
    "FTK": {
-    "avg_vol": 502484,
-    "short_ratio": 8.547631367366922,
+    "avg_vol": 502784,
+    "short_ratio": 8.54253118635438,
     "float": 15247814,
     "short_float": 0.28168286942639775,
     "options": true
    },
    "FUBO": {
-    "avg_vol": 1231232,
-    "short_ratio": 5.554114902796549,
+    "avg_vol": 1222320,
+    "short_ratio": 5.594610249361869,
     "float": 29935157,
     "short_float": 0.22844055903899219,
     "options": true
    },
    "GEMI": {
-    "avg_vol": 2539543,
-    "short_ratio": 5.826845223727261,
+    "avg_vol": 2556398,
+    "short_ratio": 5.788427310614388,
     "float": 45669988,
     "short_float": 0.3240098070531571,
     "options": true
    },
    "GLOB": {
-    "avg_vol": 1232507,
-    "short_ratio": 8.92100247706504,
+    "avg_vol": 1214073,
+    "short_ratio": 9.056455419072824,
     "float": 38047618,
     "short_float": 0.2889851869307561,
     "options": true
    },
    "GRAL": {
-    "avg_vol": 1042351,
-    "short_ratio": 7.673822925291001,
+    "avg_vol": 1043785,
+    "short_ratio": 7.663280273236347,
     "float": 34637957,
     "short_float": 0.2309263505350503,
     "options": true
    },
    "GRND": {
-    "avg_vol": 1729242,
-    "short_ratio": 5.8160616038703665,
+    "avg_vol": 1731639,
+    "short_ratio": 5.808010792087727,
     "float": 48369107,
     "short_float": 0.2079297846040449,
     "options": true
    },
    "GRPN": {
-    "avg_vol": 1122633,
-    "short_ratio": 10.947612443247259,
+    "avg_vol": 1104115,
+    "short_ratio": 11.131223649710401,
     "float": 18074005,
     "short_float": 0.6799904614389561,
     "options": true
    },
    "GRRR": {
-    "avg_vol": 1006403,
-    "short_ratio": 6.599038357397584,
+    "avg_vol": 1002282,
+    "short_ratio": 6.626171077600914,
     "float": 24905065,
     "short_float": 0.2666643110547995,
     "options": true
    },
    "HGV": {
-    "avg_vol": 1146379,
-    "short_ratio": 12.1469889102993,
-    "float": 43775494,
-    "short_float": 0.3181015615723263,
+    "avg_vol": 1146862,
+    "short_ratio": 12.14187321578359,
+    "float": 43802032,
+    "short_float": 0.3179088358275251,
     "options": true
    },
    "HPK": {
-    "avg_vol": 573860,
-    "short_ratio": 12.309047502875266,
+    "avg_vol": 571151,
+    "short_ratio": 12.367429979112353,
     "float": 21840723,
     "short_float": 0.3234174070153264,
     "options": true
    },
    "HROW": {
-    "avg_vol": 629280,
-    "short_ratio": 11.27071732773964,
-    "float": 29255239,
-    "short_float": 0.24243305617841646,
+    "avg_vol": 609231,
+    "short_ratio": 11.641621979183594,
+    "float": 29260101,
+    "short_float": 0.24239277232843454,
     "options": true
    },
    "IMRX": {
-    "avg_vol": 725545,
-    "short_ratio": 20.116923140535736,
+    "avg_vol": 720920,
+    "short_ratio": 20.245981523608723,
     "float": 49275694,
     "short_float": 0.29620552883537266,
     "options": true
    },
    "JACK": {
-    "avg_vol": 595940,
-    "short_ratio": 10.12473235560627,
+    "avg_vol": 591704,
+    "short_ratio": 10.19721516163487,
     "float": 12490347,
     "short_float": 0.48307168727978494,
     "options": true
    },
    "KYTX": {
-    "avg_vol": 864409,
-    "short_ratio": 10.522407795383899,
+    "avg_vol": 861514,
+    "short_ratio": 10.55776690802471,
     "float": 36065241,
     "short_float": 0.25220028336979644,
     "options": true
    },
    "LENZ": {
-    "avg_vol": 903106,
-    "short_ratio": 7.828305868857034,
-    "float": 20461084,
-    "short_float": 0.3455237268954079,
+    "avg_vol": 909331,
+    "short_ratio": 7.774715697584268,
+    "float": 22208382,
+    "short_float": 0.3183388145971192,
     "options": true
    },
    "LEU": {
-    "avg_vol": 781695,
-    "short_ratio": 7.414909907316792,
+    "avg_vol": 788915,
+    "short_ratio": 7.3470500624275115,
     "float": 19854743,
     "short_float": 0.29193014485254226,
     "options": true
    },
    "METC": {
-    "avg_vol": 2209850,
-    "short_ratio": 8.19815598343779,
+    "avg_vol": 2218287,
+    "short_ratio": 8.16697523810039,
     "float": 43742684,
     "short_float": 0.41416514359292633,
     "options": true
    },
    "MMYT": {
-    "avg_vol": 884704,
-    "short_ratio": 8.222935580714001,
+    "avg_vol": 890937,
+    "short_ratio": 8.165407879569488,
     "float": 30619603,
     "short_float": 0.23758844946487387,
     "options": true
    },
    "MNRO": {
-    "avg_vol": 1001101,
-    "short_ratio": 7.132870709349007,
+    "avg_vol": 1003606,
+    "short_ratio": 7.115067068152243,
     "float": 29482711,
     "short_float": 0.24220038652483483,
     "options": true
    },
    "MTN": {
-    "avg_vol": 737335,
-    "short_ratio": 8.672821716044945,
+    "avg_vol": 741073,
+    "short_ratio": 8.629075678104586,
     "float": 31622763,
     "short_float": 0.20222062822277737,
     "options": true
    },
    "NKTR": {
-    "avg_vol": 1089338,
-    "short_ratio": 6.211136488399377,
+    "avg_vol": 1101267,
+    "short_ratio": 6.143857030129841,
     "float": 28280642,
     "short_float": 0.2392458770914748,
     "options": true
    },
    "NNE": {
-    "avg_vol": 1962732,
-    "short_ratio": 8.748058828204767,
+    "avg_vol": 1958146,
+    "short_ratio": 8.768546880569682,
     "float": 44819158,
     "short_float": 0.3830972237363317,
     "options": true
    },
    "NRXP": {
-    "avg_vol": 1046964,
-    "short_ratio": 9.992918572176311,
+    "avg_vol": 1036481,
+    "short_ratio": 10.09398725109288,
     "float": 37388639,
     "short_float": 0.2798236651513311,
     "options": true
    },
    "OFRM": {
-    "avg_vol": 561250,
-    "short_ratio": 10.028361692650334,
+    "avg_vol": 558457,
+    "short_ratio": 10.078516340559792,
     "float": 15659994,
     "short_float": 0.35941380309596543,
     "options": true
    },
    "OXM": {
-    "avg_vol": 518292,
-    "short_ratio": 7.316939099966814,
+    "avg_vol": 522778,
+    "short_ratio": 7.254151857958828,
     "float": 14298859,
     "short_float": 0.26521773520530556,
     "options": true
    },
    "PAR": {
-    "avg_vol": 951153,
-    "short_ratio": 9.199934185141613,
+    "avg_vol": 955984,
+    "short_ratio": 9.153442944651793,
     "float": 32644329,
     "short_float": 0.268057125634287,
     "options": true
    },
    "PPLI": {
-    "avg_vol": 1153032,
-    "short_ratio": 9.648334131229662,
+    "avg_vol": 1163545,
+    "short_ratio": 9.56115835657409,
     "float": 47580252,
     "short_float": 0.23381208657743133,
     "options": true
    },
    "PRKS": {
-    "avg_vol": 700884,
-    "short_ratio": 7.090126183505402,
+    "avg_vol": 705590,
+    "short_ratio": 7.04283790870052,
     "float": 17267504,
     "short_float": 0.2877865845579072,
     "options": true
    },
-   "PUSA": {
-    "avg_vol": 833450,
-    "short_ratio": 5.09119083328334,
-    "float": 73635,
-    "short_float": 57.62549059550486,
-    "options": true
-   },
    "QTTB": {
-    "avg_vol": 689812,
-    "short_ratio": 8.103987753184926,
+    "avg_vol": 685270,
+    "short_ratio": 8.157701343995797,
     "float": 13665339,
     "short_float": 0.40908081387516254,
     "options": true
    },
    "RH": {
-    "avg_vol": 804209,
-    "short_ratio": 6.117404803975086,
+    "avg_vol": 804153,
+    "short_ratio": 6.117830810803417,
     "float": 13783529,
     "short_float": 0.3569239778869403,
     "options": true
    },
    "RILY": {
-    "avg_vol": 707646,
-    "short_ratio": 8.845342162606727,
+    "avg_vol": 704275,
+    "short_ratio": 8.887680238543183,
     "float": 28567554,
     "short_float": 0.2191076981949522,
     "options": true
    },
    "SEZL": {
-    "avg_vol": 546204,
-    "short_ratio": 8.078373647941062,
+    "avg_vol": 534089,
+    "short_ratio": 8.261619318128627,
     "float": 19047082,
     "short_float": 0.23165963164331418,
     "options": true
    },
    "SHOE": {
-    "avg_vol": 988520,
-    "short_ratio": 9.633766641039129,
+    "avg_vol": 998039,
+    "short_ratio": 9.541882631841041,
     "float": 17954910,
     "short_float": 0.5303936917533978,
     "options": true
    },
    "SPHR": {
-    "avg_vol": 813842,
-    "short_ratio": 8.434664222293762,
+    "avg_vol": 815668,
+    "short_ratio": 8.41578191126782,
     "float": 25018565,
     "short_float": 0.2743756086729994,
     "options": true
    },
    "SPRY": {
-    "avg_vol": 1765026,
-    "short_ratio": 10.759416575166599,
+    "avg_vol": 1789281,
+    "short_ratio": 10.613564890031247,
     "float": 49115160,
     "short_float": 0.38665556622435926,
     "options": true
    },
    "SRZN": {
-    "avg_vol": 539300,
-    "short_ratio": 5.998486927498609,
+    "avg_vol": 540173,
+    "short_ratio": 5.988792479446399,
     "float": 10801291,
     "short_float": 0.2994997542423401,
     "options": true
    },
    "STOK": {
-    "avg_vol": 1057493,
-    "short_ratio": 10.13946664422365,
+    "avg_vol": 1050143,
+    "short_ratio": 10.210433245757958,
     "float": 46501240,
     "short_float": 0.23058342100124643,
-    "options": true
+    "options": null
    },
    "TMDX": {
-    "avg_vol": 872481,
-    "short_ratio": 10.175013553303739,
+    "avg_vol": 884193,
+    "short_ratio": 10.040235559431029,
     "float": 33617883,
     "short_float": 0.26407094105241546,
     "options": null
    },
    "TOYO": {
-    "avg_vol": 619657,
-    "short_ratio": 6.0830523983429545,
+    "avg_vol": 621020,
+    "short_ratio": 6.069701458890213,
     "float": 14569297,
     "short_float": 0.258722572544166,
     "options": null
    },
    "TRON": {
-    "avg_vol": 1061381,
-    "short_ratio": 10.925501775516992,
+    "avg_vol": 1061278,
+    "short_ratio": 10.92656212604049,
     "float": 46902354,
     "short_float": 0.24723961616084345,
     "options": null
    },
    "TTEC": {
-    "avg_vol": 778100,
-    "short_ratio": 6.141111682303046,
+    "avg_vol": 754754,
+    "short_ratio": 6.331068136107924,
     "float": 20359149,
     "short_float": 0.23470524234583676,
     "options": null
    },
    "TYRA": {
-    "avg_vol": 835021,
-    "short_ratio": 11.858093389268054,
-    "float": 34651415,
-    "short_float": 0.2857533234934273,
+    "avg_vol": 836018,
+    "short_ratio": 11.843951924480095,
+    "float": 40112897,
+    "short_float": 0.24684721724287328,
     "options": null
    },
    "VITL": {
-    "avg_vol": 1694175,
-    "short_ratio": 5.670907078666608,
+    "avg_vol": 1701604,
+    "short_ratio": 5.646148575109132,
     "float": 34614582,
     "short_float": 0.2775566956145823,
     "options": null
    },
    "WGS": {
-    "avg_vol": 740034,
-    "short_ratio": 8.854809373623374,
+    "avg_vol": 782435,
+    "short_ratio": 8.374957664214918,
     "float": 20546144,
     "short_float": 0.31893381064592946,
     "options": null
    },
    "WKC": {
-    "avg_vol": 999561,
-    "short_ratio": 10.752805481606424,
+    "avg_vol": 1003396,
+    "short_ratio": 10.711708039497866,
     "float": 49322950,
     "short_float": 0.21791245251956745,
     "options": null
    },
    "WOLF": {
-    "avg_vol": 3738442,
-    "short_ratio": 7.757192702200542,
+    "avg_vol": 3711828,
+    "short_ratio": 7.812812177719442,
     "float": 32071433,
     "short_float": 0.9042257326013465,
     "options": null
    },
    "XPOF": {
-    "avg_vol": 789526,
-    "short_ratio": 14.300391627381492,
-    "float": 21907161,
-    "short_float": 0.5153808382564952,
+    "avg_vol": 782323,
+    "short_ratio": 14.432058114103766,
+    "float": 22038314,
+    "short_float": 0.51231373688568,
     "options": null
    },
    "ZBIO": {
-    "avg_vol": 666931,
-    "short_ratio": 17.024854145331375,
+    "avg_vol": 654950,
+    "short_ratio": 17.336289793113977,
     "float": 49764018,
     "short_float": 0.22816491626540283,
     "options": null
@@ -650,8 +637,8 @@
   },
   "screened": 2661,
   "failed": 0,
-  "no_float": 17,
-  "no_options": 11
+  "no_float": 15,
+  "no_options": 12
  },
  "warned": {
   "2026-11-10": [
@@ -663,6 +650,10 @@
    "screen:pre",
    "nasdaq:pre",
    "nasdaq:post"
+  ],
+  "2026-11-12": [
+   "screen:pre",
+   "nasdaq:pre"
   ]
  }
 }

@@ -1405,7 +1405,13 @@
    ],
    "R": 0.42800000000000005,
    "guard_spread": 0.010000000000000675,
-   "outcome": null,
+   "outcome": {
+    "filled": false,
+    "net_r": 0.0,
+    "gross_r": 0.0,
+    "cost_r": 0.0,
+    "closed": "2026-11-11"
+   },
    "source": "squeeze",
    "rank": 1,
    "stop_capped": true,
@@ -1530,7 +1536,23 @@
    ],
    "R": 0.253,
    "guard_spread": 0.01,
-   "outcome": null,
+   "outcome": {
+    "filled": true,
+    "fill": 2.53,
+    "entry_day": "2026-11-11",
+    "exits": [
+     "target",
+     "trail"
+    ],
+    "exit_days": [
+     "2026-11-11",
+     "2026-11-11"
+    ],
+    "gross_r": 1.2444088657627466,
+    "cost_r": 0.06719367588932806,
+    "net_r": 1.1772151898734184,
+    "closed": "2026-11-11"
+   },
    "source": "squeeze",
    "rank": 1,
    "stop_capped": true,
