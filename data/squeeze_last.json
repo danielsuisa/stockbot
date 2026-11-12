@@ -1,9 +1,20 @@
 {
  "date": "2026-11-12",
  "kind": "pre",
- "at": "08:15",
- "text": "🌅 <b>רשימת סקוויז לפני הפתיחה</b>\nיום ה׳ <code>12.11.2026</code> · מצב ב־<code>15:15</code>\n\nמקום <code>1</code>: <code>AVTX</code> · <code>8.41$</code> <code>1.2%▼</code>\nשורט <code>20.1%</code> מהמניות הצפות · <code>5.3</code> ימים לכיסוי · מחזור לפני הפתיחה <code>37%</code> מיום רגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.10</code>.",
+ "at": "09:15",
+ "text": "🌅 <b>רשימת סקוויז לפני הפתיחה</b>\nיום ה׳ <code>12.11.2026</code> · מצב ב־<code>16:15</code>\n\nמקום <code>1</code>: <code>KYTX</code> · <code>5.40$</code> <code>5.5%▲</code>\nשורט <code>25.2%</code> מהמניות הצפות · <code>10.6</code> ימים לכיסוי · מחזור לפני הפתיחה <code>13%</code> מיום רגיל\n\nמקום <code>2</code>: <code>AVTX</code> · <code>8.41$</code> <code>1.2%▼</code>\nשורט <code>20.1%</code> מהמניות הצפות · <code>5.3</code> ימים לכיסוי · מחזור לפני הפתיחה <code>37%</code> מיום רגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.10</code>.",
  "rows": [
+  {
+   "t": "KYTX",
+   "avg_vol": 861514,
+   "short_ratio": 10.5578,
+   "float": 36065241,
+   "short_float": 0.2522,
+   "options": true,
+   "price": 5.3997,
+   "chg": 0.0546,
+   "pre_vol": 0.1303
+  },
   {
    "t": "AVTX",
    "avg_vol": 1668031,

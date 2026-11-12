@@ -2183,6 +2183,23 @@
    "price": 31.15,
    "chg": 0.0888,
    "outcome": null
+  },
+  {
+   "date": "2026-11-12",
+   "seen": "2026-11-12",
+   "t": "KYTX",
+   "rank": 1,
+   "variant": "screen-pre-2026-10-08",
+   "si_date": "2026-10-30",
+   "float": 36065241,
+   "short_float": 0.2522,
+   "short_ratio": 10.5578,
+   "avg_vol": 861514,
+   "rel_vol": null,
+   "pre_vol": 0.1303,
+   "price": 5.3997,
+   "chg": 0.0546,
+   "outcome": null
   }
  ]
 }
