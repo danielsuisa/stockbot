@@ -1651,6 +1651,31 @@
    "rank": 1,
    "stop_capped": true,
    "issued_in_first_session": false
+  },
+  {
+   "day": "2026-11-12",
+   "signal": "squeeze-list",
+   "symbol": "WGS",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 55.04,
+   "limit": 56.6,
+   "planned_entry": 55.04,
+   "stop_loss": 49.54,
+   "target": 63.3,
+   "trail": 5.5,
+   "shares": 18,
+   "legs": [
+    9,
+    9
+   ],
+   "R": 5.5040000000000004,
+   "guard_spread": 0.4299999999999997,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 1,
+   "stop_capped": true,
+   "issued_in_first_session": false
   }
  ]
 }
