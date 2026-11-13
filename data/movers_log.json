@@ -550,6 +550,17 @@
    "gain": 0.1793,
    "vol_ratio": 0.9245,
    "si_pct": 0.6859
+  },
+  {
+   "date": "2026-11-13",
+   "session": "pre",
+   "t": "INLF",
+   "manual": false,
+   "price": 0.5001,
+   "ref": 0.411,
+   "gain": 0.2168,
+   "vol_ratio": 0.1873,
+   "si_pct": 0.2295
   }
  ]
 }
