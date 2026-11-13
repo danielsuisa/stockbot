@@ -1,18 +1,18 @@
 {
  "date": "2026-11-13",
  "kind": "day",
- "at": "15:30",
- "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>13.11.2026</code> · מצב ב־<code>22:30</code>\n\nמקום <code>1</code>: <code>OFRM</code> · <code>9.66$</code> <code>5.1%▼</code>\nשורט <code>41.4%</code> מהמניות הצפות · <code>10.1</code> ימים לכיסוי · מחזור פי <code>2.3</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.10</code>.",
+ "at": "16:30",
+ "text": "🚀 <b>רשימת סקוויז</b>\nיום ו׳ <code>13.11.2026</code> · מצב ב־<code>23:30</code>\n\nמקום <code>1</code>: <code>OFRM</code> · <code>9.65$</code> <code>5.2%▼</code>\nשורט <code>35.9%</code> מהמניות הצפות · <code>10.1</code> ימים לכיסוי · מחזור פי <code>3.0</code> מהרגיל\n\n⚠️ הסינון לא נבדק היסטורית, ואינו סימן לכיוון.\n🗓️ נתוני השורט מדוח FINRA של <code>30.10</code>.",
  "rows": [
   {
    "t": "OFRM",
-   "price": 9.665,
-   "chg": -0.0506,
+   "price": 9.65,
+   "chg": -0.0521,
    "avg_vol": 559559,
-   "rel_vol": 2.311,
+   "rel_vol": 3.0404,
    "short_ratio": 10.0587,
-   "float": 13585528,
-   "short_float": 0.4143,
+   "float": 15659994,
+   "short_float": 0.3594,
    "options": true
   }
  ]
