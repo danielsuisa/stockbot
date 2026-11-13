@@ -146,7 +146,8 @@
   }
  ],
  "sent": {
-  "KOLD:breakout": "10:20"
+  "KOLD:breakout": "10:20",
+  "CDNL:inside": "15:40"
  },
  "journal": [
   {
@@ -179,6 +180,38 @@
    "last": 28.65,
    "vwap": 28.46637832031543,
    "candle_relvol": 2.39,
+   "news": "אין חדשות משמעותיות"
+  },
+  {
+   "ok": true,
+   "setup": "inside",
+   "note": "נר פנימי, הגרסה הרגילה: טריגר וסטופ על נר האם",
+   "score": 2.0,
+   "entry_stop": 6.67,
+   "limit": 6.72,
+   "stop_loss": 6.54,
+   "target": 6.93,
+   "R": 0.13,
+   "r_floored": false,
+   "shares": 769,
+   "risk": 99.97,
+   "commission": 7.69,
+   "cost_r": 0.07692307692307693,
+   "time_exit": "15:55",
+   "valid_until": "15:45",
+   "valid_mode": "window",
+   "atr": 1.9359142857142853,
+   "spring": false,
+   "warn": false,
+   "level": null,
+   "symbol": "CDNL",
+   "gap": 0.0177,
+   "pre_rel": 0.1004,
+   "open_relvol": 14.117758811543908,
+   "at": "15:40",
+   "last": 6.625,
+   "vwap": 6.609486168180632,
+   "candle_relvol": 1.68,
    "news": "אין חדשות משמעותיות"
   }
  ],
