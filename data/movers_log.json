@@ -561,6 +561,17 @@
    "gain": 0.2168,
    "vol_ratio": 0.1873,
    "si_pct": 0.2295
+  },
+  {
+   "date": "2026-11-16",
+   "session": "pre",
+   "t": "GOVX",
+   "manual": false,
+   "price": 1.89,
+   "ref": 1.705,
+   "gain": 0.1085,
+   "vol_ratio": 0.1041,
+   "si_pct": 0.3231
   }
  ]
 }
