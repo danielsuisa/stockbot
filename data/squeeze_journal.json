@@ -2254,6 +2254,23 @@
    "price": 5.3997,
    "chg": 0.0546,
    "outcome": null
+  },
+  {
+   "date": "2026-11-16",
+   "seen": "2026-11-16",
+   "t": "LXEO",
+   "rank": 1,
+   "variant": "screen-pre-2026-10-08",
+   "si_date": "2026-10-30",
+   "float": 49775141,
+   "short_float": 0.3423,
+   "short_ratio": 12.9273,
+   "avg_vol": 1317912,
+   "rel_vol": null,
+   "pre_vol": 0.591,
+   "price": 2.9,
+   "chg": 0.0105,
+   "outcome": null
   }
  ]
 }
