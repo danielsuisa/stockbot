@@ -1726,6 +1726,31 @@
    "rank": 1,
    "stop_capped": true,
    "issued_in_first_session": false
+  },
+  {
+   "day": "2026-11-13",
+   "signal": "squeeze-list",
+   "symbol": "TOYO",
+   "mode": "breakout",
+   "horizon": 21,
+   "entry_stop": 4.81,
+   "limit": 4.92,
+   "planned_entry": 4.81,
+   "stop_loss": 4.33,
+   "target": 5.53,
+   "trail": 0.48,
+   "shares": 207,
+   "legs": [
+    103,
+    104
+   ],
+   "R": 0.481,
+   "guard_spread": 0.040000000000000036,
+   "outcome": null,
+   "source": "squeeze",
+   "rank": 2,
+   "stop_capped": true,
+   "issued_in_first_session": false
   }
  ]
 }

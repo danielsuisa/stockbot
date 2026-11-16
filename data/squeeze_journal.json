@@ -2271,6 +2271,23 @@
    "price": 2.9,
    "chg": 0.0105,
    "outcome": null
+  },
+  {
+   "date": "2026-11-16",
+   "seen": "2026-11-16",
+   "t": "TOYO",
+   "rank": 2,
+   "variant": "screen-pre-2026-10-08",
+   "si_date": "2026-10-30",
+   "float": 14569297,
+   "short_float": 0.2587,
+   "short_ratio": 6.1264,
+   "avg_vol": 615275,
+   "rel_vol": null,
+   "pre_vol": 0.1047,
+   "price": 4.19,
+   "chg": -0.097,
+   "outcome": null
   }
  ]
 }
